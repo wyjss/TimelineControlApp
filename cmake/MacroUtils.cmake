@@ -1,0 +1,5 @@
+function(GetTargetRunPath run_path target_name)
+	get_target_property(_temp_path  ${target_name} IMPORTED_LOCATION_RELEASE)
+	get_filename_component(_temp_path ${_temp_path} DIRECTORY PARENT_SCOPE)
+	set(${run_path} ${_temp_path} PARENT_SCOPE)
+endfunction()

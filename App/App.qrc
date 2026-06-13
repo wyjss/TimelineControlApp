@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/TimelineControlApp">
+        <file alias="App/main.qml">main.qml</file>
+        <file alias="App/pages/DevicesPage.qml">pages/DevicesPage.qml</file>
+        <file alias="App/pages/RunsPage.qml">pages/RunsPage.qml</file>
+        <file alias="App/pages/TimelinePage.qml">pages/TimelinePage.qml</file>
+    </qresource>
+</RCC>
