@@ -3,6 +3,7 @@ import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UiCore/qml/components/base" as Base
 import "qrc:/UiCore/qml/theme" as Theme
+import "timeline" as Timeline
 
 Item {
     id: root
@@ -15,13 +16,10 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-
-    readonly property var cueRows: [
-        { "time": "00:00.000", "name": "Prepare", "target": "All devices", "state": "Armed" },
-        { "time": "00:03.200", "name": "Lights On", "target": "Lighting group", "state": "Ready" },
-        { "time": "00:08.500", "name": "Camera Move", "target": "PTZ-01", "state": "Ready" },
-        { "time": "00:14.000", "name": "Audio Cue", "target": "Mixer", "state": "Draft" }
-    ]
+    property int timelineDurationMs: 1800000
+    property int timelineCurrentTimeMs: 0
+    property real timelineScrollX: 0
+    property real timelineTimeScale: 1.0
 
     ColumnLayout {
         anchors.fill: parent
@@ -84,63 +82,34 @@ Item {
                         styleRole: "sectionTitle"
                     }
 
-                    Repeater {
-                        model: root.cueRows
+                    Timeline.TimelineRuler {
+                        id: timelineRuler
 
-                        delegate: Base.AppSurface {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 58
-                            sizeToContent: false
-                            theme: root.pageTheme
-                            surfaceTone: index === 0 ? "highlight" : "surface"
-                            strokeWidth: index === 0 ? 0 : 1
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 14
-                                anchors.rightMargin: 14
-                                spacing: 12
-
-                                Base.AppText {
-                                    Layout.preferredWidth: 76
-                                    text: modelData.time
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    spacing: 2
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: modelData.name
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: modelData.target
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
-                                        elide: Text.ElideRight
-                                    }
-                                }
-
-                                Base.AppText {
-                                    Layout.preferredWidth: 68
-                                    text: modelData.state
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: index === 0 ? "accent" : "secondary"
-                                    horizontalAlignment: Text.AlignRight
-                                }
-                            }
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 44
+                        theme: root.pageTheme
+                        durationMs: root.timelineDurationMs
+                        currentTimeMs: root.timelineCurrentTimeMs
+                        scrollX: root.timelineScrollX
+                        startTimeX: width / 2
+                        timeScale: root.timelineTimeScale
+                        onScrollXChangeRequested: function(nextScrollX) {
+                            root.timelineScrollX = nextScrollX
                         }
+                        onCurrentTimeMsChangeRequested: function(nextCurrentTimeMs) {
+                            root.timelineCurrentTimeMs = nextCurrentTimeMs
+                        }
+                        onTimeScaleChangeRequested: function(nextTimeScale) {
+                            root.timelineTimeScale = nextTimeScale
+                        }
+                    }
+
+                    Timeline.TimelineTrackArea {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.minimumHeight: 220
+                        theme: root.pageTheme
+                        ruler: timelineRuler
                     }
                 }
             }

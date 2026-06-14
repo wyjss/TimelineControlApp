@@ -24,15 +24,21 @@ bool commandTemplateListsEqual(const QList<TimelineControl::DeviceCommandTemplat
 
 namespace TimelineControl {
 
-Device::Device(const QString &id, QObject *parent)
+Device::Device(const QString &id, const QString &templateId, QObject *parent)
     : QObject(parent)
     , m_id(id)
+    , m_templateId(templateId)
 {
 }
 
 QString Device::id() const
 {
     return m_id;
+}
+
+QString Device::templateId() const
+{
+    return m_templateId;
 }
 
 QString Device::name() const
@@ -117,6 +123,20 @@ void Device::setCapabilities(const QString &capabilities)
 
     m_capabilities = capabilities;
     emit capabilitiesChanged();
+}
+
+QVariantMap Device::configValues() const
+{
+    return m_configValues;
+}
+
+void Device::setConfigValues(const QVariantMap &configValues)
+{
+    if (m_configValues == configValues)
+        return;
+
+    m_configValues = configValues;
+    emit configValuesChanged();
 }
 
 QVariantList Device::commandTemplates() const

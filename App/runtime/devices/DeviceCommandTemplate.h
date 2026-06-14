@@ -4,6 +4,8 @@
 #include <QString>
 #include <QVariantList>
 
+#include "devices/DeviceParamSpec.h"
+
 namespace TimelineControl {
 
 class DeviceCommandTemplate final : public QObject
@@ -20,19 +22,20 @@ public:
     DeviceCommandTemplate(const QString &id,
                           const QString &name,
                           const QString &action,
-                          const QVariantList &params,
+                          const QList<DeviceParamSpec> &params,
                           QObject *parent = nullptr);
 
     QString id() const;
     QString name() const;
     QString action() const;
     QVariantList params() const;
+    QList<DeviceParamSpec> paramSpecs() const;
 
 private:
     QString m_id;
     QString m_name;
     QString m_action;
-    QVariantList m_params;
+    QList<DeviceParamSpec> m_params;
 };
 
 } // namespace TimelineControl

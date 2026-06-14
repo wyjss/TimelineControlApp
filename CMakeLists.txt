@@ -36,6 +36,9 @@ add_executable(TimelineControlApp
     App/runtime/devices/Device.h
     App/runtime/devices/DeviceManager.cpp
     App/runtime/devices/DeviceManager.h
+    App/runtime/devices/DeviceParamSpec.h
+    App/runtime/devices/DeviceTemplate.cpp
+    App/runtime/devices/DeviceTemplate.h
     App/runtime/TimelineRuntime.cpp
     App/runtime/TimelineRuntime.h
     App/runtime/TimelineShellController.cpp

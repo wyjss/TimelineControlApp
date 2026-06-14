@@ -1,11 +1,13 @@
 #include "devices/DeviceCommandTemplate.h"
 
+#include <QVariant>
+
 namespace TimelineControl {
 
 DeviceCommandTemplate::DeviceCommandTemplate(const QString &id,
                                              const QString &name,
                                              const QString &action,
-                                             const QVariantList &params,
+                                             const QList<DeviceParamSpec> &params,
                                              QObject *parent)
     : QObject(parent)
     , m_id(id)
@@ -31,6 +33,17 @@ QString DeviceCommandTemplate::action() const
 }
 
 QVariantList DeviceCommandTemplate::params() const
+{
+    QVariantList result;
+    result.reserve(m_params.size());
+
+    for (const DeviceParamSpec &param : m_params)
+        result.append(QVariant::fromValue(param));
+
+    return result;
+}
+
+QList<DeviceParamSpec> DeviceCommandTemplate::paramSpecs() const
 {
     return m_params;
 }
