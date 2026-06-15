@@ -58,7 +58,7 @@ private:
                                        const QString &name,
                                        const QString &protocol,
                                        const QString &description,
-                                       const QList<DeviceParamSpec> &configSpecs,
+                                       const QList<DeviceParamSpec *> &configSpecs,
                                        const QList<DeviceCommandTemplate *> &commandTemplates);
     Device *makeDeviceFromTemplate(const QString &id,
                                    const QString &templateId,

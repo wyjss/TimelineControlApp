@@ -28,7 +28,7 @@ public:
                    const QString &name,
                    const QString &protocol,
                    const QString &description,
-                   const QList<DeviceParamSpec> &configSpecs,
+                   const QList<DeviceParamSpec *> &configSpecs,
                    const QList<DeviceCommandTemplate *> &commandTemplates,
                    QObject *parent = nullptr);
 
@@ -37,7 +37,7 @@ public:
     QString protocol() const;
     QString description() const;
     QVariantList configSpecs() const;
-    QList<DeviceParamSpec> configSpecObjects() const;
+    QList<DeviceParamSpec *> configSpecObjects() const;
     QVariantList commandTemplates() const;
     QList<DeviceCommandTemplate *> commandTemplateObjects() const;
 
@@ -46,7 +46,7 @@ private:
     QString m_name;
     QString m_protocol;
     QString m_description;
-    QList<DeviceParamSpec> m_configSpecs;
+    QList<DeviceParamSpec *> m_configSpecs;
     QList<DeviceCommandTemplate *> m_commandTemplates;
 };
 

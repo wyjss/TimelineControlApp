@@ -7,14 +7,25 @@ namespace TimelineControl {
 DeviceCommandTemplate::DeviceCommandTemplate(const QString &id,
                                              const QString &name,
                                              const QString &action,
-                                             const QList<DeviceParamSpec> &params,
+                                             const QList<DeviceParamSpec *> &params,
                                              QObject *parent)
     : QObject(parent)
     , m_id(id)
     , m_name(name)
     , m_action(action)
-    , m_params(params)
 {
+    m_params.reserve(params.size());
+    for (DeviceParamSpec *param : params) {
+        if (!param)
+            continue;
+
+        if (param->parent()) {
+            m_params.append(param->clone(this));
+        } else {
+            param->setParent(this);
+            m_params.append(param);
+        }
+    }
 }
 
 QString DeviceCommandTemplate::id() const
@@ -37,13 +48,13 @@ QVariantList DeviceCommandTemplate::params() const
     QVariantList result;
     result.reserve(m_params.size());
 
-    for (const DeviceParamSpec &param : m_params)
+    for (DeviceParamSpec *param : m_params)
         result.append(QVariant::fromValue(param));
 
     return result;
 }
 
-QList<DeviceParamSpec> DeviceCommandTemplate::paramSpecs() const
+QList<DeviceParamSpec *> DeviceCommandTemplate::paramSpecs() const
 {
     return m_params;
 }

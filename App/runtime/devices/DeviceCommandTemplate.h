@@ -22,20 +22,20 @@ public:
     DeviceCommandTemplate(const QString &id,
                           const QString &name,
                           const QString &action,
-                          const QList<DeviceParamSpec> &params,
+                          const QList<DeviceParamSpec *> &params,
                           QObject *parent = nullptr);
 
     QString id() const;
     QString name() const;
     QString action() const;
     QVariantList params() const;
-    QList<DeviceParamSpec> paramSpecs() const;
+    QList<DeviceParamSpec *> paramSpecs() const;
 
 private:
     QString m_id;
     QString m_name;
     QString m_action;
-    QList<DeviceParamSpec> m_params;
+    QList<DeviceParamSpec *> m_params;
 };
 
 } // namespace TimelineControl

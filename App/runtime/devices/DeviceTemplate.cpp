@@ -10,7 +10,7 @@ DeviceTemplate::DeviceTemplate(const QString &id,
                                const QString &name,
                                const QString &protocol,
                                const QString &description,
-                               const QList<DeviceParamSpec> &configSpecs,
+                               const QList<DeviceParamSpec *> &configSpecs,
                                const QList<DeviceCommandTemplate *> &commandTemplates,
                                QObject *parent)
     : QObject(parent)
@@ -18,9 +18,21 @@ DeviceTemplate::DeviceTemplate(const QString &id,
     , m_name(name)
     , m_protocol(protocol)
     , m_description(description)
-    , m_configSpecs(configSpecs)
     , m_commandTemplates(commandTemplates)
 {
+    m_configSpecs.reserve(configSpecs.size());
+    for (DeviceParamSpec *configSpec : configSpecs) {
+        if (!configSpec)
+            continue;
+
+        if (configSpec->parent()) {
+            m_configSpecs.append(configSpec->clone(this));
+        } else {
+            configSpec->setParent(this);
+            m_configSpecs.append(configSpec);
+        }
+    }
+
     for (DeviceCommandTemplate *commandTemplate : m_commandTemplates) {
         if (commandTemplate && commandTemplate->parent() != this)
             commandTemplate->setParent(this);
@@ -52,13 +64,13 @@ QVariantList DeviceTemplate::configSpecs() const
     QVariantList result;
     result.reserve(m_configSpecs.size());
 
-    for (const DeviceParamSpec &configSpec : m_configSpecs)
+    for (DeviceParamSpec *configSpec : m_configSpecs)
         result.append(QVariant::fromValue(configSpec));
 
     return result;
 }
 
-QList<DeviceParamSpec> DeviceTemplate::configSpecObjects() const
+QList<DeviceParamSpec *> DeviceTemplate::configSpecObjects() const
 {
     return m_configSpecs;
 }
