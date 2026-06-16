@@ -30,10 +30,19 @@ qt5_add_resources(TIMELINE_APP_RESOURCES
 
 add_executable(TimelineControlApp
     App/main.cpp
+    App/runtime/devices/DeviceCommand.cpp
+    App/runtime/devices/DeviceCommand.h
+    App/runtime/devices/DeviceCommand_Dmx512.cpp
+    App/runtime/devices/DeviceCommand_Dmx512.h
+    App/runtime/devices/DeviceCommand_Http.cpp
+    App/runtime/devices/DeviceCommand_Http.h
+    App/runtime/devices/DeviceCommand_PC.cpp
+    App/runtime/devices/DeviceCommand_PC.h
+    App/runtime/devices/DeviceCommand_Serial.cpp
+    App/runtime/devices/DeviceCommand_Serial.h
+    App/runtime/devices/DeviceConstants.h
     App/runtime/devices/DeviceParamSpec.cpp
     App/runtime/devices/DeviceParamSpec.h
-    App/runtime/devices/DeviceCommandTemplate.cpp
-    App/runtime/devices/DeviceCommandTemplate.h
     App/runtime/devices/Device.cpp
     App/runtime/devices/Device.h
     App/runtime/devices/DeviceManager.cpp

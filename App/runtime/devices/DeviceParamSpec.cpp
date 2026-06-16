@@ -12,19 +12,20 @@ DeviceParamSpec::DeviceParamSpec(QObject *parent)
 
 DeviceParamSpec::DeviceParamSpec(const QString &key,
                                  const QString &label,
+                                 const QVariant &value,
                                  ValueType valueType,
-                                 const QVariant &defaultValue,
-                                 bool required,
-                                 const QVariantMap &constraints,
+                                 EditorHint editorHint,
                                  QObject *parent)
     : BaseField(parent)
 {
+    const QVariant normalized = normalizedValue(valueType, value);
+
     setKey(key);
     setLabel(label);
     setValueType(valueType);
-    setDefaultValue(normalizedDefaultValue(valueType, defaultValue));
-    setRequired(required);
-    applyConstraints(constraints);
+    setEditorHint(editorHint);
+    setValue(normalized);
+    setDefaultValue(normalized);
 }
 
 QString DeviceParamSpec::typeName() const
@@ -80,30 +81,7 @@ QString DeviceParamSpec::typeName(ValueType valueType)
     return QStringLiteral("invalid");
 }
 
-void DeviceParamSpec::applyConstraints(const QVariantMap &constraints)
-{
-    if (constraints.contains(QStringLiteral("min")))
-        setMinimum(constraints.value(QStringLiteral("min")).toDouble());
-
-    if (constraints.contains(QStringLiteral("max")))
-        setMaximum(constraints.value(QStringLiteral("max")).toDouble());
-
-    if (constraints.contains(QStringLiteral("step")))
-        setStepSize(constraints.value(QStringLiteral("step")).toDouble());
-
-    if (constraints.contains(QStringLiteral("unit")))
-        setSuffix(constraints.value(QStringLiteral("unit")).toString());
-
-    if (constraints.contains(QStringLiteral("options")))
-        setOptions(constraints.value(QStringLiteral("options")).toList());
-
-    if (constraints.contains(QStringLiteral("pattern")))
-        setPattern(constraints.value(QStringLiteral("pattern")).toString());
-    else if (constraints.contains(QStringLiteral("regex")))
-        setPattern(constraints.value(QStringLiteral("regex")).toString());
-}
-
-QVariant DeviceParamSpec::normalizedDefaultValue(ValueType valueType, const QVariant &value)
+QVariant DeviceParamSpec::normalizedValue(ValueType valueType, const QVariant &value)
 {
     switch (valueType) {
     case IntType:

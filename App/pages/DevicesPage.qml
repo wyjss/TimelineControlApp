@@ -112,18 +112,6 @@ Item {
             deviceManager.updateCurrentDeviceField(field, value)
     }
 
-    function commandParamSummary(commandTemplate) {
-        var params = commandTemplate && commandTemplate.params ? commandTemplate.params : []
-        if (!params || params.length === 0)
-            return qsTr("No parameters")
-
-        var labels = []
-        for (var index = 0; index < params.length; ++index)
-            labels.push(String(params[index].label || params[index].key || ""))
-
-        return labels.join(", ")
-    }
-
     function configSpecSummary(configSpec) {
         var defaultText = configSpec.defaultValue === undefined || configSpec.defaultValue === null
             ? qsTr("Empty")
@@ -271,9 +259,8 @@ Item {
 
                                     Base.AppText {
                                         Layout.fillWidth: true
-                                        text: qsTr("%1 config / %2 commands")
+                                        text: qsTr("%1 config")
                                             .arg(modelData.configSpecs ? modelData.configSpecs.length : 0)
-                                            .arg(modelData.commandTemplates ? modelData.commandTemplates.length : 0)
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
                                         textTone: selected ? "accent" : "secondary"
@@ -530,51 +517,6 @@ Item {
                                 Base.AppText {
                                     Layout.fillWidth: true
                                     text: root.configSpecSummary(modelData)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                    elide: Text.ElideRight
-                                }
-                            }
-                        }
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: qsTr("Template Commands")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
-                    }
-
-                    Repeater {
-                        model: root.selectedTemplate && root.selectedTemplate.commandTemplates ? root.selectedTemplate.commandTemplates : []
-
-                        delegate: Base.AppSurface {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 58
-                            sizeToContent: false
-                            theme: root.pageTheme
-                            surfaceTone: "surface"
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-                                anchors.topMargin: 8
-                                anchors.bottomMargin: 8
-                                spacing: 2
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: modelData.name
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
-                                    elide: Text.ElideRight
-                                }
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: modelData.action + " - " + root.commandParamSummary(modelData)
                                     theme: root.pageTheme
                                     styleRole: "bodyS"
                                     textTone: "secondary"

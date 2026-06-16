@@ -1,14 +1,11 @@
 #pragma once
 
 #include <QVariant>
-#include <QVariantMap>
 
 #include "runtime/fields/BaseField.h"
 
 namespace TimelineControl {
-    static const QString Key_Ip = "ip";
-    static const QString Key_BaudRate = "比特率";
-    static const QString Key_Payload = "载荷";
+
 class DeviceParamSpec final : public EarthUI::BaseField
 {
     Q_OBJECT
@@ -18,6 +15,7 @@ class DeviceParamSpec final : public EarthUI::BaseField
 
 public:
     using ValueType = EarthUI::BaseField::ValueType;
+    using EditorHint = EarthUI::BaseField::EditorHint;
 
     static constexpr ValueType InvalidType = EarthUI::BaseField::InvalidType;
     static constexpr ValueType BoolType = EarthUI::BaseField::BoolType;
@@ -29,13 +27,23 @@ public:
     static constexpr ValueType SizeType = EarthUI::BaseField::SizeType;
     static constexpr ValueType VariantType = EarthUI::BaseField::VariantType;
 
+    static constexpr EditorHint AutoEditor = EarthUI::BaseField::AutoEditor;
+    static constexpr EditorHint TextEditor = EarthUI::BaseField::TextEditor;
+    static constexpr EditorHint SliderEditor = EarthUI::BaseField::SliderEditor;
+    static constexpr EditorHint ToggleEditor = EarthUI::BaseField::ToggleEditor;
+    static constexpr EditorHint SelectEditor = EarthUI::BaseField::SelectEditor;
+    static constexpr EditorHint ChoiceEditor = EarthUI::BaseField::ChoiceEditor;
+    static constexpr EditorHint SegmentedEditor = EarthUI::BaseField::SegmentedEditor;
+    static constexpr EditorHint ColorEditor = EarthUI::BaseField::ColorEditor;
+    static constexpr EditorHint SizeEditor = EarthUI::BaseField::SizeEditor;
+    static constexpr EditorHint CustomEditor = EarthUI::BaseField::CustomEditor;
+
     explicit DeviceParamSpec(QObject *parent = nullptr);
     DeviceParamSpec(const QString &key,
                     const QString &label,
-                    ValueType valueType,
-                    const QVariant &defaultValue,
-                    bool required = false,
-                    const QVariantMap &constraints = QVariantMap(),
+                    const QVariant &value = QVariant(),
+                    ValueType valueType = VariantType,
+                    EditorHint editorHint = AutoEditor,
                     QObject *parent = nullptr);
 
     QString typeName() const;
@@ -44,8 +52,7 @@ public:
     static QString typeName(ValueType valueType);
 
 private:
-    void applyConstraints(const QVariantMap &constraints);
-    static QVariant normalizedDefaultValue(ValueType valueType, const QVariant &value);
+    static QVariant normalizedValue(ValueType valueType, const QVariant &value);
 };
 
 } // namespace TimelineControl

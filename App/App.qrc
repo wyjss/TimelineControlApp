@@ -4,6 +4,7 @@
         <file alias="App/pages/DevicesPage.qml">pages/DevicesPage.qml</file>
         <file alias="App/pages/RunsPage.qml">pages/RunsPage.qml</file>
         <file alias="App/pages/TimelinePage.qml">pages/TimelinePage.qml</file>
+        <file alias="App/pages/timeline/AddCommandDialog.qml">pages/timeline/AddCommandDialog.qml</file>
         <file alias="App/pages/timeline/TimelineRuler.qml">pages/timeline/TimelineRuler.qml</file>
         <file alias="App/pages/timeline/TimelineTrackArea.qml">pages/timeline/TimelineTrackArea.qml</file>
     </qresource>

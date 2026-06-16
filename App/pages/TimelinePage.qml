@@ -20,6 +20,47 @@ Item {
     property int timelineCurrentTimeMs: 0
     property real timelineScrollX: 0
     property real timelineTimeScale: 1.0
+    property var lastCommand: null
+
+    function protocolLabel(protocol) {
+        switch (String(protocol)) {
+        case "dmx512":
+            return qsTr("DMX512")
+        case "http":
+            return qsTr("HTTP")
+        case "pc":
+            return qsTr("PC")
+        case "serial":
+            return qsTr("Serial")
+        default:
+            return String(protocol)
+        }
+    }
+
+    function commandParam(key, fallback) {
+        if (!lastCommand || !lastCommand.params || lastCommand.params[key] === undefined || lastCommand.params[key] === null)
+            return fallback
+
+        return lastCommand.params[key]
+    }
+
+    function commandSummary(command) {
+        if (!command)
+            return qsTr("intensity: 80%")
+
+        switch (String(command.protocol)) {
+        case "dmx512":
+            return qsTr("channel %1 -> %2").arg(commandParam("channel", 1)).arg(commandParam("value", 255))
+        case "http":
+            return String(commandParam("method", "POST")) + " " + String(commandParam("address", "")) + String(commandParam("path", "/"))
+        case "pc":
+            return String(commandParam("path", "/"))
+        case "serial":
+            return (commandParam("hex", true) ? "HEX " : "TEXT ") + String(commandParam("payload", ""))
+        default:
+            return String(command.name || qsTr("Command"))
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -47,6 +88,7 @@ Item {
                 text: qsTr("Add Cue")
                 theme: root.pageTheme
                 iconName: "workflow"
+                onClicked: addCommandDialog.openForTime(root.timelineCurrentTimeMs)
             }
 
             Base.AppButton {
@@ -153,7 +195,9 @@ Item {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: qsTr("Lighting group")
+                                text: root.lastCommand
+                                    ? root.protocolLabel(root.lastCommand.protocol)
+                                    : qsTr("Lighting group")
                                 theme: root.pageTheme
                                 styleRole: "bodyM"
                                 elide: Text.ElideRight
@@ -163,7 +207,7 @@ Item {
 
                     Base.AppSurface {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 118
+                        Layout.preferredHeight: 138
                         sizeToContent: false
                         theme: root.pageTheme
                         surfaceTone: "surface"
@@ -182,7 +226,9 @@ Item {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: qsTr("intensity: 80%")
+                                text: root.lastCommand
+                                    ? String(root.lastCommand.name || qsTr("Command"))
+                                    : qsTr("intensity: 80%")
                                 theme: root.pageTheme
                                 styleRole: "bodyM"
                                 elide: Text.ElideRight
@@ -190,7 +236,19 @@ Item {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: qsTr("duration: 2.4s")
+                                text: root.lastCommand
+                                    ? root.commandSummary(root.lastCommand)
+                                    : qsTr("duration: 2.4s")
+                                theme: root.pageTheme
+                                styleRole: "bodyM"
+                                elide: Text.ElideRight
+                            }
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: root.lastCommand
+                                    ? qsTr("time: %1 ms / duration: %2 ms").arg(root.lastCommand.startTimeMs).arg(root.lastCommand.durationMs)
+                                    : qsTr("duration: 2.4s")
                                 theme: root.pageTheme
                                 styleRole: "bodyM"
                                 elide: Text.ElideRight
@@ -203,6 +261,16 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    Timeline.AddCommandDialog {
+        id: addCommandDialog
+
+        parent: root
+        theme: root.pageTheme
+        onCommandAccepted: function(command) {
+            root.lastCommand = command
         }
     }
 }

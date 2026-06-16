@@ -78,6 +78,12 @@ public:
     Q_PROPERTY(QString suffix READ suffix WRITE setSuffix NOTIFY suffixChanged FINAL)
 
     explicit BaseField(QObject *parent = nullptr);
+    explicit BaseField(const QString& key,
+                       const QString& label,
+                       const QVariant& value,
+                       ValueType valueType = VariantType,
+                       EditorHint editorHint = AutoEditor,
+                       QObject *parent = nullptr);
 
     QString key() const;
     void setKey(const QString &key);

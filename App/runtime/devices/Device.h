@@ -8,8 +8,6 @@
 
 namespace TimelineControl {
 
-class DeviceCommandTemplate;
-
 class Device final : public QObject
 {
     Q_OBJECT
@@ -25,7 +23,6 @@ class Device final : public QObject
     Q_PROPERTY(QString lastSeen READ lastSeen WRITE setLastSeen NOTIFY lastSeenChanged FINAL)
     Q_PROPERTY(QString capabilities READ capabilities WRITE setCapabilities NOTIFY capabilitiesChanged FINAL)
     Q_PROPERTY(QVariantMap configValues READ configValues WRITE setConfigValues NOTIFY configValuesChanged FINAL)
-    Q_PROPERTY(QVariantList commandTemplates READ commandTemplates NOTIFY commandTemplatesChanged FINAL)
 
 public:
     Device(const QString &id, const QString &templateId, QObject *parent = nullptr);
@@ -54,9 +51,6 @@ public:
     QVariantMap configValues() const;
     void setConfigValues(const QVariantMap &configValues);
 
-    QVariantList commandTemplates() const;
-    void setCommandTemplates(const QList<DeviceCommandTemplate *> &commandTemplates);
-
 signals:
     void nameChanged();
     void protocolChanged();
@@ -65,7 +59,6 @@ signals:
     void lastSeenChanged();
     void capabilitiesChanged();
     void configValuesChanged();
-    void commandTemplatesChanged();
 
 private:
     QString m_id;
@@ -77,7 +70,6 @@ private:
     QString m_lastSeen;
     QString m_capabilities;
     QVariantMap m_configValues;
-    QList<DeviceCommandTemplate *> m_commandTemplates;
 };
 
 } // namespace TimelineControl

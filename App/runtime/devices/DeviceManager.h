@@ -13,7 +13,6 @@
 namespace TimelineControl {
 
 class Device;
-class DeviceCommandTemplate;
 class DeviceTemplate;
 
 class DeviceManager final : public QObject
@@ -52,14 +51,16 @@ signals:
     void currentDeviceChanged();
 
 private:
+    DeviceTemplate* createDefaultDeviceTemplatePc() const;
+    DeviceTemplate* createDefaultDeviceTemplateDmx512() const;
+    
     Device *device(const QString &deviceId) const;
     DeviceTemplate *deviceTemplate(const QString &templateId) const;
     DeviceTemplate *makeDeviceTemplate(const QString &id,
                                        const QString &name,
                                        const QString &protocol,
                                        const QString &description,
-                                       const QList<DeviceParamSpec *> &configSpecs,
-                                       const QList<DeviceCommandTemplate *> &commandTemplates);
+                                       const QList<DeviceParamSpec *> &configSpecs);
     Device *makeDeviceFromTemplate(const QString &id,
                                    const QString &templateId,
                                    const QString &name,
@@ -67,7 +68,6 @@ private:
                                    const QString &status,
                                    const QString &lastSeen);
     QVariantMap defaultConfigValues(const DeviceTemplate *deviceTemplate) const;
-    QList<DeviceCommandTemplate *> cloneCommandTemplates(Device *device, const DeviceTemplate *deviceTemplate) const;
 
     QList<DeviceTemplate *> m_deviceTemplates;
     QList<Device *> m_devices;

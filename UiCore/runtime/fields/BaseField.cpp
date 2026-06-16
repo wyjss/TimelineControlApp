@@ -50,6 +50,17 @@ BaseField::BaseField(QObject *parent)
 {
 }
 
+BaseField::BaseField(const QString& key, const QString& label, const QVariant& value, ValueType valueType /* = VariantType */, EditorHint editorHint /* = AutoEditor */, QObject* parent /* = nullptr */)
+    : QObject(parent)
+    , m_key(key)
+    , m_label(label)
+    , m_value(value)
+    , m_valueType(valueType)
+    , m_editorHint(editorHint)
+{
+
+}
+
 QString BaseField::key() const
 {
     return m_key;

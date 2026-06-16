@@ -1,27 +1,5 @@
 #include "devices/Device.h"
 
-#include <QVariant>
-
-#include "devices/DeviceCommandTemplate.h"
-
-namespace {
-
-bool commandTemplateListsEqual(const QList<TimelineControl::DeviceCommandTemplate *> &left,
-                               const QList<TimelineControl::DeviceCommandTemplate *> &right)
-{
-    if (left.size() != right.size())
-        return false;
-
-    for (int index = 0; index < left.size(); ++index) {
-        if (left.at(index) != right.at(index))
-            return false;
-    }
-
-    return true;
-}
-
-} // namespace
-
 namespace TimelineControl {
 
 Device::Device(const QString &id, const QString &templateId, QObject *parent)
@@ -137,31 +115,6 @@ void Device::setConfigValues(const QVariantMap &configValues)
 
     m_configValues = configValues;
     emit configValuesChanged();
-}
-
-QVariantList Device::commandTemplates() const
-{
-    QVariantList result;
-    result.reserve(m_commandTemplates.size());
-
-    for (DeviceCommandTemplate *commandTemplate : m_commandTemplates)
-        result.append(QVariant::fromValue(commandTemplate));
-
-    return result;
-}
-
-void Device::setCommandTemplates(const QList<DeviceCommandTemplate *> &commandTemplates)
-{
-    if (commandTemplateListsEqual(m_commandTemplates, commandTemplates))
-        return;
-
-    for (DeviceCommandTemplate *commandTemplate : commandTemplates) {
-        if (commandTemplate && commandTemplate->parent() != this)
-            commandTemplate->setParent(this);
-    }
-
-    m_commandTemplates = commandTemplates;
-    emit commandTemplatesChanged();
 }
 
 } // namespace TimelineControl

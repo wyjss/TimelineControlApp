@@ -2,44 +2,46 @@
 
 #include <QMetaType>
 
+#include "devices/DeviceConstants.h"
 #include "devices/Device.h"
-#include "devices/DeviceCommandTemplate.h"
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceTemplate.h"
 
 namespace {
 
-TimelineControl::DeviceParamSpec *makeParamSpec(const QString &key,
-                                                const QString &label,
-                                                TimelineControl::DeviceParamSpec::ValueType valueType,
-                                                const QVariant &defaultValue,
-                                                const QVariantMap &constraints = QVariantMap())
-{
-    return new TimelineControl::DeviceParamSpec(key, label, valueType, defaultValue, false, constraints);
-}
-
 TimelineControl::DeviceParamSpec *makeConfigSpec(const QString &key,
                                                  const QString &label,
-                                                 TimelineControl::DeviceParamSpec::ValueType valueType,
-                                                 const QVariant &defaultValue,
+                                                 const QVariant &value,
+                                                 TimelineControl::DeviceParamSpec::ValueType valueType = TimelineControl::DeviceParamSpec::VariantType,
                                                  bool required = false,
-                                                 const QVariantMap &constraints = QVariantMap())
+                                                 TimelineControl::DeviceParamSpec::EditorHint editorHint = TimelineControl::DeviceParamSpec::AutoEditor)
 {
-    return new TimelineControl::DeviceParamSpec(key, label, valueType, defaultValue, required, constraints);
+    auto *param = new TimelineControl::DeviceParamSpec(key, label, value, valueType, editorHint);
+    param->setRequired(required);
+    return param;
 }
 
-TimelineControl::DeviceCommandTemplate *makeCommandTemplate(const QString &id,
-                                                            const QString &name,
-                                                            const QString &action,
-                                                            const QList<TimelineControl::DeviceParamSpec *> &params = QList<TimelineControl::DeviceParamSpec *>())
+TimelineControl::DeviceParamSpec *withRange(TimelineControl::DeviceParamSpec *param, double minimum, double maximum)
 {
-    return new TimelineControl::DeviceCommandTemplate(id, name, action, params);
+    if (!param)
+        return nullptr;
+
+    param->setMinimum(minimum);
+    param->setMaximum(maximum);
+    return param;
+}
+
+TimelineControl::DeviceParamSpec *withOptions(TimelineControl::DeviceParamSpec *param, const QVariantList &options)
+{
+    if (param)
+        param->setOptions(options);
+    return param;
 }
 
 TimelineControl::DeviceParamSpec* createSerialPortSpec()
 {
 	TimelineControl::DeviceParamSpec* param = new TimelineControl::DeviceParamSpec;
-	param->setKey("serialPort");
+    param->setKey(TimelineControl::DeviceKey::SerialPort);
 	param->setLabel("串口");
 	param->setValueType(TimelineControl::DeviceParamSpec::StringType);
     QVariantList opts;
@@ -54,7 +56,7 @@ TimelineControl::DeviceParamSpec* createSerialPortSpec()
 TimelineControl::DeviceParamSpec* createSerialPortAddressSpec(const QString& key, const QString& label)
 {
 	TimelineControl::DeviceParamSpec* param = new TimelineControl::DeviceParamSpec;
-	param->setKey("ip");
+    param->setKey(TimelineControl::DeviceKey::Ip);
 	param->setLabel("ip地址");
 	param->setSuffix("自身或接入PC");
 	param->setValueType(TimelineControl::DeviceParamSpec::StringType);
@@ -65,7 +67,7 @@ TimelineControl::DeviceParamSpec* createSerialPortAddressSpec(const QString& key
 TimelineControl::DeviceParamSpec* makeIpSpec()
 {
     TimelineControl::DeviceParamSpec* param = new TimelineControl::DeviceParamSpec;
-    param->setKey("ip");
+    param->setKey(TimelineControl::DeviceKey::Ip);
     param->setLabel("ip地址");
     param->setSuffix("自身或接入PC");
     param->setValueType(TimelineControl::DeviceParamSpec::StringType);
@@ -81,239 +83,144 @@ DeviceManager::DeviceManager(QObject *parent)
     : QObject(parent)
 {
     qRegisterMetaType<TimelineControl::Device *>("TimelineControl::Device*");
-    qRegisterMetaType<TimelineControl::DeviceCommandTemplate *>("TimelineControl::DeviceCommandTemplate*");
     qRegisterMetaType<TimelineControl::DeviceParamSpec *>("TimelineControl::DeviceParamSpec*");
     qRegisterMetaType<TimelineControl::DeviceTemplate *>("TimelineControl::DeviceTemplate*");
 
-    {
-        
-    }
-    {
-        auto projector = new DeviceTemplate("串口投影机",
-                                            "投影机",
-                                            "ser",
-                                            "",
-                                            {makeParamSpec("k", "l", DeviceParamSpec::StringType, "1234")}, {});
-        m_deviceTemplates.push_back(projector);
-    }
+    m_deviceTemplates.push_back(createDefaultDeviceTemplatePc());
+    m_deviceTemplates.push_back(createDefaultDeviceTemplateDmx512());
+	m_deviceTemplates += makeDeviceTemplate(DeviceTemplateId::Display,
+											tr("显示设备"),
+											DeviceProtocol::Null,
+											tr(""),
+											{});
+	m_deviceTemplates += makeDeviceTemplate(DeviceTemplateId::Lighting,
+											tr("灯光"),
+											DeviceProtocol::Null,
+											tr(""),
+											{});
+	m_deviceTemplates += makeDeviceTemplate(DeviceTemplateId::AudioMixer,
+											tr("音响"),
+											DeviceProtocol::Null,
+											tr(""),
+											{});
+	m_deviceTemplates += makeDeviceTemplate(DeviceTemplateId::PtzCamera,
+											tr("云台相机"),
+											DeviceProtocol::Null,
+											tr(""),
+											{});
+	m_deviceTemplates += makeDeviceTemplate(DeviceTemplateId::RelayController,
+											tr("延迟控制器"),
+											DeviceProtocol::Null,
+											tr(""),
+											{});
 
-    m_deviceTemplates += QList<DeviceTemplate *>{
-        makeDeviceTemplate(QStringLiteral("dmx-light-group"),
-                           tr("DMX Light Group"),
-                           QStringLiteral("DMX"),
-                           tr("Dimmer, color, strobe"),
-                           QList<DeviceParamSpec *>{},
-                           QList<DeviceCommandTemplate *>{
-                               makeCommandTemplate(QStringLiteral("set-intensity"),
-                                                   tr("Set Intensity"),
-                                                   QStringLiteral("dmx.setIntensity"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("intensity"),
-                                                                     tr("Intensity"),
-                                                                     DeviceParamSpec::IntType,
-                                                                     80,
-                                                                     QVariantMap{
-                                                                         {QStringLiteral("min"), 0},
-                                                                         {QStringLiteral("max"), 100},
-                                                                         {QStringLiteral("unit"), QStringLiteral("%")}
-                                                                     }),
-                                                       makeParamSpec(QStringLiteral("fadeMs"),
-                                                                     tr("Fade"),
-                                                                     DeviceParamSpec::IntType,
-                                                                     500,
-                                                                     QVariantMap{
-                                                                         {QStringLiteral("min"), 0},
-                                                                         {QStringLiteral("max"), 10000},
-                                                                         {QStringLiteral("unit"), QStringLiteral("ms")}
-                                                                     })
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("set-color"),
-                                                   tr("Set Color"),
-                                                   QStringLiteral("dmx.setColor"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("red"), tr("Red"), DeviceParamSpec::IntType, 255),
-                                                       makeParamSpec(QStringLiteral("green"), tr("Green"), DeviceParamSpec::IntType, 255),
-                                                       makeParamSpec(QStringLiteral("blue"), tr("Blue"), DeviceParamSpec::IntType, 255)
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("strobe"),
-                                                   tr("Strobe"),
-                                                   QStringLiteral("dmx.strobe"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("rate"), tr("Rate"), DeviceParamSpec::IntType, 8),
-                                                       makeParamSpec(QStringLiteral("durationMs"), tr("Duration"), DeviceParamSpec::IntType, 1000)
-                                                   })
-                           }),
-        makeDeviceTemplate(QStringLiteral("screen-device"),
-                           tr("Screen Device"),
-                           QStringLiteral("HTTP"),
-                           tr("Content, brightness, blank"),
-                           QList<DeviceParamSpec *>{
-                               makeConfigSpec(QStringLiteral("address"),
-                                              tr("Address"),
-                                              DeviceParamSpec::StringType,
-                                              QStringLiteral("192.168.10.60"),
-                                              true),
-                               makeConfigSpec(QStringLiteral("resolution"),
-                                              tr("Resolution"),
-                                              DeviceParamSpec::SelectType,
-                                              QStringLiteral("1920x1080"),
-                                              true,
-                                              QVariantMap{
-                                                  {QStringLiteral("options"),
-                                                   QVariantList{
-                                                       QVariantMap{{QStringLiteral("label"), QStringLiteral("1920x1080")}, {QStringLiteral("value"), QStringLiteral("1920x1080")}},
-                                                       QVariantMap{{QStringLiteral("label"), QStringLiteral("3840x2160")}, {QStringLiteral("value"), QStringLiteral("3840x2160")}}
-                                                   }}
-                                              }),
-                               makeConfigSpec(QStringLiteral("port"),
-                                              tr("Port"),
-                                              DeviceParamSpec::IntType,
-                                              80,
-                                              true,
-                                              QVariantMap{
-                                                  {QStringLiteral("min"), 1},
-                                                  {QStringLiteral("max"), 65535}
-                                              })
-                           },
-                           QList<DeviceCommandTemplate *>{
-                               makeCommandTemplate(QStringLiteral("show-content"),
-                                                   tr("Show Content"),
-                                                   QStringLiteral("screen.showContent"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("source"), tr("Source"), DeviceParamSpec::StringType, tr("Main")),
-                                                       makeParamSpec(QStringLiteral("durationMs"), tr("Duration"), DeviceParamSpec::IntType, 0)
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("set-brightness"),
-                                                   tr("Set Brightness"),
-                                                   QStringLiteral("screen.setBrightness"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("brightness"),
-                                                                     tr("Brightness"),
-                                                                     DeviceParamSpec::IntType,
-                                                                     80,
-                                                                     QVariantMap{
-                                                                         {QStringLiteral("min"), 0},
-                                                                         {QStringLiteral("max"), 100},
-                                                                         {QStringLiteral("unit"), QStringLiteral("%")}
-                                                                     })
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("blank"),
-                                                   tr("Blank"),
-                                                   QStringLiteral("screen.blank"))
-                           }),
-        makeDeviceTemplate(QStringLiteral("visca-ptz-camera"),
-                           tr("VISCA PTZ Camera"),
-                           QStringLiteral("VISCA"),
-                           tr("Pan, tilt, zoom, preset"),
-                           QList<DeviceParamSpec *>{
-                               makeConfigSpec(QStringLiteral("address"),
-                                              tr("Address"),
-                                              DeviceParamSpec::StringType,
-                                              QStringLiteral("192.168.10.41:52381"),
-                                              true)
-                           },
-                           QList<DeviceCommandTemplate *>{
-                               makeCommandTemplate(QStringLiteral("move-camera"),
-                                                   tr("Move Camera"),
-                                                   QStringLiteral("visca.move"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("pan"), tr("Pan"), DeviceParamSpec::DoubleType, 0.0),
-                                                       makeParamSpec(QStringLiteral("tilt"), tr("Tilt"), DeviceParamSpec::DoubleType, 0.0),
-                                                       makeParamSpec(QStringLiteral("zoom"), tr("Zoom"), DeviceParamSpec::DoubleType, 1.0),
-                                                       makeParamSpec(QStringLiteral("speed"), tr("Speed"), DeviceParamSpec::IntType, 5)
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("recall-preset"),
-                                                   tr("Recall Preset"),
-                                                   QStringLiteral("visca.recallPreset"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("preset"), tr("Preset"), DeviceParamSpec::IntType, 1)
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("stop"),
-                                                   tr("Stop"),
-                                                   QStringLiteral("visca.stop"))
-                           }),
-        makeDeviceTemplate(QStringLiteral("osc-mixer"),
-                           tr("OSC Mixer"),
-                           QStringLiteral("OSC"),
-                           tr("Mute, level, scene"),
-                           QList<DeviceParamSpec *>{
-                               makeConfigSpec(QStringLiteral("address"), tr("Address"), DeviceParamSpec::StringType, QStringLiteral("/mixer/main"), true)
-                           },
-                           QList<DeviceCommandTemplate *>{
-                               makeCommandTemplate(QStringLiteral("set-level"),
-                                                   tr("Set Level"),
-                                                   QStringLiteral("osc.setLevel"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("channel"), tr("Channel"), DeviceParamSpec::IntType, 1),
-                                                       makeParamSpec(QStringLiteral("level"), tr("Level"), DeviceParamSpec::DoubleType, 0.75)
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("mute-channel"),
-                                                   tr("Mute Channel"),
-                                                   QStringLiteral("osc.mute"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("channel"), tr("Channel"), DeviceParamSpec::IntType, 1),
-                                                       makeParamSpec(QStringLiteral("muted"), tr("Muted"), DeviceParamSpec::BoolType, true)
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("load-scene"),
-                                                   tr("Load Scene"),
-                                                   QStringLiteral("osc.loadScene"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("sceneName"), tr("Scene"), DeviceParamSpec::StringType, tr("Main"))
-                                                   })
-                           }),
-        makeDeviceTemplate(QStringLiteral("modbus-relay-rack"),
-                           tr("Modbus Relay Rack"),
-                           QStringLiteral("Modbus"),
-                           tr("Switch relay, pulse"),
-                           QList<DeviceParamSpec *>{
-                               makeConfigSpec(QStringLiteral("address"), tr("Address"), DeviceParamSpec::StringType, tr("Unit 4"), true)
-                           },
-                           QList<DeviceCommandTemplate *>{
-                               makeCommandTemplate(QStringLiteral("switch-relay"),
-                                                   tr("Switch Relay"),
-                                                   QStringLiteral("modbus.switchRelay"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("relay"), tr("Relay"), DeviceParamSpec::IntType, 1),
-                                                       makeParamSpec(QStringLiteral("enabled"), tr("Enabled"), DeviceParamSpec::BoolType, true)
-                                                   }),
-                               makeCommandTemplate(QStringLiteral("pulse"),
-                                                   tr("Pulse"),
-                                                   QStringLiteral("modbus.pulse"),
-                                                   QList<DeviceParamSpec *>{
-                                                       makeParamSpec(QStringLiteral("relay"), tr("Relay"), DeviceParamSpec::IntType, 1),
-                                                       makeParamSpec(QStringLiteral("durationMs"), tr("Duration"), DeviceParamSpec::IntType, 250)
-                                                   })
-                           })
-    };
-
-    m_devices = QList<Device *>{
-        makeDeviceFromTemplate(QStringLiteral("lighting-group"),
-                               QStringLiteral("dmx-light-group"),
-                               tr("Lighting Group"),
-                               tr("Universe 1 / Channel 001"),
-                               tr("Online"),
-                               tr("2s ago")),
-        makeDeviceFromTemplate(QStringLiteral("ptz-01"),
-                               QStringLiteral("visca-ptz-camera"),
-                               tr("PTZ-01"),
-                               QStringLiteral("192.168.10.41:52381"),
-                               tr("Online"),
-                               tr("8s ago")),
-        makeDeviceFromTemplate(QStringLiteral("mixer"),
-                               QStringLiteral("osc-mixer"),
-                               tr("Mixer"),
-                               QStringLiteral("/mixer/main"),
-                               tr("Standby"),
-                               tr("1m ago")),
-        makeDeviceFromTemplate(QStringLiteral("relay-rack"),
-                               QStringLiteral("modbus-relay-rack"),
-                               tr("Relay Rack"),
-                               tr("Unit 4 / Coil 12"),
-                               tr("Offline"),
-                               tr("18m ago"))
-    };
+//     m_devices = QList<Device *>{
+//         makeDeviceFromTemplate(QStringLiteral("lighting-group"),
+//                                DeviceTemplateId::Lighting,
+//                                tr("Lighting Group"),
+//                                tr("Universe 1 / Channel 001"),
+//                                tr("Online"),
+//                                tr("2s ago")),
+//         makeDeviceFromTemplate(QStringLiteral("ptz-01"),
+//                                DeviceTemplateId::PtzCamera,
+//                                tr("PTZ-01"),
+//                                QStringLiteral("192.168.10.41:52381"),
+//                                tr("Online"),
+//                                tr("8s ago")),
+//         makeDeviceFromTemplate(QStringLiteral("mixer"),
+//                                DeviceTemplateId::AudioMixer,
+//                                tr("Mixer"),
+//                                QStringLiteral("/mixer/main"),
+//                                tr("Standby"),
+//                                tr("1m ago")),
+//         makeDeviceFromTemplate(QStringLiteral("relay-rack"),
+//                                DeviceTemplateId::RelayController,
+//                                tr("Relay Rack"),
+//                                tr("Unit 4 / Coil 12"),
+//                                tr("Offline"),
+//                                tr("18m ago"))
+//     };
 
     m_currentDeviceId = QStringLiteral("lighting-group");
+}
+
+DeviceTemplate* DeviceManager::createDefaultDeviceTemplatePc() const
+{
+	QList<DeviceParamSpec*> specs;
+	{// ip
+		auto spec = new DeviceParamSpec(
+			DeviceKey::Ip,
+			"ip",
+			"",
+			DeviceParamSpec::StringType
+		);
+		spec->setPattern(DevicePattern::Ip);
+		specs.push_back(spec);
+	}
+	{// 分辨率
+		auto spec = new DeviceParamSpec(
+			DeviceKey::ScreenSize,
+			"单屏分辨率",
+			QSize(),
+			DeviceParamSpec::SizeType,
+			DeviceParamSpec::SizeEditor
+		);
+		specs.push_back(spec);
+	}
+	{// 屏幕布局
+		auto spec = new DeviceParamSpec(
+			DeviceKey::ScreenLayout,
+			"屏幕布局",
+			QSize(1, 1),
+			DeviceParamSpec::SizeType,
+			DeviceParamSpec::SizeEditor
+		);
+		specs.push_back(spec);
+	}
+
+	auto pc = new DeviceTemplate(DeviceTemplateId::Pc,
+								 tr("电脑"),
+								 DeviceProtocol::Pc,
+								 tr("电脑设备"),
+								 specs);
+    return pc;
+}
+
+DeviceTemplate* DeviceManager::createDefaultDeviceTemplateDmx512() const
+{
+	QList<DeviceParamSpec*> specs;
+	{// ip
+		auto spec = new DeviceParamSpec(
+			DeviceKey::Ip,
+			"ip",
+			"",
+			DeviceParamSpec::StringType
+		);
+		spec->setPattern(DevicePattern::Ip);
+		specs.push_back(spec);
+	}
+	
+	{// 端口
+        QVariantList opts;
+        for (int i = 0; i < 10; ++i) {
+            opts.push_back(QString("COM%1").arg(i));
+        }
+		auto spec = new DeviceParamSpec(
+			DeviceKey::SerialPort,
+			"适配器串口",
+			"COM0",
+			DeviceParamSpec::SelectType,
+			DeviceParamSpec::SelectEditor
+		);
+		specs.push_back(spec);
+	}
+
+	auto dt = new DeviceTemplate(DeviceTemplateId::Dmx512,
+								 tr("Dmx512"),
+								 DeviceProtocol::Dmx,
+								 tr("Dmx512"),
+								 specs);
+	return dt;
 }
 
 QVariantList DeviceManager::devices() const
@@ -369,7 +276,7 @@ void DeviceManager::selectDevice(const QString &deviceId)
 
 void DeviceManager::createDevice()
 {
-    createDeviceFromTemplate(QStringLiteral("dmx-light-group"));
+    createDeviceFromTemplate(DeviceTemplateId::Dmx512);
 }
 
 void DeviceManager::createDeviceFromTemplate(const QString &templateId)
@@ -380,7 +287,7 @@ void DeviceManager::createDeviceFromTemplate(const QString &templateId)
 
     const QString id = QStringLiteral("device-%1").arg(m_nextDeviceNumber++);
     const QVariantMap configValues = defaultConfigValues(selectedTemplate);
-    const QString address = configValues.value(QStringLiteral("address"), tr("Unassigned")).toString();
+    const QString address = configValues.value(DeviceKey::Address, tr("Unassigned")).toString();
 
     Device *newDevice = makeDeviceFromTemplate(id,
                                                selectedTemplate->id(),
@@ -435,10 +342,9 @@ DeviceTemplate *DeviceManager::makeDeviceTemplate(const QString &id,
                                                   const QString &name,
                                                   const QString &protocol,
                                                   const QString &description,
-                                                  const QList<DeviceParamSpec *> &configSpecs,
-                                                  const QList<DeviceCommandTemplate *> &commandTemplates)
+                                                  const QList<DeviceParamSpec *> &configSpecs)
 {
-    return new DeviceTemplate(id, name, protocol, description, configSpecs, commandTemplates, this);
+    return new DeviceTemplate(id, name, protocol, description, configSpecs, this);
 }
 
 Device *DeviceManager::makeDeviceFromTemplate(const QString &id,
@@ -460,10 +366,9 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &id,
 
     QVariantMap configValues = defaultConfigValues(sourceTemplate);
     if (!address.isEmpty())
-        configValues.insert(QStringLiteral("address"), address);
+        configValues.insert(DeviceKey::Address, address);
 
     device->setConfigValues(configValues);
-    device->setCommandTemplates(cloneCommandTemplates(device, sourceTemplate));
     return device;
 }
 
@@ -474,21 +379,6 @@ QVariantMap DeviceManager::defaultConfigValues(const DeviceTemplate *deviceTempl
     for (DeviceParamSpec *configSpec : deviceTemplate->configSpecObjects()) {
         if (configSpec && !configSpec->key().isEmpty())
             result.insert(configSpec->key(), configSpec->defaultValue());
-    }
-
-    return result;
-}
-
-QList<DeviceCommandTemplate *> DeviceManager::cloneCommandTemplates(Device *device, const DeviceTemplate *deviceTemplate) const
-{
-    QList<DeviceCommandTemplate *> result;
-
-    for (DeviceCommandTemplate *commandTemplate : deviceTemplate->commandTemplateObjects()) {
-        result.append(new DeviceCommandTemplate(commandTemplate->id(),
-                                                commandTemplate->name(),
-                                                commandTemplate->action(),
-                                                commandTemplate->paramSpecs(),
-                                                device));
     }
 
     return result;

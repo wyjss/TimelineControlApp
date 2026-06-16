@@ -2,8 +2,6 @@
 
 #include <QVariant>
 
-#include "devices/DeviceCommandTemplate.h"
-
 namespace TimelineControl {
 
 DeviceTemplate::DeviceTemplate(const QString &id,
@@ -11,14 +9,12 @@ DeviceTemplate::DeviceTemplate(const QString &id,
                                const QString &protocol,
                                const QString &description,
                                const QList<DeviceParamSpec *> &configSpecs,
-                               const QList<DeviceCommandTemplate *> &commandTemplates,
                                QObject *parent)
     : QObject(parent)
     , m_id(id)
     , m_name(name)
     , m_protocol(protocol)
     , m_description(description)
-    , m_commandTemplates(commandTemplates)
 {
     m_configSpecs.reserve(configSpecs.size());
     for (DeviceParamSpec *configSpec : configSpecs) {
@@ -31,11 +27,6 @@ DeviceTemplate::DeviceTemplate(const QString &id,
             configSpec->setParent(this);
             m_configSpecs.append(configSpec);
         }
-    }
-
-    for (DeviceCommandTemplate *commandTemplate : m_commandTemplates) {
-        if (commandTemplate && commandTemplate->parent() != this)
-            commandTemplate->setParent(this);
     }
 }
 
@@ -73,22 +64,6 @@ QVariantList DeviceTemplate::configSpecs() const
 QList<DeviceParamSpec *> DeviceTemplate::configSpecObjects() const
 {
     return m_configSpecs;
-}
-
-QVariantList DeviceTemplate::commandTemplates() const
-{
-    QVariantList result;
-    result.reserve(m_commandTemplates.size());
-
-    for (DeviceCommandTemplate *commandTemplate : m_commandTemplates)
-        result.append(QVariant::fromValue(commandTemplate));
-
-    return result;
-}
-
-QList<DeviceCommandTemplate *> DeviceTemplate::commandTemplateObjects() const
-{
-    return m_commandTemplates;
 }
 
 } // namespace TimelineControl
