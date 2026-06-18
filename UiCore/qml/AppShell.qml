@@ -948,76 +948,6 @@ Item {
                             }
                         }
 
-                        RowLayout {
-                            anchors.top: parent.top
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.topMargin: root.overlayMargin
-                            anchors.leftMargin: root.leftOverlayInset
-                            anchors.rightMargin: root.rightOverlayInset
-                            spacing: 8
-                            z: 2
-
-                            Base.AppSurface {
-                                Layout.preferredHeight: theme && theme.density ? theme.density.chipHeight : 32
-                                theme: root.theme
-                                constrainContentHeight: true
-                                surfaceTone: "highlight"
-                                shapeRole: AppUiEnums.ShapeRole.Pill
-                                strokeWidth: 0
-                                padding: 12
-
-                                Base.AppText {
-                                    anchors.left: parent.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: root.activeDrawer.label
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "accent"
-                                }
-                            }
-
-                            Base.AppSurface {
-                                Layout.preferredHeight: theme && theme.density ? theme.density.chipHeight : 32
-                                theme: root.theme
-                                constrainContentHeight: true
-                                surfaceTone: "section"
-                                shapeRole: AppUiEnums.ShapeRole.Pill
-                                padding: 12
-
-                                Base.AppText {
-                                    anchors.left: parent.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: qsTr("EPSG:3857")
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                }
-                            }
-
-                            Item {
-                                Layout.fillWidth: true
-                            }
-
-                            Base.AppSurface {
-                                Layout.preferredHeight: theme && theme.density ? theme.density.chipHeight : 32
-                                theme: root.theme
-                                constrainContentHeight: true
-                                surfaceTone: "section"
-                                shapeRole: AppUiEnums.ShapeRole.Pill
-                                padding: 12
-
-                                Base.AppText {
-                                    anchors.left: parent.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: qsTr("1:25,000")
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                }
-                            }
-                        }
-
                         Item {
                             id: leftPanelBridge
 
@@ -1107,27 +1037,6 @@ Item {
                             Behavior on opacity {
                                 NumberAnimation {
                                     duration: root.theme ? root.theme.motion.durationFast : 100
-                                    easing.type: root.theme ? root.theme.motion.easingStandard : Easing.OutCubic
-                                }
-                            }
-                        }
-
-                        Shell.AppSelectionOverlay {
-                            id: selectionOverlay
-
-                            x: root.leftOverlayInset
-                            y: parent.height - height - root.canvasBottomInset - root.overlayMargin
-                            width: 220
-                            visible: opacity > 0
-                            opacity: 1
-                            z: 2
-                            theme: root.theme
-                            selectionData: root.selectionData
-                            cornerRadius: root.theme && root.theme.shape ? root.theme.shape.overlayRadius : 14
-
-                            Behavior on x {
-                                NumberAnimation {
-                                    duration: root.theme ? root.theme.motion.durationStandard : 160
                                     easing.type: root.theme ? root.theme.motion.easingStandard : Easing.OutCubic
                                 }
                             }

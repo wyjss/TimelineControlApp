@@ -2,10 +2,10 @@
 
 namespace TimelineControl {
 
-Device::Device(const QString &id, const QString &templateId, QObject *parent)
+Device::Device(const QString &id, const QString &templateName, QObject *parent)
     : QObject(parent)
     , m_id(id)
-    , m_templateId(templateId)
+    , m_templateName(templateName)
 {
 }
 
@@ -14,9 +14,23 @@ QString Device::id() const
     return m_id;
 }
 
-QString Device::templateId() const
+QString Device::templateName() const
 {
-    return m_templateId;
+    return m_templateName;
+}
+
+QString Device::deviceType() const
+{
+    return m_deviceType;
+}
+
+void Device::setDeviceType(const QString &deviceType)
+{
+    if (m_deviceType == deviceType)
+        return;
+
+    m_deviceType = deviceType;
+    emit deviceTypeChanged();
 }
 
 QString Device::name() const

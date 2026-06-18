@@ -4,15 +4,15 @@
 
 namespace TimelineControl {
 
-DeviceTemplate::DeviceTemplate(const QString &id,
-                               const QString &name,
+DeviceTemplate::DeviceTemplate(const QString &name,
+                               const QString &deviceType,
                                const QString &protocol,
                                const QString &description,
                                const QList<DeviceParamSpec *> &configSpecs,
                                QObject *parent)
     : QObject(parent)
-    , m_id(id)
     , m_name(name)
+    , m_deviceType(deviceType)
     , m_protocol(protocol)
     , m_description(description)
 {
@@ -30,14 +30,14 @@ DeviceTemplate::DeviceTemplate(const QString &id,
     }
 }
 
-QString DeviceTemplate::id() const
-{
-    return m_id;
-}
-
 QString DeviceTemplate::name() const
 {
     return m_name;
+}
+
+QString DeviceTemplate::deviceType() const
+{
+    return m_deviceType;
 }
 
 QString DeviceTemplate::protocol() const

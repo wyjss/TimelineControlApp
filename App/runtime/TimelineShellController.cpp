@@ -117,6 +117,26 @@ void TimelineShellController::buildDrawers()
                                            })));
 
     registerDrawer(makeDrawer(this,
+                              QStringLiteral("projection"),
+                              tr("Projection"),
+                              QStringLiteral("scene"),
+                              tr("Video crops and mapped PC screens"),
+                              makeLeftPane(tr("Projection"),
+                                           tr("Filter projection items"),
+                                           QVariantList{
+                                               makePaneItem(QStringLiteral("video-crops"),
+                                                            tr("Video Crops"),
+                                                            tr("Simulated capture rectangles"),
+                                                            true),
+                                               makePaneItem(QStringLiteral("screen-map"),
+                                                            tr("Screen Map"),
+                                                            tr("Selected PC layout preview")),
+                                               makePaneItem(QStringLiteral("pc-targets"),
+                                                            tr("PC Targets"),
+                                                            tr("Available projection devices"))
+                                           })));
+
+    registerDrawer(makeDrawer(this,
                               QStringLiteral("runs"),
                               tr("Runs"),
                               QStringLiteral("background-task"),

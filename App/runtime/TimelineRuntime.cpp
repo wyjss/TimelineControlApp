@@ -8,6 +8,7 @@
 #include "devices/DeviceCommand_PC.h"
 #include "devices/DeviceCommand_Serial.h"
 #include "devices/DeviceManager.h"
+#include "projection/ProjectionInstructionManager.h"
 #include "runtime/task/TaskManager.h"
 
 namespace TimelineControl {
@@ -16,6 +17,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     : BaseRuntime(parent)
     , m_taskManager(new TaskManager(this))
     , m_deviceManager(new DeviceManager(this))
+    , m_projectionManager(new ProjectionInstructionManager(this))
 {
     qRegisterMetaType<TimelineControl::DeviceCommand *>("TimelineControl::DeviceCommand*");
     qRegisterMetaType<TimelineControl::DeviceCommand_Dmx512 *>("TimelineControl::DeviceCommand_Dmx512*");
@@ -24,6 +26,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<TimelineControl::DeviceCommand_Serial *>("TimelineControl::DeviceCommand_Serial*");
     qRegisterMetaType<TaskManager *>("TaskManager*");
     qRegisterMetaType<TimelineControl::DeviceManager *>("TimelineControl::DeviceManager*");
+    qRegisterMetaType<TimelineControl::ProjectionInstructionManager *>("TimelineControl::ProjectionInstructionManager*");
 }
 
 TaskManager *TimelineRuntime::taskManager() const
@@ -34,6 +37,11 @@ TaskManager *TimelineRuntime::taskManager() const
 DeviceManager *TimelineRuntime::deviceManager() const
 {
     return m_deviceManager;
+}
+
+ProjectionInstructionManager *TimelineRuntime::projectionManager() const
+{
+    return m_projectionManager;
 }
 
 } // namespace TimelineControl

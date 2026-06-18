@@ -23,6 +23,8 @@ ApplicationWindow {
         switch (String(key)) {
         case "timeline":
             return "qrc:/TimelineControlApp/App/pages/TimelinePage.qml"
+        case "projection":
+            return "qrc:/TimelineControlApp/App/pages/ProjectionPage.qml"
         case "devices":
             return "qrc:/TimelineControlApp/App/pages/DevicesPage.qml"
         case "runs":

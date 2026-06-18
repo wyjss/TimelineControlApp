@@ -1,12 +1,17 @@
 #include <QApplication>
+#include <QFileInfo>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QStringList>
+#include <qqml.h>
 #include <QUrl>
 
 #include "runtime/app/AppSettings.h"
 #include "runtime/TimelineRuntime.h"
 #include "runtime/TimelineShellController.h"
+#include "runtime/video/FfmpegVideoFrameItem.h"
+
 
 int main(int argc, char *argv[])
 {
@@ -21,6 +26,24 @@ int main(int argc, char *argv[])
     application.setOrganizationDomain(QStringLiteral("timeline-control.local"));
     application.setApplicationName(QStringLiteral("Timeline Control App"));
 
+    QString projectionVideoSource;
+    const QStringList arguments = application.arguments();
+    for (int index = 1; index < arguments.size(); ++index) {
+        const QString argument = arguments.at(index);
+        if (argument == QStringLiteral("--projection-video") && index + 1 < arguments.size()) {
+            projectionVideoSource = arguments.at(++index);
+        } else if (argument.startsWith(QStringLiteral("--projection-video="))) {
+            projectionVideoSource = argument.mid(QStringLiteral("--projection-video=").size());
+        }
+    }
+
+    if (!projectionVideoSource.isEmpty()) {
+        const QUrl sourceUrl(projectionVideoSource);
+        const QFileInfo sourceFileInfo(projectionVideoSource);
+        if (sourceFileInfo.isAbsolute() || !sourceUrl.isValid() || sourceUrl.scheme().isEmpty())
+            projectionVideoSource = QUrl::fromLocalFile(QFileInfo(projectionVideoSource).absoluteFilePath()).toString();
+    }
+
     TimelineControl::TimelineRuntime runtime;
     TimelineControl::TimelineShellController shellController(&runtime);
     runtime.setShell(&shellController);
@@ -28,8 +51,11 @@ int main(int argc, char *argv[])
     runtime.settings()->setLocale(QStringLiteral("zh_CN"));
     runtime.settings()->setThemeMode(QStringLiteral("dark"));
     runtime.settings()->setValues(QVariantMap{
-        {QStringLiteral("canvasDelegateSource"), QString()}
+        {QStringLiteral("canvasDelegateSource"), QString()},
+        {QStringLiteral("projectionVideoSource"), projectionVideoSource}
     });
+
+    qmlRegisterType<TimelineControl::FfmpegVideoFrameItem>("TimelineControl.Media", 1, 0, "FfmpegVideoFrameItem");
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("app"), &runtime);
