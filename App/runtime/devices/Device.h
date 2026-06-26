@@ -3,6 +3,7 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QVariant>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -26,7 +27,7 @@ class Device final : public QObject
     Q_PROPERTY(QVariantMap configValues READ configValues WRITE setConfigValues NOTIFY configValuesChanged FINAL)
 
 public:
-    Device(const QString &id, const QString &templateName, QObject *parent = nullptr);
+    explicit Device(const QString &templateName, QObject *parent = nullptr);
 
     QString id() const;
     QString templateName() const;
@@ -54,6 +55,8 @@ public:
 
     QVariantMap configValues() const;
     void setConfigValues(const QVariantMap &configValues);
+
+    Q_INVOKABLE bool setFieldValue(const QString &field, const QVariant &value);
 
 signals:
     void deviceTypeChanged();

@@ -1,10 +1,22 @@
 #include "devices/Device.h"
 
+#include <QMetaProperty>
+#include <QUuid>
+
 namespace TimelineControl {
 
-Device::Device(const QString &id, const QString &templateName, QObject *parent)
+namespace {
+
+QString createDeviceId()
+{
+    return QStringLiteral("device-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+}
+
+} // namespace
+
+Device::Device(const QString &templateName, QObject *parent)
     : QObject(parent)
-    , m_id(id)
+    , m_id(createDeviceId())
     , m_templateName(templateName)
 {
 }
@@ -129,6 +141,26 @@ void Device::setConfigValues(const QVariantMap &configValues)
 
     m_configValues = configValues;
     emit configValuesChanged();
+}
+
+bool Device::setFieldValue(const QString &field, const QVariant &value)
+{
+    const QByteArray propertyName = field.trimmed().toUtf8();
+    if (propertyName.isEmpty())
+        return false;
+
+    const int propertyIndex = metaObject()->indexOfProperty(propertyName.constData());
+    if (propertyIndex < 0)
+        return false;
+
+    const QMetaProperty metaProperty = metaObject()->property(propertyIndex);
+    if (!metaProperty.isWritable())
+        return false;
+
+    if (property(propertyName.constData()) == value)
+        return true;
+
+    return setProperty(propertyName.constData(), value);
 }
 
 } // namespace TimelineControl

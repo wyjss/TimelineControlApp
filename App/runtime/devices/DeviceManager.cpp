@@ -2,79 +2,17 @@
 
 #include <QMetaType>
 #include <QSize>
+#include <QDebug>
+#include <QDataStream>
 
 #include "devices/DeviceConstants.h"
 #include "devices/Device.h"
+#include "devices/DeviceModel.h"
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceTemplate.h"
+#include "devices/DeviceTemplateModel.h"
 
 namespace {
-
-TimelineControl::DeviceParamSpec *makeConfigSpec(const QString &key,
-                                                 const QString &label,
-                                                 const QVariant &value,
-                                                 TimelineControl::DeviceParamSpec::ValueType valueType = TimelineControl::DeviceParamSpec::VariantType,
-                                                 bool required = false,
-                                                 TimelineControl::DeviceParamSpec::EditorHint editorHint = TimelineControl::DeviceParamSpec::AutoEditor)
-{
-    auto *param = new TimelineControl::DeviceParamSpec(key, label, value, valueType, editorHint);
-    param->setRequired(required);
-    return param;
-}
-
-TimelineControl::DeviceParamSpec *withRange(TimelineControl::DeviceParamSpec *param, double minimum, double maximum)
-{
-    if (!param)
-        return nullptr;
-
-    param->setMinimum(minimum);
-    param->setMaximum(maximum);
-    return param;
-}
-
-TimelineControl::DeviceParamSpec *withOptions(TimelineControl::DeviceParamSpec *param, const QVariantList &options)
-{
-    if (param)
-        param->setOptions(options);
-    return param;
-}
-
-TimelineControl::DeviceParamSpec* createSerialPortSpec()
-{
-	TimelineControl::DeviceParamSpec* param = new TimelineControl::DeviceParamSpec;
-    param->setKey(TimelineControl::DeviceKey::SerialPort);
-	param->setLabel("串口");
-	param->setValueType(TimelineControl::DeviceParamSpec::StringType);
-    QVariantList opts;
-    for (int i = 0; i < 9; ++i) {
-        opts << QString("COM%1").arg(i);
-    }
-    param->setOptions(opts);
-    param->setDefaultValue(opts[0]);
-	return param;
-}
-
-TimelineControl::DeviceParamSpec* createSerialPortAddressSpec(const QString& key, const QString& label)
-{
-	TimelineControl::DeviceParamSpec* param = new TimelineControl::DeviceParamSpec;
-    param->setKey(TimelineControl::DeviceKey::Ip);
-	param->setLabel("ip地址");
-	param->setSuffix("自身或接入PC");
-	param->setValueType(TimelineControl::DeviceParamSpec::StringType);
-	param->setPattern(R"(^(?:$|\\\\(?:localhost|\d{1,3}(?:\.\d{1,3}){3})(?:\\|$)))");
-	return param;
-}
-
-TimelineControl::DeviceParamSpec* makeIpSpec()
-{
-    TimelineControl::DeviceParamSpec* param = new TimelineControl::DeviceParamSpec;
-    param->setKey(TimelineControl::DeviceKey::Ip);
-    param->setLabel("ip地址");
-    param->setSuffix("自身或接入PC");
-    param->setValueType(TimelineControl::DeviceParamSpec::StringType);
-    param->setPattern(R"(^(?:$|\\\\(?:localhost|\d{1,3}(?:\.\d{1,3}){3})(?:\\|$)))");
-    return param;
-}
 
 QVariantMap option(const QString &label, const QString &value)
 {
@@ -95,8 +33,12 @@ bool isTemplateOnlyDeviceType(const QString &deviceType)
 
 namespace TimelineControl {
 
-DeviceManager::DeviceManager(QObject *parent)
+DeviceManager::DeviceManager(DeviceModel *deviceModel,
+                             DeviceTemplateModel *deviceTemplateModel,
+                             QObject *parent)
     : QObject(parent)
+    , m_deviceModel(deviceModel)
+    , m_deviceTemplateModel(deviceTemplateModel)
 {
     qRegisterMetaType<TimelineControl::Device *>("TimelineControl::Device*");
     qRegisterMetaType<TimelineControl::DeviceParamSpec *>("TimelineControl::DeviceParamSpec*");
@@ -110,31 +52,27 @@ DeviceManager::DeviceManager(QObject *parent)
 	   DeviceType::Sound
 	};
 
-    m_deviceTemplates.push_back(createDefaultDeviceTemplatePc());
-    m_deviceTemplates.push_back(createDefaultDeviceTemplateDmx512Adapter());
-    m_deviceTemplates.push_back(createDefaultDeviceTemplateDmx512());
-    m_deviceTemplates.push_back(createDefaultDeviceTemplateHttp());
-    m_deviceTemplates.push_back(createDefaultDeviceTemplateSerial());
-    m_deviceTemplates.push_back(createDefaultDeviceTemplateOsc());
+    m_deviceTemplateModel->loadDefaultTemplates();
 
     QVariantMap pc1x1Config;
     pc1x1Config.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
     pc1x1Config.insert(DeviceKey::ScreenSize, QSize(1920, 1080));
     pc1x1Config.insert(DeviceKey::ScreenLayout, QSize(1, 1));
-    m_devices.push_back(makeDeviceFromTemplate(QStringLiteral("test-pc-1x1"),
+    Device *defaultDevice = makeDeviceFromTemplate(
                                                tr("电脑"),
                                                DeviceType::PC,
                                                tr("测试PC 1x1"),
                                                QStringLiteral("127.0.0.1"),
                                                tr("Online"),
                                                tr("Local test"),
-                                               pc1x1Config));
+                                                   pc1x1Config);
+    m_deviceModel->appendDevice(defaultDevice);
 
     QVariantMap pc2x2Config;
     pc2x2Config.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
     pc2x2Config.insert(DeviceKey::ScreenSize, QSize(1920, 1080));
     pc2x2Config.insert(DeviceKey::ScreenLayout, QSize(2, 2));
-    m_devices.push_back(makeDeviceFromTemplate(QStringLiteral("test-pc-2x2"),
+    m_deviceModel->appendDevice(makeDeviceFromTemplate(
                                                tr("电脑"),
                                                DeviceType::PC,
                                                tr("测试PC 2x2"),
@@ -142,261 +80,70 @@ DeviceManager::DeviceManager(QObject *parent)
                                                tr("Online"),
                                                tr("Local test"),
                                                pc2x2Config));
-    m_currentDeviceId = QStringLiteral("test-pc-1x1");
+    QVariantMap pc3x1Config;
+    pc3x1Config.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
+    pc3x1Config.insert(DeviceKey::ScreenSize, QSize(1920, 1080));
+    pc3x1Config.insert(DeviceKey::ScreenLayout, QSize(3, 1));
+    m_deviceModel->appendDevice(makeDeviceFromTemplate(
+                                               DeviceType::PC,
+                                               DeviceType::PC,
+                                               tr("Test PC 3x1"),
+                                               QStringLiteral("127.0.0.1"),
+                                               tr("Online"),
+                                               tr("Move preview"),
+                                               pc3x1Config));
+
+    QVariantMap pc1x2Config;
+    pc1x2Config.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
+    pc1x2Config.insert(DeviceKey::ScreenSize, QSize(1920, 1080));
+    pc1x2Config.insert(DeviceKey::ScreenLayout, QSize(1, 2));
+    m_deviceModel->appendDevice(makeDeviceFromTemplate(
+                                               DeviceType::PC,
+                                               DeviceType::PC,
+                                               tr("Test PC 1x2"),
+                                               QStringLiteral("127.0.0.1"),
+                                               tr("Online"),
+                                               tr("Move preview"),
+                                               pc1x2Config));
+
+    QVariantMap pcWideConfig;
+    pcWideConfig.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
+    pcWideConfig.insert(DeviceKey::ScreenSize, QSize(2560, 1440));
+    pcWideConfig.insert(DeviceKey::ScreenLayout, QSize(2, 1));
+    m_deviceModel->appendDevice(makeDeviceFromTemplate(
+                                               DeviceType::PC,
+                                               DeviceType::PC,
+                                               tr("Test PC Wide"),
+                                               QStringLiteral("127.0.0.1"),
+                                               tr("Standby"),
+                                               tr("Move preview"),
+                                               pcWideConfig));
+
+    QVariantMap pcWallConfig;
+    pcWallConfig.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
+    pcWallConfig.insert(DeviceKey::ScreenSize, QSize(1280, 720));
+    pcWallConfig.insert(DeviceKey::ScreenLayout, QSize(4, 1));
+    m_deviceModel->appendDevice(makeDeviceFromTemplate(
+                                               DeviceType::PC,
+                                               DeviceType::PC,
+                                               tr("Test PC Wall"),
+                                               QStringLiteral("127.0.0.1"),
+                                               tr("Offline"),
+                                               tr("Move preview"),
+                                               pcWallConfig));
+
+    if (m_deviceModel && defaultDevice)
+        m_deviceModel->setCurrentDeviceId(defaultDevice->id());
+
+    if (m_deviceModel) {
+        connect(m_deviceModel, &DeviceModel::deviceAdded,
+                this, &DeviceManager::refreshDmx512AdapterOptions);
+        connect(m_deviceModel, &DeviceModel::deviceRemoved,
+                this, &DeviceManager::refreshDmx512AdapterOptions);
+    }
 
     refreshDmx512AdapterOptions();
 
-}
-
-DeviceTemplate* DeviceManager::createDefaultDeviceTemplatePc() const
-{
-	QList<DeviceParamSpec*> specs;
-	{// ip
-		auto spec = new DeviceParamSpec(
-			DeviceKey::Ip,
-			"ip",
-			"",
-			DeviceParamSpec::StringType
-		);
-		spec->setPattern(DevicePattern::Ip);
-		spec->setRequired(true);
-        spec->setPlaceholderText(QStringLiteral("192.168.1.10"));
-		specs.push_back(spec);
-	}
-	{// 分辨率
-		auto spec = new DeviceParamSpec(
-			DeviceKey::ScreenSize,
-			"单屏分辨率",
-			QSize(),
-			DeviceParamSpec::SizeType,
-			DeviceParamSpec::SizeEditor
-		);
-		specs.push_back(spec);
-	}
-	{// 屏幕布局
-		auto spec = new DeviceParamSpec(
-			DeviceKey::ScreenLayout,
-			"屏幕布局",
-			QSize(1, 1),
-			DeviceParamSpec::SizeType,
-			DeviceParamSpec::SizeEditor
-		);
-		specs.push_back(spec);
-	}
-
-    auto pc = new DeviceTemplate(tr("电脑"),
-                                 DeviceType::PC,
-                                 DeviceProtocol::Pc,
-                                 tr("电脑设备"),
-                                 specs);
-    return pc;
-}
-
-DeviceTemplate* DeviceManager::createDefaultDeviceTemplateDmx512Adapter() const
-{
-	QList<DeviceParamSpec*> specs;
-	{// 端口
-		QVariantList opts;
-		for (int i = 0; i < 10; ++i) {
-			opts.push_back(QString("COM%1").arg(i));
-		}
-		auto spec = new DeviceParamSpec(
-			DeviceKey::SerialPort,
-			"适配器串口",
-			"COM0",
-			DeviceParamSpec::SelectType,
-			DeviceParamSpec::SelectEditor
-		);
-		spec->setRequired(true);
-		spec->setOptions(opts);
-		specs.push_back(spec);
-	}
-
-	auto dt = new DeviceTemplate(tr("Dmx512适配器"),
-                                 DeviceType::Dmx512Adapter,
-								 DeviceProtocol::Dmx512,
-								 tr("Dmx512适配器"),
-								 specs);
-	return dt;
-}
-
-DeviceTemplate* DeviceManager::createDefaultDeviceTemplateDmx512() const
-{
-	QList<DeviceParamSpec*> specs;
-    {
-        auto spec = new DeviceParamSpec(
-            DeviceKey::Dmx512AdapterDeviceId,
-            "目标Dmx512适配器",
-            "",
-            DeviceParamSpec::SelectType,
-            DeviceParamSpec::SelectEditor
-        );
-        spec->setRequired(true);
-        specs.push_back(spec);
-    }
-// 	{// ip
-// 		auto spec = new DeviceParamSpec(
-// 			DeviceKey::Ip,
-// 			"ip",
-// 			"",
-// 			DeviceParamSpec::StringType
-// 		);
-// 		spec->setPattern(DevicePattern::Ip);
-// 		spec->setRequired(true);
-//         spec->setPlaceholderText(QStringLiteral("192.168.1.10"));
-// 		specs.push_back(spec);
-// 	}
-// 	
-// 	{// 端口
-//         QVariantList opts;
-//         for (int i = 0; i < 10; ++i) {
-//             opts.push_back(QString("COM%1").arg(i));
-//         }
-// 		auto spec = new DeviceParamSpec(
-// 			DeviceKey::SerialPort,
-// 			"适配器串口",
-// 			"COM0",
-// 			DeviceParamSpec::SelectType,
-// 			DeviceParamSpec::SelectEditor
-// 		);
-//         spec->setRequired(true);
-//         spec->setOptions(opts);
-// 		specs.push_back(spec);
-// 	}
-
-    auto dt = new DeviceTemplate(tr("Dmx512协议"),
-                                 "",
-                                 DeviceProtocol::Dmx512,
-                                 tr("Dmx512协议设备"),
-                                 specs);
-	return dt;
-}
-
-DeviceTemplate* DeviceManager::createDefaultDeviceTemplateHttp() const
-{
-    QList<DeviceParamSpec*> specs;
-    {
-        auto spec = new DeviceParamSpec(
-            DeviceKey::Address,
-            "HTTP地址",
-            "",
-            DeviceParamSpec::StringType,
-            DeviceParamSpec::TextEditor
-        );
-        spec->setPattern(DevicePattern::HttpAddress);
-        spec->setRequired(true);
-        spec->setPlaceholderText(QStringLiteral("http://192.168.1.10:8080"));
-        specs.push_back(spec);
-    }
-
-    auto dt = new DeviceTemplate(tr("HTTP协议"),
-                                 QString(),
-                                 DeviceProtocol::Http,
-                                 tr("HTTP协议设备"),
-                                 specs);
-    return dt;
-}
-
-DeviceTemplate* DeviceManager::createDefaultDeviceTemplateSerial() const
-{
-    QList<DeviceParamSpec*> specs;
-    {
-        QVariantList opts;
-        for (int i = 0; i < 10; ++i) {
-            opts.push_back(QString("COM%1").arg(i));
-        }
-        auto spec = new DeviceParamSpec(
-            DeviceKey::SerialPort,
-            "串口",
-            "COM0",
-            DeviceParamSpec::SelectType,
-            DeviceParamSpec::SelectEditor
-        );
-        spec->setRequired(true);
-        spec->setOptions(opts);
-        specs.push_back(spec);
-    }
-
-    {
-        auto spec = new DeviceParamSpec(
-            DeviceKey::BaudRate,
-            "波特率",
-            9600,
-            DeviceParamSpec::IntType,
-            DeviceParamSpec::SelectEditor
-        );
-        spec->setRequired(true);
-        spec->setOptions(QVariantList{9600, 19200, 38400, 57600, 115200});
-        specs.push_back(spec);
-    }
-
-    auto dt = new DeviceTemplate(tr("串口协议"),
-                                 QString(),
-                                 DeviceProtocol::Serial,
-                                 tr("串口协议设备"),
-                                 specs);
-    return dt;
-}
-
-DeviceTemplate* DeviceManager::createDefaultDeviceTemplateOsc() const
-{
-    QList<DeviceParamSpec*> specs;
-    {
-        auto spec = new DeviceParamSpec(
-            DeviceKey::Ip,
-            "ip",
-            "",
-            DeviceParamSpec::StringType,
-            DeviceParamSpec::TextEditor
-        );
-        spec->setPattern(DevicePattern::Ip);
-        spec->setRequired(true);
-        spec->setPlaceholderText(QStringLiteral("192.168.1.10"));
-        specs.push_back(spec);
-    }
-
-    {
-        auto spec = new DeviceParamSpec(
-            DeviceKey::Port,
-            "端口",
-            8000,
-            DeviceParamSpec::IntType,
-            DeviceParamSpec::TextEditor
-        );
-        spec->setRequired(true);
-        spec->setMinimum(1);
-        spec->setMaximum(65535);
-        specs.push_back(spec);
-    }
-
-    auto dt = new DeviceTemplate(tr("OSC协议"),
-                                 QString(),
-                                 DeviceProtocol::Osc,
-                                 tr("OSC协议设备"),
-                                 specs);
-    return dt;
-}
-
-QVariantList DeviceManager::devices() const
-{
-    QVariantList result;
-    result.reserve(m_devices.size());
-
-    for (Device *device : m_devices)
-        result.append(QVariant::fromValue(device));
-
-    return result;
-}
-
-QVariantList DeviceManager::deviceTemplates() const
-{
-    QVariantList result;
-    result.reserve(m_deviceTemplates.size());
-
-    for (DeviceTemplate *deviceTemplate : m_deviceTemplates)
-        result.append(QVariant::fromValue(deviceTemplate));
-
-    return result;
 }
 
 QStringList DeviceManager::deviceTypes() const
@@ -415,35 +162,6 @@ QStringList DeviceManager::manualDeviceTypes() const
     return result;
 }
 
-QString DeviceManager::currentDeviceId() const
-{
-    return m_currentDeviceId;
-}
-
-void DeviceManager::setCurrentDeviceId(const QString &deviceId)
-{
-    const QString normalizedDeviceId = deviceId.trimmed();
-    if (normalizedDeviceId.isEmpty() || !device(normalizedDeviceId))
-        return;
-
-    if (m_currentDeviceId == normalizedDeviceId)
-        return;
-
-    m_currentDeviceId = normalizedDeviceId;
-    emit currentDeviceIdChanged();
-    emit currentDeviceChanged();
-}
-
-Device *DeviceManager::currentDevice() const
-{
-    return device(m_currentDeviceId);
-}
-
-void DeviceManager::selectDevice(const QString &deviceId)
-{
-    setCurrentDeviceId(deviceId);
-}
-
 void DeviceManager::createDevice()
 {
     createDeviceFromTemplate(tr("Dmx512协议"), QVariantMap(), QString(), DeviceType::Light);
@@ -453,7 +171,8 @@ QVariantList DeviceManager::devicesForDeviceType(const QString &deviceType) cons
 {
     QVariantList result;
 
-    for (Device *candidate : m_devices) {
+    const QList<Device *> currentDevices = m_deviceModel ? m_deviceModel->items() : QList<Device *>();
+    for (Device *candidate : currentDevices) {
         if (deviceMatchesDeviceType(candidate, deviceType))
             result.append(QVariant::fromValue(candidate));
     }
@@ -473,7 +192,7 @@ QString DeviceManager::validateDeviceCreation(const QString &deviceType,
     if (normalizedDeviceName.isEmpty())
         return tr("Device name is required");
 
-    DeviceTemplate *sourceTemplate = deviceTemplate(templateName);
+    DeviceTemplate *sourceTemplate = m_deviceTemplateModel ? m_deviceTemplateModel->templateByName(templateName) : nullptr;
     if (sourceTemplate) {
         const QString templateDeviceType = sourceTemplate->deviceType().trimmed();
         if (templateDeviceType.isEmpty() && isTemplateOnlyDeviceType(normalizedDeviceType))
@@ -485,7 +204,8 @@ QString DeviceManager::validateDeviceCreation(const QString &deviceType,
         }
     }
 
-    for (Device *candidate : m_devices) {
+    const QList<Device *> currentDevices = m_deviceModel ? m_deviceModel->items() : QList<Device *>();
+    for (Device *candidate : currentDevices) {
         if (!candidate)
             continue;
 
@@ -504,7 +224,7 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
                                              const QString &deviceName,
                                              const QString &deviceType)
 {
-    DeviceTemplate *selectedTemplate = deviceTemplate(templateName);
+    DeviceTemplate *selectedTemplate = m_deviceTemplateModel ? m_deviceTemplateModel->templateByName(templateName) : nullptr;
     if (!selectedTemplate)
         return false;
 
@@ -519,7 +239,6 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
     if (!validateDeviceCreation(resolvedDeviceType, resolvedDeviceName, selectedTemplate->name()).isEmpty())
         return false;
 
-    const QString id = QStringLiteral("device-%1").arg(m_nextDeviceNumber++);
     QVariantMap resolvedConfigValues = defaultConfigValues(selectedTemplate);
     for (auto it = configValues.cbegin(); it != configValues.cend(); ++it) {
         if (!it.key().trimmed().isEmpty())
@@ -538,7 +257,9 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
     if (address.isEmpty())
         address = resolvedConfigValues.value(DeviceKey::SerialPort).toString().trimmed();
     if (address.isEmpty()) {
-        Device *adapter = device(resolvedConfigValues.value(DeviceKey::Dmx512AdapterDeviceId).toString());
+        Device *adapter = m_deviceModel
+            ? m_deviceModel->deviceById(resolvedConfigValues.value(DeviceKey::Dmx512AdapterDeviceId).toString())
+            : nullptr;
         if (adapter) {
             address = adapter->address().trimmed();
             if (address.isEmpty())
@@ -548,8 +269,7 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
     if (address.isEmpty())
         address = tr("Unassigned");
 
-    Device *newDevice = makeDeviceFromTemplate(id,
-                                               selectedTemplate->name(),
+    Device *newDevice = makeDeviceFromTemplate(selectedTemplate->name(),
                                                resolvedDeviceType,
                                                resolvedDeviceName,
                                                address,
@@ -559,11 +279,10 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
     if (!newDevice)
         return false;
 
-    m_devices.append(newDevice);
+    m_deviceModel->appendDevice(newDevice);
     addDeviceType(resolvedDeviceType);
-    refreshDmx512AdapterOptions();
-    emit devicesChanged();
-    setCurrentDeviceId(id);
+    if (m_deviceModel)
+        m_deviceModel->setCurrentDeviceId(newDevice->id());
     return true;
 }
 
@@ -587,33 +306,6 @@ void DeviceManager::removeDeviceType(const QString &deviceType)
     emit deviceTypesChanged();
 }
 
-void DeviceManager::updateCurrentDeviceField(const QString &field, const QVariant &value)
-{
-    const QString normalizedField = field.trimmed();
-    if (normalizedField.isEmpty())
-        return;
-
-    Device *current = currentDevice();
-    if (!current)
-        return;
-
-    if (current->property(normalizedField.toUtf8().constData()) == value)
-        return;
-
-    current->setProperty(normalizedField.toUtf8().constData(), value);
-}
-
-Device *DeviceManager::device(const QString &deviceId) const
-{
-    const QString normalizedDeviceId = deviceId.trimmed();
-    for (Device *device : m_devices) {
-        if (device && device->id() == normalizedDeviceId)
-            return device;
-    }
-
-    return nullptr;
-}
-
 bool DeviceManager::deviceMatchesDeviceType(const Device *device, const QString &deviceType) const
 {
     if (!device)
@@ -626,7 +318,8 @@ QVariantList DeviceManager::deviceOptionsForDeviceType(const QString &deviceType
 {
     QVariantList result;
 
-    for (Device *candidate : m_devices) {
+    const QList<Device *> currentDevices = m_deviceModel ? m_deviceModel->items() : QList<Device *>();
+    for (Device *candidate : currentDevices) {
         if (!deviceMatchesDeviceType(candidate, deviceType))
             continue;
 
@@ -644,22 +337,12 @@ QVariantList DeviceManager::deviceOptionsForDeviceType(const QString &deviceType
     return result;
 }
 
-DeviceTemplate *DeviceManager::deviceTemplate(const QString &templateName) const
-{
-    const QString normalizedTemplateName = templateName.trimmed();
-    for (DeviceTemplate *deviceTemplate : m_deviceTemplates) {
-        if (deviceTemplate && deviceTemplate->name() == normalizedTemplateName)
-            return deviceTemplate;
-    }
-
-    return nullptr;
-}
-
 void DeviceManager::refreshDmx512AdapterOptions()
 {
     const QVariantList adapterOptions = deviceOptionsForDeviceType(DeviceType::Dmx512Adapter);
 
-    for (DeviceTemplate *deviceTemplate : m_deviceTemplates) {
+    const QList<DeviceTemplate *> currentTemplates = m_deviceTemplateModel ? m_deviceTemplateModel->items() : QList<DeviceTemplate *>();
+    for (DeviceTemplate *deviceTemplate : currentTemplates) {
         if (!deviceTemplate)
             continue;
 
@@ -670,17 +353,7 @@ void DeviceManager::refreshDmx512AdapterOptions()
     }
 }
 
-DeviceTemplate *DeviceManager::makeDeviceTemplate(const QString &name,
-                                                  const QString &deviceType,
-                                                  const QString &protocol,
-                                                  const QString &description,
-                                                  const QList<DeviceParamSpec *> &configSpecs)
-{
-    return new DeviceTemplate(name, deviceType, protocol, description, configSpecs, this);
-}
-
-Device *DeviceManager::makeDeviceFromTemplate(const QString &id,
-                                              const QString &templateName,
+Device *DeviceManager::makeDeviceFromTemplate(const QString &templateName,
                                               const QString &deviceType,
                                               const QString &name,
                                               const QString &address,
@@ -688,11 +361,11 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &id,
                                               const QString &lastSeen,
                                               const QVariantMap &configValues)
 {
-    DeviceTemplate *sourceTemplate = deviceTemplate(templateName);
+    DeviceTemplate *sourceTemplate = m_deviceTemplateModel ? m_deviceTemplateModel->templateByName(templateName) : nullptr;
     if (!sourceTemplate)
         return nullptr;
 
-    auto *device = new Device(id, sourceTemplate->name(), this);
+    auto *device = new Device(sourceTemplate->name(), m_deviceModel);
     device->setDeviceType(deviceType);
     device->setName(name);
     device->setProtocol(sourceTemplate->protocol());
@@ -704,7 +377,13 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &id,
     QVariantMap deviceConfigValues = configValues;
     if (!address.isEmpty())
         deviceConfigValues.insert(DeviceKey::Address, address);
-
+//     qDebug() << deviceConfigValues;
+//     QByteArray ba;
+//     QDataStream ds(&ba, QIODevice::ReadWrite);
+//     ds << deviceConfigValues;
+//     deviceConfigValues.clear();
+//     ds.device()->seek(0);
+//     ds >> deviceConfigValues;
     device->setConfigValues(deviceConfigValues);
     return device;
 }

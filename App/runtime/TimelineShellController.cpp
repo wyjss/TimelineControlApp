@@ -137,6 +137,26 @@ void TimelineShellController::buildDrawers()
                                            })));
 
     registerDrawer(makeDrawer(this,
+                              QStringLiteral("keystone"),
+                              tr("Keystone"),
+                              QStringLiteral("layer-config"),
+                              tr("PC screen corner calibration"),
+                              makeLeftPane(tr("Keystone"),
+                                           tr("Filter calibration items"),
+                                           QVariantList{
+                                               makePaneItem(QStringLiteral("pc-keystone"),
+                                                            tr("PC Keystone"),
+                                                            tr("Calibrate PC screen corners"),
+                                                            true),
+                                               makePaneItem(QStringLiteral("screen-corners"),
+                                                            tr("Screen Corners"),
+                                                            tr("Per-screen correction points")),
+                                               makePaneItem(QStringLiteral("device-config"),
+                                                            tr("Device Config"),
+                                                            tr("Stored in PC device config"))
+                                           })));
+
+    registerDrawer(makeDrawer(this,
                               QStringLiteral("runs"),
                               tr("Runs"),
                               QStringLiteral("background-task"),

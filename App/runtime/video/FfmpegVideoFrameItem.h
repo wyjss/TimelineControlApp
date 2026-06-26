@@ -1,17 +1,18 @@
 #pragma once
 
-#include <QElapsedTimer>
+#include <memory>
+
 #include <QImage>
 #include <QQuickPaintedItem>
 #include <QSize>
 #include <QTimer>
 #include <QUrl>
 
-struct AVCodecContext;
-struct AVFormatContext;
-struct AVFrame;
-struct AVPacket;
-struct SwsContext;
+class AVReader;
+namespace PixelTool {
+class PixelConvProcessor;
+struct AVFramePixelData;
+}
 
 namespace TimelineControl {
 
@@ -62,37 +63,30 @@ private slots:
 private:
     bool openCurrentSource();
     void closeDecoder();
+    bool updateOutputInfo();
     void setPlaying(bool playing);
     void setPositionValue(qint64 positionMs);
     void setDurationValue(qint64 durationMs);
     void setVideoSizeValue(const QSize &size);
     void setErrorString(const QString &errorString);
     void setHasFrame(bool hasFrame);
-    bool decodeNextFrame();
-    bool convertCurrentFrame(qint64 framePositionMs);
-    qint64 framePositionMs() const;
-    qint64 streamDurationMs() const;
+    bool takeAndConvertFrame();
+    bool convertFrame(const PixelTool::AVFramePixelData &frameData, qint64 framePositionMs);
     QString sourcePath() const;
 
     QUrl m_source;
     bool m_playing = false;
     bool m_hasFrame = false;
+    bool m_pendingFrame = false;
     qint64 m_positionMs = 0;
     qint64 m_durationMs = 0;
-    qint64 m_playStartPositionMs = 0;
     QSize m_videoSize;
     QString m_errorString;
     QImage m_frameImage;
     QTimer m_timer;
-    QElapsedTimer m_playClock;
 
-    AVFormatContext *m_formatContext = nullptr;
-    AVCodecContext *m_codecContext = nullptr;
-    AVFrame *m_frame = nullptr;
-    AVPacket *m_packet = nullptr;
-    SwsContext *m_swsContext = nullptr;
-    int m_videoStreamIndex = -1;
-    bool m_endOfFile = false;
+    std::unique_ptr<AVReader> m_reader;
+    std::unique_ptr<PixelTool::PixelConvProcessor> m_converter;
 };
 
 } // namespace TimelineControl

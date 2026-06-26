@@ -2,6 +2,7 @@ import QtQuick 2.14
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UiCore/qml/components/base" as Base
+import "qrc:/UiCore/qml/components/form" as Form
 import "qrc:/UiCore/qml/theme" as Theme
 
 Item {
@@ -18,12 +19,17 @@ Item {
         : fallbackTheme
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
+    property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
+    property var deviceTemplateModel: appRuntime && appRuntime.deviceTemplateModel ? appRuntime.deviceTemplateModel : null
+    property var deviceInspectorFormProvider: appRuntime && appRuntime.deviceInspectorFormProvider
+        ? appRuntime.deviceInspectorFormProvider
+        : null
 
-    readonly property var devices: deviceManager ? deviceManager.devices : []
-    readonly property var deviceTemplates: deviceManager ? deviceManager.deviceTemplates : []
+    readonly property var devices: deviceModel ? deviceModel.devices : []
+    readonly property var deviceTemplates: deviceTemplateModel ? deviceTemplateModel.templates : []
     readonly property var deviceTypes: deviceManager ? deviceManager.deviceTypes : []
     readonly property var manualDeviceTypes: deviceManager ? deviceManager.manualDeviceTypes : []
-    readonly property var selectedDevice: deviceManager ? deviceManager.currentDevice : ({})
+    readonly property var selectedDevice: deviceModel ? deviceModel.currentDevice : ({})
     property string deviceDisplayMode: "template"
     property string selectedTemplateName: deviceTemplates.length > 0 ? String(deviceTemplates[0].name) : ""
     property string selectedDeviceType: deviceTypes.length > 0 ? String(deviceTypes[0]) : ""
@@ -54,7 +60,11 @@ Item {
             selectedDeviceType = String(deviceTypes[0])
     }
 
+    onSelectedTemplateNameChanged: syncTemplateInspector()
+    onDeviceInspectorFormProviderChanged: syncTemplateInspector()
     onFilteredDevicesChanged: ensureSelectedDeviceForView()
+
+    Component.onCompleted: syncTemplateInspector()
 
     function objectValue(object, field, fallback) {
         if (!object || object[field] === undefined || object[field] === null)
@@ -100,10 +110,10 @@ Item {
     }
 
     function ensureSelectedDeviceForView() {
-        if (!deviceManager || filteredDevices.length === 0 || selectedDeviceInCurrentView)
+        if (!deviceModel || filteredDevices.length === 0 || selectedDeviceInCurrentView)
             return
 
-        deviceManager.selectDevice(String(filteredDevices[0].id))
+        deviceModel.selectDevice(String(filteredDevices[0].id))
     }
 
     function selectTemplate(templateName) {
@@ -112,6 +122,11 @@ Item {
             return
 
         selectedTemplateName = normalizedTemplateName
+    }
+
+    function syncTemplateInspector() {
+        if (deviceInspectorFormProvider)
+            deviceInspectorFormProvider.inspectTemplate(selectedTemplateName)
     }
 
     function selectDeviceType(deviceType) {
@@ -176,8 +191,8 @@ Item {
     }
 
     function selectDevice(deviceId) {
-        if (deviceManager)
-            deviceManager.selectDevice(String(deviceId))
+        if (deviceModel)
+            deviceModel.selectDevice(String(deviceId))
     }
 
     function initialInputSpecs(deviceTemplate) {
@@ -200,8 +215,8 @@ Item {
     }
 
     function updateField(field, value) {
-        if (deviceManager)
-            deviceManager.updateCurrentDeviceField(field, value)
+        if (selectedDeviceInCurrentView && selectedDevice && selectedDevice.setFieldValue)
+            selectedDevice.setFieldValue(field, value)
     }
 
     function configSpecSummary(configSpec) {
@@ -608,44 +623,17 @@ Item {
                         textTone: "secondary"
                     }
 
-                    Repeater {
-                        model: root.deviceDisplayMode === "template" && root.selectedTemplate && root.selectedTemplate.configSpecs
-                            ? root.selectedTemplate.configSpecs
-                            : []
-
-                        delegate: Base.AppSurface {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 54
-                            sizeToContent: false
-                            theme: root.pageTheme
-                            surfaceTone: "surface"
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-                                anchors.topMargin: 7
-                                anchors.bottomMargin: 7
-                                spacing: 2
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: modelData.label
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
-                                    elide: Text.ElideRight
-                                }
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: root.configSpecSummary(modelData)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                    elide: Text.ElideRight
-                                }
-                            }
-                        }
+                    Form.AppFormContent {
+                        Layout.fillWidth: true
+                        visible: root.deviceDisplayMode === "template"
+                            && root.selectedTemplate
+                            && root.selectedTemplate.configSpecs
+                            && root.selectedTemplate.configSpecs.length > 0
+                            && root.deviceInspectorFormProvider !== null
+                        theme: root.pageTheme
+                        formData: root.deviceInspectorFormProvider
+                            ? root.deviceInspectorFormProvider.templateConfigForm
+                            : ({})
                     }
 
                     Base.AppText {

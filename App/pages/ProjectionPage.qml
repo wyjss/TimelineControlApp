@@ -20,9 +20,10 @@ Item {
         : fallbackTheme
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
+    property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     property var projectionManager: appRuntime && appRuntime.projectionManager ? appRuntime.projectionManager : null
 
-    readonly property var devices: deviceManager ? deviceManager.devices : []
+    readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var pcDevices: buildPcDevices()
     readonly property var instructionModel: projectionManager ? projectionManager.instructionModel : null
     readonly property var captureModel: projectionManager ? projectionManager.captureModel : null

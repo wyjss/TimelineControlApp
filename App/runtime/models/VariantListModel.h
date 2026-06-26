@@ -6,7 +6,7 @@
 
 namespace TimelineControl {
 
-class VariantListModel final : public QAbstractListModel
+class VariantListModel : public QAbstractListModel
 {
     Q_OBJECT
 
