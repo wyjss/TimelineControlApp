@@ -13,7 +13,7 @@
 #include "devices/Device.h"
 #include "devices/DeviceTemplate.h"
 #include "devices/DeviceTemplateModel.h"
-#include "projection/ProjectionInstructionManager.h"
+#include "projection/VideoProjectionPlanController.h"
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
 #include "runtime/task/TaskManager.h"
@@ -30,7 +30,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     , m_deviceInspectorFormProvider(new DeviceInspectorFormProvider(m_deviceModel,
                                                                     m_deviceTemplateModel,
                                                                     this))
-    , m_projectionManager(new ProjectionInstructionManager(this))
+    , m_videoProjectionPlanController(new VideoProjectionPlanController(this))
     , m_timelineCommandModel(new TimelineCommandModel(this))
     , m_timelineManager(new TimelineManager(m_timelineCommandModel, this))
 {
@@ -47,13 +47,13 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<TimelineControl::DeviceManager *>("TimelineControl::DeviceManager*");
     qRegisterMetaType<TimelineControl::DeviceModel *>("TimelineControl::DeviceModel*");
     qRegisterMetaType<TimelineControl::DeviceTemplateModel *>("TimelineControl::DeviceTemplateModel*");
-    qRegisterMetaType<TimelineControl::ProjectionInstructionManager *>("TimelineControl::ProjectionInstructionManager*");
+    qRegisterMetaType<TimelineControl::VideoProjectionPlanController *>("TimelineControl::VideoProjectionPlanController*");
     qRegisterMetaType<TimelineControl::TimelineManager *>("TimelineControl::TimelineManager*");
     qRegisterMetaType<TimelineControl::TimelineCommand *>("TimelineControl::TimelineCommand*");
     qRegisterMetaType<TimelineControl::TimelineCommandModel *>("TimelineControl::TimelineCommandModel*");
 
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
-            m_timelineManager, &TimelineManager::removeCommandsForDevice);
+            m_timelineCommandModel, &TimelineCommandModel::removeCommandsForDevice);
 }
 
 TaskManager *TimelineRuntime::taskManager() const
@@ -81,9 +81,9 @@ DeviceInspectorFormProvider *TimelineRuntime::deviceInspectorFormProvider() cons
     return m_deviceInspectorFormProvider;
 }
 
-ProjectionInstructionManager *TimelineRuntime::projectionManager() const
+VideoProjectionPlanController *TimelineRuntime::videoProjectionPlanController() const
 {
-    return m_projectionManager;
+    return m_videoProjectionPlanController;
 }
 
 TimelineCommandModel *TimelineRuntime::timelineCommandModel() const

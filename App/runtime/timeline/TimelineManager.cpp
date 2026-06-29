@@ -6,6 +6,15 @@ TimelineManager::TimelineManager(TimelineCommandModel *commandModel, QObject *pa
     : QObject(parent)
     , m_commandModel(commandModel)
 {
+    if (m_commandModel) {
+        connect(m_commandModel, &TimelineCommandModel::commandAboutToBeRemoved, this, [this](TimelineCommand *command) {
+            if (m_lastCommand != command)
+                return;
+
+            m_lastCommand = nullptr;
+            emit lastCommandChanged();
+        });
+    }
 }
 
 int TimelineManager::durationMs() const
@@ -33,14 +42,23 @@ TimelineCommand *TimelineManager::addCommand(qint64 startTimeMs,
                                              const QString &commandName,
                                              const QVariantMap &commandParams)
 {
+    return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, nullptr);
+}
+
+TimelineCommand *TimelineManager::addCommand(qint64 startTimeMs,
+                                             const QString &targetDeviceId,
+                                             const QString &commandName,
+                                             const QVariantMap &commandParams,
+                                             DeviceCommand *targetCommand)
+{
     if (!m_commandModel)
         return nullptr;
 
-    auto *command = new TimelineCommand(nextCommandId(),
-                                        startTimeMs,
+    auto *command = new TimelineCommand(startTimeMs,
                                         targetDeviceId,
                                         commandName,
-                                        commandParams);
+                                        commandParams,
+                                        targetCommand);
     if (m_commandModel)
         m_commandModel->appendCommand(command);
     m_lastCommand = command;
@@ -57,37 +75,6 @@ void TimelineManager::clearCommands()
     if (m_commandModel)
         m_commandModel->clear();
     emit lastCommandChanged();
-}
-
-void TimelineManager::removeCommandsForDevice(const QString &deviceId)
-{
-    if (!m_commandModel)
-        return;
-
-    const QString normalizedDeviceId = deviceId.trimmed();
-    if (normalizedDeviceId.isEmpty())
-        return;
-
-    bool lastCommandRemoved = false;
-    for (int row = m_commandModel->rowCount() - 1; row >= 0; --row) {
-        TimelineCommand *command = m_commandModel->commandAt(row);
-        if (!command || command->targetDeviceId() != normalizedDeviceId)
-            continue;
-
-        if (command == m_lastCommand)
-            lastCommandRemoved = true;
-        m_commandModel->removeCommandAt(row);
-    }
-
-    if (lastCommandRemoved) {
-        m_lastCommand = nullptr;
-        emit lastCommandChanged();
-    }
-}
-
-QString TimelineManager::nextCommandId()
-{
-    return QStringLiteral("command-%1").arg(m_nextCommandNumber++);
 }
 
 } // namespace TimelineControl

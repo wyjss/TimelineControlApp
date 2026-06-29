@@ -21,21 +21,21 @@ Item {
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
-    property var projectionManager: appRuntime && appRuntime.projectionManager ? appRuntime.projectionManager : null
+    property var projectionController: appRuntime && appRuntime.videoProjectionPlanController ? appRuntime.videoProjectionPlanController : null
 
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var pcDevices: buildPcDevices()
-    readonly property var instructionModel: projectionManager ? projectionManager.instructionModel : null
-    readonly property var captureModel: projectionManager ? projectionManager.captureModel : null
-    readonly property var mappingModel: projectionManager ? projectionManager.mappingModel : null
-    readonly property var instructionValues: projectionManager ? projectionManager.instructions : []
-    readonly property var mappingValues: projectionManager ? projectionManager.mappings : []
-    readonly property int instructionCount: projectionManager ? projectionManager.instructionCount : 0
-    readonly property int captureCount: projectionManager ? projectionManager.captureCount : 0
-    readonly property int mappingCount: projectionManager ? projectionManager.mappingCount : 0
+    readonly property var planModel: projectionController ? projectionController.planModel : null
+    readonly property var captureModel: projectionController ? projectionController.captureModel : null
+    readonly property var mappingModel: projectionController ? projectionController.mappingModel : null
+    property int captureCount: 0
+    property int mappingCount: 0
+    property int planRevision: 0
+    property int captureRevision: 0
+    property int mappingRevision: 0
     property string selectedPcId: ""
     readonly property var selectedPc: selectedPcForId(selectedPcId)
-    property int selectedCaptureIndex: 0
+    property int selectedCaptureIndex: -1
 
     readonly property size selectedResolution: sizeFromValue(configValue(selectedPc, "screenSize", undefined), Qt.size(1920, 1080))
     readonly property size selectedLayout: sizeFromValue(configValue(selectedPc, "screenLayout", undefined), Qt.size(1, 1))
@@ -76,7 +76,9 @@ Item {
     onTotalScreenWidthChanged: clampScreenPan()
     onTotalScreenHeightChanged: clampScreenPan()
     onVideoNativeSizeChanged: clampVideoPan()
-    onCaptureCountChanged: selectedCaptureIndex = Math.max(0, Math.min(selectedCaptureIndex, captureCount - 1))
+    onCaptureCountChanged: selectedCaptureIndex = captureCount > 0
+        ? Math.max(0, Math.min(selectedCaptureIndex, captureCount - 1))
+        : -1
 
     Component.onCompleted: {
         ensureSelectedPc()
@@ -85,24 +87,43 @@ Item {
         if (initialVideoSource.length > 0)
             loadVideo(initialVideoSource)
         else
-            applyInstructionVideo(false)
+            applyPlanVideo(false)
     }
 
     Connections {
-        target: root.projectionManager
+        target: root.projectionController
 
-        function onCurrentInstructionChanged() {
-            root.selectedCaptureIndex = 0
-            root.applyInstructionVideo(false)
+        function onCurrentPlanChanged() {
+            root.selectedCaptureIndex = root.captureCount > 0 ? 0 : -1
+            root.applyPlanVideo(false)
         }
+    }
 
-        function onVideoSourceChanged() {
-            root.applyInstructionVideo(false)
-        }
+    Connections {
+        target: root.planModel
 
-        function onVideoSizeChanged() {
-            root.applyInstructionVideoSize()
-        }
+        function onModelReset() { ++root.planRevision }
+        function onRowsInserted() { ++root.planRevision }
+        function onRowsRemoved() { ++root.planRevision }
+        function onDataChanged() { ++root.planRevision }
+    }
+
+    Connections {
+        target: root.captureModel
+
+        function onModelReset() { ++root.captureRevision }
+        function onRowsInserted() { ++root.captureRevision }
+        function onRowsRemoved() { ++root.captureRevision }
+        function onDataChanged() { ++root.captureRevision }
+    }
+
+    Connections {
+        target: root.mappingModel
+
+        function onModelReset() { ++root.mappingRevision }
+        function onRowsInserted() { ++root.mappingRevision }
+        function onRowsRemoved() { ++root.mappingRevision }
+        function onDataChanged() { ++root.mappingRevision }
     }
 
     FileDialog {
@@ -142,43 +163,28 @@ Item {
         return colors[index % colors.length]
     }
 
-    function createInstruction() {
-        if (!projectionManager)
+    function createPlan() {
+        if (!projectionController)
             return
 
-        projectionManager.createInstruction(qsTr("投影指令 %1").arg(root.instructionCount + 1))
-        selectedCaptureIndex = 0
-    }
-
-    function duplicateInstruction() {
-        if (!projectionManager)
-            return
-
-        projectionManager.duplicateCurrentInstruction()
-        selectedCaptureIndex = 0
-    }
-
-    function removeInstruction() {
-        if (!projectionManager || root.instructionCount <= 1)
-            return
-
-        projectionManager.removeCurrentInstruction()
-        selectedCaptureIndex = 0
+        projectionController.createPlan()
+        selectedCaptureIndex = -1
     }
 
     function addCapture() {
-        if (!projectionManager)
+        if (!projectionController)
             return
 
-        selectedCaptureIndex = projectionManager.addCapture()
+        selectedCaptureIndex = projectionController.addCapture(qsTr("取景 %1").arg(captureCount + 1))
     }
 
     function removeSelectedCapture() {
-        if (!projectionManager || captureCount <= 1 || selectedCaptureIndex < 0 || selectedCaptureIndex >= captureCount)
+        if (!projectionController || selectedCaptureIndex < 0 || selectedCaptureIndex >= captureCount)
             return
 
-        projectionManager.removeCapture(selectedCaptureIndex)
-        selectedCaptureIndex = Math.max(0, Math.min(selectedCaptureIndex, captureCount - 1))
+        var nextCount = Math.max(0, captureCount - 1)
+        projectionController.removeCapture(selectedCaptureIndex)
+        selectedCaptureIndex = nextCount > 0 ? Math.max(0, Math.min(selectedCaptureIndex, nextCount - 1)) : -1
     }
 
     function captureGeometry(nextX, nextY, nextW, nextH) {
@@ -193,11 +199,12 @@ Item {
     }
 
     function setCaptureGeometry(index, nextX, nextY, nextW, nextH) {
-        if (!projectionManager || index < 0 || index >= captureCount)
+        if (!projectionController || index < 0 || index >= captureCount)
             return null
 
         var rect = captureGeometry(nextX, nextY, nextW, nextH)
-        projectionManager.setCaptureGeometryNormalized(index, rect.x, rect.y, rect.w, rect.h)
+        var pixelRect = normalizedVideoRectToPixels(rect)
+        projectionController.setCaptureRect(index, pixelRect.x, pixelRect.y, pixelRect.w, pixelRect.h)
         return rect
     }
 
@@ -213,17 +220,12 @@ Item {
     }
 
     function setMappingGeometry(index, nextX, nextY, nextW, nextH) {
-        if (!projectionManager || index < 0 || index >= mappingCount)
+        if (!projectionController || index < 0 || index >= mappingCount)
             return null
 
         var rect = mappingGeometry(nextX, nextY, nextW, nextH)
-        projectionManager.setMappingGeometryNormalized(index,
-                                                       rect.x,
-                                                       rect.y,
-                                                       rect.w,
-                                                       rect.h,
-                                                       totalScreenWidth,
-                                                       totalScreenHeight)
+        var pixelRect = normalizedScreenRectToPixels(rect)
+        projectionController.setMappingRect(index, pixelRect.x, pixelRect.y, pixelRect.w, pixelRect.h)
         return rect
     }
 
@@ -296,6 +298,26 @@ Item {
         return String(Math.round(sizeValue.width)) + "x" + String(Math.round(sizeValue.height))
     }
 
+    function pixelToRatio(value, total) {
+        return clamp(Number(value || 0) / Math.max(1, total), 0, 1)
+    }
+
+    function normalizedVideoRectToPixels(rect) {
+        var widthValue = Math.max(1, Math.round(Number(rect.w || 0) * videoPixelWidth))
+        var heightValue = Math.max(1, Math.round(Number(rect.h || 0) * videoPixelHeight))
+        var xValue = clamp(Math.round(Number(rect.x || 0) * videoPixelWidth), 0, videoPixelWidth - widthValue)
+        var yValue = clamp(Math.round(Number(rect.y || 0) * videoPixelHeight), 0, videoPixelHeight - heightValue)
+        return { "x": xValue, "y": yValue, "w": widthValue, "h": heightValue }
+    }
+
+    function normalizedScreenRectToPixels(rect) {
+        var widthValue = Math.max(1, Math.round(Number(rect.w || 0) * totalScreenWidth))
+        var heightValue = Math.max(1, Math.round(Number(rect.h || 0) * totalScreenHeight))
+        var xValue = clamp(Math.round(Number(rect.x || 0) * totalScreenWidth), 0, totalScreenWidth - widthValue)
+        var yValue = clamp(Math.round(Number(rect.y || 0) * totalScreenHeight), 0, totalScreenHeight - heightValue)
+        return { "x": xValue, "y": yValue, "w": widthValue, "h": heightValue }
+    }
+
     function configuredInitialVideoSource() {
         if (!appRuntime || !appRuntime.settings)
             return ""
@@ -303,11 +325,12 @@ Item {
         return String(appRuntime.settings.value("projectionVideoSource", "")).trim()
     }
 
-    function applyInstructionVideo(autoPlay) {
-        if (!projectionManager)
+    function applyPlanVideo(autoPlay) {
+        if (!projectionController)
             return
 
-        var source = String(projectionManager.videoSource || "")
+        var plan = projectionController.currentPlanData()
+        var source = String((plan && plan.videoSource) || "")
         videoSource = source
         if (source.length === 0) {
             videoFrameItem.stop()
@@ -322,15 +345,24 @@ Item {
         else
             videoFrameItem.pause()
 
-        applyInstructionVideoSize()
+        applyPlanVideoSize()
     }
 
-    function applyInstructionVideoSize() {
-        if (!projectionManager || !projectionManager.videoSize)
+    function applyPlanVideoSize() {
+        if (!projectionController)
             return
 
-        var sizeValue = projectionManager.videoSize
-        if (sizeValue.width > 0 && sizeValue.height > 0)
+        var plan = projectionController.currentPlanData()
+        if (!plan)
+            return
+
+        if (plan.videoWidth > 0 && plan.videoHeight > 0) {
+            videoNativeSize = Qt.size(Math.round(plan.videoWidth), Math.round(plan.videoHeight))
+            return
+        }
+
+        var sizeValue = plan.videoSize
+        if (sizeValue && sizeValue.width > 0 && sizeValue.height > 0)
             videoNativeSize = Qt.size(Math.round(sizeValue.width), Math.round(sizeValue.height))
     }
 
@@ -346,8 +378,8 @@ Item {
     function refreshVideoNativeSize() {
         if (videoFrameItem && videoFrameItem.videoSize && videoFrameItem.videoSize.width > 0 && videoFrameItem.videoSize.height > 0) {
             videoNativeSize = Qt.size(Math.round(videoFrameItem.videoSize.width), Math.round(videoFrameItem.videoSize.height))
-            if (projectionManager)
-                projectionManager.setVideoSize(videoNativeSize.width, videoNativeSize.height)
+            if (projectionController)
+                projectionController.setVideoSize(videoNativeSize.width, videoNativeSize.height)
             return
         }
 
@@ -360,8 +392,8 @@ Item {
             return
 
         videoSource = sourceUrl
-        if (projectionManager)
-            projectionManager.videoSource = sourceUrl
+        if (projectionController)
+            projectionController.setVideoSource(sourceUrl)
 
         videoFrameItem.source = sourceUrl
         videoFrameItem.play()
@@ -449,19 +481,15 @@ Item {
     }
 
     function mappingForCapture(captureData, captureIndex) {
-        var captureId = String((captureData && (captureData.captureId || captureData.id)) || "")
-        var mappings = mappingValues || []
-        for (var index = 0; index < mappings.length; ++index) {
-            var mapping = mappings[index] || ({})
-            var mappingCaptureId = String(mapping.captureId || "")
-            var mappingCaptureIndex = Number(mapping.captureIndex)
-            if (captureId.length > 0 && mappingCaptureId === captureId)
-                return mapping
-            if (!isNaN(mappingCaptureIndex) && mappingCaptureIndex === captureIndex)
-                return mapping
-        }
+        var revision = mappingRevision
+        if (!projectionController || captureIndex < 0)
+            return ({})
 
-        return null
+        return projectionController.mappingForCapture(captureIndex)
+    }
+
+    function mappingIsValid(mapping) {
+        return mapping && mapping.index !== undefined && Number(mapping.index) >= 0
     }
 
     function mappingPcName(mapping) {
@@ -478,22 +506,16 @@ Item {
 
     function captureMappingText(captureData, captureIndex) {
         var mapping = mappingForCapture(captureData, captureIndex)
-        return mapping ? qsTr("已映射到 %1").arg(mappingPcName(mapping)) : qsTr("未映射")
+        return mappingIsValid(mapping) ? qsTr("已映射到 %1").arg(mappingPcName(mapping)) : qsTr("未映射")
     }
 
     function pcMappingCount(device) {
-        if (!device)
+        var revision = mappingRevision
+        if (!device || !projectionController)
             return 0
 
         var pcId = String(device.id || "")
-        var count = 0
-        var mappings = mappingValues || []
-        for (var index = 0; index < mappings.length; ++index) {
-            if (String((mappings[index] || ({})).pcId || "") === pcId)
-                ++count
-        }
-
-        return count
+        return projectionController.mappingCountForPc(pcId)
     }
 
     function pcMappingText(device) {
@@ -506,19 +528,30 @@ Item {
     }
 
     function capturePixelText(rectX, rectY, rectW, rectH) {
-        var x = Math.round(Number(rectX) * videoPixelWidth)
-        var y = Math.round(Number(rectY) * videoPixelHeight)
-        var w = Math.round(Number(rectW) * videoPixelWidth)
-        var h = Math.round(Number(rectH) * videoPixelHeight)
+        var x = Math.round(Number(rectX || 0))
+        var y = Math.round(Number(rectY || 0))
+        var w = Math.round(Number(rectW || 0))
+        var h = Math.round(Number(rectH || 0))
         return qsTr("x:%1 y:%2 w:%3 h:%4").arg(x).arg(y).arg(w).arg(h)
     }
 
-    function instructionNameAt(index) {
-        if (!instructionValues || index < 0 || index >= instructionValues.length)
+    function planNameAt(index) {
+        var revision = planRevision
+        if (!projectionController || index < 0)
             return ""
 
-        var instruction = instructionValues[index]
-        return String((instruction && (instruction.instructionName || instruction.name)) || "")
+        var plan = projectionController.planAt(index)
+        return String((plan && plan.name) || "")
+    }
+
+    function captureNameAt(index) {
+        var revision = captureRevision
+        if (!projectionController || index < 0)
+            return ""
+
+        var capture = projectionController.captureAt(index)
+        var name = String((capture && capture.name) || "").trim()
+        return name.length > 0 ? name : qsTr("取景 %1").arg(index + 1)
     }
 
     function clampedZoom(zoomValue) {
@@ -708,15 +741,15 @@ Item {
     }
 
     function startMappingDrag(captureIndex, item, itemX, itemY) {
-        if (!projectionManager || captureIndex < 0 || captureIndex >= captureCount)
+        if (!projectionController || captureIndex < 0 || captureIndex >= captureCount)
             return
 
-        var capture = projectionManager.captureAt(captureIndex)
+        var capture = projectionController.captureAt(captureIndex)
         var rootPoint = item.mapToItem(root, itemX, itemY)
         mappingDragActive = true
         mappingDragCaptureIndex = captureIndex
         mappingDragCaptureName = String(capture.name || "")
-        mappingDragColor = String(capture.color || captureColor(captureIndex))
+        mappingDragColor = captureColor(captureIndex)
         mappingDragX = rootPoint.x
         mappingDragY = rootPoint.y
         selectedCaptureIndex = captureIndex
@@ -755,23 +788,38 @@ Item {
     }
 
     function createMappingAtScreenPoint(captureIndex, screenX, screenY) {
-        if (!projectionManager || captureIndex < 0 || captureIndex >= captureCount || !selectedPc || screenCanvas.width <= 0 || screenCanvas.height <= 0)
+        if (!projectionController || captureIndex < 0 || captureIndex >= captureCount || !selectedPc || screenCanvas.width <= 0 || screenCanvas.height <= 0)
             return
 
         var normalizedX = screenX / screenCanvas.width
         var normalizedY = screenY / screenCanvas.height
         var pcId = String(selectedPc.id || "")
+        var column = clamp(Math.floor(normalizedX * screenColumns), 0, screenColumns - 1)
+        var row = clamp(Math.floor(normalizedY * screenRows), 0, screenRows - 1)
+        var tileX = Math.round(column * totalScreenWidth / screenColumns)
+        var tileY = Math.round(row * totalScreenHeight / screenRows)
+        var tileW = Math.max(1, Math.round(totalScreenWidth / screenColumns))
+        var tileH = Math.max(1, Math.round(totalScreenHeight / screenRows))
+        var capture = projectionController.captureAt(captureIndex)
+        var rectW = clamp(Math.round(Number(capture.w || tileW)), 1, tileW)
+        var rectH = clamp(Math.round(Number(capture.h || tileH)), 1, tileH)
+        var centerX = Math.round(clamp(normalizedX, 0, 1) * totalScreenWidth)
+        var centerY = Math.round(clamp(normalizedY, 0, 1) * totalScreenHeight)
+        var rectX = clamp(centerX - Math.round(rectW / 2), tileX, tileX + tileW - rectW)
+        var rectY = clamp(centerY - Math.round(rectH / 2), tileY, tileY + tileH - rectH)
 
-        projectionManager.createMappingAtScreenPoint(captureIndex,
-                                                     pcId,
-                                                     normalizedX,
-                                                     normalizedY,
-                                                     totalScreenWidth,
-                                                     totalScreenHeight,
-                                                     screenColumns,
-                                                     screenRows,
-                                                     Math.round(selectedResolution.width),
-                                                     Math.round(selectedResolution.height))
+        projectionController.addMapping(captureIndex,
+                                        pcId,
+                                        rectX,
+                                        rectY,
+                                        rectW,
+                                        rectH,
+                                        totalScreenWidth,
+                                        totalScreenHeight,
+                                        screenColumns,
+                                        screenRows,
+                                        Math.round(selectedResolution.width),
+                                        Math.round(selectedResolution.height))
     }
 
     ColumnLayout {
@@ -787,34 +835,34 @@ Item {
             spacing: 10
 
             Base.AppText {
-                text: qsTr("视频投影指令")
+                text: qsTr("视频投影方案")
                 theme: root.pageTheme
                 styleRole: "titleL"
             }
 
             ComboBox {
-                id: instructionSelector
+                id: planSelector
 
                 Layout.preferredWidth: 220
                 Layout.preferredHeight: 38
-                model: root.instructionModel
-                currentIndex: root.projectionManager ? root.projectionManager.currentInstructionIndex : -1
-                enabled: root.instructionCount > 0
+                model: root.planModel
+                currentIndex: root.projectionController ? root.projectionController.currentPlanIndex : -1
+                enabled: root.projectionController !== null
                 onActivated: {
-                    if (root.projectionManager)
-                        root.projectionManager.selectInstruction(index)
+                    if (root.projectionController)
+                        root.projectionController.currentPlanIndex = index
                 }
 
                 delegate: ItemDelegate {
-                    width: instructionSelector.width
+                    width: planSelector.width
                     height: 36
                     hoverEnabled: true
 
-                    readonly property var instructionData: value || ({})
-                    readonly property string instructionName: String(instructionData.instructionName || instructionData.name || "")
+                    readonly property var planData: value || ({})
+                    readonly property string planName: String(planData.name || "")
 
                     contentItem: Base.AppText {
-                        text: instructionName
+                        text: planName
                         theme: root.pageTheme
                         styleRole: "bodyS"
                         textTone: highlighted ? "accent" : "primary"
@@ -830,7 +878,7 @@ Item {
                 }
 
                 indicator: Base.AppText {
-                    x: instructionSelector.width - width - 10
+                    x: planSelector.width - width - 10
                     anchors.verticalCenter: parent.verticalCenter
                     text: "v"
                     theme: root.pageTheme
@@ -845,7 +893,7 @@ Item {
                         anchors.right: parent.right
                         anchors.rightMargin: 28
                         anchors.verticalCenter: parent.verticalCenter
-                        text: root.instructionNameAt(instructionSelector.currentIndex)
+                        text: root.planNameAt(planSelector.currentIndex)
                         theme: root.pageTheme
                         styleRole: "bodyS"
                         textTone: "primary"
@@ -856,23 +904,23 @@ Item {
                 background: Rectangle {
                     radius: 6
                     color: root.colorValue("surface", "#101827")
-                    border.color: instructionSelector.activeFocus
+                    border.color: planSelector.activeFocus
                         ? root.colorValue("highlightText", "#7cb4ff")
                         : root.colorValue("border", "#334155")
                     border.width: 1
                 }
 
                 popup: Popup {
-                    y: instructionSelector.height + 4
-                    width: instructionSelector.width
+                    y: planSelector.height + 4
+                    width: planSelector.width
                     implicitHeight: Math.min(240, contentItem.implicitHeight + 2)
                     padding: 1
 
                     contentItem: ListView {
                         clip: true
                         implicitHeight: contentHeight
-                        model: instructionSelector.popup.visible ? instructionSelector.delegateModel : null
-                        currentIndex: instructionSelector.highlightedIndex
+                        model: planSelector.popup.visible ? planSelector.delegateModel : null
+                        currentIndex: planSelector.highlightedIndex
                     }
 
                     background: Rectangle {
@@ -888,23 +936,7 @@ Item {
                 text: qsTr("新建")
                 theme: root.pageTheme
                 iconName: "scene"
-                onClicked: root.createInstruction()
-            }
-
-            Base.AppButton {
-                text: qsTr("复制")
-                theme: root.pageTheme
-                iconName: "resources"
-                enabled: root.instructionCount > 0
-                onClicked: root.duplicateInstruction()
-            }
-
-            Base.AppButton {
-                text: qsTr("删除")
-                theme: root.pageTheme
-                iconName: "layer-config"
-                enabled: root.instructionCount > 1
-                onClicked: root.removeInstruction()
+                onClicked: root.createPlan()
             }
 
             Base.AppSurface {
@@ -990,20 +1022,24 @@ Item {
                         contentSpacing: 8
 
                         Repeater {
+                            id: captureListRepeater
+
                             model: captureModel
+                            Component.onCompleted: root.captureCount = count
+                            onCountChanged: root.captureCount = count
 
                             delegate: Item {
                                 id: captureRow
 
                                 readonly property var captureData: value || ({})
-                                readonly property string captureName: String(captureData.captureName || captureData.name || "")
-                                readonly property real rectX: Number(captureData.rectX || 0)
-                                readonly property real rectY: Number(captureData.rectY || 0)
-                                readonly property real rectW: Number(captureData.rectW || 0)
-                                readonly property real rectH: Number(captureData.rectH || 0)
-                                readonly property string strokeColor: String(captureData.strokeColor || captureData.color || root.captureColor(index))
+                                readonly property string captureName: String(captureData.name || "")
+                                readonly property real rectX: Number(captureData.x || 0)
+                                readonly property real rectY: Number(captureData.y || 0)
+                                readonly property real rectW: Number(captureData.w || 0)
+                                readonly property real rectH: Number(captureData.h || 0)
+                                readonly property string strokeColor: root.captureColor(index)
                                 readonly property var captureMapping: root.mappingForCapture(captureData, index)
-                                readonly property bool mapped: captureMapping !== null
+                                readonly property bool mapped: root.mappingIsValid(captureMapping)
                                 readonly property bool selected: index === root.selectedCaptureIndex
 
                                 Layout.fillWidth: true
@@ -1100,7 +1136,7 @@ Item {
                         text: qsTr("删除选中")
                         theme: root.pageTheme
                         iconName: "layer-config"
-                        enabled: root.captureCount > 1
+                        enabled: root.selectedCaptureIndex >= 0
                         onClicked: root.removeSelectedCapture()
                     }
                 }
@@ -1390,12 +1426,12 @@ Item {
 
                                     readonly property var captureData: value || ({})
                                     readonly property int captureIndex: index
-                                    readonly property string captureName: String(captureData.captureName || captureData.name || "")
-                                    readonly property string captureStrokeColor: String(captureData.strokeColor || captureData.color || root.captureColor(index))
-                                    rectX: Number(captureData.rectX || 0)
-                                    rectY: Number(captureData.rectY || 0)
-                                    rectW: Number(captureData.rectW || 0)
-                                    rectH: Number(captureData.rectH || 0)
+                                    readonly property string captureName: String(captureData.name || "")
+                                    readonly property string captureStrokeColor: root.captureColor(index)
+                                    rectX: root.pixelToRatio(captureData.x, root.videoPixelWidth)
+                                    rectY: root.pixelToRatio(captureData.y, root.videoPixelHeight)
+                                    rectW: root.pixelToRatio(captureData.w, root.videoPixelWidth)
+                                    rectH: root.pixelToRatio(captureData.h, root.videoPixelHeight)
                                     title: captureName
                                     theme: root.pageTheme
                                     strokeColor: captureStrokeColor
@@ -1588,7 +1624,11 @@ Item {
                             }
 
                             Repeater {
+                                id: mappingCanvasRepeater
+
                                 model: mappingModel
+                                Component.onCompleted: root.mappingCount = count
+                                onCountChanged: root.mappingCount = count
 
                                 delegate: ProjectionEditableRect {
                                     id: mappingRect
@@ -1596,15 +1636,15 @@ Item {
                                     readonly property var mappingData: value || ({})
                                     readonly property int mappingIndex: index
                                     readonly property int captureIndex: Number(mappingData.captureIndex === undefined ? -1 : mappingData.captureIndex)
-                                    readonly property string captureName: String(mappingData.captureName || mappingData.name || "")
-                                    readonly property string mappingStrokeColor: String(mappingData.strokeColor || mappingData.color || "#7cb4ff")
+                                    readonly property string captureName: root.captureNameAt(captureIndex)
+                                    readonly property string mappingStrokeColor: root.captureColor(Math.max(0, captureIndex))
                                     readonly property string pcId: String(mappingData.pcId || "")
 
                                     visible: String(pcId || "") === root.selectedPcId
-                                    rectX: Number(mappingData.rectX || 0)
-                                    rectY: Number(mappingData.rectY || 0)
-                                    rectW: Number(mappingData.rectW || 0)
-                                    rectH: Number(mappingData.rectH || 0)
+                                    rectX: root.pixelToRatio(mappingData.x, root.totalScreenWidth)
+                                    rectY: root.pixelToRatio(mappingData.y, root.totalScreenHeight)
+                                    rectW: root.pixelToRatio(mappingData.w, root.totalScreenWidth)
+                                    rectH: root.pixelToRatio(mappingData.h, root.totalScreenHeight)
                                     title: captureName
                                     theme: root.pageTheme
                                     strokeColor: mappingStrokeColor

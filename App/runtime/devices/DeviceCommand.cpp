@@ -5,34 +5,15 @@
 #include "devices/DeviceCommand_PC.h"
 #include "devices/DeviceCommand_Serial.h"
 
-#include <QJsonValue>
 #include <QVariant>
-#include <QtGlobal>
 
 namespace {
 
 const char *kProtocolKey = "protocol";
 const char *kNameKey = "name";
-const char *kStartTimeMsKey = "startTimeMs";
-const char *kDurationMsKey = "durationMs";
 const char *kParamsKey = "params";
 
 using TimelineControl::DeviceParamSpec;
-
-qint64 jsonInt64Value(const QJsonObject &json, const QString &key, qint64 fallback)
-{
-    const QJsonValue value = json.value(key);
-    if (value.isUndefined() || value.isNull())
-        return fallback;
-
-    if (value.isString()) {
-        bool ok = false;
-        const qint64 parsedValue = value.toString().toLongLong(&ok);
-        return ok ? parsedValue : fallback;
-    }
-
-    return value.toVariant().toLongLong();
-}
 
 QString normalizedProtocolName(const QString &protocol)
 {
@@ -138,8 +119,6 @@ QJsonObject DeviceCommand::toJson() const
     QJsonObject json;
     json.insert(QString::fromLatin1(kProtocolKey), protocol());
     json.insert(QString::fromLatin1(kNameKey), name());
-    json.insert(QString::fromLatin1(kStartTimeMsKey), QJsonValue::fromVariant(startTimeMs()));
-    json.insert(QString::fromLatin1(kDurationMsKey), QJsonValue::fromVariant(durationMs()));
     json.insert(QString::fromLatin1(kParamsKey), paramsToJson());
     return json;
 }
@@ -153,9 +132,6 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
     if (json.contains(QString::fromLatin1(kNameKey)))
         setName(json.value(QString::fromLatin1(kNameKey)).toString(name()));
 
-    setStartTimeMs(jsonInt64Value(json, QString::fromLatin1(kStartTimeMsKey), startTimeMs()));
-    setDurationMs(jsonInt64Value(json, QString::fromLatin1(kDurationMsKey), durationMs()));
-
     return loadParamsFromJson(json.value(QString::fromLatin1(kParamsKey)).toObject());
 }
 
@@ -164,48 +140,12 @@ QString DeviceCommand::validate() const
     if (name().trimmed().isEmpty())
         return tr("Command name is required");
 
-    if (startTimeMs() < 0)
-        return tr("Start time must not be negative");
-
-    if (durationMs() < 0)
-        return tr("Duration must not be negative");
-
     return validateParams();
 }
 
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
 {
     return createFromJson(toJson(), parent);
-}
-
-qint64 DeviceCommand::startTimeMs() const
-{
-    return m_startTimeMs;
-}
-
-void DeviceCommand::setStartTimeMs(qint64 startTimeMs)
-{
-    const qint64 normalizedStartTimeMs = qMax<qint64>(0, startTimeMs);
-    if (m_startTimeMs == normalizedStartTimeMs)
-        return;
-
-    m_startTimeMs = normalizedStartTimeMs;
-    emit startTimeMsChanged();
-}
-
-qint64 DeviceCommand::durationMs() const
-{
-    return m_durationMs;
-}
-
-void DeviceCommand::setDurationMs(qint64 durationMs)
-{
-    const qint64 normalizedDurationMs = qMax<qint64>(0, durationMs);
-    if (m_durationMs == normalizedDurationMs)
-        return;
-
-    m_durationMs = normalizedDurationMs;
-    emit durationMsChanged();
 }
 
 void DeviceCommand::addCreationInputField(DeviceParamSpec *field)
@@ -279,25 +219,8 @@ QList<DeviceParamSpec *> DeviceCommand::createCreationInputFields(QObject *paren
 
 QList<DeviceParamSpec *> DeviceCommand::createExecutionInputFields(QObject *parent) const
 {
-    auto *startTimeField = makeField(parent,
-                                    QStringLiteral("startTimeMs"),
-                                    tr("Start Time"),
-                                    DeviceParamSpec::IntType,
-                                    QVariant::fromValue(startTimeMs()),
-                                    DeviceParamSpec::TextEditor);
-    startTimeField->setMinimum(0);
-    startTimeField->setSuffix(QStringLiteral("ms"));
-
-    auto *durationField = makeField(parent,
-                                    QStringLiteral("durationMs"),
-                                    tr("Duration"),
-                                    DeviceParamSpec::IntType,
-                                    QVariant::fromValue(durationMs()),
-                                    DeviceParamSpec::TextEditor);
-    durationField->setMinimum(0);
-    durationField->setSuffix(QStringLiteral("ms"));
-
-    return QList<DeviceParamSpec *>{startTimeField, durationField};
+    Q_UNUSED(parent)
+    return {};
 }
 
 void DeviceCommand::ensureCreationInputFields() const

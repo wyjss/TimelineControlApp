@@ -1,14 +1,16 @@
 #pragma once
 
-#include <QAbstractListModel>
 #include <QList>
 #include <QObject>
+#include <QPointer>
 #include <QString>
-#include <QVariant>
-#include <QVariantList>
 #include <QVariantMap>
 
+#include "models/TypedListModel.h"
+
 namespace TimelineControl {
+
+class DeviceCommand;
 
 class TimelineCommand final : public QObject
 {
@@ -32,11 +34,11 @@ public:
     };
     Q_ENUM(State)
 
-    TimelineCommand(const QString &id,
-                    qint64 startTimeMs,
+    TimelineCommand(qint64 startTimeMs,
                     const QString &targetDeviceId,
                     const QString &commandName,
                     const QVariantMap &commandParams,
+                    DeviceCommand *targetCommand,
                     QObject *parent = nullptr);
 
     QString id() const;
@@ -51,6 +53,8 @@ public:
     QVariantMap commandParams() const;
     void setCommandParams(const QVariantMap &commandParams);
 
+    DeviceCommand *targetCommand() const;
+
     qint64 durationMs() const;
 
     State state() const;
@@ -62,6 +66,7 @@ public:
 signals:
     void startTimeMsChanged();
     void commandParamsChanged();
+    void targetCommandDestroyed();
     void stateChanged();
     void errorMessageChanged();
 
@@ -71,28 +76,19 @@ private:
     QString m_targetDeviceId;
     QString m_commandName;
     QVariantMap m_commandParams;
+    QPointer<DeviceCommand> m_targetCommand;
     State m_state = Idle;
     QString m_errorMessage;
 };
 
-class TimelineCommandModel final : public QAbstractListModel
+class TimelineCommandModel final : public TypedListModel<TimelineCommand *>
 {
     Q_OBJECT
     Q_PROPERTY(QString selectedCommandId READ selectedCommandId WRITE setSelectedCommandId NOTIFY selectedCommandIdChanged FINAL)
 
 public:
-    enum Role
-    {
-        CommandRole = Qt::UserRole + 1
-    };
-    Q_ENUM(Role)
-
     explicit TimelineCommandModel(QObject *parent = nullptr);
     ~TimelineCommandModel() override;
-
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    QHash<int, QByteArray> roleNames() const override;
 
     QList<TimelineCommand *> commands() const;
     TimelineCommand *commandAt(int row) const;
@@ -105,16 +101,27 @@ public:
     void appendCommand(TimelineCommand *command);
     void resetCommands(const QList<TimelineCommand *> &commands);
     void removeCommandAt(int row);
+    Q_INVOKABLE bool removeCommandById(const QString &commandId);
+    bool removeCommand(TimelineCommand *command);
     void clear();
+
+public slots:
+    void removeCommandsForDevice(const QString &deviceId);
 
 signals:
     void selectedCommandIdChanged();
+    void commandAboutToBeRemoved(TimelineControl::TimelineCommand *command);
+
+protected:
+    bool acceptsItem(TimelineCommand *command) const override;
+    void itemInserted(TimelineCommand *command, int row) override;
+    void itemRemoved(TimelineCommand *command, int row) override;
 
 private:
     void prepareCommand(TimelineCommand *command);
+    void disconnectCommand(TimelineCommand *command);
     void emitCommandChanged(TimelineCommand *command);
 
-    QList<TimelineCommand *> m_commands;
     QString m_selectedCommandId;
 };
 

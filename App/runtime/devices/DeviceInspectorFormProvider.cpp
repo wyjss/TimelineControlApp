@@ -409,8 +409,6 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandForm(const DeviceComm
     auto *summarySection = makeSection(form, tr("Command"));
     summarySection->appendField(makeSummaryField(QStringLiteral("name"), tr("Name"), command ? command->name() : QVariant()));
     summarySection->appendField(makeSummaryField(QStringLiteral("protocol"), tr("Protocol"), command ? command->protocol() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("startTimeMs"), tr("Start Time"), command ? command->startTimeMs() : 0, QStringLiteral("ms")));
-    summarySection->appendField(makeSummaryField(QStringLiteral("durationMs"), tr("Duration"), command ? command->durationMs() : 0, QStringLiteral("ms")));
 
     if (!command)
         return form;

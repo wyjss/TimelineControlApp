@@ -1,8 +1,17 @@
 #include "timeline/TimelineCommand.h"
 
+#include "devices/DeviceCommand.h"
+
+#include <QUuid>
+
 namespace {
 
 const char *kDurationMsKey = "durationMs";
+
+QString createTimelineCommandId()
+{
+    return QStringLiteral("timeline-command-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+}
 
 qint64 variantInt64(const QVariantMap &map, const QString &key, qint64 fallback)
 {
@@ -15,19 +24,26 @@ qint64 variantInt64(const QVariantMap &map, const QString &key, qint64 fallback)
 
 namespace TimelineControl {
 
-TimelineCommand::TimelineCommand(const QString &id,
-                                 qint64 startTimeMs,
+TimelineCommand::TimelineCommand(qint64 startTimeMs,
                                  const QString &targetDeviceId,
                                  const QString &commandName,
                                  const QVariantMap &commandParams,
+                                 DeviceCommand *targetCommand,
                                  QObject *parent)
     : QObject(parent)
-    , m_id(id.trimmed())
+    , m_id(createTimelineCommandId())
     , m_startTimeMs(qMax<qint64>(0, startTimeMs))
     , m_targetDeviceId(targetDeviceId.trimmed())
     , m_commandName(commandName)
     , m_commandParams(commandParams)
+    , m_targetCommand(targetCommand)
 {
+    if (targetCommand) {
+        connect(targetCommand, &QObject::destroyed, this, [this]() {
+            m_targetCommand.clear();
+            emit targetCommandDestroyed();
+        });
+    }
 }
 
 QString TimelineCommand::id() const
@@ -74,6 +90,11 @@ void TimelineCommand::setCommandParams(const QVariantMap &commandParams)
     emit commandParamsChanged();
 }
 
+DeviceCommand *TimelineCommand::targetCommand() const
+{
+    return m_targetCommand.data();
+}
+
 qint64 TimelineCommand::durationMs() const
 {
     return qMax<qint64>(0, variantInt64(m_commandParams, QString::fromLatin1(kDurationMsKey), 0));
@@ -108,53 +129,29 @@ void TimelineCommand::setErrorMessage(const QString &errorMessage)
 }
 
 TimelineCommandModel::TimelineCommandModel(QObject *parent)
-    : QAbstractListModel(parent)
+    : TypedListModel<TimelineCommand *>(QByteArrayLiteral("command"), parent)
 {
 }
 
 TimelineCommandModel::~TimelineCommandModel()
 {
-    qDeleteAll(m_commands);
-}
-
-int TimelineCommandModel::rowCount(const QModelIndex &parent) const
-{
-    return parent.isValid() ? 0 : m_commands.size();
-}
-
-QVariant TimelineCommandModel::data(const QModelIndex &index, int role) const
-{
-    if (!index.isValid() || index.row() < 0 || index.row() >= m_commands.size())
-        return {};
-
-    TimelineCommand *command = m_commands.at(index.row());
-    if (role == CommandRole || role == Qt::DisplayRole)
-        return QVariant::fromValue(command);
-
-    return {};
-}
-
-QHash<int, QByteArray> TimelineCommandModel::roleNames() const
-{
-    return {
-        {CommandRole, QByteArrayLiteral("command")}
-    };
+    qDeleteAll(items());
 }
 
 QList<TimelineCommand *> TimelineCommandModel::commands() const
 {
-    return m_commands;
+    return items();
 }
 
 TimelineCommand *TimelineCommandModel::commandAt(int row) const
 {
-    return row >= 0 && row < m_commands.size() ? m_commands.at(row) : nullptr;
+    return itemAt(row);
 }
 
 TimelineCommand *TimelineCommandModel::commandById(const QString &id) const
 {
     const QString normalizedId = id.trimmed();
-    for (TimelineCommand *command : m_commands) {
+    for (TimelineCommand *command : items()) {
         if (command->id() == normalizedId)
             return command;
     }
@@ -164,7 +161,7 @@ TimelineCommand *TimelineCommandModel::commandById(const QString &id) const
 
 int TimelineCommandModel::indexOfCommand(TimelineCommand *command) const
 {
-    return m_commands.indexOf(command);
+    return command ? indexOfItem(command) : -1;
 }
 
 QString TimelineCommandModel::selectedCommandId() const
@@ -184,54 +181,91 @@ void TimelineCommandModel::setSelectedCommandId(const QString &selectedCommandId
 
 void TimelineCommandModel::appendCommand(TimelineCommand *command)
 {
-    if (!command)
-        return;
-
-    const int row = m_commands.size();
-    beginInsertRows(QModelIndex(), row, row);
-    prepareCommand(command);
-    m_commands.append(command);
-    endInsertRows();
+    appendItem(command);
 }
 
 void TimelineCommandModel::resetCommands(const QList<TimelineCommand *> &commands)
 {
-    beginResetModel();
-    qDeleteAll(m_commands);
-    m_commands.clear();
-
-    for (TimelineCommand *command : commands) {
-        prepareCommand(command);
-        m_commands.append(command);
+    const QList<TimelineCommand *> oldCommands = items();
+    if (resetItems(commands)) {
+        qDeleteAll(oldCommands);
+        if (!m_selectedCommandId.isEmpty() && !commandById(m_selectedCommandId))
+            setSelectedCommandId(QString());
     }
-
-    endResetModel();
 }
 
 void TimelineCommandModel::removeCommandAt(int row)
 {
-    if (row < 0 || row >= m_commands.size())
+    TimelineCommand *command = commandAt(row);
+    if (!command)
         return;
 
-    beginRemoveRows(QModelIndex(), row, row);
-    TimelineCommand *command = m_commands.takeAt(row);
-    endRemoveRows();
-
-    if (command) {
-        command->setParent(nullptr);
+    const bool removesSelectedCommand = command->id() == m_selectedCommandId;
+    if (removeItemAt(row)) {
+        if (removesSelectedCommand) {
+            TimelineCommand *nextCommand = commandAt(qMin(row, rowCount() - 1));
+            setSelectedCommandId(nextCommand ? nextCommand->id() : QString());
+        }
         command->deleteLater();
     }
 }
 
+bool TimelineCommandModel::removeCommandById(const QString &commandId)
+{
+    TimelineCommand *command = commandById(commandId);
+    return removeCommand(command);
+}
+
+bool TimelineCommandModel::removeCommand(TimelineCommand *command)
+{
+    const int row = indexOfCommand(command);
+    if (row < 0)
+        return false;
+
+    removeCommandAt(row);
+    return true;
+}
+
 void TimelineCommandModel::clear()
 {
-    if (m_commands.isEmpty())
+    if (items().isEmpty())
         return;
 
-    beginResetModel();
-    qDeleteAll(m_commands);
-    m_commands.clear();
-    endResetModel();
+    const QList<TimelineCommand *> oldCommands = items();
+    clearItems();
+    setSelectedCommandId(QString());
+    qDeleteAll(oldCommands);
+}
+
+void TimelineCommandModel::removeCommandsForDevice(const QString &deviceId)
+{
+    const QString normalizedDeviceId = deviceId.trimmed();
+    if (normalizedDeviceId.isEmpty())
+        return;
+
+    for (int row = rowCount() - 1; row >= 0; --row) {
+        TimelineCommand *command = commandAt(row);
+        if (command && command->targetDeviceId() == normalizedDeviceId)
+            removeCommandAt(row);
+    }
+}
+
+bool TimelineCommandModel::acceptsItem(TimelineCommand *command) const
+{
+    return command != nullptr;
+}
+
+void TimelineCommandModel::itemInserted(TimelineCommand *command, int row)
+{
+    Q_UNUSED(row)
+    prepareCommand(command);
+}
+
+void TimelineCommandModel::itemRemoved(TimelineCommand *command, int row)
+{
+    Q_UNUSED(row)
+    emit commandAboutToBeRemoved(command);
+    disconnectCommand(command);
 }
 
 void TimelineCommandModel::prepareCommand(TimelineCommand *command)
@@ -239,6 +273,7 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
     if (!command)
         return;
 
+    disconnectCommand(command);
     command->setParent(this);
 
     const auto notifyChanged = [this, command]() {
@@ -247,8 +282,21 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
 
     connect(command, &TimelineCommand::startTimeMsChanged, this, notifyChanged);
     connect(command, &TimelineCommand::commandParamsChanged, this, notifyChanged);
+    connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {
+        removeCommand(command);
+    });
     connect(command, &TimelineCommand::stateChanged, this, notifyChanged);
     connect(command, &TimelineCommand::errorMessageChanged, this, notifyChanged);
+}
+
+void TimelineCommandModel::disconnectCommand(TimelineCommand *command)
+{
+    if (!command)
+        return;
+
+    disconnect(command, nullptr, this, nullptr);
+    if (command->parent() == this)
+        command->setParent(nullptr);
 }
 
 void TimelineCommandModel::emitCommandChanged(TimelineCommand *command)
@@ -257,8 +305,7 @@ void TimelineCommandModel::emitCommandChanged(TimelineCommand *command)
     if (row < 0)
         return;
 
-    const QModelIndex changedIndex = index(row, 0);
-    emit dataChanged(changedIndex, changedIndex);
+    notifyItemChanged(row);
 }
 
 } // namespace TimelineControl

@@ -19,9 +19,10 @@ set(CMAKE_AUTOUIC ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(AVRB_ROOT "D:/Program/RA/avrb" CACHE PATH "AVRB root directory")
-set(AVRB_RUNTIME_DIR "${AVRB_ROOT}/x64/Release" CACHE PATH "AVRB runtime directory")
-set(AVRB_FFMPEG_RUNTIME_DIR "D:/Program/third_party/ffmpeg/bin" CACHE PATH "AVRB FFmpeg runtime dependency directory")
+set(AVRB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/libavrb")
+set(AVRB_INCLUDE_DIR "${AVRB_ROOT}/include/avrb")
+set(AVRB_LIBRARY "${AVRB_ROOT}/lib/avrb.lib")
+set(AVRB_RUNTIME_DIR "${AVRB_ROOT}/dll")
 
 find_package(Qt5 5.14 REQUIRED COMPONENTS
     Core
@@ -68,8 +69,8 @@ add_executable(TimelineControlApp
     App/runtime/models/TypedListModel.h
     App/runtime/models/VariantListModel.cpp
     App/runtime/models/VariantListModel.h
-    App/runtime/projection/ProjectionInstructionManager.cpp
-    App/runtime/projection/ProjectionInstructionManager.h
+    App/runtime/projection/VideoProjectionPlanController.cpp
+    App/runtime/projection/VideoProjectionPlanController.h
     App/runtime/timeline/TimelineCommand.cpp
     App/runtime/timeline/TimelineCommand.h
     App/runtime/timeline/TimelineManager.cpp
@@ -86,12 +87,12 @@ add_executable(TimelineControlApp
 target_include_directories(TimelineControlApp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/App
     ${CMAKE_CURRENT_SOURCE_DIR}/App/runtime
-    ${AVRB_ROOT}/avrb
+    ${AVRB_INCLUDE_DIR}
 )
 
 target_link_libraries(TimelineControlApp PRIVATE
     UiCore
-    ${AVRB_RUNTIME_DIR}/avrb.lib
+    ${AVRB_LIBRARY}
     Qt5::Core
     Qt5::Gui
     Qt5::Qml
@@ -103,15 +104,6 @@ target_link_libraries(TimelineControlApp PRIVATE
 target_compile_options(TimelineControlApp PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/utf-8>
 )
-
-file(GLOB AVRB_FFMPEG_RUNTIME_DLLS "${AVRB_FFMPEG_RUNTIME_DIR}/*.dll")
-if(AVRB_FFMPEG_RUNTIME_DLLS)
-    add_custom_command(TARGET TimelineControlApp POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${AVRB_FFMPEG_RUNTIME_DLLS}
-            $<TARGET_FILE_DIR:TimelineControlApp>
-    )
-endif()
 
 file(GLOB AVRB_RUNTIME_DLLS "${AVRB_RUNTIME_DIR}/*.dll")
 if(AVRB_RUNTIME_DLLS)

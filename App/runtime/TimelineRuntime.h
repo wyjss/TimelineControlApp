@@ -8,7 +8,7 @@ class DeviceManager;
 class DeviceModel;
 class DeviceTemplateModel;
 class DeviceInspectorFormProvider;
-class ProjectionInstructionManager;
+class VideoProjectionPlanController;
 class TimelineCommandModel;
 class TimelineManager;
 
@@ -26,7 +26,7 @@ class TimelineRuntime final : public EarthUI::BaseRuntime
     Q_PROPERTY(TimelineControl::DeviceModel *deviceModel READ deviceModel CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::DeviceInspectorFormProvider *deviceInspectorFormProvider READ deviceInspectorFormProvider CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::ProjectionInstructionManager *projectionManager READ projectionManager CONSTANT FINAL)
+    Q_PROPERTY(TimelineControl::VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::TimelineCommandModel *timelineCommandModel READ timelineCommandModel CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::TimelineManager *timelineManager READ timelineManager CONSTANT FINAL)
 
@@ -38,7 +38,7 @@ public:
     DeviceModel *deviceModel() const;
     DeviceTemplateModel *deviceTemplateModel() const;
     DeviceInspectorFormProvider *deviceInspectorFormProvider() const;
-    ProjectionInstructionManager *projectionManager() const;
+    VideoProjectionPlanController *videoProjectionPlanController() const;
     TimelineCommandModel *timelineCommandModel() const;
     TimelineManager *timelineManager() const;
 
@@ -48,7 +48,7 @@ private:
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;
     DeviceManager *m_deviceManager = nullptr;
     DeviceInspectorFormProvider *m_deviceInspectorFormProvider = nullptr;
-    ProjectionInstructionManager *m_projectionManager = nullptr;
+    VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
     TimelineCommandModel *m_timelineCommandModel = nullptr;
     TimelineManager *m_timelineManager = nullptr;
 };

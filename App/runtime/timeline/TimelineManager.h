@@ -8,6 +8,8 @@
 
 namespace TimelineControl {
 
+class DeviceCommand;
+
 class TimelineManager final : public QObject
 {
     Q_OBJECT
@@ -26,20 +28,19 @@ public:
                                                              const QString &targetDeviceId,
                                                              const QString &commandName,
                                                              const QVariantMap &commandParams);
+    TimelineControl::TimelineCommand *addCommand(qint64 startTimeMs,
+                                                 const QString &targetDeviceId,
+                                                 const QString &commandName,
+                                                 const QVariantMap &commandParams,
+                                                 TimelineControl::DeviceCommand *targetCommand);
     Q_INVOKABLE void clearCommands();
-
-public slots:
-    void removeCommandsForDevice(const QString &deviceId);
 
 signals:
     void durationMsChanged();
     void lastCommandChanged();
 
 private:
-    QString nextCommandId();
-
     int m_durationMs = 1800000;
-    int m_nextCommandNumber = 1;
     TimelineCommandModel *m_commandModel = nullptr;
     TimelineCommand *m_lastCommand = nullptr;
 };

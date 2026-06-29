@@ -9,8 +9,68 @@
 
 namespace TimelineControl {
 
+class _SelectedListModel : public QAbstractListModel
+{
+    Q_OBJECT
+    Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged FINAL)
+
+public:
+    explicit _SelectedListModel(QObject *parent = nullptr)
+        : QAbstractListModel(parent)
+    {
+        connect(this, &QAbstractListModel::rowsInserted, this, [this](const QModelIndex &parent, int first, int last) {
+            if (parent.isValid() || m_selectedIndex < first)
+                return;
+            
+            setSelectedIndex(m_selectedIndex + last - first + 1, false);
+        });
+
+        connect(this, &QAbstractListModel::rowsRemoved, this, [this](const QModelIndex &parent, int first, int last) {
+            if (parent.isValid() || m_selectedIndex < 0)
+                return;
+
+            if (m_selectedIndex >= first && m_selectedIndex <= last) {
+                setSelectedIndex(-1);
+                return;
+            }
+
+            if (m_selectedIndex > last)
+                setSelectedIndex(m_selectedIndex - (last - first + 1), false);
+        });
+
+        connect(this, &QAbstractListModel::modelReset, this, [this]() {
+            setSelectedIndex(-1);
+        });
+    }
+
+    int selectedIndex() const
+    {
+        return m_selectedIndex;
+    }
+
+    void setSelectedIndex(int selectedIndex, bool itemChanged = true)
+    {
+        const int normalizedSelectedIndex = selectedIndex >= 0 && selectedIndex < rowCount() ? selectedIndex : -1;
+        if (m_selectedIndex == normalizedSelectedIndex)
+            return;
+
+        m_selectedIndex = normalizedSelectedIndex;
+        emit selectedIndexChanged();
+        if (itemChanged) {
+            emit selectedItemChanged();
+        }
+    }
+
+signals:
+    void selectedIndexChanged();
+    void selectedItemChanged();
+
+private:
+    int m_selectedIndex = -1;
+};
+
 template <typename T>
-class TypedListModel : public QAbstractListModel
+class TypedListModel : public _SelectedListModel
 {
 public:
     enum Role
@@ -24,9 +84,12 @@ public:
     }
 
     explicit TypedListModel(const QByteArray &roleName, QObject *parent = nullptr)
-        : QAbstractListModel(parent)
+        : _SelectedListModel(parent)
         , m_roleName(roleName)
     {
+//         connect(this, _SelectedListModel::selectedRowChanged, this, [this](int r) {
+//                 
+//                 });
     }
 
 public: // QAbstractListModel
@@ -114,12 +177,16 @@ protected:
             return false;
 
         const T oldItem = m_items.at(row);
+        const bool changesSelectedItem = row == selectedIndex() && oldItem != item;
         itemRemoved(oldItem, row);
         m_items[row] = item;
         itemInserted(item, row);
 
         const QModelIndex changedIndex = index(row, 0);
         emit dataChanged(changedIndex, changedIndex, {ValueRole});
+        if (changesSelectedItem) {
+            emit selectedItemChanged();
+        }
         return true;
     }
 
@@ -165,6 +232,7 @@ protected:
 private:
     QList<T> m_items;
     QByteArray m_roleName;
+    //T m_selectedItem;
 };
 
 } // namespace TimelineControl
