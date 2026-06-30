@@ -4,6 +4,9 @@
 
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceParamSpec.h"
+#include "devices/DeviceCommand.h"
+
+#include "devices/DeviceCommand_Http.h"
 
 namespace TimelineControl {
 
@@ -90,6 +93,8 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
 {
     QList<DeviceParamSpec *> specs;
     {
+        
+
         auto *spec = new DeviceParamSpec(DeviceKey::Ip,
                                          QStringLiteral("ip"),
                                          QString(),
@@ -114,6 +119,13 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
                                          DeviceParamSpec::SizeType,
                                          DeviceParamSpec::SizeEditor);
         specs.push_back(spec);
+    }
+
+	QList<DeviceCommand*> commands;
+    {
+        DeviceCommand_Http* cmd = new DeviceCommand_Http(nullptr);
+        cmd->setName("播放视频");
+        cmd->setMethod("");
     }
 
     return makeDeviceTemplate(tr("电脑"),
@@ -266,7 +278,7 @@ DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,
                                                         const QString &description,
                                                         const QList<DeviceParamSpec *> &configSpecs)
 {
-    return new DeviceTemplate(name, deviceType, protocol, description, configSpecs, this);
+    return new DeviceTemplate(name, deviceType, protocol, description, configSpecs, {}, this);
 }
 
 } // namespace TimelineControl

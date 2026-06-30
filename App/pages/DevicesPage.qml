@@ -27,9 +27,19 @@ Item {
 
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceTemplates: deviceTemplateModel ? deviceTemplateModel.templates : []
-    readonly property var deviceTypes: deviceManager ? deviceManager.deviceTypes : []
-    readonly property var manualDeviceTypes: deviceManager ? deviceManager.manualDeviceTypes : []
+    readonly property var deviceTypes: deviceModel ? deviceModel.deviceTypes : []
+    readonly property var manualDeviceTypes: buildManualDeviceTypes()
     readonly property var selectedDevice: deviceModel ? deviceModel.currentDevice : ({})
+    readonly property var selectedDeviceCommands: selectedDeviceInCurrentView
+        && selectedDevice
+        && selectedDevice.commands
+        ? selectedDevice.commands
+        : []
+    property int selectedCommandIndex: -1
+    readonly property var selectedCommand: selectedCommandIndex >= 0
+        && selectedCommandIndex < selectedDeviceCommands.length
+        ? selectedDeviceCommands[selectedCommandIndex]
+        : null
     property string deviceDisplayMode: "template"
     property string selectedTemplateName: deviceTemplates.length > 0 ? String(deviceTemplates[0].name) : ""
     property string selectedDeviceType: deviceTypes.length > 0 ? String(deviceTypes[0]) : ""
@@ -61,10 +71,23 @@ Item {
     }
 
     onSelectedTemplateNameChanged: syncTemplateInspector()
-    onDeviceInspectorFormProviderChanged: syncTemplateInspector()
+    onSelectedDeviceChanged: {
+        selectedCommandIndex = -1
+        ensureSelectedCommandForDevice()
+    }
+    onSelectedDeviceCommandsChanged: ensureSelectedCommandForDevice()
+    onSelectedDeviceInCurrentViewChanged: ensureSelectedCommandForDevice()
+    onSelectedCommandIndexChanged: syncCommandInspector()
+    onDeviceInspectorFormProviderChanged: {
+        syncTemplateInspector()
+        syncCommandInspector()
+    }
     onFilteredDevicesChanged: ensureSelectedDeviceForView()
 
-    Component.onCompleted: syncTemplateInspector()
+    Component.onCompleted: {
+        syncTemplateInspector()
+        ensureSelectedCommandForDevice()
+    }
 
     function objectValue(object, field, fallback) {
         if (!object || object[field] === undefined || object[field] === null)
@@ -92,6 +115,32 @@ Item {
         }
 
         return deviceTemplates.length > 0 ? deviceTemplates[0] : null
+    }
+
+    function buildManualDeviceTypes() {
+        var result = []
+        for (var index = 0; index < deviceTypes.length; ++index) {
+            var nextType = String(deviceTypes[index])
+            if (!isTemplateOnlyDeviceType(nextType))
+                result.push(nextType)
+        }
+        return result
+    }
+
+    function isTemplateOnlyDeviceType(deviceType) {
+        var normalizedDeviceType = String(deviceType || "").trim()
+        if (normalizedDeviceType.length === 0)
+            return false
+
+        for (var index = 0; index < deviceTemplates.length; ++index) {
+            var deviceTemplate = deviceTemplates[index]
+            if (!deviceTemplate || deviceTemplate.deviceType === undefined || deviceTemplate.deviceType === null)
+                continue
+
+            if (String(deviceTemplate.deviceType).trim() === normalizedDeviceType)
+                return true
+        }
+        return false
     }
 
     function buildFilteredDevices() {
@@ -127,6 +176,81 @@ Item {
     function syncTemplateInspector() {
         if (deviceInspectorFormProvider)
             deviceInspectorFormProvider.inspectTemplate(selectedTemplateName)
+    }
+
+    function ensureSelectedCommandForDevice() {
+        var nextIndex = selectedCommandIndex
+        if (!selectedDeviceInCurrentView || selectedDeviceCommands.length === 0)
+            nextIndex = -1
+        else if (nextIndex < 0 || nextIndex >= selectedDeviceCommands.length)
+            nextIndex = 0
+
+        if (selectedCommandIndex !== nextIndex)
+            selectedCommandIndex = nextIndex
+        else
+            syncCommandInspector()
+    }
+
+    function syncCommandInspector() {
+        if (deviceInspectorFormProvider)
+            deviceInspectorFormProvider.inspectCommand(selectedCommand)
+    }
+
+    function selectCommandIndex(commandIndex) {
+        selectedCommandIndex = commandIndex >= 0 && commandIndex < selectedDeviceCommands.length
+            ? commandIndex
+            : -1
+    }
+
+    function addCommandForSelectedDevice() {
+        if (!selectedDeviceInCurrentView
+            || !selectedDevice
+            || selectedDevice.createCommand === undefined) {
+            return
+        }
+
+        var nextIndex = selectedDeviceCommands.length
+        var command = selectedDevice.createCommand()
+        if (command)
+            selectedCommandIndex = nextIndex
+    }
+
+    function removeSelectedCommand() {
+        if (!selectedDeviceInCurrentView
+            || !selectedDevice
+            || selectedDevice.removeCommandAt === undefined
+            || selectedCommandIndex < 0) {
+            return
+        }
+
+        var removedIndex = selectedCommandIndex
+        if (selectedDevice.removeCommandAt(selectedCommandIndex)) {
+            var nextCount = Math.max(0, selectedDeviceCommands.length - 1)
+            selectedCommandIndex = nextCount > 0 ? Math.min(removedIndex, nextCount - 1) : -1
+        }
+    }
+
+    function commandName(command) {
+        if (!command)
+            return qsTr("Command")
+
+        var name = String(command.name || "").trim()
+        return name.length > 0 ? name : qsTr("Command")
+    }
+
+    function commandProtocol(command) {
+        return command && command.protocol !== undefined && command.protocol !== null
+            ? String(command.protocol)
+            : ""
+    }
+
+    function commandInputCount(command) {
+        if (!command)
+            return 0
+
+        var creationFields = command.creationInputFields || []
+        var executionFields = command.executionInputFields || []
+        return creationFields.length + executionFields.length
     }
 
     function selectDeviceType(deviceType) {
@@ -773,7 +897,7 @@ Item {
                         spacing: 6
 
                         Base.AppText {
-                            text: qsTr("Capabilities")
+                            text: qsTr("Description")
                             theme: root.pageTheme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -783,9 +907,144 @@ Item {
                             Layout.fillWidth: true
                             enabled: false
                             theme: root.pageTheme
-                            text: root.deviceValue("capabilities", "")
-                            onEditingFinished: root.updateField("capabilities", text)
+                            text: root.deviceValue("description", "")
+                            onEditingFinished: root.updateField("description", text)
                         }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: qsTr("Device Commands")
+                            theme: root.pageTheme
+                            styleRole: "sectionTitle"
+                            elide: Text.ElideRight
+                        }
+
+                        Base.AppButton {
+                            text: qsTr("Add")
+                            theme: root.pageTheme
+                            iconName: "workflow"
+                            enabled: root.selectedDeviceInCurrentView
+                                && root.selectedDevice
+                                && root.selectedDevice.createCommand !== undefined
+                            onClicked: root.addCommandForSelectedDevice()
+                        }
+                    }
+
+                    Base.AppText {
+                        Layout.fillWidth: true
+                        visible: root.selectedDeviceInCurrentView && root.selectedDeviceCommands.length === 0
+                        text: qsTr("No commands")
+                        theme: root.pageTheme
+                        styleRole: "bodyS"
+                        textTone: "secondary"
+                        elide: Text.ElideRight
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: root.selectedDeviceCommands.length > 0
+                        spacing: 8
+
+                        Repeater {
+                            model: root.selectedDeviceCommands
+
+                            delegate: Base.AppSurface {
+                                id: commandRow
+
+                                readonly property bool selected: index === root.selectedCommandIndex
+                                readonly property string protocolText: root.commandProtocol(modelData)
+                                readonly property int inputCount: root.commandInputCount(modelData)
+
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 58
+                                sizeToContent: false
+                                theme: root.pageTheme
+                                surfaceTone: selected ? "highlight" : "surface"
+                                active: selected
+                                hoveredState: commandMouse.containsMouse
+                                interactive: true
+                                strokeWidth: 1
+                                borderOverride: selected ? "transparent" : undefined
+
+                                MouseArea {
+                                    id: commandMouse
+
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.LeftButton
+                                    onClicked: root.selectCommandIndex(index)
+                                }
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 12
+                                    anchors.rightMargin: 12
+                                    spacing: 10
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: root.commandName(modelData)
+                                            theme: root.pageTheme
+                                            styleRole: "bodyM"
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: commandRow.protocolText.length > 0
+                                                ? commandRow.protocolText + " / " + qsTr("%1 fields").arg(commandRow.inputCount)
+                                                : qsTr("%1 fields").arg(commandRow.inputCount)
+                                            theme: root.pageTheme
+                                            styleRole: "bodyS"
+                                            textTone: "secondary"
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    Base.AppButton {
+                                        visible: commandRow.selected
+                                        text: qsTr("Remove")
+                                        theme: root.pageTheme
+                                        onClicked: root.removeSelectedCommand()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Base.AppText {
+                        Layout.fillWidth: true
+                        text: qsTr("Command Detail")
+                        theme: root.pageTheme
+                        styleRole: "sectionTitle"
+                    }
+
+                    Base.AppText {
+                        Layout.fillWidth: true
+                        visible: !root.selectedCommand
+                        text: qsTr("No command selected")
+                        theme: root.pageTheme
+                        styleRole: "bodyS"
+                        textTone: "secondary"
+                        elide: Text.ElideRight
+                    }
+
+                    Form.AppFormContent {
+                        Layout.fillWidth: true
+                        visible: root.selectedCommand !== null && root.deviceInspectorFormProvider !== null
+                        theme: root.pageTheme
+                        formData: root.deviceInspectorFormProvider
+                            ? root.deviceInspectorFormProvider.commandForm
+                            : ({})
                     }
                 }
             }

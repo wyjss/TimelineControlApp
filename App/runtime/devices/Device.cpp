@@ -1,5 +1,7 @@
 #include "devices/Device.h"
 
+#include "devices/DeviceCommand.h"
+
 #include <QMetaProperty>
 #include <QUuid>
 
@@ -115,18 +117,18 @@ void Device::setLastSeen(const QString &lastSeen)
     emit lastSeenChanged();
 }
 
-QString Device::capabilities() const
+QString Device::description() const
 {
-    return m_capabilities;
+    return m_description;
 }
 
-void Device::setCapabilities(const QString &capabilities)
+void Device::setDescription(const QString &description)
 {
-    if (m_capabilities == capabilities)
+    if (m_description == description)
         return;
 
-    m_capabilities = capabilities;
-    emit capabilitiesChanged();
+    m_description = description;
+    emit descriptionChanged();
 }
 
 QVariantMap Device::configValues() const
@@ -141,6 +143,75 @@ void Device::setConfigValues(const QVariantMap &configValues)
 
     m_configValues = configValues;
     emit configValuesChanged();
+}
+
+QVariantList Device::commands() const
+{
+    QVariantList result;
+    result.reserve(m_commands.size());
+    for (DeviceCommand *command : m_commands)
+        result.append(QVariant::fromValue(command));
+    return result;
+}
+
+int Device::commandCount() const
+{
+    return m_commands.size();
+}
+
+DeviceCommand *Device::commandAt(int index) const
+{
+    return index >= 0 && index < m_commands.size() ? m_commands.at(index) : nullptr;
+}
+
+DeviceCommand *Device::createCommand(const QString &protocol, const QString &name)
+{
+    const QString commandProtocol = protocol.trimmed().isEmpty() ? m_protocol : protocol.trimmed();
+    DeviceCommand *command = DeviceCommand::createForProtocol(commandProtocol, this);
+    if (!command)
+        return nullptr;
+
+    const QString trimmedName = name.trimmed();
+    if (!trimmedName.isEmpty())
+        command->setName(trimmedName);
+
+    appendCommand(command);
+    return command;
+}
+
+void Device::appendCommand(DeviceCommand *command)
+{
+    if (!command || m_commands.contains(command))
+        return;
+
+    if (command->parent() && command->parent() != this)
+        return;
+
+    if (command->parent() != this)
+        command->setParent(this);
+
+    m_commands.append(command);
+    emit commandsChanged();
+}
+
+bool Device::removeCommandAt(int index)
+{
+    DeviceCommand *command = commandAt(index);
+    if (!command)
+        return false;
+
+    m_commands.removeAt(index);
+    if (command->parent() == this)
+        command->setParent(nullptr);
+
+    emit commandsChanged();
+    command->deleteLater();
+    return true;
+}
+
+bool Device::removeCommand(DeviceCommand *command)
+{
+    return removeCommandAt(m_commands.indexOf(command));
 }
 
 bool Device::setFieldValue(const QString &field, const QVariant &value)

@@ -46,25 +46,6 @@ struct VideoProjectionMapping
     int screenRow = 0;
 };
 
-//! 由视频投影方案生成出的时间轴命令记录。
-struct VideoProjectionGeneratedCommand
-{
-    //! 生成记录自身 id。
-    QString id;
-    //! 已加入时间轴后的 TimelineCommand id。
-    QString timelineCommandId;
-    //! 时间轴执行起始时间，单位毫秒。
-    qint64 startTimeMs = 0;
-    //! 目标设备 id，通常是 PC 设备 id。
-    QString targetDeviceId;
-    //! 生成的命令名称。
-    QString commandName;
-    //! 生成命令时写入 TimelineCommand 的参数快照。
-    QVariantMap commandParams;
-    //! 生成时间。
-    QDateTime createdAt;
-};
-
 //! 一条完整的视频投影方案数据。
 struct VideoProjectionPlan
 {
@@ -82,8 +63,6 @@ struct VideoProjectionPlan
     QVector<VideoProjectionCapture> captures;
     //! 当前方案的所有输出映射。
     QVector<VideoProjectionMapping> mappings;
-    //! 当前方案已经生成出的时间轴命令记录。
-    QVector<VideoProjectionGeneratedCommand> generatedCommands;
     //! 创建时间。
     QDateTime createdAt;
     //! 最近更新时间。
@@ -100,8 +79,6 @@ class VideoProjectionPlanController final : public QObject
     Q_PROPERTY(QAbstractItemModel *captureModel READ captureModel CONSTANT FINAL)
     //! 当前方案的映射列表模型，modelData/value 为 QVariantMap。
     Q_PROPERTY(QAbstractItemModel *mappingModel READ mappingModel CONSTANT FINAL)
-    //! 当前方案已生成命令列表模型，modelData/value 为 QVariantMap。
-    Q_PROPERTY(QAbstractItemModel *generatedCommandModel READ generatedCommandModel CONSTANT FINAL)
     //! 当前选中的方案索引。
     Q_PROPERTY(int currentPlanIndex READ currentPlanIndex WRITE setCurrentPlanIndex NOTIFY currentPlanChanged FINAL)
 
@@ -114,8 +91,6 @@ public:
     QAbstractItemModel *captureModel() const;
     //! 返回当前方案的映射列表模型。
     QAbstractItemModel *mappingModel() const;
-    //! 返回当前方案已生成命令的列表模型。
-    QAbstractItemModel *generatedCommandModel() const;
 
     //! 当前选中的方案索引，-1 表示未选中。
     int currentPlanIndex() const;
@@ -179,17 +154,8 @@ public:
     //! 修改映射输出矩形，坐标为目标 PC 总屏幕像素坐标。
     Q_INVOKABLE void setMappingRect(int index, int x, int y, int width, int height);
 
-    //! 记录一条已经生成出的时间轴命令，返回记录索引。
-    Q_INVOKABLE int addGeneratedCommand(const QString &timelineCommandId,
-                                        qint64 startTimeMs,
-                                        const QString &targetDeviceId,
-                                        const QString &commandName,
-                                        const QVariantMap &commandParams);
-    //! 删除指定生成命令记录。
-    Q_INVOKABLE void removeGeneratedCommand(int index);
-    //! 返回指定生成命令记录的 QVariantMap 数据。
-    Q_INVOKABLE QVariantMap generatedCommandAt(int index) const;
-
+private slots:
+   // void removeCommand();
 signals:
     //! 当前方案索引变化时发出。
     void currentPlanChanged();
@@ -199,16 +165,13 @@ private:
     QVariantList planValues() const;
     QVariantList captureValues() const;
     QVariantList mappingValues() const;
-    QVariantList generatedCommandValues() const;
     QVariantMap planToMap(const VideoProjectionPlan &plan, int index) const;
     QVariantMap captureToMap(const VideoProjectionCapture &capture, int index) const;
     QVariantMap mappingToMap(const VideoProjectionMapping &mapping, int index) const;
-    QVariantMap generatedCommandToMap(const VideoProjectionGeneratedCommand &command, int index) const;
     QVariantMap rectToMap(const QRect &rect) const;
     QVariantMap sizeToMap(const QSize &size) const;
     QRect boundedRect(int x, int y, int width, int height, const QSize &bounds) const;
     QString defaultCaptureName(int index) const;
-    QString makeGeneratedCommandId() const;
     void touchCurrentPlan();
     void refreshTargetPcIds(VideoProjectionPlan &plan);
     void refreshPlanModel();
@@ -219,7 +182,6 @@ private:
     VariantListModel m_planModel;
     VariantListModel m_captureModel;
     VariantListModel m_mappingModel;
-    VariantListModel m_generatedCommandModel;
     int m_currentPlanIndex = -1;
 };
 
@@ -227,6 +189,5 @@ private:
 
 Q_DECLARE_METATYPE(TimelineControl::VideoProjectionCapture)
 Q_DECLARE_METATYPE(TimelineControl::VideoProjectionMapping)
-Q_DECLARE_METATYPE(TimelineControl::VideoProjectionGeneratedCommand)
 Q_DECLARE_METATYPE(TimelineControl::VideoProjectionPlan)
 Q_DECLARE_METATYPE(TimelineControl::VideoProjectionPlanController *)

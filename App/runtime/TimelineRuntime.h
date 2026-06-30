@@ -10,7 +10,6 @@ class DeviceTemplateModel;
 class DeviceInspectorFormProvider;
 class VideoProjectionPlanController;
 class TimelineCommandModel;
-class TimelineManager;
 
 } // namespace TimelineControl
 
@@ -28,7 +27,6 @@ class TimelineRuntime final : public EarthUI::BaseRuntime
     Q_PROPERTY(TimelineControl::DeviceInspectorFormProvider *deviceInspectorFormProvider READ deviceInspectorFormProvider CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::TimelineCommandModel *timelineCommandModel READ timelineCommandModel CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::TimelineManager *timelineManager READ timelineManager CONSTANT FINAL)
 
 public:
     explicit TimelineRuntime(QObject *parent = nullptr);
@@ -40,7 +38,6 @@ public:
     DeviceInspectorFormProvider *deviceInspectorFormProvider() const;
     VideoProjectionPlanController *videoProjectionPlanController() const;
     TimelineCommandModel *timelineCommandModel() const;
-    TimelineManager *timelineManager() const;
 
 private:
     TaskManager *m_taskManager = nullptr;
@@ -50,7 +47,6 @@ private:
     DeviceInspectorFormProvider *m_deviceInspectorFormProvider = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
     TimelineCommandModel *m_timelineCommandModel = nullptr;
-    TimelineManager *m_timelineManager = nullptr;
 };
 
 } // namespace TimelineControl

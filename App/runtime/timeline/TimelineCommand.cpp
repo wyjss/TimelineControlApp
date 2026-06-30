@@ -179,6 +179,49 @@ void TimelineCommandModel::setSelectedCommandId(const QString &selectedCommandId
     emit selectedCommandIdChanged();
 }
 
+TimelineCommand *TimelineCommandModel::lastCommand() const
+{
+    return m_lastCommand;
+}
+
+TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
+                                                  const QString &targetDeviceId,
+                                                  const QString &commandName,
+                                                  const QVariantMap &commandParams)
+{
+    return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, nullptr);
+}
+
+TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
+                                                  const QString &targetDeviceId,
+                                                  const QString &commandName,
+                                                  const QVariantMap &commandParams,
+                                                  DeviceCommand *targetCommand)
+{
+    auto *command = new TimelineCommand(startTimeMs,
+                                        targetDeviceId,
+                                        commandName,
+                                        commandParams,
+                                        targetCommand);
+    if (!appendItem(command)) {
+        command->deleteLater();
+        return nullptr;
+    }
+
+    setLastCommand(command);
+    return command;
+}
+
+void TimelineCommandModel::clearCommands()
+{
+    if (items().isEmpty()) {
+        setLastCommand(nullptr);
+        return;
+    }
+
+    clear();
+}
+
 void TimelineCommandModel::appendCommand(TimelineCommand *command)
 {
     appendItem(command);
@@ -265,6 +308,8 @@ void TimelineCommandModel::itemRemoved(TimelineCommand *command, int row)
 {
     Q_UNUSED(row)
     emit commandAboutToBeRemoved(command);
+    if (m_lastCommand == command)
+        setLastCommand(nullptr);
     disconnectCommand(command);
 }
 
@@ -306,6 +351,15 @@ void TimelineCommandModel::emitCommandChanged(TimelineCommand *command)
         return;
 
     notifyItemChanged(row);
+}
+
+void TimelineCommandModel::setLastCommand(TimelineCommand *command)
+{
+    if (m_lastCommand == command)
+        return;
+
+    m_lastCommand = command;
+    emit lastCommandChanged();
 }
 
 } // namespace TimelineControl

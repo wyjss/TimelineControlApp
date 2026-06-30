@@ -15,7 +15,6 @@
 #include "devices/DeviceTemplateModel.h"
 #include "projection/VideoProjectionPlanController.h"
 #include "timeline/TimelineCommand.h"
-#include "timeline/TimelineManager.h"
 #include "runtime/task/TaskManager.h"
 #include "runtime/form/AppForm.h"
 
@@ -32,7 +31,6 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
                                                                     this))
     , m_videoProjectionPlanController(new VideoProjectionPlanController(this))
     , m_timelineCommandModel(new TimelineCommandModel(this))
-    , m_timelineManager(new TimelineManager(m_timelineCommandModel, this))
 {
     qRegisterMetaType<TimelineControl::DeviceCommand *>("TimelineControl::DeviceCommand*");
     qRegisterMetaType<TimelineControl::DeviceCommand_Dmx512 *>("TimelineControl::DeviceCommand_Dmx512*");
@@ -48,7 +46,6 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<TimelineControl::DeviceModel *>("TimelineControl::DeviceModel*");
     qRegisterMetaType<TimelineControl::DeviceTemplateModel *>("TimelineControl::DeviceTemplateModel*");
     qRegisterMetaType<TimelineControl::VideoProjectionPlanController *>("TimelineControl::VideoProjectionPlanController*");
-    qRegisterMetaType<TimelineControl::TimelineManager *>("TimelineControl::TimelineManager*");
     qRegisterMetaType<TimelineControl::TimelineCommand *>("TimelineControl::TimelineCommand*");
     qRegisterMetaType<TimelineControl::TimelineCommandModel *>("TimelineControl::TimelineCommandModel*");
 
@@ -89,11 +86,6 @@ VideoProjectionPlanController *TimelineRuntime::videoProjectionPlanController() 
 TimelineCommandModel *TimelineRuntime::timelineCommandModel() const
 {
     return m_timelineCommandModel;
-}
-
-TimelineManager *TimelineRuntime::timelineManager() const
-{
-    return m_timelineManager;
 }
 
 } // namespace TimelineControl

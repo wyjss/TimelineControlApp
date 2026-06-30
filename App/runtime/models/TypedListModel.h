@@ -18,29 +18,6 @@ public:
     explicit _SelectedListModel(QObject *parent = nullptr)
         : QAbstractListModel(parent)
     {
-        connect(this, &QAbstractListModel::rowsInserted, this, [this](const QModelIndex &parent, int first, int last) {
-            if (parent.isValid() || m_selectedIndex < first)
-                return;
-            
-            setSelectedIndex(m_selectedIndex + last - first + 1, false);
-        });
-
-        connect(this, &QAbstractListModel::rowsRemoved, this, [this](const QModelIndex &parent, int first, int last) {
-            if (parent.isValid() || m_selectedIndex < 0)
-                return;
-
-            if (m_selectedIndex >= first && m_selectedIndex <= last) {
-                setSelectedIndex(-1);
-                return;
-            }
-
-            if (m_selectedIndex > last)
-                setSelectedIndex(m_selectedIndex - (last - first + 1), false);
-        });
-
-        connect(this, &QAbstractListModel::modelReset, this, [this]() {
-            setSelectedIndex(-1);
-        });
     }
 
     int selectedIndex() const
@@ -65,6 +42,65 @@ signals:
     void selectedIndexChanged();
     void selectedItemChanged();
 
+protected:
+    void adjustSelectedIndexForRowsInserted(int first, int last)
+    {
+        if (m_selectedIndex < first)
+            return;
+
+        const int insertedCount = last - first + 1;
+        if (insertedCount > 0)
+            setSelectedIndex(m_selectedIndex + insertedCount, false);
+    }
+
+    void adjustSelectedIndexForRowsRemoved(int first, int last)
+    {
+        if (m_selectedIndex < 0)
+            return;
+
+        if (m_selectedIndex >= first && m_selectedIndex <= last) {
+            setSelectedIndex(-1);
+            return;
+        }
+
+        const int removedCount = last - first + 1;
+        if (removedCount > 0 && m_selectedIndex > last)
+            setSelectedIndex(m_selectedIndex - removedCount, false);
+    }
+
+    void adjustSelectedIndexForRowsMoved(int first, int last, int destinationRow)
+    {
+        if (m_selectedIndex < 0)
+            return;
+
+        const int movedCount = last - first + 1;
+        if (movedCount <= 0)
+            return;
+
+        if (m_selectedIndex >= first && m_selectedIndex <= last) {
+            const int offset = m_selectedIndex - first;
+            const int movedFirst = destinationRow < first
+                ? destinationRow
+                : destinationRow - movedCount;
+            setSelectedIndex(movedFirst + offset, false);
+            return;
+        }
+
+        if (destinationRow < first) {
+            if (m_selectedIndex >= destinationRow && m_selectedIndex < first)
+                setSelectedIndex(m_selectedIndex + movedCount, false);
+            return;
+        }
+
+        if (destinationRow > last + 1 && m_selectedIndex > last && m_selectedIndex < destinationRow)
+            setSelectedIndex(m_selectedIndex - movedCount, false);
+    }
+
+    void resetSelectedIndex()
+    {
+        setSelectedIndex(-1);
+    }
+
 private:
     int m_selectedIndex = -1;
 };
@@ -79,7 +115,7 @@ public:
     };
 
     explicit TypedListModel(QObject *parent = nullptr)
-        : TypedListModel(QByteArrayLiteral("value"), parent)
+        : TypedListModel(QByteArrayLiteral("item"), parent)
     {
     }
 
@@ -158,15 +194,16 @@ protected:
                 return false;
         }
 
+        beginResetModel();
         for (int row = 0; row < m_items.size(); ++row)
             itemRemoved(m_items.at(row), row);
 
-        beginResetModel();
         m_items = items;
-        endResetModel();
 
         for (int row = 0; row < m_items.size(); ++row)
             itemInserted(m_items.at(row), row);
+        resetSelectedIndex();
+        endResetModel();
 
         return true;
     }
@@ -177,6 +214,9 @@ protected:
             return false;
 
         const T oldItem = m_items.at(row);
+        if (oldItem == item)
+            return true;
+
         const bool changesSelectedItem = row == selectedIndex() && oldItem != item;
         itemRemoved(oldItem, row);
         m_items[row] = item;
@@ -190,16 +230,39 @@ protected:
         return true;
     }
 
-    bool appendItem(const T &item)
+    bool insertItem(int row, const T &item)
     {
-        if (!acceptsItem(item))
+        if (row < 0 || row > m_items.size() || !acceptsItem(item))
             return false;
 
-        const int row = m_items.size();
         beginInsertRows(QModelIndex(), row, row);
-        m_items.append(item);
+        m_items.insert(row, item);
         itemInserted(item, row);
+        adjustSelectedIndexForRowsInserted(row, row);
         endInsertRows();
+        return true;
+    }
+
+    bool appendItem(const T &item)
+    {
+        return insertItem(m_items.size(), item);
+    }
+
+    bool moveItem(int fromRow, int toRow)
+    {
+        if (fromRow < 0 || fromRow >= m_items.size() || toRow < 0 || toRow >= m_items.size())
+            return false;
+
+        if (fromRow == toRow)
+            return true;
+
+        const int destinationRow = fromRow < toRow ? toRow + 1 : toRow;
+        if (!beginMoveRows(QModelIndex(), fromRow, fromRow, QModelIndex(), destinationRow))
+            return false;
+
+        m_items.move(fromRow, toRow);
+        adjustSelectedIndexForRowsMoved(fromRow, fromRow, destinationRow);
+        endMoveRows();
         return true;
     }
 
@@ -208,9 +271,11 @@ protected:
         if (row < 0 || row >= m_items.size())
             return false;
 
-        itemRemoved(m_items.at(row), row);
+        const T item = m_items.at(row);
         beginRemoveRows(QModelIndex(), row, row);
+        itemRemoved(item, row);
         m_items.removeAt(row);
+        adjustSelectedIndexForRowsRemoved(row, row);
         endRemoveRows();
         return true;
     }

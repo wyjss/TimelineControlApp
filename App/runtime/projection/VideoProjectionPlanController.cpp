@@ -1,7 +1,5 @@
 #include "projection/VideoProjectionPlanController.h"
 
-#include <QUuid>
-
 namespace TimelineControl {
 
 VideoProjectionPlanController::VideoProjectionPlanController(QObject *parent)
@@ -9,7 +7,6 @@ VideoProjectionPlanController::VideoProjectionPlanController(QObject *parent)
     , m_planModel(this)
     , m_captureModel(this)
     , m_mappingModel(this)
-    , m_generatedCommandModel(this)
 {
     createPlan();
 }
@@ -27,11 +24,6 @@ QAbstractItemModel *VideoProjectionPlanController::captureModel() const
 QAbstractItemModel *VideoProjectionPlanController::mappingModel() const
 {
     return const_cast<VariantListModel *>(&m_mappingModel);
-}
-
-QAbstractItemModel *VideoProjectionPlanController::generatedCommandModel() const
-{
-    return const_cast<VariantListModel *>(&m_generatedCommandModel);
 }
 
 QVariantList VideoProjectionPlanController::planValues() const
@@ -66,19 +58,6 @@ QVariantList VideoProjectionPlanController::mappingValues() const
     result.reserve(plan->mappings.size());
     for (int index = 0; index < plan->mappings.size(); ++index)
         result.append(mappingToMap(plan->mappings.at(index), index));
-    return result;
-}
-
-QVariantList VideoProjectionPlanController::generatedCommandValues() const
-{
-    QVariantList result;
-    const VideoProjectionPlan *plan = currentPlan();
-    if (!plan)
-        return result;
-
-    result.reserve(plan->generatedCommands.size());
-    for (int index = 0; index < plan->generatedCommands.size(); ++index)
-        result.append(generatedCommandToMap(plan->generatedCommands.at(index), index));
     return result;
 }
 
@@ -423,56 +402,6 @@ void VideoProjectionPlanController::setMappingRect(int index, int x, int y, int 
     refreshCurrentPlanRow();
 }
 
-int VideoProjectionPlanController::addGeneratedCommand(const QString &timelineCommandId,
-                                                       qint64 startTimeMs,
-                                                       const QString &targetDeviceId,
-                                                       const QString &commandName,
-                                                       const QVariantMap &commandParams)
-{
-    VideoProjectionPlan *plan = currentPlan();
-    const QString trimmedTargetDeviceId = targetDeviceId.trimmed();
-    const QString trimmedCommandName = commandName.trimmed();
-    if (!plan || trimmedTargetDeviceId.isEmpty() || trimmedCommandName.isEmpty())
-        return -1;
-
-    VideoProjectionGeneratedCommand command;
-    command.id = makeGeneratedCommandId();
-    command.timelineCommandId = timelineCommandId.trimmed();
-    command.startTimeMs = qMax<qint64>(0, startTimeMs);
-    command.targetDeviceId = trimmedTargetDeviceId;
-    command.commandName = trimmedCommandName;
-    command.commandParams = commandParams;
-    command.createdAt = QDateTime::currentDateTimeUtc();
-
-    const int index = plan->generatedCommands.size();
-    plan->generatedCommands.append(command);
-    touchCurrentPlan();
-    m_generatedCommandModel.appendValue(generatedCommandToMap(command, index));
-    refreshCurrentPlanRow();
-    return index;
-}
-
-void VideoProjectionPlanController::removeGeneratedCommand(int index)
-{
-    VideoProjectionPlan *plan = currentPlan();
-    if (!plan || index < 0 || index >= plan->generatedCommands.size())
-        return;
-
-    plan->generatedCommands.removeAt(index);
-    touchCurrentPlan();
-    m_generatedCommandModel.resetValues(generatedCommandValues());
-    refreshCurrentPlanRow();
-}
-
-QVariantMap VideoProjectionPlanController::generatedCommandAt(int index) const
-{
-    const VideoProjectionPlan *plan = currentPlan();
-    if (!plan || index < 0 || index >= plan->generatedCommands.size())
-        return {};
-
-    return generatedCommandToMap(plan->generatedCommands.at(index), index);
-}
-
 QString VideoProjectionPlanController::defaultPlanName() const
 {
     return tr("Video Projection Plan %1").arg(m_plans.size() + 1);
@@ -490,11 +419,6 @@ QVariantMap VideoProjectionPlanController::planToMap(const VideoProjectionPlan &
     for (int mappingIndex = 0; mappingIndex < plan.mappings.size(); ++mappingIndex)
         mappings.append(mappingToMap(plan.mappings.at(mappingIndex), mappingIndex));
 
-    QVariantList generatedCommands;
-    generatedCommands.reserve(plan.generatedCommands.size());
-    for (int commandIndex = 0; commandIndex < plan.generatedCommands.size(); ++commandIndex)
-        generatedCommands.append(generatedCommandToMap(plan.generatedCommands.at(commandIndex), commandIndex));
-
     return QVariantMap{
         {QStringLiteral("index"), index},
         {QStringLiteral("selected"), index == m_currentPlanIndex},
@@ -507,7 +431,6 @@ QVariantMap VideoProjectionPlanController::planToMap(const VideoProjectionPlan &
         {QStringLiteral("videoHeight"), plan.videoSize.height()},
         {QStringLiteral("captures"), captures},
         {QStringLiteral("mappings"), mappings},
-        {QStringLiteral("generatedCommands"), generatedCommands},
         {QStringLiteral("createdAt"), plan.createdAt.toString(Qt::ISODate)},
         {QStringLiteral("updatedAt"), plan.updatedAt.toString(Qt::ISODate)}
     };
@@ -545,21 +468,6 @@ QVariantMap VideoProjectionPlanController::mappingToMap(const VideoProjectionMap
     };
 }
 
-QVariantMap VideoProjectionPlanController::generatedCommandToMap(const VideoProjectionGeneratedCommand &command,
-                                                                  int index) const
-{
-    return QVariantMap{
-        {QStringLiteral("index"), index},
-        {QStringLiteral("id"), command.id},
-        {QStringLiteral("timelineCommandId"), command.timelineCommandId},
-        {QStringLiteral("startTimeMs"), command.startTimeMs},
-        {QStringLiteral("targetDeviceId"), command.targetDeviceId},
-        {QStringLiteral("commandName"), command.commandName},
-        {QStringLiteral("commandParams"), command.commandParams},
-        {QStringLiteral("createdAt"), command.createdAt.toString(Qt::ISODate)}
-    };
-}
-
 QVariantMap VideoProjectionPlanController::rectToMap(const QRect &rect) const
 {
     return QVariantMap{
@@ -592,12 +500,6 @@ QRect VideoProjectionPlanController::boundedRect(int x, int y, int width, int he
 QString VideoProjectionPlanController::defaultCaptureName(int index) const
 {
     return tr("Capture %1").arg(index + 1);
-}
-
-QString VideoProjectionPlanController::makeGeneratedCommandId() const
-{
-    return QStringLiteral("video-projection-command-%1")
-        .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
 }
 
 void VideoProjectionPlanController::touchCurrentPlan()
@@ -637,7 +539,6 @@ void VideoProjectionPlanController::refreshCurrentPlanModels()
 {
     m_captureModel.resetValues(captureValues());
     m_mappingModel.resetValues(mappingValues());
-    m_generatedCommandModel.resetValues(generatedCommandValues());
 }
 
 } // namespace TimelineControl

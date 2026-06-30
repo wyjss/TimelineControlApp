@@ -4,6 +4,7 @@
 #include "models/TypedListModel.h"
 
 #include <QString>
+#include <QStringList>
 #include <QVariantList>
 
 namespace TimelineControl {
@@ -14,6 +15,7 @@ class DeviceModel final : public TypedListModel<Device *>
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged FINAL)
     Q_PROPERTY(QString currentDeviceId READ currentDeviceId WRITE setCurrentDeviceId NOTIFY currentDeviceIdChanged FINAL)
     Q_PROPERTY(TimelineControl::Device *currentDevice READ currentDevice NOTIFY currentDeviceChanged FINAL)
+    Q_PROPERTY(QStringList deviceTypes READ deviceTypes NOTIFY deviceTypesChanged FINAL)
 
 public:
     explicit DeviceModel(QObject *parent = nullptr);
@@ -27,7 +29,13 @@ public:
     Device *deviceById(const QString &deviceId) const;
     int indexOfDevice(Device *device) const;
     int indexOfDeviceId(const QString &deviceId) const;
+    bool deviceMatchesDeviceType(const Device *device, const QString &deviceType) const;
+    bool hasDeviceName(const QString &deviceType, const QString &deviceName) const;
 
+    QStringList deviceTypes(bool manual = false) const;
+
+    Q_INVOKABLE QVariantList devicesForDeviceType(const QString &deviceType) const;
+    Q_INVOKABLE QVariantList deviceOptionsForDeviceType(const QString &deviceType) const;
     Q_INVOKABLE void selectDevice(const QString &deviceId);
     Q_INVOKABLE bool removeDeviceAt(int row);
     Q_INVOKABLE bool removeDevice(const QString &deviceId);
@@ -41,6 +49,7 @@ signals:
     void deviceAdded(TimelineControl::Device *device);
     void deviceAboutToBeRemoved(TimelineControl::Device *device, const QString &deviceId);
     void deviceRemoved(const QString &deviceId);
+    void deviceTypesChanged();
     void currentDeviceIdChanged();
     void currentDeviceChanged();
 

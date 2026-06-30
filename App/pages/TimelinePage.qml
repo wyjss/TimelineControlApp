@@ -17,11 +17,11 @@ Item {
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
     property var appRuntime: typeof app !== "undefined" ? app : null
-    property var timelineManager: appRuntime && appRuntime.timelineManager ? appRuntime.timelineManager : null
     property var timelineCommandModel: appRuntime && appRuntime.timelineCommandModel ? appRuntime.timelineCommandModel : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
-    readonly property int timelineDurationMs: timelineManager ? timelineManager.durationMs : 1800000
+    readonly property int preStartTimelineDurationMs: 24 * 60 * 60 * 1000
+    readonly property int timelineDurationMs: preStartTimelineDurationMs
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var availableCommands: buildAvailableCommands()
     readonly property var selectedCommand: commandForId(selectedCommandId)
@@ -201,7 +201,7 @@ Item {
     }
 
     function addSelectedCommandAtCurrentTime() {
-        if (!timelineManager || !selectedTimelineDevice || !selectedCommand) {
+        if (!timelineCommandModel || !selectedTimelineDevice || !selectedCommand) {
             executionStatusText = qsTr("Select a device and command first")
             return
         }
@@ -217,10 +217,10 @@ Item {
         commandParams.targetDeviceAddress = deviceAddress(selectedTimelineDevice)
 
         var startTimeMs = Math.max(0, Math.round(timelineCurrentTimeMs))
-        timelineManager.addCommand(startTimeMs,
-                                   String(selectedTimelineDevice.id || ""),
-                                   String(selectedCommand.name || qsTr("Command")),
-                                   commandParams)
+        timelineCommandModel.addCommand(startTimeMs,
+                                        String(selectedTimelineDevice.id || ""),
+                                        String(selectedCommand.name || qsTr("Command")),
+                                        commandParams)
         executionStatusText = qsTr("Added %1 at %2 ms").arg(String(selectedCommand.name || qsTr("Command"))).arg(startTimeMs)
     }
 
@@ -615,7 +615,7 @@ Item {
                         text: qsTr("Add Selected")
                         theme: root.pageTheme
                         iconName: "workflow"
-                        enabled: root.timelineManager && root.selectedTimelineDevice && root.selectedCommand
+                        enabled: root.timelineCommandModel && root.selectedTimelineDevice && root.selectedCommand
                         onClicked: root.addSelectedCommandAtCurrentTime()
                     }
 

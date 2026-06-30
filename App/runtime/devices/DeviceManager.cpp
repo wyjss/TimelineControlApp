@@ -14,14 +14,6 @@
 
 namespace {
 
-QVariantMap option(const QString &label, const QString &value)
-{
-    return QVariantMap{
-        {QStringLiteral("label"), label},
-        {QStringLiteral("value"), value}
-    };
-}
-
 bool isTemplateOnlyDeviceType(const QString &deviceType)
 {
     const QString normalizedDeviceType = deviceType.trimmed();
@@ -43,14 +35,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
     qRegisterMetaType<TimelineControl::Device *>("TimelineControl::Device*");
     qRegisterMetaType<TimelineControl::DeviceParamSpec *>("TimelineControl::DeviceParamSpec*");
     qRegisterMetaType<TimelineControl::DeviceTemplate *>("TimelineControl::DeviceTemplate*");
-
-	m_deviceTypes = QStringList{
-		DeviceType::PC,
-	   DeviceType::Dmx512Adapter,
-	   DeviceType::Projector,
-	   DeviceType::Light,
-	   DeviceType::Sound
-	};
 
     m_deviceTemplateModel->loadDefaultTemplates();
 
@@ -146,38 +130,9 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
 
 }
 
-QStringList DeviceManager::deviceTypes() const
-{
-    return m_deviceTypes;
-}
-
-QStringList DeviceManager::manualDeviceTypes() const
-{
-    QStringList result;
-    for (const QString &deviceType : m_deviceTypes) {
-        if (!isTemplateOnlyDeviceType(deviceType))
-            result.append(deviceType);
-    }
-
-    return result;
-}
-
 void DeviceManager::createDevice()
 {
     createDeviceFromTemplate(tr("Dmx512协议"), QVariantMap(), QString(), DeviceType::Light);
-}
-
-QVariantList DeviceManager::devicesForDeviceType(const QString &deviceType) const
-{
-    QVariantList result;
-
-    const QList<Device *> currentDevices = m_deviceModel ? m_deviceModel->items() : QList<Device *>();
-    for (Device *candidate : currentDevices) {
-        if (deviceMatchesDeviceType(candidate, deviceType))
-            result.append(QVariant::fromValue(candidate));
-    }
-
-    return result;
 }
 
 QString DeviceManager::validateDeviceCreation(const QString &deviceType,
@@ -204,17 +159,8 @@ QString DeviceManager::validateDeviceCreation(const QString &deviceType,
         }
     }
 
-    const QList<Device *> currentDevices = m_deviceModel ? m_deviceModel->items() : QList<Device *>();
-    for (Device *candidate : currentDevices) {
-        if (!candidate)
-            continue;
-
-        if (candidate->deviceType().trimmed().compare(normalizedDeviceType, Qt::CaseInsensitive) != 0)
-            continue;
-
-        if (candidate->name().trimmed().compare(normalizedDeviceName, Qt::CaseInsensitive) == 0)
-            return tr("Device name already exists in this type");
-    }
+    if (m_deviceModel && m_deviceModel->hasDeviceName(normalizedDeviceType, normalizedDeviceName))
+        return tr("Device name already exists in this type");
 
     return QString();
 }
@@ -280,66 +226,16 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
         return false;
 
     m_deviceModel->appendDevice(newDevice);
-    addDeviceType(resolvedDeviceType);
     if (m_deviceModel)
         m_deviceModel->setCurrentDeviceId(newDevice->id());
     return true;
 }
 
-void DeviceManager::addDeviceType(const QString &deviceType)
-{
-    const QString normalizedDeviceType = deviceType.trimmed();
-    if (normalizedDeviceType.isEmpty() || m_deviceTypes.contains(normalizedDeviceType))
-        return;
-
-    m_deviceTypes.append(normalizedDeviceType);
-    emit deviceTypesChanged();
-}
-
-void DeviceManager::removeDeviceType(const QString &deviceType)
-{
-    const QString normalizedDeviceType = deviceType.trimmed();
-    if (normalizedDeviceType.isEmpty() || !m_deviceTypes.contains(normalizedDeviceType))
-        return;
-
-    m_deviceTypes.removeAll(normalizedDeviceType);
-    emit deviceTypesChanged();
-}
-
-bool DeviceManager::deviceMatchesDeviceType(const Device *device, const QString &deviceType) const
-{
-    if (!device)
-        return false;
-
-    return device->deviceType().trimmed() == deviceType.trimmed();
-}
-
-QVariantList DeviceManager::deviceOptionsForDeviceType(const QString &deviceType) const
-{
-    QVariantList result;
-
-    const QList<Device *> currentDevices = m_deviceModel ? m_deviceModel->items() : QList<Device *>();
-    for (Device *candidate : currentDevices) {
-        if (!deviceMatchesDeviceType(candidate, deviceType))
-            continue;
-
-        QString label = candidate->name().trimmed();
-        if (label.isEmpty())
-            label = candidate->id();
-
-        const QString address = candidate->address().trimmed();
-        if (!address.isEmpty())
-            label = QStringLiteral("%1 (%2)").arg(label, address);
-
-        result.append(option(label, candidate->id()));
-    }
-
-    return result;
-}
-
 void DeviceManager::refreshDmx512AdapterOptions()
 {
-    const QVariantList adapterOptions = deviceOptionsForDeviceType(DeviceType::Dmx512Adapter);
+    const QVariantList adapterOptions = m_deviceModel
+        ? m_deviceModel->deviceOptionsForDeviceType(DeviceType::Dmx512Adapter)
+        : QVariantList();
 
     const QList<DeviceTemplate *> currentTemplates = m_deviceTemplateModel ? m_deviceTemplateModel->items() : QList<DeviceTemplate *>();
     for (DeviceTemplate *deviceTemplate : currentTemplates) {
@@ -372,7 +268,7 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &templateName,
     device->setAddress(address);
     device->setStatus(status);
     device->setLastSeen(lastSeen);
-    device->setCapabilities(sourceTemplate->description());
+    device->setDescription(sourceTemplate->description());
 
     QVariantMap deviceConfigValues = configValues;
     if (!address.isEmpty())

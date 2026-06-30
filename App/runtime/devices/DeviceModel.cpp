@@ -1,4 +1,18 @@
 #include "devices/DeviceModel.h"
+#include "devices/DeviceConstants.h"
+#include <QVariantMap>
+
+namespace {
+
+QVariantMap option(const QString &label, const QString &value)
+{
+    return QVariantMap{
+        {QStringLiteral("label"), label},
+        {QStringLiteral("value"), value}
+    };
+}
+
+} // namespace
 
 namespace TimelineControl {
 
@@ -81,6 +95,92 @@ int DeviceModel::indexOfDeviceId(const QString &deviceId) const
     return -1;
 }
 
+bool DeviceModel::deviceMatchesDeviceType(const Device *device, const QString &deviceType) const
+{
+    if (!device)
+        return false;
+
+    return device->deviceType().trimmed() == deviceType.trimmed();
+}
+
+bool DeviceModel::hasDeviceName(const QString &deviceType, const QString &deviceName) const
+{
+    const QString normalizedDeviceType = deviceType.trimmed();
+    const QString normalizedDeviceName = deviceName.trimmed();
+    if (normalizedDeviceType.isEmpty() || normalizedDeviceName.isEmpty())
+        return false;
+
+    const QList<Device *> currentItems = items();
+    for (Device *device : currentItems) {
+        if (!deviceMatchesDeviceType(device, normalizedDeviceType))
+            continue;
+
+        if (device->name().trimmed().compare(normalizedDeviceName, Qt::CaseInsensitive) == 0)
+            return true;
+    }
+
+    return false;
+}
+
+QStringList DeviceModel::deviceTypes(bool manual) const
+{
+    QStringList types;
+
+    if (!manual)
+        types << DeviceType::PC << DeviceType::Dmx512Adapter;
+
+    types << DeviceType::Projector << DeviceType::Light << DeviceType::Sound;
+    
+    for (Device *device : items()) {
+        if (!device)
+            continue;
+
+        const QString deviceType = device->deviceType();
+        if (manual && (deviceType == DeviceType::PC || deviceType == DeviceType::Dmx512Adapter))
+            continue;
+
+        if (!types.contains(deviceType))
+            types << deviceType;
+    }
+    return types;
+}
+
+QVariantList DeviceModel::devicesForDeviceType(const QString &deviceType) const
+{
+    QVariantList result;
+
+    const QList<Device *> currentItems = items();
+    for (Device *device : currentItems) {
+        if (deviceMatchesDeviceType(device, deviceType))
+            result.append(QVariant::fromValue(device));
+    }
+
+    return result;
+}
+
+QVariantList DeviceModel::deviceOptionsForDeviceType(const QString &deviceType) const
+{
+    QVariantList result;
+
+    const QList<Device *> currentItems = items();
+    for (Device *device : currentItems) {
+        if (!deviceMatchesDeviceType(device, deviceType))
+            continue;
+
+        QString label = device->name().trimmed();
+        if (label.isEmpty())
+            label = device->id();
+
+        const QString address = device->address().trimmed();
+        if (!address.isEmpty())
+            label = QStringLiteral("%1 (%2)").arg(label, address);
+
+        result.append(option(label, device->id()));
+    }
+
+    return result;
+}
+
 void DeviceModel::selectDevice(const QString &deviceId)
 {
     setCurrentDeviceId(deviceId);
@@ -90,6 +190,8 @@ void DeviceModel::appendDevice(Device *device)
 {
     if (!device || indexOfDevice(device) >= 0)
         return;
+    
+    const QStringList previousDeviceTypes = deviceTypes();
 
     if (device->parent() != this)
         device->setParent(this);
@@ -98,6 +200,9 @@ void DeviceModel::appendDevice(Device *device)
         emit devicesChanged();
         emit deviceAdded(device);
     }
+
+    if (previousDeviceTypes != deviceTypes())
+        emit deviceTypesChanged();
 }
 
 bool DeviceModel::removeDeviceAt(int row)
@@ -121,6 +226,7 @@ Device *DeviceModel::takeDeviceAt(int row)
     if (!device)
         return nullptr;
 
+    const QStringList previousDeviceTypes = deviceTypes();
     const QString removedDeviceId = device->id();
     const bool removedCurrentDevice = device->id() == m_currentDeviceId;
     emit deviceAboutToBeRemoved(device, removedDeviceId);
@@ -131,6 +237,9 @@ Device *DeviceModel::takeDeviceAt(int row)
         device->setParent(nullptr);
 
     emit devicesChanged();
+    if (previousDeviceTypes != deviceTypes())
+        emit deviceTypesChanged();
+
     if (removedCurrentDevice) {
         Device *nextDevice = deviceAt(0);
         setCurrentDeviceId(nextDevice ? nextDevice->id() : QString());
@@ -171,14 +280,18 @@ void DeviceModel::prepareDevice(Device *device)
         emitDeviceChanged(device);
     };
 
-    connect(device, &Device::deviceTypeChanged, this, notifyChanged);
+    connect(device, &Device::deviceTypeChanged, this, [this, device]() {
+        emitDeviceChanged(device);
+        emit deviceTypesChanged();
+    });
     connect(device, &Device::nameChanged, this, notifyChanged);
     connect(device, &Device::protocolChanged, this, notifyChanged);
     connect(device, &Device::addressChanged, this, notifyChanged);
     connect(device, &Device::statusChanged, this, notifyChanged);
     connect(device, &Device::lastSeenChanged, this, notifyChanged);
-    connect(device, &Device::capabilitiesChanged, this, notifyChanged);
+    connect(device, &Device::descriptionChanged, this, notifyChanged);
     connect(device, &Device::configValuesChanged, this, notifyChanged);
+    connect(device, &Device::commandsChanged, this, notifyChanged);
 }
 
 void DeviceModel::disconnectDevice(Device *device)

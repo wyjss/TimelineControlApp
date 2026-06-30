@@ -73,8 +73,6 @@ add_executable(TimelineControlApp
     App/runtime/projection/VideoProjectionPlanController.h
     App/runtime/timeline/TimelineCommand.cpp
     App/runtime/timeline/TimelineCommand.h
-    App/runtime/timeline/TimelineManager.cpp
-    App/runtime/timeline/TimelineManager.h
     App/runtime/TimelineRuntime.cpp
     App/runtime/TimelineRuntime.h
     App/runtime/TimelineShellController.cpp

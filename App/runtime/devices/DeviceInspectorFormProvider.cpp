@@ -375,7 +375,7 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *dev
     summarySection->appendField(makeSummaryField(QStringLiteral("address"), tr("Address"), device ? device->address() : QVariant()));
     summarySection->appendField(makeSummaryField(QStringLiteral("status"), tr("Status"), device ? device->status() : QVariant()));
     summarySection->appendField(makeSummaryField(QStringLiteral("lastSeen"), tr("Last Seen"), device ? device->lastSeen() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("capabilities"), tr("Capabilities"), device ? device->capabilities() : QVariant()));
+    summarySection->appendField(makeSummaryField(QStringLiteral("description"), tr("Description"), device ? device->description() : QVariant()));
 
     auto *configSection = makeSection(form, tr("Config Values"));
     if (!device)

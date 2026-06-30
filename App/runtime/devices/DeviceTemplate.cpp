@@ -1,5 +1,6 @@
 #include "devices/DeviceTemplate.h"
-
+#include "devices/Device.h"
+#include "devices/DeviceCommand.h"
 #include <QVariant>
 
 namespace TimelineControl {
@@ -8,26 +9,24 @@ DeviceTemplate::DeviceTemplate(const QString &name,
                                const QString &deviceType,
                                const QString &protocol,
                                const QString &description,
-                               const QList<DeviceParamSpec *> &configSpecs,
+                               QList<DeviceParamSpec*> configSpecs,
+                               QList<DeviceCommand*> commands,
                                QObject *parent)
     : QObject(parent)
     , m_name(name)
     , m_deviceType(deviceType)
     , m_protocol(protocol)
     , m_description(description)
+    , m_configSpecs(configSpecs)
+    , m_commands(commands)
 {
-    m_configSpecs.reserve(configSpecs.size());
-    for (DeviceParamSpec *configSpec : configSpecs) {
-        if (!configSpec)
-            continue;
 
-        if (configSpec->parent()) {
-            m_configSpecs.append(configSpec->clone(this));
-        } else {
-            configSpec->setParent(this);
-            m_configSpecs.append(configSpec);
-        }
-    }
+	for (auto spec : m_configSpecs) {
+		spec->setParent(this);
+	}
+	for (auto cmd : m_commands) {
+        cmd->setParent(this);
+	}
 }
 
 QString DeviceTemplate::name() const
@@ -64,6 +63,28 @@ QVariantList DeviceTemplate::configSpecs() const
 QList<DeviceParamSpec *> DeviceTemplate::configSpecObjects() const
 {
     return m_configSpecs;
+}
+
+Device* DeviceTemplate::createDevice(QObject* parent)
+{
+    Device* device = new Device(name(), parent);
+	device->setDeviceType(deviceType());
+	device->setProtocol(protocol());
+	device->setDescription(description());
+
+    QVariantMap configValues;
+    for (auto spec : m_configSpecs) {
+        configValues[spec->key()] = spec->value();
+    }
+    device->setConfigValues(configValues);
+    
+    for (auto cmd : m_commands) {
+        auto newCmd = cmd->clone(device);
+        Q_ASSERT(newCmd);
+        device->appendCommand(newCmd);
+    }
+
+	return device;
 }
 
 } // namespace TimelineControl

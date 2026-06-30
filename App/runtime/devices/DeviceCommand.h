@@ -10,6 +10,7 @@
 
 namespace TimelineControl {
 
+    class Device;
 //! 设备指令实例基类，保存设备指令通用信息，不绑定时间线调度。
 class DeviceCommand : public QObject
 {

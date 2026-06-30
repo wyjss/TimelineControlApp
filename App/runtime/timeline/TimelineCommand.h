@@ -84,6 +84,7 @@ private:
 class TimelineCommandModel final : public TypedListModel<TimelineCommand *>
 {
     Q_OBJECT
+    Q_PROPERTY(TimelineControl::TimelineCommand *lastCommand READ lastCommand NOTIFY lastCommandChanged FINAL)
     Q_PROPERTY(QString selectedCommandId READ selectedCommandId WRITE setSelectedCommandId NOTIFY selectedCommandIdChanged FINAL)
 
 public:
@@ -98,6 +99,19 @@ public:
     QString selectedCommandId() const;
     void setSelectedCommandId(const QString &selectedCommandId);
 
+    TimelineCommand *lastCommand() const;
+
+    Q_INVOKABLE TimelineControl::TimelineCommand *addCommand(qint64 startTimeMs,
+                                                             const QString &targetDeviceId,
+                                                             const QString &commandName,
+                                                             const QVariantMap &commandParams);
+    TimelineControl::TimelineCommand *addCommand(qint64 startTimeMs,
+                                                 const QString &targetDeviceId,
+                                                 const QString &commandName,
+                                                 const QVariantMap &commandParams,
+                                                 TimelineControl::DeviceCommand *targetCommand);
+    Q_INVOKABLE void clearCommands();
+
     void appendCommand(TimelineCommand *command);
     void resetCommands(const QList<TimelineCommand *> &commands);
     void removeCommandAt(int row);
@@ -109,6 +123,7 @@ public slots:
     void removeCommandsForDevice(const QString &deviceId);
 
 signals:
+    void lastCommandChanged();
     void selectedCommandIdChanged();
     void commandAboutToBeRemoved(TimelineControl::TimelineCommand *command);
 
@@ -121,7 +136,9 @@ private:
     void prepareCommand(TimelineCommand *command);
     void disconnectCommand(TimelineCommand *command);
     void emitCommandChanged(TimelineCommand *command);
+    void setLastCommand(TimelineCommand *command);
 
+    TimelineCommand *m_lastCommand = nullptr;
     QString m_selectedCommandId;
 };
 
