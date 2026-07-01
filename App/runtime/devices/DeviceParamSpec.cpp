@@ -3,11 +3,12 @@
 #include <QColor>
 #include <QSize>
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceParamSpec::DeviceParamSpec(QObject *parent)
     : BaseField(parent)
 {
+    setRequired(true);
 }
 
 DeviceParamSpec::DeviceParamSpec(const QString &key,
@@ -26,6 +27,7 @@ DeviceParamSpec::DeviceParamSpec(const QString &key,
     setEditorHint(editorHint);
     setValue(normalized);
     setDefaultValue(normalized);
+    setRequired(true);
 }
 
 QString DeviceParamSpec::typeName() const
@@ -105,4 +107,3 @@ QVariant DeviceParamSpec::normalizedValue(ValueType valueType, const QVariant &v
     return value;
 }
 
-} // namespace TimelineControl

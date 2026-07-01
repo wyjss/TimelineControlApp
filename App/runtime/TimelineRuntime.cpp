@@ -18,7 +18,7 @@
 #include "runtime/task/TaskManager.h"
 #include "runtime/form/AppForm.h"
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 TimelineRuntime::TimelineRuntime(QObject *parent)
     : BaseRuntime(parent)
@@ -88,4 +88,3 @@ TimelineCommandModel *TimelineRuntime::timelineCommandModel() const
     return m_timelineCommandModel;
 }
 
-} // namespace TimelineControl

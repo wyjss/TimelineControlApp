@@ -1,65 +1,68 @@
 #include "devices/DeviceCommand_Serial.h"
-
-#include <QRegularExpression>
+#include "devices/DeviceConstants.h"
 
 namespace {
 
-const char *kHexKey = "hex";
-const char *kPayloadKey = "payload";
-
-bool isHexPayload(const QString &payload)
-{
-    static const QRegularExpression pattern(QStringLiteral("^([0-9A-Fa-f]{2})(\\s+[0-9A-Fa-f]{2})*$"));
-    return pattern.match(payload.trimmed()).hasMatch();
-}
+const char *kHexPayloadPattern = "^([0-9A-Fa-f]{2})(\\s+[0-9A-Fa-f]{2})*$";
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceCommand_Serial::DeviceCommand_Serial(QObject *parent)
     : DeviceCommand(QStringLiteral("Serial Cue"), parent)
 {
-    setHex(true);
-    setPayload(QStringLiteral(""));
+	auto *serialPortField = new DeviceParamSpec(DeviceKey::SerialPort,
+												tr("Serial Port"),
+												QStringLiteral("COM0"),
+												DeviceParamSpec::StringType,
+												DeviceParamSpec::TextEditor,
+												this);
+	serialPortField->setPlaceholderText(QStringLiteral("COM1"));
+	addCreationInputField(serialPortField);
+	connect(serialPortField, &DeviceParamSpec::valueChanged, this, &DeviceCommand_Serial::serialPortChanged);
+
+    auto *payloadField = new DeviceParamSpec(DeviceKey::Payload,
+                                             tr("Payload"),
+                                             QString(),
+                                             DeviceParamSpec::StringType,
+                                             DeviceParamSpec::TextEditor,
+                                             this);
+    payloadField->setPlaceholderText(QStringLiteral("A5 5A 01 00"));
+    payloadField->setPattern(QString::fromLatin1(kHexPayloadPattern));
+    addCreationInputField(payloadField);
+    connect(payloadField, &DeviceParamSpec::valueChanged, this, &DeviceCommand_Serial::payloadChanged);
 }
 
 DeviceCommand_Serial::DeviceCommand_Serial(const QString &name,
                                            const QString &payload,
-                                           bool hex,
                                            QObject *parent)
-    : DeviceCommand(name, parent)
+    : DeviceCommand_Serial(parent)
 {
-    setHex(hex);
+    setName(name);
     setPayload(payload);
 }
 
-bool DeviceCommand_Serial::isHex() const
+QString DeviceCommand_Serial::serialPort() const
 {
-    return m_hex;
+    return serialPortField() ? serialPortField()->stringValue() : QString();
 }
 
-void DeviceCommand_Serial::setHex(bool hex)
+void DeviceCommand_Serial::setSerialPort(const QString& serialPort)
 {
-    if (m_hex == hex)
-        return;
-
-    m_hex = hex;
-    emit hexChanged();
+    if (serialPortField())
+        serialPortField()->setValue(serialPort);
 }
 
 QString DeviceCommand_Serial::payload() const
 {
-    return m_payload;
+    return payloadField() ? payloadField()->stringValue() : QString();
 }
 
 void DeviceCommand_Serial::setPayload(const QString &payload)
 {
-    if (m_payload == payload)
-        return;
-
-    m_payload = payload;
-    emit payloadChanged();
+    if (payloadField())
+        payloadField()->setValue(payload);
 }
 
 QString DeviceCommand_Serial::protocol() const
@@ -71,61 +74,4 @@ QString DeviceCommand_Serial::protocolName()
 {
     return QStringLiteral("serial");
 }
-
-QJsonObject DeviceCommand_Serial::paramsToJson() const
-{
-    QJsonObject params;
-    params.insert(QString::fromLatin1(kHexKey), isHex());
-    params.insert(QString::fromLatin1(kPayloadKey), payload());
-    return params;
-}
-
-bool DeviceCommand_Serial::loadParamsFromJson(const QJsonObject &params)
-{
-    if (params.contains(QString::fromLatin1(kHexKey)))
-        setHex(params.value(QString::fromLatin1(kHexKey)).toBool(isHex()));
-
-    if (params.contains(QString::fromLatin1(kPayloadKey)))
-        setPayload(params.value(QString::fromLatin1(kPayloadKey)).toString(payload()));
-
-    return true;
-}
-
-QString DeviceCommand_Serial::validateParams() const
-{
-    if (payload().trimmed().isEmpty())
-        return tr("Payload is required");
-
-    if (isHex() && !isHexPayload(payload()))
-        return tr("Payload must be hex bytes");
-
-    return QString();
-}
-
-QList<DeviceParamSpec *> DeviceCommand_Serial::createCreationInputFields(QObject *parent) const
-{
-    QList<DeviceParamSpec *> fields = DeviceCommand::createCreationInputFields(parent);
-
-    auto *hexField = new DeviceParamSpec(QStringLiteral("hex"),
-                                         tr("Hex"),
-                                         isHex(),
-                                         DeviceParamSpec::BoolType,
-                                         DeviceParamSpec::ToggleEditor,
-                                         parent);
-    fields.append(hexField);
-
-    auto *payloadField = new DeviceParamSpec(QStringLiteral("payload"),
-                                             tr("Payload"),
-                                             payload(),
-                                             DeviceParamSpec::StringType,
-                                             DeviceParamSpec::TextEditor,
-                                             parent);
-    payloadField->setRequired(true);
-    payloadField->setPlaceholderText(QStringLiteral("A5 5A 01 00"));
-    fields.append(payloadField);
-
-    return fields;
-}
-
-} // namespace TimelineControl
 

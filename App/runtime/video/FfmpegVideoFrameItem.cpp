@@ -10,7 +10,7 @@
 #include "avreader/avreader.h"
 #include "pixeltool/avframefactory.h"
 
-namespace TimelineControl {
+using namespace TimelineControl;
 namespace {
 
 qint64 secondsToMilliseconds(double seconds)
@@ -370,5 +370,3 @@ QString FfmpegVideoFrameItem::sourcePath() const
 
     return m_source.toString(QUrl::PreferLocalFile);
 }
-
-} // namespace TimelineControl

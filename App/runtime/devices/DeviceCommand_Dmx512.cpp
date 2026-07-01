@@ -7,49 +7,66 @@ const char *kValueKey = "value";
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceCommand_Dmx512::DeviceCommand_Dmx512(QObject *parent)
     : DeviceCommand(QStringLiteral("DMX Cue"), parent)
 {
+    auto *channelField = new DeviceParamSpec(QString::fromLatin1(kChannelKey),
+                                             tr("Channel"),
+                                             1,
+                                             DeviceParamSpec::IntType,
+                                             DeviceParamSpec::TextEditor,
+                                             this);
+    channelField->setMinimum(1);
+    channelField->setMaximum(512);
+    addCreationInputField(channelField);
+    connect(channelField, &DeviceParamSpec::valueChanged, this, &DeviceCommand_Dmx512::channelChanged);
+
+    auto *valueField = new DeviceParamSpec(QString::fromLatin1(kValueKey),
+                                           tr("Value"),
+                                           255,
+                                           DeviceParamSpec::IntType,
+                                           DeviceParamSpec::SliderEditor,
+                                           this);
+    valueField->setMinimum(0);
+    valueField->setMaximum(255);
+    valueField->setStepSize(1);
+    addCreationInputField(valueField);
+    connect(valueField, &DeviceParamSpec::valueChanged, this, &DeviceCommand_Dmx512::valueChanged);
 }
 
 DeviceCommand_Dmx512::DeviceCommand_Dmx512(const QString &name,
                                            int channel,
                                            int value,
                                            QObject *parent)
-    : DeviceCommand(name, parent)
+    : DeviceCommand_Dmx512(parent)
 {
+    setName(name);
     setChannel(channel);
     setValue(value);
 }
 
 int DeviceCommand_Dmx512::channel() const
 {
-    return m_channel;
+    return channelField() ? channelField()->intValue() : 1;
 }
 
 void DeviceCommand_Dmx512::setChannel(int channel)
 {
-    if (m_channel == channel)
-        return;
-
-    m_channel = channel;
-    emit channelChanged();
+    if (channelField())
+        channelField()->setValue(channel);
 }
 
 int DeviceCommand_Dmx512::value() const
 {
-    return m_value;
+    return valueField() ? valueField()->intValue() : 255;
 }
 
 void DeviceCommand_Dmx512::setValue(int value)
 {
-    if (m_value == value)
-        return;
-
-    m_value = value;
-    emit valueChanged();
+    if (valueField())
+        valueField()->setValue(value);
 }
 
 QString DeviceCommand_Dmx512::protocol() const
@@ -61,66 +78,4 @@ QString DeviceCommand_Dmx512::protocolName()
 {
     return QStringLiteral("dmx512");
 }
-
-QJsonObject DeviceCommand_Dmx512::paramsToJson() const
-{
-    QJsonObject params;
-    params.insert(QString::fromLatin1(kChannelKey), channel());
-    params.insert(QString::fromLatin1(kValueKey), value());
-    return params;
-}
-
-bool DeviceCommand_Dmx512::loadParamsFromJson(const QJsonObject &params)
-{
-    if (params.contains(QString::fromLatin1(kChannelKey)))
-        setChannel(params.value(QString::fromLatin1(kChannelKey)).toInt(channel()));
-
-    if (params.contains(QString::fromLatin1(kValueKey)))
-        setValue(params.value(QString::fromLatin1(kValueKey)).toInt(value()));
-
-    return true;
-}
-
-QString DeviceCommand_Dmx512::validateParams() const
-{
-    if (channel() < 1 || channel() > 512)
-        return tr("DMX channel must be between 1 and 512");
-
-    if (value() < 0 || value() > 255)
-        return tr("DMX value must be between 0 and 255");
-
-    return QString();
-}
-
-QList<DeviceParamSpec *> DeviceCommand_Dmx512::createCreationInputFields(QObject *parent) const
-{
-    QList<DeviceParamSpec *> fields = DeviceCommand::createCreationInputFields(parent);
-
-    auto *channelField = new DeviceParamSpec(QStringLiteral("channel"),
-                                             tr("Channel"),
-                                             channel(),
-                                             DeviceParamSpec::IntType,
-                                             DeviceParamSpec::TextEditor,
-                                             parent);
-    channelField->setRequired(true);
-    channelField->setMinimum(1);
-    channelField->setMaximum(512);
-    fields.append(channelField);
-
-    auto *valueField = new DeviceParamSpec(QStringLiteral("value"),
-                                           tr("Value"),
-                                           value(),
-                                           DeviceParamSpec::IntType,
-                                           DeviceParamSpec::SliderEditor,
-                                           parent);
-    valueField->setRequired(true);
-    valueField->setMinimum(0);
-    valueField->setMaximum(255);
-    valueField->setStepSize(1);
-    fields.append(valueField);
-
-    return fields;
-}
-
-} // namespace TimelineControl
 

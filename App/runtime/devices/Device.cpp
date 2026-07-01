@@ -5,7 +5,7 @@
 #include <QMetaProperty>
 #include <QUuid>
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 namespace {
 
@@ -164,6 +164,20 @@ DeviceCommand *Device::commandAt(int index) const
     return index >= 0 && index < m_commands.size() ? m_commands.at(index) : nullptr;
 }
 
+DeviceCommand *Device::createCommandDraft(const QString &protocol) const
+{
+    const QString commandProtocol = protocol.trimmed().isEmpty() ? m_protocol : protocol.trimmed();
+    return DeviceCommand::createForProtocol(commandProtocol, const_cast<Device *>(this));
+}
+
+void Device::deleteCommandDraft(DeviceCommand *command) const
+{
+    if (!command || m_commands.contains(command))
+        return;
+
+    command->deleteLater();
+}
+
 DeviceCommand *Device::createCommand(const QString &protocol, const QString &name)
 {
     const QString commandProtocol = protocol.trimmed().isEmpty() ? m_protocol : protocol.trimmed();
@@ -233,5 +247,3 @@ bool Device::setFieldValue(const QString &field, const QVariant &value)
 
     return setProperty(propertyName.constData(), value);
 }
-
-} // namespace TimelineControl

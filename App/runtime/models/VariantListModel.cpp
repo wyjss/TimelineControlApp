@@ -1,6 +1,6 @@
 #include "models/VariantListModel.h"
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 VariantListModel::VariantListModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -74,5 +74,3 @@ void VariantListModel::clear()
 {
     resetValues({});
 }
-
-} // namespace TimelineControl

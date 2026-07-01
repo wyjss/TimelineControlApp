@@ -14,7 +14,7 @@ QVariantMap option(const QString &label, const QString &value)
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceModel::DeviceModel(QObject *parent)
     : TypedListModel<Device *>(parent)
@@ -309,4 +309,3 @@ void DeviceModel::emitDeviceChanged(Device *device)
     notifyItemChanged(row);
 }
 
-} // namespace TimelineControl

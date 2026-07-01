@@ -3,7 +3,7 @@
 #include "devices/DeviceCommand.h"
 #include <QVariant>
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceTemplate::DeviceTemplate(const QString &name,
                                const QString &deviceType,
@@ -87,4 +87,3 @@ Device* DeviceTemplate::createDevice(QObject* parent)
 	return device;
 }
 
-} // namespace TimelineControl

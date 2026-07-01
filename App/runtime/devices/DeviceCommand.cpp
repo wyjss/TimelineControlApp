@@ -1,5 +1,6 @@
 #include "devices/DeviceCommand.h"
 
+#include "devices/DeviceConstants.h"
 #include "devices/DeviceCommand_Dmx512.h"
 #include "devices/DeviceCommand_Http.h"
 #include "devices/DeviceCommand_PC.h"
@@ -10,91 +11,51 @@
 namespace {
 
 const char *kProtocolKey = "protocol";
-const char *kNameKey = "name";
-const char *kParamsKey = "params";
-
-using TimelineControl::DeviceParamSpec;
-
-QString normalizedProtocolName(const QString &protocol)
-{
-    return protocol.trimmed().toLower();
-}
-
-DeviceParamSpec *makeField(QObject *parent,
-                           const QString &key,
-                           const QString &label,
-                           DeviceParamSpec::ValueType valueType,
-                           const QVariant &value,
-                           DeviceParamSpec::EditorHint editorHint = DeviceParamSpec::AutoEditor,
-                           bool required = false)
-{
-    auto *field = new DeviceParamSpec(key, label, value, valueType, editorHint, parent);
-    field->setRequired(required);
-    return field;
-}
-
-QVariantList toVariantList(const QList<DeviceParamSpec *> &fields)
-{
-    QVariantList result;
-    result.reserve(fields.size());
-    for (DeviceParamSpec *field : fields)
-        result.append(QVariant::fromValue(field));
-    return result;
-}
-
-DeviceParamSpec *findField(const QList<DeviceParamSpec *> &fields, const QString &key)
-{
-    const QString normalizedKey = key.trimmed();
-    if (normalizedKey.isEmpty())
-        return nullptr;
-
-    for (DeviceParamSpec *field : fields) {
-        if (field && field->key() == normalizedKey)
-            return field;
-    }
-
-    return nullptr;
-}
+const char *kExecutionInputFieldsKey = "executionInputFields";
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceCommand::DeviceCommand(QObject *parent)
-    : QObject(parent)
+    : DeviceCommand("", parent)
 {
 }
 
 DeviceCommand::DeviceCommand(const QString &name, QObject *parent)
     : QObject(parent)
-    , m_name(name)
 {
+	auto nameField = new DeviceParamSpec(
+		DeviceKey::Name,
+		"名称",
+		name,
+		DeviceParamSpec::StringType,
+		DeviceParamSpec::TextEditor,
+		this
+	);
+	connect(nameField, &DeviceParamSpec::valueChanged, this, &DeviceCommand::nameChanged);
+	addCreationInputField(nameField);
 }
 
 QString DeviceCommand::name() const
 {
-    return m_name;
+    return getField(DeviceKey::Name)->stringValue();
 }
 
 void DeviceCommand::setName(const QString &name)
 {
-    if (m_name == name)
-        return;
-
-    m_name = name;
-    emit nameChanged();
+    getField(DeviceKey::Name)->setValue(name);
 }
 
 DeviceCommand *DeviceCommand::createForProtocol(const QString &protocol, QObject *parent)
 {
-    const QString normalizedProtocol = normalizedProtocolName(protocol);
-    if (normalizedProtocol == DeviceCommand_Dmx512::protocolName())
+    if (protocol == DeviceCommand_Dmx512::protocolName())
         return new DeviceCommand_Dmx512(parent);
-    if (normalizedProtocol == DeviceCommand_Http::protocolName())
+    if (protocol == DeviceCommand_Http::protocolName())
         return new DeviceCommand_Http(parent);
-    if (normalizedProtocol == DeviceCommand_PC::protocolName())
+    if (protocol == DeviceCommand_PC::protocolName())
         return new DeviceCommand_PC(parent);
-    if (normalizedProtocol == DeviceCommand_Serial::protocolName())
+    if (protocol == DeviceCommand_Serial::protocolName())
         return new DeviceCommand_Serial(parent);
 
     return nullptr;
@@ -114,25 +75,47 @@ DeviceCommand *DeviceCommand::createFromJson(const QJsonObject &json, QObject *p
     return command;
 }
 
+DeviceParamSpec* DeviceCommand::getField(const QString& key) const
+{
+    return m_creationInputFieldMap.value(key, nullptr);
+}
+
 QJsonObject DeviceCommand::toJson() const
 {
     QJsonObject json;
+
     json.insert(QString::fromLatin1(kProtocolKey), protocol());
-    json.insert(QString::fromLatin1(kNameKey), name());
-    json.insert(QString::fromLatin1(kParamsKey), paramsToJson());
+    for (DeviceParamSpec *field : m_creationInputFields)
+        json.insert(field->key(), QJsonValue::fromVariant(field->value()));
+
+    if (!m_executionInputFields.isEmpty()) {
+        QJsonObject executionInputFields;
+        for (DeviceParamSpec *field : m_executionInputFields)
+            executionInputFields.insert(field->key(), QJsonValue::fromVariant(field->value()));
+        json.insert(QString::fromLatin1(kExecutionInputFieldsKey), executionInputFields);
+    }
+
     return json;
 }
 
 bool DeviceCommand::loadFromJson(const QJsonObject &json)
 {
-    const QString jsonProtocol = normalizedProtocolName(json.value(QString::fromLatin1(kProtocolKey)).toString());
-    if (!jsonProtocol.isEmpty() && jsonProtocol != normalizedProtocolName(protocol()))
+    const QString jsonProtocol = json.value(QString::fromLatin1(kProtocolKey)).toString();
+    if (!jsonProtocol.isEmpty() && jsonProtocol != protocol())
         return false;
 
-    if (json.contains(QString::fromLatin1(kNameKey)))
-        setName(json.value(QString::fromLatin1(kNameKey)).toString(name()));
+    for (auto itr = json.begin(); itr != json.end(); ++itr) {
+        if (auto field = getField(itr.key()))
+            field->setValue(itr.value().toVariant());
+    }
 
-    return loadParamsFromJson(json.value(QString::fromLatin1(kParamsKey)).toObject());
+    const QJsonObject executionInputFields = json.value(QString::fromLatin1(kExecutionInputFieldsKey)).toObject();
+    for (DeviceParamSpec *field : m_executionInputFields) {
+        if (executionInputFields.contains(field->key()))
+            field->setValue(executionInputFields.value(field->key()).toVariant());
+    }
+
+    return true;
 }
 
 QString DeviceCommand::validate() const
@@ -141,6 +124,11 @@ QString DeviceCommand::validate() const
         return tr("Command name is required");
 
     return validateParams();
+}
+
+QString DeviceCommand::validateParams() const
+{
+    return QString();
 }
 
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
@@ -153,11 +141,16 @@ void DeviceCommand::addCreationInputField(DeviceParamSpec *field)
     if (!field)
         return;
 
-    ensureCreationInputFields();
+    if (m_creationInputFieldMap.contains(field->key()))
+        return;
+
     if (field->parent() != this)
         field->setParent(this);
 
+    m_creationInputFieldMap[field->key()] = field;
     m_creationInputFields.append(field);
+
+    connect(field, &DeviceParamSpec::valueChanged, this, &DeviceCommand::emitFieldChanged);
 }
 
 void DeviceCommand::addExecutionInputField(DeviceParamSpec *field)
@@ -165,7 +158,6 @@ void DeviceCommand::addExecutionInputField(DeviceParamSpec *field)
     if (!field)
         return;
 
-    ensureExecutionInputFields();
     if (field->parent() != this)
         field->setParent(this);
 
@@ -174,69 +166,23 @@ void DeviceCommand::addExecutionInputField(DeviceParamSpec *field)
 
 QVariantList DeviceCommand::creationInputFields() const
 {
-    ensureCreationInputFields();
-    return toVariantList(m_creationInputFields);
+    QVariantList result;
+    result.reserve(m_creationInputFields.size());
+    for (DeviceParamSpec *field : m_creationInputFields)
+        result.append(QVariant::fromValue(field));
+    return result;
 }
 
 QVariantList DeviceCommand::executionInputFields() const
 {
-    ensureExecutionInputFields();
-    return toVariantList(m_executionInputFields);
+    QVariantList result;
+    result.reserve(m_executionInputFields.size());
+    for (DeviceParamSpec *field : m_executionInputFields)
+        result.append(QVariant::fromValue(field));
+    return result;
 }
 
-DeviceParamSpec *DeviceCommand::creationInputField(const QString &key) const
+void DeviceCommand::emitFieldChanged()
 {
-    ensureCreationInputFields();
-    return findField(m_creationInputFields, key);
+    emit fieldChanged(qobject_cast<DeviceParamSpec *>(sender()));
 }
-
-DeviceParamSpec *DeviceCommand::executionInputField(const QString &key) const
-{
-    ensureExecutionInputFields();
-    return findField(m_executionInputFields, key);
-}
-
-DeviceParamSpec *DeviceCommand::fieldByKey(const QString &key) const
-{
-    if (auto *field = creationInputField(key))
-        return field;
-
-    return executionInputField(key);
-}
-
-QList<DeviceParamSpec *> DeviceCommand::createCreationInputFields(QObject *parent) const
-{
-    return QList<DeviceParamSpec *>{
-        makeField(parent,
-                  QStringLiteral("name"),
-                  tr("Name"),
-                  DeviceParamSpec::StringType,
-                  name(),
-                  DeviceParamSpec::TextEditor,
-                  true)
-    };
-}
-
-QList<DeviceParamSpec *> DeviceCommand::createExecutionInputFields(QObject *parent) const
-{
-    Q_UNUSED(parent)
-    return {};
-}
-
-void DeviceCommand::ensureCreationInputFields() const
-{
-    if (!m_creationInputFields.isEmpty())
-        return;
-
-    m_creationInputFields = createCreationInputFields(const_cast<DeviceCommand *>(this));
-}
-
-void DeviceCommand::ensureExecutionInputFields() const
-{
-    if (!m_executionInputFields.isEmpty())
-        return;
-
-    m_executionInputFields = createExecutionInputFields(const_cast<DeviceCommand *>(this));
-}
-
-} // namespace TimelineControl

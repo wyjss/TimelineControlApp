@@ -130,7 +130,7 @@ void replaceForm(EarthUI::AppForm *&target, EarthUI::AppForm *next)
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceInspectorFormProvider::DeviceInspectorFormProvider(DeviceModel *deviceModel,
                                                          DeviceTemplateModel *deviceTemplateModel,
@@ -557,4 +557,3 @@ void DeviceInspectorFormProvider::appendParamSpecField(EarthUI::AppFormSection *
     section->appendField(field);
 }
 
-} // namespace TimelineControl

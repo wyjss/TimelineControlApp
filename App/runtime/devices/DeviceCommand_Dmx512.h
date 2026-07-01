@@ -19,6 +19,9 @@ public:
                          int value,
                          QObject *parent = nullptr);
 
+    Q_INVOKABLE DeviceParamSpec *channelField() const { return getField(QStringLiteral("channel")); }
+    Q_INVOKABLE DeviceParamSpec *valueField() const { return getField(QStringLiteral("value")); }
+
     int channel() const;
     void setChannel(int channel);
 
@@ -32,16 +35,6 @@ public:
 signals:
     void channelChanged();
     void valueChanged();
-
-protected:
-    QJsonObject paramsToJson() const override;
-    bool loadParamsFromJson(const QJsonObject &params) override;
-    QString validateParams() const override;
-    QList<DeviceParamSpec *> createCreationInputFields(QObject *parent) const override;
-
-private:
-    int m_channel = 1;
-    int m_value = 255;
 };
 
 } // namespace TimelineControl

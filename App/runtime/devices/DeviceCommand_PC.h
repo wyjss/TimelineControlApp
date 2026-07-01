@@ -18,12 +18,6 @@ public:
     QString protocol() const override;
 
     static QString protocolName();
-
-protected:
-    QJsonObject paramsToJson() const override;
-    bool loadParamsFromJson(const QJsonObject &params) override;
-    QString validateParams() const override;
-    QList<DeviceParamSpec *> createCreationInputFields(QObject *parent) const override;
 };
 
 } // namespace TimelineControl

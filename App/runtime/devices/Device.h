@@ -62,6 +62,8 @@ public:
     QVariantList commands() const;
     Q_INVOKABLE int commandCount() const;
     Q_INVOKABLE TimelineControl::DeviceCommand *commandAt(int index) const;
+    Q_INVOKABLE TimelineControl::DeviceCommand *createCommandDraft(const QString &protocol = QString()) const;
+    Q_INVOKABLE void deleteCommandDraft(TimelineControl::DeviceCommand *command) const;
     Q_INVOKABLE TimelineControl::DeviceCommand *createCommand(const QString &protocol = QString(),
                                                               const QString &name = QString());
     void appendCommand(TimelineControl::DeviceCommand *command);

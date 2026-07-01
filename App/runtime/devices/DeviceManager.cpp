@@ -23,7 +23,7 @@ bool isTemplateOnlyDeviceType(const QString &deviceType)
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceManager::DeviceManager(DeviceModel *deviceModel,
                              DeviceTemplateModel *deviceTemplateModel,
@@ -115,6 +115,17 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                tr("Offline"),
                                                tr("Move preview"),
                                                pcWallConfig));
+
+    QVariantMap otherConfig;
+    otherConfig.insert(DeviceKey::Address, QStringLiteral("http://127.0.0.1:8080"));
+    m_deviceModel->appendDevice(makeDeviceFromTemplate(
+                                               tr("HTTP协议"),
+                                               tr("其他"),
+                                               tr("测试其他设备"),
+                                               QStringLiteral("http://127.0.0.1:8080"),
+                                               tr("Online"),
+                                               tr("Local test"),
+                                               otherConfig));
 
     if (m_deviceModel && defaultDevice)
         m_deviceModel->setCurrentDeviceId(defaultDevice->id());
@@ -295,5 +306,3 @@ QVariantMap DeviceManager::defaultConfigValues(const DeviceTemplate *deviceTempl
 
     return result;
 }
-
-} // namespace TimelineControl

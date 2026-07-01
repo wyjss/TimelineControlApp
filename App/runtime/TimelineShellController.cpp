@@ -46,7 +46,7 @@ EarthUI::AppDrawer *makeDrawer(QObject *parent,
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 TimelineShellController::TimelineShellController(QObject *parent)
     : AppShellController(parent)
@@ -198,4 +198,3 @@ void TimelineShellController::syncSelection(const QString &title, const QString 
     });
 }
 
-} // namespace TimelineControl

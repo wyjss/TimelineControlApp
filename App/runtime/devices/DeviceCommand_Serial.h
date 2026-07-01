@@ -9,18 +9,20 @@ class DeviceCommand_Serial : public DeviceCommand
 {
     Q_OBJECT
 
-    Q_PROPERTY(bool hex READ isHex WRITE setHex NOTIFY hexChanged FINAL)
+    Q_PROPERTY(QString serialPort READ serialPort WRITE setSerialPort NOTIFY serialPortChanged FINAL)
     Q_PROPERTY(QString payload READ payload WRITE setPayload NOTIFY payloadChanged FINAL)
 
 public:
     explicit DeviceCommand_Serial(QObject *parent = nullptr);
     DeviceCommand_Serial(const QString &name,
                          const QString &payload,
-                         bool hex = true,
                          QObject *parent = nullptr);
 
-    bool isHex() const;
-    void setHex(bool hex);
+    Q_INVOKABLE DeviceParamSpec *serialPortField() const { return getField(DeviceKey::SerialPort); }
+    Q_INVOKABLE DeviceParamSpec *payloadField() const { return getField(DeviceKey::Payload); }
+
+    QString serialPort() const;
+    void setSerialPort(const QString& serialPort);
 
     QString payload() const;
     void setPayload(const QString &payload);
@@ -30,18 +32,8 @@ public:
     static QString protocolName();
 
 signals:
-    void hexChanged();
+    void serialPortChanged();
     void payloadChanged();
-
-protected:
-    QJsonObject paramsToJson() const override;
-    bool loadParamsFromJson(const QJsonObject &params) override;
-    QString validateParams() const override;
-    QList<DeviceParamSpec *> createCreationInputFields(QObject *parent) const override;
-
-private:
-    bool m_hex = true;
-    QString m_payload;
 };
 
 } // namespace TimelineControl

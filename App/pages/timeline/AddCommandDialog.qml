@@ -1,6 +1,7 @@
 import QtQuick 2.14
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
+import ".."
 import "qrc:/UiCore/qml/components/base" as Base
 
 Base.AppPopup {
@@ -9,7 +10,6 @@ Base.AppPopup {
     property QtObject theme
     property string selectedProtocol: "serial"
     property int startTimeMs: 0
-    property var fieldValues: ({})
     readonly property var protocolOptions: [
         { "label": qsTr("Serial"), "value": "serial" },
         { "label": qsTr("DMX512"), "value": "dmx512" },
@@ -17,13 +17,13 @@ Base.AppPopup {
         { "label": qsTr("PC"), "value": "pc" }
     ]
     readonly property var fieldSpecs: fieldsForProtocol(selectedProtocol)
-    readonly property bool commandValid: isCommandValid()
+    readonly property bool commandValid: fieldForm.valid && serialInvalidReason().length === 0
 
     signal commandAccepted(var command)
 
     function openForTime(timeMs) {
         startTimeMs = Math.max(0, Math.round(timeMs))
-        resetValues()
+        fieldForm.resetValues()
         open()
     }
 
@@ -79,15 +79,6 @@ Base.AppPopup {
         }
     }
 
-    function resetValues() {
-        var nextValues = {}
-        for (var index = 0; index < fieldSpecs.length; ++index) {
-            var spec = fieldSpecs[index]
-            nextValues[spec.key] = spec.defaultValue !== undefined ? spec.defaultValue : ""
-        }
-        fieldValues = nextValues
-    }
-
     function protocolLabel(protocol) {
         for (var index = 0; index < protocolOptions.length; ++index) {
             if (protocolOptions[index].value === protocol)
@@ -96,110 +87,32 @@ Base.AppPopup {
         return String(protocol)
     }
 
-    function fieldValue(key, fallback) {
-        if (fieldValues && fieldValues[key] !== undefined && fieldValues[key] !== null)
-            return fieldValues[key]
-        return fallback !== undefined ? fallback : ""
-    }
-
-    function setFieldValue(key, value) {
-        var nextValues = {}
-        for (var name in fieldValues)
-            nextValues[name] = fieldValues[name]
-        nextValues[key] = value
-        fieldValues = nextValues
-    }
-
-    function normalizedValue(spec, rawValue) {
-        if (spec.type === "int")
-            return Math.round(Number(rawValue))
-        if (spec.type === "double")
-            return Number(rawValue)
-        if (spec.type === "bool")
-            return !!rawValue
-        return rawValue
-    }
-
-    function formatValue(spec, rawValue) {
-        var text = String(rawValue)
-        if (spec.suffix !== undefined && spec.suffix !== "")
-            text += spec.suffix
-        return text
-    }
-
     function hexPayloadPattern() {
         return /^([0-9A-Fa-f]{2})(\s+[0-9A-Fa-f]{2})*$/
     }
 
-    function isBlank(value) {
-        return value === undefined || value === null || String(value).trim().length === 0
-    }
-
-    function fieldInvalidReason(spec) {
-        var value = fieldValue(spec.key, spec.defaultValue)
-        if (spec.required && isBlank(value))
-            return qsTr("%1 is required").arg(spec.label)
-
-        if (isBlank(value))
-            return ""
-
-        if (selectedProtocol === "serial" && spec.key === "payload" && !!fieldValue("hex", true)) {
-            if (!hexPayloadPattern().test(String(value).trim()))
-                return qsTr("%1 must be hex bytes").arg(spec.label)
-        }
-
-        if (spec.pattern !== undefined && spec.pattern !== "") {
-            var pattern = new RegExp(spec.pattern)
-            if (!pattern.test(String(value)))
-                return qsTr("%1 has an invalid format").arg(spec.label)
-        }
-
-        if (spec.type === "int" || spec.type === "double") {
-            var numberValue = Number(value)
-            if (isNaN(numberValue))
-                return qsTr("%1 must be numeric").arg(spec.label)
-
-            if (spec.minimum !== undefined && numberValue < Number(spec.minimum))
-                return qsTr("%1 is below minimum").arg(spec.label)
-
-            if (spec.maximum !== undefined && numberValue > Number(spec.maximum))
-                return qsTr("%1 is above maximum").arg(spec.label)
-        }
-
+    function serialInvalidReason() {
+        var values = fieldForm.valueMap()
+        if (selectedProtocol === "serial" && !!values.hex && !hexPayloadPattern().test(String(values.payload || "").trim()))
+            return qsTr("Payload must be hex bytes")
         return ""
-    }
-
-    function isCommandValid() {
-        for (var index = 0; index < fieldSpecs.length; ++index) {
-            if (fieldInvalidReason(fieldSpecs[index]).length > 0)
-                return false
-        }
-        return true
     }
 
     function firstInvalidReason() {
-        for (var index = 0; index < fieldSpecs.length; ++index) {
-            var reason = fieldInvalidReason(fieldSpecs[index])
-            if (reason.length > 0)
-                return reason
-        }
-        return ""
+        var reason = fieldForm.firstInvalidReason()
+        return reason.length > 0 ? reason : serialInvalidReason()
     }
 
     function buildCommand() {
         var params = {}
-        var name = ""
-        var durationMs = 0
+        var values = fieldForm.valueMap()
+        var name = String(values.name || "")
+        var durationMs = values.durationMs !== undefined ? values.durationMs : 0
 
         for (var index = 0; index < fieldSpecs.length; ++index) {
-            var spec = fieldSpecs[index]
-            var value = normalizedValue(spec, fieldValue(spec.key, spec.defaultValue))
-            if (spec.key === "name")
-                name = String(value)
-            else if (spec.key === "durationMs")
-                durationMs = value
-            else
-                params[spec.key] = value
+            var key = fieldSpecs[index].key
+            if (key !== "name" && key !== "durationMs")
+                params[key] = values[key]
         }
 
         return {
@@ -231,8 +144,8 @@ Base.AppPopup {
     surfaceTone: "section"
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    onSelectedProtocolChanged: resetValues()
-    Component.onCompleted: resetValues()
+    onSelectedProtocolChanged: fieldForm.resetValues()
+    Component.onCompleted: fieldForm.resetValues()
 
     RowLayout {
         Layout.fillWidth: true
@@ -314,135 +227,14 @@ Base.AppPopup {
         contentSpacing: 12
         fillContentWidth: true
 
-        Repeater {
-            model: root.fieldSpecs
+        DeviceFieldForm {
+            id: fieldForm
 
-            delegate: ColumnLayout {
-                id: fieldRow
-
-                property var fieldSpec: modelData
-                readonly property string editor: String(fieldSpec.editor || "text")
-                readonly property string invalidReason: root.fieldInvalidReason(fieldSpec)
-
-                Layout.fillWidth: true
-                spacing: 6
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: fieldRow.fieldSpec.label + (fieldRow.fieldSpec.required ? " *" : "")
-                        theme: root.theme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
-                        elide: Text.ElideRight
-                    }
-
-                    Base.AppText {
-                        text: String(fieldRow.fieldSpec.type || "")
-                        theme: root.theme
-                        styleRole: "bodyS"
-                        textTone: fieldRow.invalidReason.length > 0 ? "primary" : "secondary"
-                        colorOverride: fieldRow.invalidReason.length > 0 ? "#ef4444" : undefined
-                    }
-                }
-
-                Base.AppTextField {
-                    visible: fieldRow.editor === "text"
-                    Layout.fillWidth: true
-                    theme: root.theme
-                    text: String(root.fieldValue(fieldRow.fieldSpec.key, fieldRow.fieldSpec.defaultValue))
-                    placeholderText: String(fieldRow.fieldSpec.placeholder || "")
-                    inputMethodHints: fieldRow.fieldSpec.type === "int"
-                        ? Qt.ImhDigitsOnly
-                        : (fieldRow.fieldSpec.type === "double" ? Qt.ImhFormattedNumbersOnly : Qt.ImhNone)
-                    onEditingFinished: root.setFieldValue(fieldRow.fieldSpec.key, text)
-                }
-
-                Base.AppSelect {
-                    visible: fieldRow.editor === "select"
-                    Layout.fillWidth: true
-                    theme: root.theme
-                    options: fieldRow.fieldSpec.options || []
-                    value: root.fieldValue(fieldRow.fieldSpec.key, fieldRow.fieldSpec.defaultValue)
-                    onValueSelected: root.setFieldValue(fieldRow.fieldSpec.key, nextValue)
-                }
-
-                Base.AppSliderControl {
-                    visible: fieldRow.editor === "slider"
-                    Layout.fillWidth: true
-                    theme: root.theme
-                    from: Number(fieldRow.fieldSpec.minimum !== undefined ? fieldRow.fieldSpec.minimum : 0)
-                    to: Number(fieldRow.fieldSpec.maximum !== undefined ? fieldRow.fieldSpec.maximum : 100)
-                    stepSize: Number(fieldRow.fieldSpec.stepSize !== undefined ? fieldRow.fieldSpec.stepSize : 1)
-                    suffix: String(fieldRow.fieldSpec.suffix || "")
-                    value: Number(root.fieldValue(fieldRow.fieldSpec.key, fieldRow.fieldSpec.defaultValue))
-                    onValueEdited: root.setFieldValue(fieldRow.fieldSpec.key, nextValue)
-                }
-
-                Base.AppSurface {
-                    visible: fieldRow.editor === "textarea"
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 104
-                    sizeToContent: false
-                    theme: root.theme
-                    surfaceTone: "surface"
-                    strokeWidth: fieldRow.invalidReason.length > 0 ? 2 : 1
-                    borderOverride: fieldRow.invalidReason.length > 0 ? "#ef4444" : undefined
-
-                    TextArea {
-                        id: textArea
-
-                        anchors.fill: parent
-                        anchors.margins: 10
-                        text: String(root.fieldValue(fieldRow.fieldSpec.key, fieldRow.fieldSpec.defaultValue))
-                        placeholderText: String(fieldRow.fieldSpec.placeholder || "")
-                        selectByMouse: true
-                        wrapMode: TextEdit.Wrap
-                        color: root.theme && root.theme.colors ? root.theme.colors.text : "#e6edf3"
-                        placeholderTextColor: root.theme && root.theme.colors ? root.theme.colors.subtleText : "#97a3b6"
-                        background: null
-                        onActiveFocusChanged: {
-                            if (!activeFocus)
-                                root.setFieldValue(fieldRow.fieldSpec.key, text)
-                        }
-                    }
-                }
-
-                RowLayout {
-                    visible: fieldRow.editor === "toggle"
-                    Layout.fillWidth: true
-                    spacing: 10
-
-                    Base.AppToggleControl {
-                        theme: root.theme
-                        checked: !!root.fieldValue(fieldRow.fieldSpec.key, fieldRow.fieldSpec.defaultValue)
-                        onToggled: root.setFieldValue(fieldRow.fieldSpec.key, nextChecked)
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: root.fieldValue(fieldRow.fieldSpec.key, fieldRow.fieldSpec.defaultValue)
-                            ? String(fieldRow.fieldSpec.trueLabel || qsTr("Enabled"))
-                            : String(fieldRow.fieldSpec.falseLabel || qsTr("Disabled"))
-                        theme: root.theme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
-                    }
-                }
-
-                Base.AppText {
-                    visible: fieldRow.invalidReason.length > 0
-                    Layout.fillWidth: true
-                    text: fieldRow.invalidReason
-                    theme: root.theme
-                    styleRole: "bodyS"
-                    colorOverride: "#ef4444"
-                    elide: Text.ElideRight
-                }
-            }
+            Layout.fillWidth: true
+            fields: root.fieldSpecs
+            writeBack: false
+            theme: root.theme
+            emptyText: qsTr("No command parameters")
         }
     }
 
@@ -467,7 +259,7 @@ Base.AppPopup {
 
             Base.AppText {
                 Layout.fillWidth: true
-                text: root.protocolLabel(root.selectedProtocol) + " / " + String(root.fieldValue("name", ""))
+                text: root.protocolLabel(root.selectedProtocol) + " / " + String(fieldForm.valueMap().name || "")
                 theme: root.theme
                 styleRole: "bodyM"
                 elide: Text.ElideRight

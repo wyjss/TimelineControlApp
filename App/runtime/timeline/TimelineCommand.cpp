@@ -22,7 +22,7 @@ qint64 variantInt64(const QVariantMap &map, const QString &key, qint64 fallback)
 
 } // namespace
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 TimelineCommand::TimelineCommand(qint64 startTimeMs,
                                  const QString &targetDeviceId,
@@ -362,4 +362,3 @@ void TimelineCommandModel::setLastCommand(TimelineCommand *command)
     emit lastCommandChanged();
 }
 
-} // namespace TimelineControl

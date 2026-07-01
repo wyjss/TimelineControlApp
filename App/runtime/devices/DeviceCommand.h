@@ -2,11 +2,13 @@
 
 #include <QList>
 #include <QJsonObject>
+#include <QMap>
 #include <QObject>
 #include <QString>
 #include <QVariantList>
 
 #include "devices/DeviceParamSpec.h"
+#include "devices/DeviceConstants.h"
 
 namespace TimelineControl {
 
@@ -29,6 +31,8 @@ public:
     explicit DeviceCommand(QObject *parent = nullptr);
     DeviceCommand(const QString &name, QObject *parent = nullptr);
 
+    Q_INVOKABLE DeviceParamSpec* nameField() const { return getField(DeviceKey::Name); }
+
     QString name() const;
     void setName(const QString &name);
 
@@ -36,6 +40,8 @@ public:
 
     static DeviceCommand *createForProtocol(const QString &protocol, QObject *parent = nullptr);
     static DeviceCommand *createFromJson(const QJsonObject &json, QObject *parent = nullptr);
+
+    Q_INVOKABLE DeviceParamSpec* getField(const QString& key) const;
 
     QJsonObject toJson() const;
     bool loadFromJson(const QJsonObject &json);
@@ -46,29 +52,22 @@ public:
 
     Q_INVOKABLE QVariantList creationInputFields() const;
     Q_INVOKABLE QVariantList executionInputFields() const;
-    Q_INVOKABLE DeviceParamSpec *creationInputField(const QString &key) const;
-    Q_INVOKABLE DeviceParamSpec *executionInputField(const QString &key) const;
-    Q_INVOKABLE DeviceParamSpec *fieldByKey(const QString &key) const;
 
     virtual DeviceCommand *clone(QObject *parent = nullptr) const;
 
 signals:
     void nameChanged();
+    void fieldChanged(DeviceParamSpec *field);
 
 protected:
-    virtual QJsonObject paramsToJson() const = 0;
-    virtual bool loadParamsFromJson(const QJsonObject &params) = 0;
-    virtual QString validateParams() const = 0;
-    virtual QList<DeviceParamSpec *> createCreationInputFields(QObject *parent) const;
-    virtual QList<DeviceParamSpec *> createExecutionInputFields(QObject *parent) const;
+    virtual QString validateParams() const;
 
 private:
-    void ensureCreationInputFields() const;
-    void ensureExecutionInputFields() const;
+    void emitFieldChanged();
 
-    QString m_name;
-    mutable QList<DeviceParamSpec *> m_creationInputFields;
-    mutable QList<DeviceParamSpec *> m_executionInputFields;
+    QMap<QString, DeviceParamSpec *> m_creationInputFieldMap;
+    QList<DeviceParamSpec *> m_creationInputFields;
+    QList<DeviceParamSpec *> m_executionInputFields;
 };
 
 } // namespace TimelineControl

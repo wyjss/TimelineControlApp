@@ -18,10 +18,17 @@ namespace TimelineControl {
 	};
 //! Stable keys used by device config specs and command params.
 namespace DeviceKey {
+inline const QString Name = QStringLiteral("name");
+inline const QString Protocol = QStringLiteral("protocol");
 inline const QString Address = QStringLiteral("address");
 inline const QString BaudRate = QStringLiteral("baudRate");
 inline const QString Dmx512AdapterDeviceId = QStringLiteral("dmx512AdapterDeviceId");
 inline const QString Ip = QStringLiteral("ip");
+inline const QString IpPort = QStringLiteral("ipPort");
+inline const QString HttpMethod = QStringLiteral("httpMethod");
+//inline const QString HttpQueryParams = QStringLiteral("httpQueryParams");
+inline const QString HttpBody = QStringLiteral("httpBody");
+inline const QString ApiPath = QStringLiteral("apiPath");
 inline const QString KeystoneCorrection = QStringLiteral("keystoneCorrection");
 inline const QString Payload = QStringLiteral("payload");
 inline const QString Port = QStringLiteral("port");

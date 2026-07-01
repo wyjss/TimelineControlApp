@@ -8,7 +8,7 @@
 
 #include "devices/DeviceCommand_Http.h"
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 DeviceTemplateModel::DeviceTemplateModel(QObject *parent)
     : TypedListModel<DeviceTemplate *>(parent)
@@ -110,6 +110,7 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
                                          QSize(),
                                          DeviceParamSpec::SizeType,
                                          DeviceParamSpec::SizeEditor);
+        spec->setRequired(false);
         specs.push_back(spec);
     }
     {
@@ -118,6 +119,7 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
                                          QSize(1, 1),
                                          DeviceParamSpec::SizeType,
                                          DeviceParamSpec::SizeEditor);
+        spec->setRequired(false);
         specs.push_back(spec);
     }
 
@@ -125,7 +127,6 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
     {
         DeviceCommand_Http* cmd = new DeviceCommand_Http(nullptr);
         cmd->setName("播放视频");
-        cmd->setMethod("");
     }
 
     return makeDeviceTemplate(tr("电脑"),
@@ -281,4 +282,3 @@ DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,
     return new DeviceTemplate(name, deviceType, protocol, description, configSpecs, {}, this);
 }
 
-} // namespace TimelineControl

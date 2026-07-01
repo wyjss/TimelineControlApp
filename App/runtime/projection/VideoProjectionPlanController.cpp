@@ -1,6 +1,6 @@
 #include "projection/VideoProjectionPlanController.h"
 
-namespace TimelineControl {
+using namespace TimelineControl;
 
 VideoProjectionPlanController::VideoProjectionPlanController(QObject *parent)
     : QObject(parent)
@@ -541,4 +541,3 @@ void VideoProjectionPlanController::refreshCurrentPlanModels()
     m_mappingModel.resetValues(mappingValues());
 }
 
-} // namespace TimelineControl
