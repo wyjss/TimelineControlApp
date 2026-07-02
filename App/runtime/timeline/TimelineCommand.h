@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <QVariantList>
 #include <QVariantMap>
 
 #include "models/TypedListModel.h"
@@ -84,6 +85,7 @@ private:
 class TimelineCommandModel final : public TypedListModel<TimelineCommand *>
 {
     Q_OBJECT
+    Q_PROPERTY(QVariantList commands READ commandVariants NOTIFY commandsChanged FINAL)
     Q_PROPERTY(TimelineControl::TimelineCommand *lastCommand READ lastCommand NOTIFY lastCommandChanged FINAL)
     Q_PROPERTY(QString selectedCommandId READ selectedCommandId WRITE setSelectedCommandId NOTIFY selectedCommandIdChanged FINAL)
 
@@ -92,6 +94,7 @@ public:
     ~TimelineCommandModel() override;
 
     QList<TimelineCommand *> commands() const;
+    QVariantList commandVariants() const;
     TimelineCommand *commandAt(int row) const;
     TimelineCommand *commandById(const QString &id) const;
     int indexOfCommand(TimelineCommand *command) const;
@@ -105,6 +108,10 @@ public:
                                                              const QString &targetDeviceId,
                                                              const QString &commandName,
                                                              const QVariantMap &commandParams);
+    Q_INVOKABLE TimelineControl::TimelineCommand *addDeviceCommand(qint64 startTimeMs,
+                                                                   const QString &targetDeviceId,
+                                                                   TimelineControl::DeviceCommand *targetCommand,
+                                                                   const QVariantMap &extraParams);
     TimelineControl::TimelineCommand *addCommand(qint64 startTimeMs,
                                                  const QString &targetDeviceId,
                                                  const QString &commandName,
@@ -123,6 +130,7 @@ public slots:
     void removeCommandsForDevice(const QString &deviceId);
 
 signals:
+    void commandsChanged();
     void lastCommandChanged();
     void selectedCommandIdChanged();
     void commandAboutToBeRemoved(TimelineControl::TimelineCommand *command);

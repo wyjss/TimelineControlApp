@@ -272,7 +272,7 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &templateName,
     if (!sourceTemplate)
         return nullptr;
 
-    auto *device = new Device(sourceTemplate->name(), m_deviceModel);
+    auto *device = sourceTemplate->createDevice(m_deviceModel);
     device->setDeviceType(deviceType);
     device->setName(name);
     device->setProtocol(sourceTemplate->protocol());

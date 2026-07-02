@@ -9,6 +9,7 @@ ColumnLayout {
     property var fields: []
     property var values: ({})
     property bool writeBack: true
+    property bool readOnly: false
     property bool showErrors: true
     property QtObject theme
     property string emptyText: qsTr("No fields")
@@ -40,6 +41,9 @@ ColumnLayout {
     }
 
     function setFieldValue(field, value) {
+        if (readOnly)
+            return
+
         var nextValue = normalizedValue(field, value)
         if (writeBack) {
             field.value = nextValue
@@ -180,7 +184,7 @@ ColumnLayout {
 
             property var fieldSpec: modelData
             readonly property string editor: root.editorForField(fieldSpec)
-            readonly property string invalidReason: root.showErrors ? root.fieldInvalidReason(fieldSpec) : ""
+            readonly property string invalidReason: root.showErrors && !root.readOnly ? root.fieldInvalidReason(fieldSpec) : ""
 
             Layout.fillWidth: true
             spacing: 6
@@ -213,6 +217,7 @@ ColumnLayout {
                 theme: root.theme
                 text: String(root.displayValue(fieldRow.fieldSpec, root.fieldValue(fieldRow.fieldSpec)))
                 placeholderText: String(fieldRow.fieldSpec.placeholderText || fieldRow.fieldSpec.placeholder || "")
+                enabled: !root.readOnly
                 inputMethodHints: fieldRow.fieldSpec.type === "int"
                     ? Qt.ImhDigitsOnly
                     : (fieldRow.fieldSpec.type === "double" ? Qt.ImhFormattedNumbersOnly : Qt.ImhNone)
@@ -223,6 +228,7 @@ ColumnLayout {
                 visible: fieldRow.editor === "select"
                 Layout.fillWidth: true
                 theme: root.theme
+                enabled: !root.readOnly
                 options: fieldRow.fieldSpec.options || []
                 value: root.fieldValue(fieldRow.fieldSpec)
                 onValueSelected: root.setFieldValue(fieldRow.fieldSpec, nextValue)
@@ -232,6 +238,7 @@ ColumnLayout {
                 visible: fieldRow.editor === "slider"
                 Layout.fillWidth: true
                 theme: root.theme
+                enabled: !root.readOnly
                 from: Number(fieldRow.fieldSpec.minimum !== undefined ? fieldRow.fieldSpec.minimum : 0)
                 to: Number(fieldRow.fieldSpec.maximum !== undefined ? fieldRow.fieldSpec.maximum : 100)
                 stepSize: Number(fieldRow.fieldSpec.stepSize !== undefined ? fieldRow.fieldSpec.stepSize : 1)
@@ -253,6 +260,7 @@ ColumnLayout {
                 TextArea {
                     anchors.fill: parent
                     anchors.margins: 10
+                    readOnly: root.readOnly
                     text: String(root.fieldValue(fieldRow.fieldSpec))
                     placeholderText: String(fieldRow.fieldSpec.placeholderText || fieldRow.fieldSpec.placeholder || "")
                     selectByMouse: true
@@ -274,6 +282,7 @@ ColumnLayout {
 
                 Base.AppToggleControl {
                     theme: root.theme
+                    enabled: !root.readOnly
                     checked: !!root.fieldValue(fieldRow.fieldSpec)
                     onToggled: root.setFieldValue(fieldRow.fieldSpec, nextChecked)
                 }

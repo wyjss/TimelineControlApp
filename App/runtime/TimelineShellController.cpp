@@ -1,6 +1,8 @@
 #include "TimelineShellController.h"
 
+#include "TimelineRuntime.h"
 #include "runtime/shell/AppDrawer.h"
+#include "timeline/TimelineController.h"
 
 namespace {
 
@@ -69,6 +71,24 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
         const QString meta = rowData.value(QStringLiteral("meta")).toString();
         syncSelection(label.isEmpty() ? tr("Selection") : label, meta);
         return;
+    }
+
+    auto *runtime = qobject_cast<TimelineRuntime *>(parent());
+    if (runtime && runtime->timelineController()) {
+        if (actionId == QStringLiteral("timeline.start")) {
+            runtime->timelineController()->start();
+            return;
+        }
+
+        if (actionId == QStringLiteral("timeline.pause")) {
+            runtime->timelineController()->pause();
+            return;
+        }
+
+        if (actionId == QStringLiteral("timeline.stop")) {
+            runtime->timelineController()->stop();
+            return;
+        }
     }
 
     AppShellController::handleUiAction(actionId, payload);

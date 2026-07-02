@@ -7,6 +7,7 @@
 #include <QJsonObject>
 #include <QSize>
 #include <QStringList>
+#include <QUrl>
 #include <QVariantList>
 
 #include "devices/Device.h"
@@ -269,11 +270,6 @@ Device *DeviceInspectorFormProvider::findDevice(const QString &deviceId) const
     return m_deviceModel->deviceById(deviceId);
 }
 
-DeviceTemplate *DeviceInspectorFormProvider::templateForDevice(const Device *device) const
-{
-    return device ? findTemplate(device->templateName()) : nullptr;
-}
-
 QString DeviceInspectorFormProvider::firstTemplateName() const
 {
     if (!m_deviceTemplateModel)
@@ -344,61 +340,57 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildTemplateForm(const DeviceTem
 EarthUI::AppForm *DeviceInspectorFormProvider::buildTemplateConfigForm(const DeviceTemplate *deviceTemplate)
 {
     auto *form = makeForm();
-    form->setLayoutMode(EarthUI::AppForm::Horizontal);
+    form->setLayoutMode(EarthUI::AppForm::Vertical);
     form->setLabelWidth(112);
-    form->setFieldSpacing(12);
-    form->setShowFieldDividers(true);
+    form->setFieldSpacing(6);
+    form->setShowFieldDividers(false);
 
     auto *configSection = makeSection(form, QString());
-    configSection->setLayoutMode(EarthUI::AppFormSection::Horizontal);
+    configSection->setLayoutMode(EarthUI::AppFormSection::Vertical);
     configSection->setLabelWidth(112);
-    configSection->setFieldSpacing(12);
-    configSection->setShowFieldDividers(true);
+    configSection->setFieldSpacing(6);
+    configSection->setShowFieldDividers(false);
 
     if (deviceTemplate) {
         const QList<DeviceParamSpec *> specs = deviceTemplate->configSpecObjects();
         for (const DeviceParamSpec *spec : specs)
-            appendParamSpecField(configSection, spec, spec ? spec->defaultValue() : QVariant());
+            appendParamSpecField(configSection, spec, spec ? spec->defaultValue() : QVariant(), true);
     }
     return form;
 }
 
 EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *device)
 {
-    auto *form = makeForm(tr("Device"));
-    auto *summarySection = makeSection(form, tr("Device"));
-    summarySection->appendField(makeSummaryField(QStringLiteral("id"), tr("ID"), device ? device->id() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("name"), tr("Name"), device ? device->name() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("deviceType"), tr("Device Type"), device ? device->deviceType() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("templateName"), tr("Template"), device ? device->templateName() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("protocol"), tr("Protocol"), device ? device->protocol() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("address"), tr("Address"), device ? device->address() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("status"), tr("Status"), device ? device->status() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("lastSeen"), tr("Last Seen"), device ? device->lastSeen() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("description"), tr("Description"), device ? device->description() : QVariant()));
+    auto *form = makeForm();
+    auto *profileSection = makeSection(form, QString());
+    profileSection->appendField(makeReadOnlyField(QStringLiteral("templateName"),
+                                                  tr("Template"),
+                                                  device ? device->templateName() : QVariant()));
+    profileSection->appendField(makeReadOnlyField(QStringLiteral("deviceType"),
+                                                  tr("Device Type"),
+                                                  device ? device->deviceType() : QVariant()));
+    profileSection->appendField(makeReadOnlyField(QStringLiteral("name"),
+                                                  tr("Name"),
+                                                  device ? device->name() : QVariant()));
 
-    auto *configSection = makeSection(form, tr("Config Values"));
-    if (!device)
-        return form;
+    auto *protocolStatusField = new EarthUI::AppFormField(profileSection);
+    protocolStatusField->setKind(EarthUI::AppFormField::Custom);
+    protocolStatusField->setKey(QStringLiteral("protocolStatus"));
+    protocolStatusField->setDelegateSource(QUrl(QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceProfilePairField.qml")));
+    protocolStatusField->setCustomData(QVariantMap{
+        {QStringLiteral("leftLabel"), tr("Protocol")},
+        {QStringLiteral("leftValue"), displayValue(device ? device->protocol() : QVariant())},
+        {QStringLiteral("rightLabel"), tr("Status")},
+        {QStringLiteral("rightValue"), displayValue(device ? device->status() : QVariant())}
+    });
+    profileSection->appendField(protocolStatusField);
 
-    QVariantMap remainingValues = device->configValues();
-    if (DeviceTemplate *deviceTemplate = templateForDevice(device)) {
-        const QList<DeviceParamSpec *> specs = deviceTemplate->configSpecObjects();
-        for (const DeviceParamSpec *spec : specs) {
-            if (!spec || spec->key().isEmpty())
-                continue;
-
-            appendParamSpecField(configSection,
-                                 spec,
-                                 remainingValues.value(spec->key(), spec->defaultValue()));
-            remainingValues.remove(spec->key());
-        }
-    }
-
-    QStringList keys = remainingValues.keys();
-    keys.sort(Qt::CaseInsensitive);
-    for (const QString &key : keys)
-        configSection->appendField(makeSummaryField(key, key, remainingValues.value(key)));
+    profileSection->appendField(makeReadOnlyField(QStringLiteral("address"),
+                                                  tr("Address"),
+                                                  device ? device->address() : QVariant()));
+    profileSection->appendField(makeReadOnlyField(QStringLiteral("description"),
+                                                  tr("Description"),
+                                                  device ? device->description() : QVariant()));
 
     return form;
 }
@@ -485,8 +477,8 @@ EarthUI::AppForm *DeviceInspectorFormProvider::makeForm(const QString &title, co
     form->setShowFieldDividers(false);
     form->setShowHeaderDivider(false);
     form->setLabelWidth(124);
-    form->setFieldSpacing(8);
-    form->setSectionSpacing(12);
+    form->setFieldSpacing(6);
+    form->setSectionSpacing(10);
     return form;
 }
 
@@ -519,33 +511,32 @@ EarthUI::AppFormField *DeviceInspectorFormProvider::makeSummaryField(const QStri
     return field;
 }
 
-EarthUI::AppFormField *DeviceInspectorFormProvider::makeGhostTextField(const QString &key,
-                                                                       const QString &label,
-                                                                       const QVariant &value,
-                                                                       const QString &subtitle) const
+EarthUI::AppFormField *DeviceInspectorFormProvider::makeReadOnlyField(const QString &key,
+                                                                      const QString &label,
+                                                                      const QVariant &value,
+                                                                      const QString &subtitle) const
 {
     auto *field = new EarthUI::AppFormField;
-    field->setKind(EarthUI::AppFormField::TextField);
+    field->setKind(EarthUI::AppFormField::Custom);
     field->setKey(key);
     field->setLabel(label);
     field->setSubtitle(subtitle);
     field->setValue(displayValue(value));
     field->setReadOnly(true);
-    field->setAppearance(EarthUI::AppFormField::Ghost);
-    field->setSurfaceTone(QStringLiteral("ghost"));
+    field->setDelegateSource(QUrl(QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceReadOnlyField.qml")));
     return field;
 }
 
 void DeviceInspectorFormProvider::appendParamSpecField(EarthUI::AppFormSection *section,
                                                        const DeviceParamSpec *spec,
                                                        const QVariant &value,
-                                                       bool useGhostValue) const
+                                                       bool useReadOnlyField) const
 {
     if (!section || !spec)
         return;
 
-    auto *field = useGhostValue
-        ? makeGhostTextField(spec->key(), spec->label(), value, specSubtitle(spec))
+    auto *field = useReadOnlyField
+        ? makeReadOnlyField(spec->key(), spec->label(), value, specSubtitle(spec))
         : makeSummaryField(spec->key(), spec->label(), value, specSubtitle(spec));
     QVariantMap customData;
     customData.insert(QStringLiteral("valueType"), spec->typeName());

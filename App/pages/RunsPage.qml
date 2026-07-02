@@ -15,6 +15,7 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
+    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
 
     readonly property var runRows: [
         { "name": "Current Run", "time": "00:14.000", "state": "Armed" },
@@ -25,10 +26,10 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 32
-        anchors.rightMargin: 32
-        anchors.topMargin: 64
-        anchors.bottomMargin: 44
+        anchors.leftMargin: root.pageMargin
+        anchors.rightMargin: root.pageMargin
+        anchors.topMargin: root.pageMargin
+        anchors.bottomMargin: root.pageMargin
         spacing: 14
 
         RowLayout {

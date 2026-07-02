@@ -2,6 +2,7 @@
 
 #include "devices/DeviceCommand.h"
 
+#include <QJsonObject>
 #include <QUuid>
 
 namespace {
@@ -143,6 +144,17 @@ QList<TimelineCommand *> TimelineCommandModel::commands() const
     return items();
 }
 
+QVariantList TimelineCommandModel::commandVariants() const
+{
+    QVariantList result;
+    result.reserve(items().size());
+
+    for (TimelineCommand *command : items())
+        result.append(QVariant::fromValue(command));
+
+    return result;
+}
+
 TimelineCommand *TimelineCommandModel::commandAt(int row) const
 {
     return itemAt(row);
@@ -190,6 +202,23 @@ TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
                                                   const QVariantMap &commandParams)
 {
     return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, nullptr);
+}
+
+TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
+                                                        const QString &targetDeviceId,
+                                                        DeviceCommand *targetCommand,
+                                                        const QVariantMap &extraParams)
+{
+    if (!targetCommand)
+        return nullptr;
+
+    QVariantMap commandParams = targetCommand->toJson().toVariantMap();
+    for (auto it = extraParams.cbegin(); it != extraParams.cend(); ++it) {
+        if (!it.key().trimmed().isEmpty())
+            commandParams.insert(it.key(), it.value());
+    }
+
+    return addCommand(startTimeMs, targetDeviceId, targetCommand->name(), commandParams, targetCommand);
 }
 
 TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
@@ -302,6 +331,7 @@ void TimelineCommandModel::itemInserted(TimelineCommand *command, int row)
 {
     Q_UNUSED(row)
     prepareCommand(command);
+    emit commandsChanged();
 }
 
 void TimelineCommandModel::itemRemoved(TimelineCommand *command, int row)
@@ -311,6 +341,7 @@ void TimelineCommandModel::itemRemoved(TimelineCommand *command, int row)
     if (m_lastCommand == command)
         setLastCommand(nullptr);
     disconnectCommand(command);
+    emit commandsChanged();
 }
 
 void TimelineCommandModel::prepareCommand(TimelineCommand *command)
@@ -351,6 +382,7 @@ void TimelineCommandModel::emitCommandChanged(TimelineCommand *command)
         return;
 
     notifyItemChanged(row);
+    emit commandsChanged();
 }
 
 void TimelineCommandModel::setLastCommand(TimelineCommand *command)

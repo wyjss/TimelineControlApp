@@ -71,6 +71,8 @@ add_executable(TimelineControlApp
     App/runtime/models/VariantListModel.h
     App/runtime/projection/VideoProjectionPlanController.cpp
     App/runtime/projection/VideoProjectionPlanController.h
+    App/runtime/timeline/TimelineController.cpp
+    App/runtime/timeline/TimelineController.h
     App/runtime/timeline/TimelineCommand.cpp
     App/runtime/timeline/TimelineCommand.h
     App/runtime/TimelineRuntime.cpp

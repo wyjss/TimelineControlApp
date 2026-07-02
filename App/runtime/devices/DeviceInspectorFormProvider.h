@@ -65,7 +65,6 @@ signals:
 private:
     DeviceTemplate *findTemplate(const QString &templateName) const;
     Device *findDevice(const QString &deviceId) const;
-    DeviceTemplate *templateForDevice(const Device *device) const;
     QString firstTemplateName() const;
 
     void rebuildTemplateForms();
@@ -84,14 +83,14 @@ private:
                                             const QString &label,
                                             const QVariant &value,
                                             const QString &subtitle = QString()) const;
-    EarthUI::AppFormField *makeGhostTextField(const QString &key,
-                                              const QString &label,
-                                              const QVariant &value,
-                                              const QString &subtitle = QString()) const;
+    EarthUI::AppFormField *makeReadOnlyField(const QString &key,
+                                             const QString &label,
+                                             const QVariant &value,
+                                             const QString &subtitle = QString()) const;
     void appendParamSpecField(EarthUI::AppFormSection *section,
                               const DeviceParamSpec *spec,
                               const QVariant &value,
-                              bool useGhostValue = false) const;
+                              bool useReadOnlyField = false) const;
 
     DeviceModel *m_deviceModel = nullptr;
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;

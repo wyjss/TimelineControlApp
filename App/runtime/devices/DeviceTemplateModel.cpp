@@ -6,8 +6,6 @@
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceCommand.h"
 
-#include "devices/DeviceCommand_Http.h"
-
 using namespace TimelineControl;
 
 DeviceTemplateModel::DeviceTemplateModel(QObject *parent)
@@ -125,15 +123,19 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
 
 	QList<DeviceCommand*> commands;
     {
-        DeviceCommand_Http* cmd = new DeviceCommand_Http(nullptr);
-        cmd->setName("播放视频");
+        DeviceCommand *cmd = DeviceCommand::createForProtocol(DeviceProtocol::Pc, nullptr);
+        if (cmd) {
+            cmd->setName("播放视频");
+            commands.push_back(cmd);
+        }
     }
 
     return makeDeviceTemplate(tr("电脑"),
                               DeviceType::PC,
                               DeviceProtocol::Pc,
                               tr("电脑设备"),
-                              specs);
+                              specs,
+                              commands);
 }
 
 DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateDmx512Adapter()
@@ -277,8 +279,9 @@ DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,
                                                         const QString &deviceType,
                                                         const QString &protocol,
                                                         const QString &description,
-                                                        const QList<DeviceParamSpec *> &configSpecs)
+                                                        const QList<DeviceParamSpec *> &configSpecs,
+                                                        const QList<DeviceCommand *> &commands)
 {
-    return new DeviceTemplate(name, deviceType, protocol, description, configSpecs, {}, this);
+    return new DeviceTemplate(name, deviceType, protocol, description, configSpecs, commands, this);
 }
 

@@ -44,7 +44,8 @@ private:
                                        const QString &deviceType,
                                        const QString &protocol,
                                        const QString &description,
-                                       const QList<DeviceParamSpec *> &configSpecs);
+                                       const QList<DeviceParamSpec *> &configSpecs,
+                                       const QList<DeviceCommand *> &commands = {});
 };
 
 } // namespace TimelineControl

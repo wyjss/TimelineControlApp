@@ -24,6 +24,7 @@ Item {
     property var inspectorObject: null
     property var inspectorData: ({})
     property var selectionData: ({})
+    property int timelineState: 0
     property real leftPanelContentOpacity: 1
     property real windowDragPressX: 0
     property real windowDragPressY: 0
@@ -57,6 +58,8 @@ Item {
     readonly property int canvasBottomInset: statusBarHeight + overlayMargin
     readonly property int defaultLeftPanelWidth: shellTheme ? shellTheme.sidebarWidth : 260
     readonly property int rightPanelWidth: shellTheme ? shellTheme.inspectorWidth : 304
+    readonly property bool timelineStopped: timelineState === 0
+    readonly property bool timelinePaused: timelineState === 2
     readonly property int leftPanelSwapDuration: theme && theme.motion ? theme.motion.contentSwapDuration : 140
     readonly property bool canControlWindow: showWindowControls && !!hostWindow
     readonly property bool windowIsMaximized: canControlWindow && hostWindow.visibility === Window.Maximized
@@ -538,6 +541,79 @@ Item {
                         ]
                     }
 
+                    Base.AppSurface {
+                        id: timelineControlBar
+
+                        Layout.preferredWidth: timelineControlRow.implicitWidth + 16
+                        Layout.preferredHeight: 34
+                        Layout.alignment: Qt.AlignVCenter
+                        sizeToContent: false
+                        theme: root.theme
+                        surfaceTone: "section"
+                        shapeRole: AppUiEnums.ShapeRole.Control
+                        strokeWidth: 1
+
+                        RowLayout {
+                            id: timelineControlRow
+
+                            anchors.fill: parent
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            spacing: 6
+
+                            Base.AppText {
+                                text: qsTr("Timeline")
+                                theme: root.theme
+                                styleRole: "bodyS"
+                                textTone: "secondary"
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 8
+                                Layout.preferredHeight: 8
+                                radius: 4
+                                color: root.timelineStopped ? "#ef4444" : "#22c55e"
+                            }
+
+                            Rectangle {
+                                Layout.preferredWidth: 1
+                                Layout.preferredHeight: 18
+                                color: root.theme.colors.border
+                                opacity: 0.72
+                            }
+
+                            Base.AppButton {
+                                text: root.timelineStopped ? qsTr("Start") : qsTr("Stop")
+                                theme: root.theme
+                                size: AppUiEnums.ButtonSize.Small
+                                variant: root.timelineStopped
+                                    ? AppUiEnums.ButtonVariant.Tonal
+                                    : AppUiEnums.ButtonVariant.Secondary
+                                iconName: root.timelineStopped ? "play" : "stop"
+                                onClicked: root.uiActionRequested(root.timelineStopped ? "timeline.start" : "timeline.stop", {})
+                            }
+
+                            Base.AppButton {
+                                text: root.timelinePaused ? qsTr("Resume") : qsTr("Pause")
+                                theme: root.theme
+                                size: AppUiEnums.ButtonSize.Small
+                                variant: AppUiEnums.ButtonVariant.Secondary
+                                iconName: root.timelinePaused ? "play" : "pause"
+                                enabled: !root.timelineStopped
+                                onClicked: root.uiActionRequested(root.timelinePaused ? "timeline.start" : "timeline.pause", {})
+                            }
+
+                            Base.AppButton {
+                                text: qsTr("Plans")
+                                theme: root.theme
+                                size: AppUiEnums.ButtonSize.Small
+                                variant: AppUiEnums.ButtonVariant.Secondary
+                                iconName: "resources"
+                                onClicked: root.uiActionRequested("timeline.plans", {})
+                            }
+                        }
+                    }
+
                     Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -811,6 +887,7 @@ Item {
                             id: earthCanvasLoader
 
                             anchors.fill: parent
+                            anchors.bottomMargin: root.statusBarHeight
                             active: root.hasInteractiveCanvas
                             source: root.canvasDelegateSource
                             onLoaded: {
@@ -821,6 +898,7 @@ Item {
 
                         Item {
                             anchors.fill: parent
+                            anchors.bottomMargin: root.statusBarHeight
                             visible: !earthCanvasLoader.active
 
                             Repeater {
@@ -934,6 +1012,7 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
+                            anchors.bottomMargin: root.statusBarHeight
                             height: root.seamFadeSize
                             z: 1
                             gradient: Gradient {

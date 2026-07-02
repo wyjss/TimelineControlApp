@@ -14,6 +14,7 @@
 #include "devices/DeviceTemplate.h"
 #include "devices/DeviceTemplateModel.h"
 #include "projection/VideoProjectionPlanController.h"
+#include "timeline/TimelineController.h"
 #include "timeline/TimelineCommand.h"
 #include "runtime/task/TaskManager.h"
 #include "runtime/form/AppForm.h"
@@ -30,6 +31,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
                                                                     m_deviceTemplateModel,
                                                                     this))
     , m_videoProjectionPlanController(new VideoProjectionPlanController(this))
+    , m_timelineController(new TimelineController(this))
     , m_timelineCommandModel(new TimelineCommandModel(this))
 {
     qRegisterMetaType<TimelineControl::DeviceCommand *>("TimelineControl::DeviceCommand*");
@@ -46,11 +48,44 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<TimelineControl::DeviceModel *>("TimelineControl::DeviceModel*");
     qRegisterMetaType<TimelineControl::DeviceTemplateModel *>("TimelineControl::DeviceTemplateModel*");
     qRegisterMetaType<TimelineControl::VideoProjectionPlanController *>("TimelineControl::VideoProjectionPlanController*");
+    qRegisterMetaType<TimelineControl::TimelineController *>("TimelineControl::TimelineController*");
     qRegisterMetaType<TimelineControl::TimelineCommand *>("TimelineControl::TimelineCommand*");
     qRegisterMetaType<TimelineControl::TimelineCommandModel *>("TimelineControl::TimelineCommandModel*");
 
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_timelineCommandModel, &TimelineCommandModel::removeCommandsForDevice);
+    connect(m_timelineController, &TimelineController::stateChanged, this, [this]() {
+        const State nextState = m_timelineController->state() == TimelineController::Running
+            ? Running
+            : (m_timelineController->state() == TimelineController::Paused ? Paused : Stopped);
+        if (m_state == nextState)
+            return;
+
+        m_state = nextState;
+        emit stateChanged();
+    });
+}
+
+TimelineRuntime::State TimelineRuntime::state() const
+{
+    return m_state;
+}
+
+void TimelineRuntime::setState(State state)
+{
+    if (m_timelineController) {
+        const TimelineController::State controllerState = state == Running
+            ? TimelineController::Running
+            : (state == Paused ? TimelineController::Paused : TimelineController::Stopped);
+        if (m_timelineController->state() != controllerState)
+            m_timelineController->setState(controllerState);
+    }
+
+    if (m_state == state)
+        return;
+
+    m_state = state;
+    emit stateChanged();
 }
 
 TaskManager *TimelineRuntime::taskManager() const
@@ -81,6 +116,11 @@ DeviceInspectorFormProvider *TimelineRuntime::deviceInspectorFormProvider() cons
 VideoProjectionPlanController *TimelineRuntime::videoProjectionPlanController() const
 {
     return m_videoProjectionPlanController;
+}
+
+TimelineController *TimelineRuntime::timelineController() const
+{
+    return m_timelineController;
 }
 
 TimelineCommandModel *TimelineRuntime::timelineCommandModel() const

@@ -17,6 +17,7 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
+    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
@@ -51,20 +52,6 @@ Item {
         && (deviceDisplayMode === "type"
             ? (selectedDevice.deviceType !== undefined && String(selectedDevice.deviceType) === selectedDeviceType)
             : (selectedDevice.templateName !== undefined && String(selectedDevice.templateName) === selectedTemplateName))
-    readonly property var protocolOptions: [
-        { "label": "DMX512", "value": "DMX512" },
-        { "label": "HTTP", "value": "HTTP" },
-        { "label": "Serial", "value": "Serial" },
-        { "label": "VISCA", "value": "VISCA" },
-        { "label": "OSC", "value": "OSC" },
-        { "label": "Modbus", "value": "Modbus" }
-    ]
-    readonly property var statusOptions: [
-        { "label": qsTr("Online"), "value": qsTr("Online") },
-        { "label": qsTr("Standby"), "value": qsTr("Standby") },
-        { "label": qsTr("Offline"), "value": qsTr("Offline") }
-    ]
-
     onDeviceTypesChanged: {
         if (selectedDeviceType.length === 0 && deviceTypes.length > 0)
             selectedDeviceType = String(deviceTypes[0])
@@ -382,10 +369,10 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 32
-        anchors.rightMargin: 32
-        anchors.topMargin: 64
-        anchors.bottomMargin: 44
+        anchors.leftMargin: root.pageMargin
+        anchors.rightMargin: root.pageMargin
+        anchors.topMargin: root.pageMargin
+        anchors.bottomMargin: root.pageMargin
         spacing: 14
 
         RowLayout {
@@ -705,7 +692,7 @@ Item {
                     anchors.fill: parent
                     anchors.margins: 18
                     theme: root.pageTheme
-                    contentSpacing: 14
+                    contentSpacing: 10
                     fillContentWidth: true
 
                     Base.AppText {
@@ -761,185 +748,17 @@ Item {
 
                     Base.AppText {
                         Layout.fillWidth: true
-                        visible: root.deviceDisplayMode === "template"
-                        text: qsTr("Fixed Config")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        visible: root.deviceDisplayMode === "template"
-                            && (!root.selectedTemplate || !root.selectedTemplate.configSpecs || root.selectedTemplate.configSpecs.length === 0)
-                        text: qsTr("No fixed config")
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
-                    }
-
-                    Form.AppFormContent {
-                        Layout.fillWidth: true
-                        visible: root.deviceDisplayMode === "template"
-                            && root.selectedTemplate
-                            && root.selectedTemplate.configSpecs
-                            && root.selectedTemplate.configSpecs.length > 0
-                            && root.deviceInspectorFormProvider !== null
-                        theme: root.pageTheme
-                        formData: root.deviceInspectorFormProvider
-                            ? root.deviceInspectorFormProvider.templateConfigForm
-                            : ({})
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
                         text: qsTr("Device Profile")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
                     }
 
-                    ColumnLayout {
+                    Form.AppFormContent {
                         Layout.fillWidth: true
-                        spacing: 6
-
-                        Base.AppText {
-                            text: qsTr("Template")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-
-                        Base.AppTextField {
-                            Layout.fillWidth: true
-                            enabled: false
-                            theme: root.pageTheme
-                            text: root.deviceValue("templateName", "")
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Base.AppText {
-                            text: qsTr("Device Type")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-
-                        Base.AppTextField {
-                            Layout.fillWidth: true
-                            enabled: false
-                            theme: root.pageTheme
-                            text: root.deviceValue("deviceType", "")
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Base.AppText {
-                            text: qsTr("Name")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-
-                        Base.AppTextField {
-                            Layout.fillWidth: true
-                            enabled: false
-                            theme: root.pageTheme
-                            text: root.deviceValue("name", "")
-                            onEditingFinished: root.updateField("name", text)
-                        }
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 10
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            Base.AppText {
-                                text: qsTr("Protocol")
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
-                            }
-
-                            Base.AppSelect {
-                                Layout.fillWidth: true
-                                enabled: false
-                                theme: root.pageTheme
-                                options: root.protocolOptions
-                                value: root.deviceValue("protocol", "DMX512")
-                                onValueSelected: root.updateField("protocol", nextValue)
-                            }
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 6
-
-                            Base.AppText {
-                                text: qsTr("Status")
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
-                            }
-
-                            Base.AppSelect {
-                                Layout.fillWidth: true
-                                enabled: false
-                                theme: root.pageTheme
-                                options: root.statusOptions
-                                value: root.deviceValue("status", qsTr("Offline"))
-                                onValueSelected: root.updateField("status", nextValue)
-                            }
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Base.AppText {
-                            text: qsTr("Address")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-
-                        Base.AppTextField {
-                            Layout.fillWidth: true
-                            enabled: false
-                            theme: root.pageTheme
-                            text: root.deviceValue("address", "")
-                            onEditingFinished: root.updateField("address", text)
-                        }
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-
-                        Base.AppText {
-                            text: qsTr("Description")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-
-                        Base.AppTextField {
-                            Layout.fillWidth: true
-                            enabled: false
-                            theme: root.pageTheme
-                            text: root.deviceValue("description", "")
-                            onEditingFinished: root.updateField("description", text)
-                        }
+                        theme: root.pageTheme
+                        formData: root.deviceInspectorFormProvider
+                            ? root.deviceInspectorFormProvider.deviceForm
+                            : ({})
                     }
 
                     RowLayout {
@@ -1013,212 +832,191 @@ Item {
                         Repeater {
                             model: root.selectedDeviceCommands
 
-                            delegate: Base.AppSurface {
+                            delegate: Item {
                                 id: commandRow
 
+                                readonly property var commandData: modelData
                                 readonly property bool selected: index === root.selectedCommandIndex
-                                readonly property string protocolText: root.commandProtocol(modelData)
-                                readonly property string protocolLabel: protocolText.length > 0 ? protocolText.toUpperCase() : qsTr("CMD")
                                 readonly property string summaryText: root.commandSummary(modelData)
                                 readonly property int inputCount: root.commandInputCount(modelData)
+                                readonly property bool hasExecutionFields: commandData
+                                    && commandData.executionInputFields
+                                    && commandData.executionInputFields.length > 0
 
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 86
-                                sizeToContent: false
-                                theme: root.pageTheme
-                                surfaceTone: selected ? "highlight" : "section"
-                                active: selected
-                                hoveredState: commandMouse.containsMouse
-                                interactive: true
-                                strokeWidth: selected ? 2 : 1
-                                borderOverride: selected ? "#60a5fa" : "#334155"
+                                Layout.preferredHeight: commandRow.selected
+                                    ? commandRowContent.implicitHeight + 16
+                                    : 58
+
+                                Base.AppSurface {
+                                    anchors.fill: parent
+                                    theme: root.pageTheme
+                                    surfaceTone: commandRow.selected ? "highlight" : "ghost"
+                                    active: commandRow.selected
+                                    hoveredState: commandMouse.containsMouse
+                                    interactive: true
+                                    strokeWidth: commandRow.selected || commandMouse.containsMouse ? 1 : 0
+                                    borderOverride: commandRow.selected ? "#60a5fa" : "#334155"
+                                    hoverOverlayOpacity: 0.08
+                                }
+
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 3
+                                    height: parent.height - 18
+                                    radius: 2
+                                    color: commandRow.selected ? "#60a5fa" : "#334155"
+                                    opacity: commandRow.selected ? 1 : (commandMouse.containsMouse ? 0.44 : 0.18)
+                                }
 
                                 MouseArea {
                                     id: commandMouse
 
-                                    anchors.fill: parent
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    height: 58
                                     hoverEnabled: true
                                     acceptedButtons: Qt.LeftButton
                                     onClicked: root.selectCommandIndex(index)
                                 }
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
+                                ColumnLayout {
+                                    id: commandRowContent
+
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.leftMargin: 18
                                     anchors.rightMargin: 12
-                                    spacing: 12
+                                    spacing: commandRow.selected ? 10 : 0
 
-                                    Rectangle {
-                                        Layout.preferredWidth: 6
-                                        Layout.fillHeight: true
-                                        radius: 3
-                                        color: commandRow.selected ? "#60a5fa" : "#334155"
-                                        opacity: commandRow.selected ? 1 : 0.62
-                                    }
-
-                                    ColumnLayout {
+                                    RowLayout {
                                         Layout.fillWidth: true
-                                        spacing: 2
+                                        Layout.preferredHeight: 58
+                                        spacing: 8
 
-                                        Base.AppText {
+                                        ColumnLayout {
                                             Layout.fillWidth: true
-                                            text: root.commandName(modelData)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
-                                            colorOverride: commandRow.selected ? "#f8fafc" : undefined
-                                            elide: Text.ElideRight
-                                        }
+                                            spacing: 2
 
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: commandRow.summaryText.length > 0
-                                                ? commandRow.summaryText
-                                                : qsTr("%1 fields").arg(commandRow.inputCount)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "secondary"
-                                            elide: Text.ElideRight
+                                            Base.AppText {
+                                                Layout.fillWidth: true
+                                                text: root.commandName(commandRow.commandData)
+                                                theme: root.pageTheme
+                                                styleRole: "bodyM"
+                                                colorOverride: commandRow.selected ? "#f8fafc" : undefined
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Base.AppText {
+                                                Layout.fillWidth: true
+                                                text: commandRow.summaryText.length > 0
+                                                    ? commandRow.summaryText
+                                                    : qsTr("%1 fields").arg(commandRow.inputCount)
+                                                theme: root.pageTheme
+                                                styleRole: "bodyS"
+                                                textTone: "secondary"
+                                                elide: Text.ElideRight
+                                            }
                                         }
                                     }
 
                                     Rectangle {
-                                        Layout.preferredWidth: Math.max(74, protocolBadgeText.implicitWidth + 24)
-                                        Layout.preferredHeight: 30
-                                        Layout.alignment: Qt.AlignVCenter
-                                        radius: 6
-                                        color: commandRow.selected ? "#2563eb" : "#172033"
-                                        border.width: 1
-                                        border.color: commandRow.selected ? "#60a5fa" : "#334155"
+                                        visible: commandRow.selected
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        color: "#60a5fa"
+                                        opacity: 0.34
+                                    }
 
-                                        Base.AppText {
-                                            id: protocolBadgeText
+                                    RowLayout {
+                                        visible: commandRow.selected
+                                        Layout.fillWidth: true
+                                        spacing: 8
 
-                                            anchors.centerIn: parent
-                                            text: commandRow.protocolLabel
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 2
+
+                                            Base.AppText {
+                                                Layout.fillWidth: true
+                                                text: root.commandName(commandRow.commandData)
+                                                theme: root.pageTheme
+                                                styleRole: "bodyM"
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Base.AppText {
+                                                Layout.fillWidth: true
+                                                text: root.commandProtocol(commandRow.commandData).toUpperCase()
+                                                    + " / "
+                                                    + root.commandSummary(commandRow.commandData)
+                                                theme: root.pageTheme
+                                                styleRole: "bodyS"
+                                                textTone: "secondary"
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+
+                                        Base.AppButton {
+                                            text: qsTr("Remove")
                                             theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            colorOverride: "#dbeafe"
-                                            elide: Text.ElideRight
+                                            onClicked: root.removeSelectedCommand()
                                         }
                                     }
 
-                                    Base.AppButton {
+                                    Rectangle {
                                         visible: commandRow.selected
-                                        text: qsTr("Remove")
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 1
+                                        color: "#334155"
+                                        opacity: 0.48
+                                    }
+
+                                    Base.AppText {
+                                        visible: commandRow.selected
+                                        Layout.fillWidth: true
+                                        text: qsTr("Creation Parameters")
                                         theme: root.pageTheme
-                                        onClicked: root.removeSelectedCommand()
+                                        styleRole: "bodyS"
+                                        textTone: "secondary"
+                                        elide: Text.ElideRight
+                                    }
+
+                                    DeviceFieldForm {
+                                        visible: commandRow.selected
+                                        Layout.fillWidth: true
+                                        fields: commandRow.commandData ? commandRow.commandData.creationInputFields : []
+                                        readOnly: true
+                                        writeBack: true
+                                        theme: root.pageTheme
+                                        emptyText: qsTr("No creation parameters")
+                                    }
+
+                                    Base.AppText {
+                                        Layout.fillWidth: true
+                                        visible: commandRow.selected && commandRow.hasExecutionFields
+                                        text: qsTr("Execution Parameters")
+                                        theme: root.pageTheme
+                                        styleRole: "bodyS"
+                                        textTone: "secondary"
+                                        elide: Text.ElideRight
+                                    }
+
+                                    DeviceFieldForm {
+                                        Layout.fillWidth: true
+                                        visible: commandRow.selected && commandRow.hasExecutionFields
+                                        fields: commandRow.commandData ? commandRow.commandData.executionInputFields : []
+                                        readOnly: true
+                                        writeBack: true
+                                        theme: root.pageTheme
+                                        emptyText: qsTr("No execution parameters")
                                     }
                                 }
                             }
-                        }
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: "#334155"
-                        opacity: 0.65
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: root.selectedCommand
-                            ? qsTr("Edit Command")
-                            : qsTr("Command Detail")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        visible: !root.selectedCommand
-                        text: qsTr("No command selected")
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
-                        elide: Text.ElideRight
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        visible: root.selectedCommand !== null
-                        spacing: 12
-
-                        Base.AppSurface {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 62
-                            sizeToContent: false
-                            theme: root.pageTheme
-                            surfaceTone: "surface"
-                            strokeWidth: 1
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-                                anchors.topMargin: 8
-                                anchors.bottomMargin: 8
-                                spacing: 2
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: root.commandName(root.selectedCommand)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
-                                    elide: Text.ElideRight
-                                }
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: root.commandProtocol(root.selectedCommand).toUpperCase()
-                                        + " / "
-                                        + root.commandSummary(root.selectedCommand)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                    elide: Text.ElideRight
-                                }
-                            }
-                        }
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("Creation Parameters")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                            elide: Text.ElideRight
-                        }
-
-                        DeviceFieldForm {
-                            Layout.fillWidth: true
-                            fields: root.selectedCommand ? root.selectedCommand.creationInputFields : []
-                            writeBack: true
-                            theme: root.pageTheme
-                            emptyText: qsTr("No creation parameters")
-                        }
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            visible: root.selectedCommand
-                                && root.selectedCommand.executionInputFields
-                                && root.selectedCommand.executionInputFields.length > 0
-                            text: qsTr("Execution Parameters")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                            elide: Text.ElideRight
-                        }
-
-                        DeviceFieldForm {
-                            Layout.fillWidth: true
-                            visible: root.selectedCommand
-                                && root.selectedCommand.executionInputFields
-                                && root.selectedCommand.executionInputFields.length > 0
-                            fields: root.selectedCommand ? root.selectedCommand.executionInputFields : []
-                            writeBack: true
-                            theme: root.pageTheme
-                            emptyText: qsTr("No execution parameters")
                         }
                     }
                 }

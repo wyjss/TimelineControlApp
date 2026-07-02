@@ -65,6 +65,7 @@ ApplicationWindow {
         inspectorObject: shellController ? shellController.inspectorObject : null
         inspectorData: shellController ? shellController.inspectorData : ({})
         selectionData: shellController ? shellController.selectionData : ({})
+        timelineState: appRuntime && appRuntime.timelineController ? appRuntime.timelineController.state : 0
 
         onDrawerRequested: {
             if (shellController)
