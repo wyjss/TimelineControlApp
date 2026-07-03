@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QVariant>
 #include <QVariantList>
 
 namespace EarthUI {
@@ -70,6 +71,8 @@ public:
     Q_PROPERTY(bool showFieldUnderline READ showFieldUnderline WRITE setShowFieldUnderline NOTIFY showFieldUnderlineChanged FINAL)
     //! 表单包含的 section 列表。
     Q_PROPERTY(QVariantList sections READ sections NOTIFY sectionsChanged FINAL)
+    //! section 数量，避免 QML 为了计数读取并复制整个 sections。
+    Q_PROPERTY(int sectionCount READ sectionCount NOTIFY sectionsChanged FINAL)
 
     explicit AppForm(QObject *parent = nullptr);
 
@@ -117,9 +120,18 @@ public:
     void setShowFieldUnderline(bool showFieldUnderline);
 
     QVariantList sections() const;
+    int sectionCount() const;
+    Q_INVOKABLE QObject *sectionAt(int index) const;
+    Q_INVOKABLE QObject *fieldByKey(const QString &key) const;
+    Q_INVOKABLE QVariant fieldValue(const QString &key, const QVariant &fallback = QVariant()) const;
+    Q_INVOKABLE bool setFieldValue(const QString &key, const QVariant &value);
     void appendField(AppFormField *field);
+    void appendFields(const QVariantList &fields);
     void appendSection(AppFormSection *section);
+    void appendSections(const QVariantList &sections);
     void clearSections();
+    void beginUpdate();
+    void endUpdate();
 
 signals:
     void titleChanged();
@@ -139,6 +151,9 @@ signals:
 
 private:
     AppFormSection *ensureDefaultSection();
+    bool appendSectionObject(AppFormSection *section);
+    void removeSectionObject(QObject *sectionObject);
+    void emitSectionsChanged();
 
     QString m_title;
     QString m_subtitle;
@@ -155,10 +170,14 @@ private:
     int m_sectionSpacing = 12;
     bool m_showFieldUnderline = false;
     QList<AppFormSection *> m_sections;
+    QVariantList m_sectionsCache;
     AppFormSection *m_defaultSection = nullptr;
+    int m_updateDepth = 0;
+    bool m_sectionsDirty = false;
 };
 
 } // namespace EarthUI
 
+Q_DECLARE_METATYPE(EarthUI::AppForm *)
 Q_DECLARE_METATYPE(EarthUI::AppForm::SurfaceMode)
 Q_DECLARE_METATYPE(EarthUI::AppForm::LayoutMode)

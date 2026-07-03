@@ -48,6 +48,7 @@ public:
 
     QString typeName() const;
     DeviceParamSpec *clone(QObject *parent = nullptr) const;
+    Q_INVOKABLE QString invalidReason(const QVariant &value = QVariant()) const;
 
     static QString typeName(ValueType valueType);
 

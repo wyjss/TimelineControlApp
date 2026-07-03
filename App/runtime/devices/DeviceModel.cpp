@@ -1,5 +1,6 @@
 #include "devices/DeviceModel.h"
 #include "devices/DeviceConstants.h"
+#include <QDataStream>
 #include <QVariantMap>
 
 namespace {
@@ -252,6 +253,62 @@ Device *DeviceModel::takeDeviceAt(int row)
 Device *DeviceModel::takeDevice(const QString &deviceId)
 {
     return takeDeviceAt(indexOfDeviceId(deviceId));
+}
+
+void DeviceModel::writeToStream(QDataStream &stream) const
+{
+    const QList<Device *> currentItems = items();
+    stream << currentItems.size();
+
+    for (Device *device : currentItems)
+        device->writeToStream(stream);
+
+    stream << m_currentDeviceId;
+}
+
+void DeviceModel::readFromStream(QDataStream &stream)
+{
+    int deviceCount = 0;
+    stream >> deviceCount;
+    if (stream.status() != QDataStream::Ok || deviceCount < 0)
+        return;
+
+    QList<Device *> devices;
+    devices.reserve(deviceCount);
+    for (int index = 0; index < deviceCount; ++index) {
+        auto *device = new Device(QString(), this);
+        device->readFromStream(stream);
+        if (stream.status() != QDataStream::Ok) {
+            delete device;
+            break;
+        }
+        devices.append(device);
+    }
+
+    QString currentDeviceId;
+    if (stream.status() == QDataStream::Ok)
+        stream >> currentDeviceId;
+
+    if (stream.status() != QDataStream::Ok || devices.size() != deviceCount) {
+        qDeleteAll(devices);
+        return;
+    }
+
+    const QList<Device *> oldDevices = items();
+    if (!resetItems(devices)) {
+        qDeleteAll(devices);
+        return;
+    }
+
+    qDeleteAll(oldDevices);
+    emit devicesChanged();
+    emit deviceTypesChanged();
+
+    const QString restoredCurrentDeviceId = deviceById(currentDeviceId) ? currentDeviceId : QString();
+    if (m_currentDeviceId == restoredCurrentDeviceId)
+        emit currentDeviceChanged();
+    else
+        setCurrentDeviceId(restoredCurrentDeviceId);
 }
 
 bool DeviceModel::acceptsItem(Device *device) const

@@ -221,25 +221,68 @@ bool AppFormSection::hasExplicitShowFieldUnderline() const
 
 QVariantList AppFormSection::fields() const
 {
-    QVariantList values;
-    values.reserve(m_fields.size());
+    return m_fieldsCache;
+}
 
-    for (AppFormField *field : m_fields)
-        values.append(QVariant::fromValue(static_cast<QObject *>(field)));
+int AppFormSection::fieldCount() const
+{
+    return m_fields.size();
+}
 
-    return values;
+QObject *AppFormSection::fieldAt(int index) const
+{
+    if (index < 0 || index >= m_fields.size())
+        return nullptr;
+
+    return m_fields.at(index);
+}
+
+QObject *AppFormSection::fieldByKey(const QString &key) const
+{
+    const QString normalizedKey = key.trimmed();
+    if (normalizedKey.isEmpty())
+        return nullptr;
+
+    for (AppFormField *field : m_fields) {
+        if (field && field->key() == normalizedKey)
+            return field;
+    }
+
+    return nullptr;
+}
+
+QVariant AppFormSection::fieldValue(const QString &key, const QVariant &fallback) const
+{
+    AppFormField *field = qobject_cast<AppFormField *>(fieldByKey(key));
+    return field ? field->value() : fallback;
+}
+
+bool AppFormSection::setFieldValue(const QString &key, const QVariant &value)
+{
+    AppFormField *field = qobject_cast<AppFormField *>(fieldByKey(key));
+    if (!field)
+        return false;
+
+    field->setValue(value);
+    return true;
 }
 
 void AppFormSection::appendField(AppFormField *field)
 {
-    if (!field || m_fields.contains(field))
+    appendFieldObject(field);
+}
+
+void AppFormSection::appendFields(const QVariantList &fields)
+{
+    if (fields.isEmpty())
         return;
 
-    if (!field->parent())
-        field->setParent(this);
-
-    m_fields.append(field);
-    emit fieldsChanged();
+    beginUpdate();
+    for (const QVariant &value : fields) {
+        QObject *object = value.value<QObject *>();
+        appendFieldObject(qobject_cast<AppFormField *>(object));
+    }
+    endUpdate();
 }
 
 void AppFormSection::clearFields()
@@ -249,12 +292,82 @@ void AppFormSection::clearFields()
 
     const QList<AppFormField *> fieldsToRemove = m_fields;
     m_fields.clear();
-    emit fieldsChanged();
+    m_fieldsCache.clear();
+    emitFieldsChanged();
 
     for (AppFormField *field : fieldsToRemove) {
-        if (field && field->parent() == this)
+        if (!field)
+            continue;
+
+        QObject::disconnect(field, nullptr, this, nullptr);
+        if (field->parent() == this)
             field->deleteLater();
     }
+}
+
+void AppFormSection::beginUpdate()
+{
+    ++m_updateDepth;
+}
+
+void AppFormSection::endUpdate()
+{
+    if (m_updateDepth <= 0)
+        return;
+
+    --m_updateDepth;
+    if (m_updateDepth == 0 && m_fieldsDirty) {
+        m_fieldsDirty = false;
+        emit fieldsChanged();
+    }
+}
+
+bool AppFormSection::appendFieldObject(AppFormField *field)
+{
+    if (!field || m_fields.contains(field))
+        return false;
+
+    if (!field->parent())
+        field->setParent(this);
+
+    m_fields.append(field);
+    m_fieldsCache.append(QVariant::fromValue(static_cast<QObject *>(field)));
+    QObject::connect(field,
+                     &QObject::destroyed,
+                     this,
+                     [this](QObject *fieldObject) {
+                         removeFieldObject(fieldObject);
+                     });
+    emitFieldsChanged();
+    return true;
+}
+
+void AppFormSection::removeFieldObject(QObject *fieldObject)
+{
+    bool changed = false;
+    for (int index = 0; index < m_fields.size(); ++index) {
+        if (m_fields.at(index) != fieldObject)
+            continue;
+
+        m_fields.removeAt(index);
+        if (index < m_fieldsCache.size())
+            m_fieldsCache.removeAt(index);
+        changed = true;
+        break;
+    }
+
+    if (changed)
+        emitFieldsChanged();
+}
+
+void AppFormSection::emitFieldsChanged()
+{
+    if (m_updateDepth > 0) {
+        m_fieldsDirty = true;
+        return;
+    }
+
+    emit fieldsChanged();
 }
 
 } // namespace EarthUI

@@ -1,5 +1,11 @@
 #include "devices/DeviceCommand_Http.h"
 #include "devices/DeviceConstants.h"
+#include "LogMacros.h"
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QTimer>
+#include <QUrl>
 #include <QVariantMap>
 
 namespace {
@@ -91,6 +97,58 @@ DeviceCommand_Http::DeviceCommand_Http(QObject *parent)
 QString DeviceCommand_Http::protocol() const
 {
     return protocolName();
+}
+
+void DeviceCommand_Http::execute()
+{
+    const QString ip = ipField() ? ipField()->stringValue() : QString();
+    const QString path = pathField() ? pathField()->stringValue() : QString();
+    if (ip.isEmpty() || path.isEmpty()) {
+        emit executionFinished(false, tr("HTTP address or path is empty"));
+        return;
+    }
+
+    QUrl url;
+    url.setScheme(QStringLiteral("http"));
+    url.setHost(ip);
+    url.setPort(portField() ? portField()->intValue() : 80);
+    url.setPath(path);
+    if (!url.isValid()) {
+        emit executionFinished(false, tr("Invalid HTTP URL"));
+        return;
+    }
+
+	LOG_DEBUG("http " << url);
+    QNetworkRequest request(url);
+    auto *manager = new QNetworkAccessManager;
+    QNetworkReply *reply = nullptr;
+    if (methodField() && methodField()->stringValue() == QStringLiteral("POST")) {
+        request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+        reply = manager->post(request, bodyField() ? bodyField()->stringValue().toUtf8() : QByteArray());
+    } else {
+        reply = manager->get(request);
+    }
+
+    QTimer::singleShot(5000, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->setProperty("timedOut", true);
+            reply->abort();
+        }
+    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        const QVariant status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+        const int httpStatus = status.toInt();
+        const bool success = reply->error() == QNetworkReply::NoError
+            && (!status.isValid() || httpStatus < 400);
+        QString errorMessage;
+        if (!success)
+            errorMessage = reply->property("timedOut").toBool()
+                ? tr("HTTP request timed out")
+                : (reply->error() == QNetworkReply::NoError ? tr("HTTP %1").arg(httpStatus) : reply->errorString());
+        emit executionFinished(success, errorMessage);
+    });
+    connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
+    connect(reply, &QNetworkReply::finished, manager, &QObject::deleteLater);
 }
 
 QString DeviceCommand_Http::protocolName()

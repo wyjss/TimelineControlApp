@@ -1,5 +1,6 @@
 import QtQuick 2.14
 import QtQuick.Controls 2.14
+import QtQuick.Dialogs 1.3
 import QtQuick.Layouts 1.14
 import QtQuick.Window 2.14
 import "foundation"
@@ -25,6 +26,8 @@ Item {
     property var inspectorData: ({})
     property var selectionData: ({})
     property int timelineState: 0
+    property string planFilePath: ""
+    property string planName: ""
     property real leftPanelContentOpacity: 1
     property real windowDragPressX: 0
     property real windowDragPressY: 0
@@ -604,12 +607,15 @@ Item {
                             }
 
                             Base.AppButton {
-                                text: qsTr("Plans")
+                                id: plansButton
+
+                                text: root.planName.length > 0 ? root.planName : qsTr("No Plan")
                                 theme: root.theme
                                 size: AppUiEnums.ButtonSize.Small
                                 variant: AppUiEnums.ButtonVariant.Secondary
                                 iconName: "resources"
-                                onClicked: root.uiActionRequested("timeline.plans", {})
+                                enabled: root.timelineStopped
+                                onClicked: planPopup.opened ? planPopup.close() : planPopup.open()
                             }
                         }
                     }
@@ -901,42 +907,54 @@ Item {
                             anchors.bottomMargin: root.statusBarHeight
                             visible: !earthCanvasLoader.active
 
-                            Repeater {
-                                model: 9
-
-                                delegate: Rectangle {
-                                    width: 1
-                                    height: parent ? parent.height : 0
-                                    x: (index + 1) * (parent.width / 10)
-                                    color: root.theme.colors.border
-                                    opacity: 0.14
-                                }
-                            }
-
-                            Repeater {
-                                model: 6
-
-                                delegate: Rectangle {
-                                    width: parent ? parent.width : 0
-                                    height: 1
-                                    y: (index + 1) * (parent.height / 7)
-                                    color: root.theme.colors.border
-                                    opacity: 0.12
-                                }
-                            }
-
                             Canvas {
+                                id: placeholderCanvas
+
                                 anchors.fill: parent
+
+                                onWidthChanged: requestPaint()
+                                onHeightChanged: requestPaint()
+
+                                Connections {
+                                    target: root
+                                    function onThemeChanged() {
+                                        placeholderCanvas.requestPaint()
+                                    }
+                                }
 
                                 onPaint: {
                                     var ctx = getContext("2d")
                                     var w = width
                                     var h = height
+                                    var colors = root.theme && root.theme.colors ? root.theme.colors : null
+                                    var highlightText = colors ? colors.highlightText : Qt.rgba(0.49, 0.71, 1.0, 1)
+                                    var inverseText = colors ? colors.inverseText : Qt.rgba(1, 1, 1, 1)
                                     var points = [[w * 0.23, h * 0.68], [w * 0.48, h * 0.48], [w * 0.72, h * 0.34]]
 
                                     ctx.clearRect(0, 0, w, h)
-                                    ctx.fillStyle = Qt.rgba(root.theme.colors.highlightText.r, root.theme.colors.highlightText.g, root.theme.colors.highlightText.b, 0.12)
-                                    ctx.strokeStyle = Qt.rgba(root.theme.colors.highlightText.r, root.theme.colors.highlightText.g, root.theme.colors.highlightText.b, 0.48)
+
+                                    ctx.strokeStyle = colors ? colors.border : "#334155"
+                                    ctx.lineWidth = 1
+                                    ctx.globalAlpha = 0.14
+                                    for (var gx = 1; gx < 10; ++gx) {
+                                        var gridX = gx * (w / 10)
+                                        ctx.beginPath()
+                                        ctx.moveTo(gridX, 0)
+                                        ctx.lineTo(gridX, h)
+                                        ctx.stroke()
+                                    }
+
+                                    ctx.globalAlpha = 0.12
+                                    for (var gy = 1; gy < 7; ++gy) {
+                                        var gridY = gy * (h / 7)
+                                        ctx.beginPath()
+                                        ctx.moveTo(0, gridY)
+                                        ctx.lineTo(w, gridY)
+                                        ctx.stroke()
+                                    }
+                                    ctx.globalAlpha = 1
+                                    ctx.fillStyle = Qt.rgba(highlightText.r, highlightText.g, highlightText.b, 0.12)
+                                    ctx.strokeStyle = Qt.rgba(highlightText.r, highlightText.g, highlightText.b, 0.48)
                                     ctx.lineWidth = 2
                                     ctx.beginPath()
                                     ctx.moveTo(w * 0.17, h * 0.22)
@@ -949,7 +967,7 @@ Item {
                                     ctx.fill()
                                     ctx.stroke()
 
-                                    ctx.strokeStyle = Qt.rgba(root.theme.colors.highlightText.r, root.theme.colors.highlightText.g, root.theme.colors.highlightText.b, 0.92)
+                                    ctx.strokeStyle = Qt.rgba(highlightText.r, highlightText.g, highlightText.b, 0.92)
                                     ctx.lineWidth = 3
                                     ctx.lineCap = "round"
                                     ctx.lineJoin = "round"
@@ -961,7 +979,7 @@ Item {
                                     ctx.lineTo(points[2][0], points[2][1])
                                     ctx.stroke()
 
-                                    ctx.fillStyle = Qt.rgba(root.theme.colors.inverseText.r, root.theme.colors.inverseText.g, root.theme.colors.inverseText.b, 0.96)
+                                    ctx.fillStyle = Qt.rgba(inverseText.r, inverseText.g, inverseText.b, 0.96)
                                     for (var i = 0; i < points.length; ++i) {
                                         ctx.beginPath()
                                         ctx.arc(points[i][0], points[i][1], 4.5, 0, Math.PI * 2)
@@ -1311,6 +1329,97 @@ Item {
         finishedTaskCount: root.finishedTaskCount
         topBarHeight: root.topBarHeight
         overlayMargin: root.overlayMargin
+    }
+
+    Base.AppPopup {
+        id: planPopup
+
+        parent: Overlay.overlay
+        width: 220
+        x: {
+            if (!parent)
+                return 0
+
+            var origin = plansButton.mapToItem(parent, plansButton.width - width, plansButton.height + 8)
+            return Math.round(Math.max(root.overlayMargin, Math.min(origin.x, parent.width - width - root.overlayMargin)))
+        }
+        y: {
+            if (!parent)
+                return root.topBarHeight + root.overlayMargin
+
+            var origin = plansButton.mapToItem(parent, 0, plansButton.height + 8)
+            return Math.round(Math.max(root.overlayMargin, origin.y))
+        }
+        theme: root.theme
+        surfaceTone: "surface"
+        modal: false
+        showModalOverlay: false
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        padding: 12
+        spacing: 8
+
+        Base.AppButton {
+            Layout.fillWidth: true
+            text: qsTr("Save")
+            theme: root.theme
+            size: AppUiEnums.ButtonSize.Small
+            enabled: root.timelineStopped
+            onClicked: {
+                planPopup.close()
+                if (root.planFilePath.length > 0)
+                    root.uiActionRequested("timeline.plan.save", { "filePath": root.planFilePath })
+                else
+                    savePlanDialog.open()
+            }
+        }
+
+        Base.AppButton {
+            Layout.fillWidth: true
+            text: qsTr("Save As...")
+            theme: root.theme
+            size: AppUiEnums.ButtonSize.Small
+            enabled: root.timelineStopped
+            onClicked: {
+                planPopup.close()
+                savePlanDialog.open()
+            }
+        }
+
+        Base.AppButton {
+            Layout.fillWidth: true
+            text: qsTr("Load...")
+            theme: root.theme
+            size: AppUiEnums.ButtonSize.Small
+            enabled: root.timelineStopped
+            onClicked: {
+                planPopup.close()
+                loadPlanDialog.open()
+            }
+        }
+    }
+
+    FileDialog {
+        id: savePlanDialog
+
+        title: qsTr("Save Timeline Plan")
+        selectExisting: false
+        nameFilters: [qsTr("Timeline Plan (*.tlplan)"), qsTr("All Files (*)")]
+        onAccepted: {
+            if (root.timelineStopped)
+                root.uiActionRequested("timeline.plan.save", { "filePath": fileUrl })
+        }
+    }
+
+    FileDialog {
+        id: loadPlanDialog
+
+        title: qsTr("Load Timeline Plan")
+        selectExisting: true
+        nameFilters: [qsTr("Timeline Plan (*.tlplan)"), qsTr("All Files (*)")]
+        onAccepted: {
+            if (root.timelineStopped)
+                root.uiActionRequested("timeline.plan.load", { "filePath": fileUrl })
+        }
     }
 }
 

@@ -30,6 +30,7 @@ find_package(Qt5 5.14 REQUIRED COMPONENTS
     Qml
     Quick
     QuickControls2
+    Network
     Widgets
 )
 
@@ -66,6 +67,8 @@ add_executable(TimelineControlApp
     App/runtime/devices/DeviceTemplate.h
     App/runtime/devices/DeviceTemplateModel.cpp
     App/runtime/devices/DeviceTemplateModel.h
+    App/runtime/devices/LogMacros.h
+    App/runtime/devices/LogMacros.cpp
     App/runtime/models/TypedListModel.h
     App/runtime/models/VariantListModel.cpp
     App/runtime/models/VariantListModel.h
@@ -98,8 +101,12 @@ target_link_libraries(TimelineControlApp PRIVATE
     Qt5::Qml
     Qt5::Quick
     Qt5::QuickControls2
+    Qt5::Network
     Qt5::Widgets
+    spdlog::spdlog
 )
+
+find_package(spdlog CONFIG REQUIRED)
 
 target_compile_options(TimelineControlApp PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/utf-8>

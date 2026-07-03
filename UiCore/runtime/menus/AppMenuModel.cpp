@@ -1,19 +1,12 @@
 #include "AppMenuModel.h"
 
+#include "runtime/form/AppForm.h"
+
+#include <QtGlobal>
+
 namespace EarthUI {
 
 namespace {
-
-QVariantList blockListValues(const QList<QObject *> &blocks)
-{
-    QVariantList values;
-    values.reserve(blocks.size());
-
-    for (QObject *block : blocks)
-        values.append(QVariant::fromValue(block));
-
-    return values;
-}
 
 void releaseOwnedBlocks(QList<QObject *> blocks, QObject *owner)
 {
@@ -75,36 +68,66 @@ void AppMenuModel::setPaneWidth(int paneWidth)
 
 QVariantList AppMenuModel::blocks() const
 {
-    return blockListValues(m_blocks);
+    return m_blocksCache;
 }
 
 QVariantList AppMenuModel::fixedTopBlocks() const
 {
-    return blockListValues(m_fixedTopBlocks);
+    return m_fixedTopBlocksCache;
+}
+
+int AppMenuModel::blockCount() const
+{
+    return m_blocks.size();
+}
+
+int AppMenuModel::fixedTopBlockCount() const
+{
+    return m_fixedTopBlocks.size();
+}
+
+QObject *AppMenuModel::blockAt(int index) const
+{
+    if (index < 0 || index >= m_blocks.size())
+        return nullptr;
+
+    return m_blocks.at(index);
+}
+
+QObject *AppMenuModel::fixedTopBlockAt(int index) const
+{
+    if (index < 0 || index >= m_fixedTopBlocks.size())
+        return nullptr;
+
+    return m_fixedTopBlocks.at(index);
+}
+
+bool AppMenuModel::setFieldValue(const QString &fieldKey, const QVariant &value)
+{
+    const QString normalizedKey = fieldKey.trimmed();
+    if (normalizedKey.isEmpty())
+        return false;
+
+    auto applyToBlocks = [&](const QList<QObject *> &blocks) {
+        for (QObject *block : blocks) {
+            AppForm *form = qobject_cast<AppForm *>(block);
+            if (form && form->setFieldValue(normalizedKey, value))
+                return true;
+        }
+        return false;
+    };
+
+    return applyToBlocks(m_fixedTopBlocks) || applyToBlocks(m_blocks);
 }
 
 void AppMenuModel::appendBlock(QObject *block)
 {
-    if (!block || m_blocks.contains(block))
-        return;
-
-    if (!block->parent())
-        block->setParent(this);
-
-    m_blocks.append(block);
-    emit blocksChanged();
+    appendBlockObject(block, false);
 }
 
 void AppMenuModel::appendFixedTopBlock(QObject *block)
 {
-    if (!block || m_fixedTopBlocks.contains(block))
-        return;
-
-    if (!block->parent())
-        block->setParent(this);
-
-    m_fixedTopBlocks.append(block);
-    emit fixedTopBlocksChanged();
+    appendBlockObject(block, true);
 }
 
 void AppMenuModel::clearBlocks()
@@ -116,7 +139,11 @@ void AppMenuModel::clearBlocks()
 
     const QList<QObject *> blocksToRemove = m_blocks;
     m_blocks.clear();
+    m_blocksCache.clear();
     emit blocksChanged();
+
+    for (QObject *block : blocksToRemove)
+        QObject::disconnect(block, nullptr, this, nullptr);
 
     releaseOwnedBlocks(blocksToRemove, this);
 }
@@ -128,7 +155,11 @@ void AppMenuModel::clearFixedTopBlocks()
 
     const QList<QObject *> blocksToRemove = m_fixedTopBlocks;
     m_fixedTopBlocks.clear();
+    m_fixedTopBlocksCache.clear();
     emit fixedTopBlocksChanged();
+
+    for (QObject *block : blocksToRemove)
+        QObject::disconnect(block, nullptr, this, nullptr);
 
     releaseOwnedBlocks(blocksToRemove, this);
 }
@@ -141,8 +172,65 @@ void AppMenuModel::handleAction(const QString &actionId, const QVariantMap &payl
 
 void AppMenuModel::handleFieldEdited(const QString &fieldKey, const QVariant &value)
 {
-    Q_UNUSED(fieldKey)
-    Q_UNUSED(value)
+    setFieldValue(fieldKey, value);
+}
+
+bool AppMenuModel::appendBlockObject(QObject *block, bool fixedTop)
+{
+    if (!block)
+        return false;
+
+    QList<QObject *> &targetBlocks = fixedTop ? m_fixedTopBlocks : m_blocks;
+    QVariantList &targetCache = fixedTop ? m_fixedTopBlocksCache : m_blocksCache;
+
+    if (targetBlocks.contains(block))
+        return false;
+
+    if (!block->parent())
+        block->setParent(this);
+
+    targetBlocks.append(block);
+    targetCache.append(QVariant::fromValue(block));
+    QObject::connect(block,
+                     &QObject::destroyed,
+                     this,
+                     [this](QObject *blockObject) {
+                         removeBlockObject(blockObject);
+                     });
+    emitBlocksChanged(fixedTop);
+    return true;
+}
+
+void AppMenuModel::removeBlockObject(QObject *blockObject)
+{
+    auto removeFrom = [blockObject](QList<QObject *> &blocks, QVariantList &cache) {
+        for (int index = 0; index < blocks.size(); ++index) {
+            if (blocks.at(index) != blockObject)
+                continue;
+
+            blocks.removeAt(index);
+            if (index < cache.size())
+                cache.removeAt(index);
+            return true;
+        }
+        return false;
+    };
+
+    const bool removedFixed = removeFrom(m_fixedTopBlocks, m_fixedTopBlocksCache);
+    const bool removedRegular = removeFrom(m_blocks, m_blocksCache);
+
+    if (removedFixed)
+        emit fixedTopBlocksChanged();
+    if (removedRegular)
+        emit blocksChanged();
+}
+
+void AppMenuModel::emitBlocksChanged(bool fixedTop)
+{
+    if (fixedTop)
+        emit fixedTopBlocksChanged();
+    else
+        emit blocksChanged();
 }
 
 } // namespace EarthUI

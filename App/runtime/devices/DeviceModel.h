@@ -7,6 +7,8 @@
 #include <QStringList>
 #include <QVariantList>
 
+class QDataStream;
+
 namespace TimelineControl {
 
 class DeviceModel final : public TypedListModel<Device *>
@@ -43,6 +45,9 @@ public:
     void appendDevice(Device *device);
     Device *takeDeviceAt(int row);
     Device *takeDevice(const QString &deviceId);
+
+    void writeToStream(QDataStream &stream) const;
+    void readFromStream(QDataStream &stream);
 
 signals:
     void devicesChanged();

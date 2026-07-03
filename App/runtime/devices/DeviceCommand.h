@@ -53,11 +53,13 @@ public:
     Q_INVOKABLE QVariantList creationInputFields() const;
     Q_INVOKABLE QVariantList executionInputFields() const;
 
+    virtual void execute();
     virtual DeviceCommand *clone(QObject *parent = nullptr) const;
 
 signals:
     void nameChanged();
     void fieldChanged(DeviceParamSpec *field);
+    void executionFinished(bool success, const QString &errorMessage);
 
 protected:
     virtual QString validateParams() const;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QVariant>
 #include <QVariantList>
 
 namespace EarthUI {
@@ -62,6 +63,8 @@ public:
     Q_PROPERTY(bool hasExplicitShowFieldUnderline READ hasExplicitShowFieldUnderline NOTIFY showFieldUnderlineChanged FINAL)
     //! section 包含的字段列表。
     Q_PROPERTY(QVariantList fields READ fields NOTIFY fieldsChanged FINAL)
+    //! section 当前字段数量，避免 QML 为了计数读取并复制整个 fields。
+    Q_PROPERTY(int fieldCount READ fieldCount NOTIFY fieldsChanged FINAL)
 
     explicit AppFormSection(QObject *parent = nullptr);
 
@@ -105,8 +108,16 @@ public:
     bool hasExplicitShowFieldUnderline() const;
 
     QVariantList fields() const;
+    int fieldCount() const;
+    Q_INVOKABLE QObject *fieldAt(int index) const;
+    Q_INVOKABLE QObject *fieldByKey(const QString &key) const;
+    Q_INVOKABLE QVariant fieldValue(const QString &key, const QVariant &fallback = QVariant()) const;
+    Q_INVOKABLE bool setFieldValue(const QString &key, const QVariant &value);
     void appendField(AppFormField *field);
+    void appendFields(const QVariantList &fields);
     void clearFields();
+    void beginUpdate();
+    void endUpdate();
 
 signals:
     void titleChanged();
@@ -122,6 +133,10 @@ signals:
     void fieldsChanged();
 
 private:
+    bool appendFieldObject(AppFormField *field);
+    void removeFieldObject(QObject *fieldObject);
+    void emitFieldsChanged();
+
     QString m_title;
     bool m_collapsible = false;
     bool m_expanded = true;
@@ -140,8 +155,12 @@ private:
     bool m_showFieldUnderline = false;
     bool m_hasExplicitShowFieldUnderline = false;
     QList<AppFormField *> m_fields;
+    QVariantList m_fieldsCache;
+    int m_updateDepth = 0;
+    bool m_fieldsDirty = false;
 };
 
 } // namespace EarthUI
 
+Q_DECLARE_METATYPE(EarthUI::AppFormSection *)
 Q_DECLARE_METATYPE(EarthUI::AppFormSection::LayoutMode)

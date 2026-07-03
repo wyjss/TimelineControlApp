@@ -18,6 +18,7 @@ public:
 	Q_INVOKABLE DeviceParamSpec* bodyField() const { return getField(DeviceKey::HttpBody); }
 
     QString protocol() const override;
+	void execute() override;
 
     static QString protocolName();
 };

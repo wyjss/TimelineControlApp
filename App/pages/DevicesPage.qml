@@ -2,6 +2,7 @@ import QtQuick 2.14
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UiCore/qml/components/base" as Base
+import "qrc:/UiCore/qml/components/base/internal" as Internal
 import "qrc:/UiCore/qml/components/form" as Form
 import "qrc:/UiCore/qml/theme" as Theme
 
@@ -37,6 +38,7 @@ Item {
         ? selectedDevice.commands
         : []
     property int selectedCommandIndex: -1
+    property int expandedCommandIndex: -1
     readonly property var selectedCommand: selectedCommandIndex >= 0
         && selectedCommandIndex < selectedDeviceCommands.length
         ? selectedDeviceCommands[selectedCommandIndex]
@@ -60,6 +62,7 @@ Item {
     onSelectedTemplateNameChanged: syncTemplateInspector()
     onSelectedDeviceChanged: {
         selectedCommandIndex = -1
+        expandedCommandIndex = -1
         ensureSelectedCommandForDevice()
     }
     onSelectedDeviceCommandsChanged: ensureSelectedCommandForDevice()
@@ -176,6 +179,9 @@ Item {
             selectedCommandIndex = nextIndex
         else
             syncCommandInspector()
+
+        if (expandedCommandIndex >= selectedDeviceCommands.length)
+            expandedCommandIndex = -1
     }
 
     function syncCommandInspector() {
@@ -213,6 +219,13 @@ Item {
             var nextCount = Math.max(0, selectedDeviceCommands.length - 1)
             selectedCommandIndex = nextCount > 0 ? Math.min(removedIndex, nextCount - 1) : -1
         }
+    }
+
+    function requestRemoveSelectedDevice() {
+        if (!deviceModel || !selectedDeviceInCurrentView || !selectedDevice)
+            return
+
+        removeDevicePopup.openForDevice(selectedDevice)
     }
 
     function commandName(command) {
@@ -746,11 +759,24 @@ Item {
                         }
                     }
 
-                    Base.AppText {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: qsTr("Device Profile")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        spacing: 8
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: qsTr("Device Profile")
+                            theme: root.pageTheme
+                            styleRole: "sectionTitle"
+                            elide: Text.ElideRight
+                        }
+
+                        Base.AppButton {
+                            text: qsTr("Delete")
+                            theme: root.pageTheme
+                            enabled: root.selectedDeviceInCurrentView
+                            onClicked: root.requestRemoveSelectedDevice()
+                        }
                     }
 
                     Form.AppFormContent {
@@ -837,6 +863,7 @@ Item {
 
                                 readonly property var commandData: modelData
                                 readonly property bool selected: index === root.selectedCommandIndex
+                                readonly property bool expanded: index === root.expandedCommandIndex
                                 readonly property string summaryText: root.commandSummary(modelData)
                                 readonly property int inputCount: root.commandInputCount(modelData)
                                 readonly property bool hasExecutionFields: commandData
@@ -844,7 +871,7 @@ Item {
                                     && commandData.executionInputFields.length > 0
 
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: commandRow.selected
+                                Layout.preferredHeight: commandRow.expanded
                                     ? commandRowContent.implicitHeight + 16
                                     : 58
 
@@ -867,8 +894,8 @@ Item {
                                     width: 3
                                     height: parent.height - 18
                                     radius: 2
-                                    color: commandRow.selected ? "#60a5fa" : "#334155"
-                                    opacity: commandRow.selected ? 1 : (commandMouse.containsMouse ? 0.44 : 0.18)
+                                    color: commandRow.expanded || commandRow.selected ? "#60a5fa" : "#334155"
+                                    opacity: commandRow.expanded || commandRow.selected ? 1 : (commandMouse.containsMouse ? 0.44 : 0.18)
                                 }
 
                                 MouseArea {
@@ -881,6 +908,10 @@ Item {
                                     hoverEnabled: true
                                     acceptedButtons: Qt.LeftButton
                                     onClicked: root.selectCommandIndex(index)
+                                    onDoubleClicked: {
+                                        root.selectCommandIndex(index)
+                                        root.expandedCommandIndex = commandRow.expanded ? -1 : index
+                                    }
                                 }
 
                                 ColumnLayout {
@@ -891,7 +922,7 @@ Item {
                                     anchors.top: parent.top
                                     anchors.leftMargin: 18
                                     anchors.rightMargin: 12
-                                    spacing: commandRow.selected ? 10 : 0
+                                    spacing: commandRow.expanded ? 10 : 0
 
                                     RowLayout {
                                         Layout.fillWidth: true
@@ -922,10 +953,19 @@ Item {
                                                 elide: Text.ElideRight
                                             }
                                         }
+
+                                        Internal.AppPaneDisclosure {
+                                            expanded: commandRow.expanded
+                                            control: commandRow
+                                            onToggleRequested: {
+                                                root.selectCommandIndex(index)
+                                                root.expandedCommandIndex = nextExpanded ? index : -1
+                                            }
+                                        }
                                     }
 
                                     Rectangle {
-                                        visible: commandRow.selected
+                                        visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 1
                                         color: "#60a5fa"
@@ -933,7 +973,7 @@ Item {
                                     }
 
                                     RowLayout {
-                                        visible: commandRow.selected
+                                        visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         spacing: 8
 
@@ -969,7 +1009,7 @@ Item {
                                     }
 
                                     Rectangle {
-                                        visible: commandRow.selected
+                                        visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 1
                                         color: "#334155"
@@ -977,7 +1017,7 @@ Item {
                                     }
 
                                     Base.AppText {
-                                        visible: commandRow.selected
+                                        visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         text: qsTr("Creation Parameters")
                                         theme: root.pageTheme
@@ -987,7 +1027,7 @@ Item {
                                     }
 
                                     DeviceFieldForm {
-                                        visible: commandRow.selected
+                                        visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         fields: commandRow.commandData ? commandRow.commandData.creationInputFields : []
                                         readOnly: true
@@ -998,7 +1038,7 @@ Item {
 
                                     Base.AppText {
                                         Layout.fillWidth: true
-                                        visible: commandRow.selected && commandRow.hasExecutionFields
+                                        visible: commandRow.expanded && commandRow.hasExecutionFields
                                         text: qsTr("Execution Parameters")
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
@@ -1008,7 +1048,7 @@ Item {
 
                                     DeviceFieldForm {
                                         Layout.fillWidth: true
-                                        visible: commandRow.selected && commandRow.hasExecutionFields
+                                        visible: commandRow.expanded && commandRow.hasExecutionFields
                                         fields: commandRow.commandData ? commandRow.commandData.executionInputFields : []
                                         readOnly: true
                                         writeBack: true
@@ -1259,6 +1299,74 @@ Item {
                 writeBack: false
                 theme: root.pageTheme
                 emptyText: qsTr("No initial parameters")
+            }
+        }
+    }
+
+    Base.AppPopup {
+        id: removeDevicePopup
+
+        property string deviceId: ""
+        property string deviceName: ""
+
+        function openForDevice(device) {
+            deviceId = String(device.id || "")
+            deviceName = root.deviceValue("name", qsTr("Device"))
+            open()
+        }
+
+        function commit() {
+            if (deviceModel && deviceId.length > 0)
+                deviceModel.removeDevice(deviceId)
+            close()
+        }
+
+        modal: true
+        focus: true
+        width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        padding: 18
+        spacing: 14
+        theme: root.pageTheme
+        surfaceTone: "section"
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        Base.AppText {
+            Layout.fillWidth: true
+            text: qsTr("Delete Device")
+            theme: root.pageTheme
+            styleRole: "titleM"
+            elide: Text.ElideRight
+        }
+
+        Base.AppText {
+            Layout.fillWidth: true
+            text: qsTr("Delete %1? Related timeline commands and projection mappings will be removed.").arg(removeDevicePopup.deviceName)
+            theme: root.pageTheme
+            styleRole: "bodyM"
+            textTone: "secondary"
+            wrapMode: Text.WordWrap
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Base.AppButton {
+                text: qsTr("Cancel")
+                theme: root.pageTheme
+                onClicked: removeDevicePopup.close()
+            }
+
+            Base.AppButton {
+                text: qsTr("Delete")
+                theme: root.pageTheme
+                onClicked: removeDevicePopup.commit()
             }
         }
     }

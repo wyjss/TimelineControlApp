@@ -1,6 +1,7 @@
 #include "devices/DeviceParamSpec.h"
 
 #include <QColor>
+#include <QRegularExpression>
 #include <QSize>
 
 using namespace TimelineControl;
@@ -55,6 +56,44 @@ DeviceParamSpec *DeviceParamSpec::clone(QObject *parent) const
     field->setStepSize(stepSize());
     field->setSuffix(suffix());
     return field;
+}
+
+QString DeviceParamSpec::invalidReason(const QVariant &value) const
+{
+    const QVariant checkedValue = value.isValid() ? value : this->value();
+    const QString labelText = label().isEmpty() ? key() : label();
+    const QString text = checkedValue.toString();
+    if (required() && text.isEmpty())
+        return tr("%1 is required").arg(labelText);
+    if (text.isEmpty())
+        return QString();
+
+    if (valueType() == SizeType) {
+        const QRegularExpression sizeExpression(QStringLiteral("^\\s*\\d+\\s*[xX,]\\s*\\d+\\s*$"));
+        if (!checkedValue.toSize().isValid() && !sizeExpression.match(text).hasMatch())
+            return tr("%1 must use width x height").arg(labelText);
+    }
+
+    if (!pattern().isEmpty()) {
+        const QRegularExpression expression(pattern());
+        if (!expression.isValid())
+            return tr("%1 has an invalid pattern").arg(labelText);
+        if (!expression.match(text).hasMatch())
+            return tr("%1 has an invalid format").arg(labelText);
+    }
+
+    if (valueType() == IntType || valueType() == DoubleType) {
+        bool ok = false;
+        const double numberValue = checkedValue.toDouble(&ok);
+        if (!ok)
+            return tr("%1 must be numeric").arg(labelText);
+        if (numberValue < minimum())
+            return tr("%1 is below minimum").arg(labelText);
+        if (numberValue > maximum())
+            return tr("%1 is above maximum").arg(labelText);
+    }
+
+    return QString();
 }
 
 QString DeviceParamSpec::typeName(ValueType valueType)

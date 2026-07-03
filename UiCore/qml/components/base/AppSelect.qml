@@ -324,100 +324,103 @@ Internal.AppControlBase {
                 suppressToggleReset.restart()
             }
 
-            AppScrollPane {
-                id: dropdownScroll
+            ListView {
+                id: dropdownList
 
-                objectName: "appSelectScrollPane"
+                objectName: "appSelectListView"
                 Layout.fillWidth: true
-                implicitHeight: Math.min(availableContentHeight, root.maxPopupHeight)
-                Layout.preferredHeight: implicitHeight
-                contentSpacing: 4
-                fillContentWidth: true
-                allowHorizontalScroll: false
-                theme: root.resolvedTheme
-                enabled: root.enabled
-                Repeater {
-                    model: root.resolvedOptions
+                Layout.preferredHeight: Math.min(contentHeight, root.maxPopupHeight)
+                implicitHeight: Math.min(contentHeight, root.maxPopupHeight)
+                width: parent ? parent.width : root.resolvedPopupWidth
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                interactive: contentHeight > height + 1
+                model: root.resolvedOptions
+                spacing: 4
+                currentIndex: root.currentIndex
 
-                    delegate: Item {
-                        id: optionItem
-                        objectName: "appSelectOption_" + index
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
-                        readonly property var optionData: modelData
-                        readonly property bool selected: OptionData.valuesEqual(
-                            OptionData.optionValue(optionData, root.valueRole),
-                            root.value
-                        )
+                delegate: Item {
+                    id: optionItem
+                    objectName: "appSelectOption_" + index
 
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: root.optionHeight
+                    readonly property var optionData: modelData
+                    readonly property bool selected: OptionData.valuesEqual(
+                        OptionData.optionValue(optionData, root.valueRole),
+                        root.value
+                    )
 
-                        AppSurface {
-                            anchors.fill: parent
-                            theme: root.resolvedTheme
-                            surfaceTone: optionItem.selected ? "highlight" : "ghost"
-                            active: optionItem.selected
-                            hoveredState: optionTap.hovered
-                            interactive: root.enabled
-                            strokeWidth: optionItem.selected || optionTap.hovered ? 1 : 0
-                            cornerRadius: root.cornerRadius >= 0
-                                ? Math.max(0, root.cornerRadius - 2)
-                                : -1
-                            shapeRole: AppUiEnums.ShapeRole.Control
-                            fillOverride: optionItem.selected
-                                ? root.colorValue("highlightSoft", "#182b45")
-                                : "transparent"
-                            borderOverride: optionItem.selected
-                                ? root.colorValue("highlightText", "#7cb4ff")
-                                : (optionTap.hovered
-                                    ? root.colorValue("border", "#334155")
-                                    : "transparent")
-                            hoverOverlayOpacity: optionItem.selected ? 0 : 0.08
-                            activeOverlayOpacity: optionItem.selected ? 0.04 : 0
-                        }
+                    width: dropdownList.width
+                    height: root.optionHeight
 
-                        Rectangle {
-                            width: 3
-                            height: parent.height - 16
-                            radius: width / 2
-                            anchors.left: parent.left
-                            anchors.leftMargin: 10
-                            anchors.verticalCenter: parent.verticalCenter
-                            color: root.colorValue("highlightText", "#7cb4ff")
-                            opacity: optionItem.selected ? 1 : (optionTap.hovered ? 0.24 : 0)
+                    AppSurface {
+                        anchors.fill: parent
+                        theme: root.resolvedTheme
+                        surfaceTone: optionItem.selected ? "highlight" : "ghost"
+                        active: optionItem.selected
+                        hoveredState: optionTap.hovered
+                        interactive: root.enabled
+                        strokeWidth: optionItem.selected || optionTap.hovered ? 1 : 0
+                        cornerRadius: root.cornerRadius >= 0
+                            ? Math.max(0, root.cornerRadius - 2)
+                            : -1
+                        shapeRole: AppUiEnums.ShapeRole.Control
+                        fillOverride: optionItem.selected
+                            ? root.colorValue("highlightSoft", "#182b45")
+                            : "transparent"
+                        borderOverride: optionItem.selected
+                            ? root.colorValue("highlightText", "#7cb4ff")
+                            : (optionTap.hovered
+                                ? root.colorValue("border", "#334155")
+                                : "transparent")
+                        hoverOverlayOpacity: optionItem.selected ? 0 : 0.08
+                        activeOverlayOpacity: optionItem.selected ? 0.04 : 0
+                    }
 
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: root.resolvedTheme && root.resolvedTheme.motion
-                                        ? root.resolvedTheme.motion.durationFast
-                                        : 120
-                                    easing.type: root.resolvedTheme && root.resolvedTheme.motion
-                                        ? root.resolvedTheme.motion.easingStandard
-                                        : Easing.OutCubic
-                                }
+                    Rectangle {
+                        width: 3
+                        height: parent.height - 16
+                        radius: width / 2
+                        anchors.left: parent.left
+                        anchors.leftMargin: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: root.colorValue("highlightText", "#7cb4ff")
+                        opacity: optionItem.selected ? 1 : (optionTap.hovered ? 0.24 : 0)
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: root.resolvedTheme && root.resolvedTheme.motion
+                                    ? root.resolvedTheme.motion.durationFast
+                                    : 120
+                                easing.type: root.resolvedTheme && root.resolvedTheme.motion
+                                    ? root.resolvedTheme.motion.easingStandard
+                                    : Easing.OutCubic
                             }
                         }
+                    }
 
-                        AppText {
-                            anchors.left: parent.left
-                            anchors.leftMargin: 22
-                            anchors.right: parent.right
-                            anchors.rightMargin: 14
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: OptionData.optionLabel(optionItem.optionData, root.textRole)
-                            theme: root.resolvedTheme
-                            styleRole: "bodyM"
-                            textTone: optionItem.selected ? "accent" : "primary"
-                            elide: Text.ElideRight
-                        }
+                    AppText {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 22
+                        anchors.right: parent.right
+                        anchors.rightMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: OptionData.optionLabel(optionItem.optionData, root.textRole)
+                        theme: root.resolvedTheme
+                        styleRole: "bodyM"
+                        textTone: optionItem.selected ? "accent" : "primary"
+                        elide: Text.ElideRight
+                    }
 
-                        Internal.AppTapRegion {
-                            id: optionTap
+                    Internal.AppTapRegion {
+                        id: optionTap
 
-                            anchors.fill: parent
-                            enabled: root.enabled
-                            onTapped: root.commitOption(optionItem.optionData)
-                        }
+                        anchors.fill: parent
+                        enabled: root.enabled
+                        onTapped: root.commitOption(optionItem.optionData)
                     }
                 }
             }

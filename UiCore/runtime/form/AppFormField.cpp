@@ -2,6 +2,8 @@
 
 #include <QtGlobal>
 
+#include "runtime/fields/BaseField.h"
+
 namespace EarthUI {
 
 namespace {
@@ -111,6 +113,9 @@ void AppFormField::setValue(const QVariant &value)
 
     m_value = value;
     emit valueChanged();
+
+    if (m_autoCommitToSource && !m_syncingFromSource)
+        commitToSourceField();
 }
 
 QVariantList AppFormField::options() const
@@ -337,6 +342,150 @@ void AppFormField::setCustomData(const QVariantMap &customData)
 
     m_customData = customData;
     emit customDataChanged();
+}
+
+BaseField *AppFormField::sourceField() const
+{
+    return m_sourceField.data();
+}
+
+void AppFormField::setSourceField(BaseField *sourceField)
+{
+    if (m_sourceField.data() == sourceField)
+        return;
+
+    if (m_sourceField)
+        QObject::disconnect(m_sourceField, nullptr, this, nullptr);
+
+    m_sourceField = sourceField;
+    connectSourceFieldSignals();
+    syncFromSourceField();
+    emit sourceFieldChanged();
+}
+
+bool AppFormField::autoCommitToSource() const
+{
+    return m_autoCommitToSource;
+}
+
+void AppFormField::setAutoCommitToSource(bool autoCommitToSource)
+{
+    if (m_autoCommitToSource == autoCommitToSource)
+        return;
+
+    m_autoCommitToSource = autoCommitToSource;
+    emit autoCommitToSourceChanged();
+}
+
+void AppFormField::syncFromSourceField()
+{
+    if (!m_sourceField)
+        return;
+
+    m_syncingFromSource = true;
+    copyFromBaseField(m_sourceField.data());
+    m_syncingFromSource = false;
+}
+
+void AppFormField::commitToSourceField()
+{
+    if (!m_sourceField || m_sourceField->value() == m_value)
+        return;
+
+    m_sourceField->setValue(m_value);
+}
+
+void AppFormField::copyFromBaseField(const BaseField *sourceField)
+{
+    if (!sourceField)
+        return;
+
+    setKey(sourceField->key());
+    setLabel(sourceField->label());
+    setSubtitle(sourceField->subtitle());
+    setKind(kindFromBaseField(sourceField));
+    setValue(sourceField->value());
+    setOptions(sourceField->options());
+    setPlaceholderText(sourceField->placeholderText());
+    setReadOnly(sourceField->readOnly());
+    setMinimum(sourceField->minimum());
+    setMaximum(sourceField->maximum());
+    setStepSize(sourceField->stepSize());
+    setSuffix(sourceField->suffix());
+}
+
+AppFormField *AppFormField::fromBaseField(BaseField *sourceField, QObject *parent)
+{
+    auto *field = new AppFormField(parent);
+    field->setSourceField(sourceField);
+    return field;
+}
+
+AppFormField::Kind AppFormField::kindFromBaseField(const BaseField *sourceField)
+{
+    if (!sourceField)
+        return TextField;
+
+    switch (sourceField->editorHint()) {
+    case BaseField::ToggleEditor:
+        return Toggle;
+    case BaseField::SliderEditor:
+        return Slider;
+    case BaseField::SelectEditor:
+        return Select;
+    case BaseField::ChoiceEditor:
+        return Choice;
+    case BaseField::SegmentedEditor:
+        return Segmented;
+    case BaseField::ColorEditor:
+        return Color;
+    case BaseField::CustomEditor:
+        return Custom;
+    case BaseField::SizeEditor:
+    case BaseField::TextEditor:
+        return TextField;
+    case BaseField::AutoEditor:
+    default:
+        break;
+    }
+
+    switch (sourceField->valueType()) {
+    case BaseField::BoolType:
+        return Toggle;
+    case BaseField::EnumType:
+        return Select;
+    case BaseField::ColorType:
+        return Color;
+    default:
+        return TextField;
+    }
+}
+
+void AppFormField::connectSourceFieldSignals()
+{
+    if (!m_sourceField)
+        return;
+
+    QObject::connect(m_sourceField, &BaseField::keyChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::labelChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::subtitleChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::valueTypeChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::editorHintChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::valueChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::optionsChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::placeholderTextChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::readOnlyChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::minimumChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::maximumChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::stepSizeChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField, &BaseField::suffixChanged, this, &AppFormField::syncFromSourceField);
+    QObject::connect(m_sourceField,
+                     &QObject::destroyed,
+                     this,
+                     [this]() {
+                         m_sourceField = nullptr;
+                         emit sourceFieldChanged();
+                     });
 }
 
 } // namespace EarthUI

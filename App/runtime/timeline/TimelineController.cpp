@@ -96,6 +96,9 @@ void TimelineController::setTickIntervalMs(int tickIntervalMs)
 
 void TimelineController::start()
 {
+    if (m_state == Stopped)
+        setCurrentTimeMs(0);
+
     setState(Running);
 }
 
@@ -107,7 +110,6 @@ void TimelineController::pause()
 void TimelineController::stop()
 {
     setState(Stopped);
-    setCurrentTimeMs(0);
 }
 
 void TimelineController::seek(qint64 currentTimeMs)

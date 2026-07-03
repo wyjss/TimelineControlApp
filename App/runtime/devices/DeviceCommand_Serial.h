@@ -28,6 +28,7 @@ public:
     void setPayload(const QString &payload);
 
     QString protocol() const override;
+    void execute() override;
 
     static QString protocolName();
 

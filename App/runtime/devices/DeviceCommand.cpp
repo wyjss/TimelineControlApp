@@ -120,8 +120,17 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
 
 QString DeviceCommand::validate() const
 {
-    if (name().trimmed().isEmpty())
-        return tr("Command name is required");
+    for (DeviceParamSpec *field : m_creationInputFields) {
+        const QString reason = field->invalidReason();
+        if (!reason.isEmpty())
+            return reason;
+    }
+
+    for (DeviceParamSpec *field : m_executionInputFields) {
+        const QString reason = field->invalidReason();
+        if (!reason.isEmpty())
+            return reason;
+    }
 
     return validateParams();
 }
@@ -129,6 +138,11 @@ QString DeviceCommand::validate() const
 QString DeviceCommand::validateParams() const
 {
     return QString();
+}
+
+void DeviceCommand::execute()
+{
+    emit executionFinished(false, tr("Command execution is not implemented"));
 }
 
 DeviceCommand *DeviceCommand::clone(QObject *parent) const

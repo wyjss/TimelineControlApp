@@ -19,6 +19,15 @@
 #include "runtime/task/TaskManager.h"
 #include "runtime/form/AppForm.h"
 
+#include <QCoreApplication>
+#include <QDataStream>
+#include <QFile>
+#include <QFileInfo>
+#include <QIODevice>
+#include <QJsonObject>
+#include <QPointer>
+#include <QUrl>
+
 using namespace TimelineControl;
 
 TimelineRuntime::TimelineRuntime(QObject *parent)
@@ -54,16 +63,58 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
 
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_timelineCommandModel, &TimelineCommandModel::removeCommandsForDevice);
+    connect(m_deviceModel, &DeviceModel::deviceRemoved,
+            m_videoProjectionPlanController, &VideoProjectionPlanController::removeMappingsForPc);
     connect(m_timelineController, &TimelineController::stateChanged, this, [this]() {
         const State nextState = m_timelineController->state() == TimelineController::Running
             ? Running
             : (m_timelineController->state() == TimelineController::Paused ? Paused : Stopped);
+        if (nextState == Stopped) {
+            ++m_runId;
+            m_timelineController->setDurationMs(24 * 60 * 60 * 1000);
+        }
+
         if (m_state == nextState)
             return;
 
         m_state = nextState;
         emit stateChanged();
     });
+    connect(m_timelineController, &TimelineController::currentTimeMsChanged, this, [this]() {
+        if (m_timelineController->state() != TimelineController::Running)
+            return;
+
+        const qint64 currentTimeMs = m_timelineController->currentTimeMs();
+        for (TimelineCommand *timelineCommand : m_timelineCommandModel->commands()) {
+            if (!timelineCommand
+                || timelineCommand->state() != TimelineCommand::Idle
+                || timelineCommand->startTimeMs() > currentTimeMs)
+                continue;
+
+            DeviceCommand *deviceCommand = DeviceCommand::createFromJson(QJsonObject::fromVariantMap(timelineCommand->commandParams()), this);
+            if (!deviceCommand) {
+                timelineCommand->setErrorMessage(tr("Invalid command"));
+                timelineCommand->setState(TimelineCommand::Failed);
+                continue;
+            }
+
+            timelineCommand->setState(TimelineCommand::Running);
+            const int runId = m_runId;
+            QPointer<TimelineCommand> timelineCommandGuard(timelineCommand);
+            connect(deviceCommand, &DeviceCommand::executionFinished, this, [this, runId, timelineCommandGuard, deviceCommand](bool success, const QString &errorMessage) {
+                if (m_runId == runId && timelineCommandGuard) {
+                    timelineCommandGuard->setErrorMessage(errorMessage);
+                    timelineCommandGuard->setState(success ? TimelineCommand::Succeeded : TimelineCommand::Failed);
+                }
+                deviceCommand->deleteLater();
+            });
+            deviceCommand->execute();
+        }
+    });
+
+    const QString defaultPlanFilePath = QCoreApplication::applicationDirPath() + QStringLiteral("/default.tlplan");
+    if (QFile::exists(defaultPlanFilePath))
+        loadPlanFromFile(defaultPlanFilePath);
 }
 
 TimelineRuntime::State TimelineRuntime::state() const
@@ -73,19 +124,18 @@ TimelineRuntime::State TimelineRuntime::state() const
 
 void TimelineRuntime::setState(State state)
 {
+    if (state == Running) {
+        startTimeline();
+        return;
+    }
+
     if (m_timelineController) {
-        const TimelineController::State controllerState = state == Running
-            ? TimelineController::Running
-            : (state == Paused ? TimelineController::Paused : TimelineController::Stopped);
+        const TimelineController::State controllerState = state == Paused
+            ? TimelineController::Paused
+            : TimelineController::Stopped;
         if (m_timelineController->state() != controllerState)
             m_timelineController->setState(controllerState);
     }
-
-    if (m_state == state)
-        return;
-
-    m_state = state;
-    emit stateChanged();
 }
 
 TaskManager *TimelineRuntime::taskManager() const
@@ -128,3 +178,104 @@ TimelineCommandModel *TimelineRuntime::timelineCommandModel() const
     return m_timelineCommandModel;
 }
 
+QString TimelineRuntime::currentPlanFilePath() const
+{
+    return m_currentPlanFilePath;
+}
+
+QString TimelineRuntime::currentPlanName() const
+{
+    return QFileInfo(m_currentPlanFilePath).completeBaseName();
+}
+
+void TimelineRuntime::startTimeline()
+{
+    if (!m_timelineController)
+        return;
+
+    if (m_timelineController->state() == TimelineController::Stopped) {
+        qint64 durationMs = 0;
+        for (TimelineCommand *command : m_timelineCommandModel->commands()) {
+            if (!command)
+                continue;
+
+            command->setState(TimelineCommand::Idle);
+            command->setErrorMessage(QString());
+
+            const qint64 endTimeMs = command->startTimeMs() + command->durationMs();
+            if (durationMs < endTimeMs)
+                durationMs = endTimeMs;
+        }
+        m_timelineController->setDurationMs(durationMs + 10 * 1000);
+    }
+
+    m_timelineController->start();
+}
+
+void TimelineRuntime::writePlanToStream(QDataStream &stream) const
+{
+    m_deviceModel->writeToStream(stream);
+    m_timelineCommandModel->writeToStream(stream);
+    m_videoProjectionPlanController->writeToStream(stream);
+}
+
+void TimelineRuntime::readPlanFromStream(QDataStream &stream)
+{
+    m_deviceModel->readFromStream(stream);
+    if (stream.status() != QDataStream::Ok)
+        return;
+
+    m_timelineCommandModel->readFromStream(stream);
+    if (stream.status() != QDataStream::Ok)
+        return;
+    if (stream.device() && stream.device()->atEnd())
+        return;
+
+    m_videoProjectionPlanController->readFromStream(stream);
+}
+
+bool TimelineRuntime::savePlanToFile(const QString &filePath)
+{
+    const QString normalizedFilePath = filePath.trimmed();
+    if (normalizedFilePath.isEmpty())
+        return false;
+
+    const QUrl fileUrl(normalizedFilePath);
+    QFile file(fileUrl.isLocalFile() ? fileUrl.toLocalFile() : normalizedFilePath);
+    if (!file.open(QIODevice::WriteOnly))
+        return false;
+
+    QDataStream stream(&file);
+    writePlanToStream(stream);
+    if (stream.status() != QDataStream::Ok)
+        return false;
+
+    if (m_currentPlanFilePath != file.fileName()) {
+        m_currentPlanFilePath = file.fileName();
+        emit currentPlanFilePathChanged();
+    }
+    return true;
+}
+
+bool TimelineRuntime::loadPlanFromFile(const QString &filePath)
+{
+    const QString normalizedFilePath = filePath.trimmed();
+    if (normalizedFilePath.isEmpty())
+        return false;
+
+    const QUrl fileUrl(normalizedFilePath);
+    QFile file(fileUrl.isLocalFile() ? fileUrl.toLocalFile() : normalizedFilePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+
+    QDataStream stream(&file);
+    readPlanFromStream(stream);
+    if (stream.status() != QDataStream::Ok)
+        return false;
+
+    if (m_currentPlanFilePath != file.fileName()) {
+        m_currentPlanFilePath = file.fileName();
+        emit currentPlanFilePathChanged();
+    }
+    return true;
+}

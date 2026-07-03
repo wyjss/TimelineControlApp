@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QUrl>
 #include <QVariant>
@@ -10,6 +11,9 @@
 namespace EarthUI {
 
 //! 表单中的单个字段描述，负责向 QML renderer 暴露字段 schema。
+class BaseField;
+
+//! 表单字段 schema，可直接承载 UI 字段，也可绑定 BaseField 作为数据源。
 class AppFormField final : public QObject
 {
     Q_OBJECT
@@ -92,6 +96,10 @@ public:
     Q_PROPERTY(QUrl delegateSource READ delegateSource WRITE setDelegateSource NOTIFY delegateSourceChanged FINAL)
     //! 自定义字段附加数据。
     Q_PROPERTY(QVariantMap customData READ customData WRITE setCustomData NOTIFY customDataChanged FINAL)
+    //! 可选的底层字段数据源，用于减少 C++ 字段对象到 QML schema 的人工转接。
+    Q_PROPERTY(EarthUI::BaseField *sourceField READ sourceField WRITE setSourceField NOTIFY sourceFieldChanged FINAL)
+    //! value 变更后是否自动回写 sourceField。
+    Q_PROPERTY(bool autoCommitToSource READ autoCommitToSource WRITE setAutoCommitToSource NOTIFY autoCommitToSourceChanged FINAL)
 
     explicit AppFormField(QObject *parent = nullptr);
 
@@ -159,6 +167,17 @@ public:
     QVariantMap customData() const;
     void setCustomData(const QVariantMap &customData);
 
+    BaseField *sourceField() const;
+    void setSourceField(BaseField *sourceField);
+
+    bool autoCommitToSource() const;
+    void setAutoCommitToSource(bool autoCommitToSource);
+
+    Q_INVOKABLE void syncFromSourceField();
+    Q_INVOKABLE void commitToSourceField();
+    void copyFromBaseField(const BaseField *sourceField);
+    static AppFormField *fromBaseField(BaseField *sourceField, QObject *parent = nullptr);
+
 signals:
     void kindChanged();
     void keyChanged();
@@ -181,8 +200,13 @@ signals:
     void payloadChanged();
     void delegateSourceChanged();
     void customDataChanged();
+    void sourceFieldChanged();
+    void autoCommitToSourceChanged();
 
 private:
+    static Kind kindFromBaseField(const BaseField *sourceField);
+    void connectSourceFieldSignals();
+
     Kind m_kind = TextField;
     QString m_key;
     QString m_label;
@@ -204,10 +228,14 @@ private:
     QVariantMap m_payload;
     QUrl m_delegateSource;
     QVariantMap m_customData;
+    QPointer<BaseField> m_sourceField;
+    bool m_autoCommitToSource = true;
+    bool m_syncingFromSource = false;
 };
 
 } // namespace EarthUI
 
+Q_DECLARE_METATYPE(EarthUI::AppFormField *)
 Q_DECLARE_METATYPE(EarthUI::AppFormField::Kind)
 Q_DECLARE_METATYPE(EarthUI::AppFormField::Appearance)
 Q_DECLARE_METATYPE(EarthUI::AppFormField::Variant)

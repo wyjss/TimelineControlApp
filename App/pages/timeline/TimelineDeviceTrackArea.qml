@@ -14,7 +14,7 @@ Item {
     property int rowHeight: 56
     property int rowSpacing: 4
     property int labelWidth: 224
-    property int moveAnimationDuration: 2500
+    property int moveAnimationDuration: 220
 
     signal trackSelected(string targetDeviceId)
     signal commandSelected(var command)
@@ -194,7 +194,7 @@ Item {
             NumberAnimation {
                 properties: "x,y"
                 duration: root.moveAnimationDuration
-                easing.type: Easing.OutCubic
+                easing.type: Easing.OutQuad
             }
         }
 
@@ -202,7 +202,7 @@ Item {
             NumberAnimation {
                 properties: "x,y"
                 duration: root.moveAnimationDuration
-                easing.type: Easing.OutCubic
+                easing.type: Easing.OutQuad
             }
         }
 
@@ -210,7 +210,7 @@ Item {
             NumberAnimation {
                 properties: "x,y"
                 duration: root.moveAnimationDuration
-                easing.type: Easing.OutCubic
+                easing.type: Easing.OutQuad
             }
         }
 
@@ -218,7 +218,7 @@ Item {
             NumberAnimation {
                 properties: "x,y"
                 duration: root.moveAnimationDuration
-                easing.type: Easing.OutCubic
+                easing.type: Easing.OutQuad
             }
         }
 
@@ -341,6 +341,9 @@ Item {
                         readonly property real durationMs: root.commandDurationMs(commandData)
                         readonly property bool instantCommand: durationMs <= 0
                         readonly property color commandColor: root.commandColor(commandData)
+                        readonly property color stateColor: commandData && commandData.stateColor
+                            ? commandData.stateColor
+                            : "#dbeafe"
                         readonly property string commandText: String(commandData && commandData.commandName
                             ? commandData.commandName
                             : qsTr("Command"))
@@ -388,7 +391,7 @@ Item {
                             radius: width / 2
                             color: commandBlock.commandColor
                             border.width: 1
-                            border.color: "#dbeafe"
+                            border.color: commandBlock.stateColor
                             opacity: 0.96
                         }
 
@@ -401,8 +404,11 @@ Item {
                             radius: height / 2
                             color: commandBlock.commandColor
                             opacity: commandMouse.containsMouse ? 0.96 : 0.86
-                            border.width: commandMouse.containsMouse ? 1 : 0
-                            border.color: "#dbeafe"
+                            border.width: commandMouse.containsMouse
+                                || Number(commandBlock.commandData && commandBlock.commandData.state !== undefined ? commandBlock.commandData.state : 0) !== 0
+                                ? 1
+                                : 0
+                            border.color: commandBlock.stateColor
                         }
 
                         Rectangle {

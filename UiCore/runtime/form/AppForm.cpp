@@ -2,6 +2,7 @@
 
 #include <QtGlobal>
 
+#include "AppFormField.h"
 #include "AppFormSection.h"
 
 namespace {
@@ -246,13 +247,50 @@ void AppForm::setShowFieldUnderline(bool showFieldUnderline)
 
 QVariantList AppForm::sections() const
 {
-    QVariantList values;
-    values.reserve(m_sections.size());
+    return m_sectionsCache;
+}
 
-    for (AppFormSection *section : m_sections)
-        values.append(QVariant::fromValue(static_cast<QObject *>(section)));
+int AppForm::sectionCount() const
+{
+    return m_sections.size();
+}
 
-    return values;
+QObject *AppForm::sectionAt(int index) const
+{
+    if (index < 0 || index >= m_sections.size())
+        return nullptr;
+
+    return m_sections.at(index);
+}
+
+QObject *AppForm::fieldByKey(const QString &key) const
+{
+    for (AppFormSection *section : m_sections) {
+        if (!section)
+            continue;
+
+        QObject *field = section->fieldByKey(key);
+        if (field)
+            return field;
+    }
+
+    return nullptr;
+}
+
+QVariant AppForm::fieldValue(const QString &key, const QVariant &fallback) const
+{
+    AppFormField *field = qobject_cast<AppFormField *>(fieldByKey(key));
+    return field ? field->value() : fallback;
+}
+
+bool AppForm::setFieldValue(const QString &key, const QVariant &value)
+{
+    AppFormField *field = qobject_cast<AppFormField *>(fieldByKey(key));
+    if (!field)
+        return false;
+
+    field->setValue(value);
+    return true;
 }
 
 void AppForm::appendField(AppFormField *field)
@@ -263,16 +301,33 @@ void AppForm::appendField(AppFormField *field)
     ensureDefaultSection()->appendField(field);
 }
 
-void AppForm::appendSection(AppFormSection *section)
+void AppForm::appendFields(const QVariantList &fields)
 {
-    if (!section || m_sections.contains(section))
+    if (fields.isEmpty())
         return;
 
-    if (!section->parent())
-        section->setParent(this);
+    AppFormSection *section = ensureDefaultSection();
+    section->beginUpdate();
+    section->appendFields(fields);
+    section->endUpdate();
+}
 
-    m_sections.append(section);
-    emit sectionsChanged();
+void AppForm::appendSection(AppFormSection *section)
+{
+    appendSectionObject(section);
+}
+
+void AppForm::appendSections(const QVariantList &sections)
+{
+    if (sections.isEmpty())
+        return;
+
+    beginUpdate();
+    for (const QVariant &value : sections) {
+        QObject *object = value.value<QObject *>();
+        appendSectionObject(qobject_cast<AppFormSection *>(object));
+    }
+    endUpdate();
 }
 
 void AppForm::clearSections()
@@ -282,12 +337,34 @@ void AppForm::clearSections()
 
     const QList<AppFormSection *> sectionsToRemove = m_sections;
     m_sections.clear();
+    m_sectionsCache.clear();
     m_defaultSection = nullptr;
-    emit sectionsChanged();
+    emitSectionsChanged();
 
     for (AppFormSection *section : sectionsToRemove) {
-        if (section && section->parent() == this)
+        if (!section)
+            continue;
+
+        QObject::disconnect(section, nullptr, this, nullptr);
+        if (section->parent() == this)
             section->deleteLater();
+    }
+}
+
+void AppForm::beginUpdate()
+{
+    ++m_updateDepth;
+}
+
+void AppForm::endUpdate()
+{
+    if (m_updateDepth <= 0)
+        return;
+
+    --m_updateDepth;
+    if (m_updateDepth == 0 && m_sectionsDirty) {
+        m_sectionsDirty = false;
+        emit sectionsChanged();
     }
 }
 
@@ -298,9 +375,59 @@ AppFormSection *AppForm::ensureDefaultSection()
 
     auto *section = new AppFormSection(this);
     m_defaultSection = section;
-    m_sections.append(section);
-    emit sectionsChanged();
+    appendSectionObject(section);
     return section;
+}
+
+bool AppForm::appendSectionObject(AppFormSection *section)
+{
+    if (!section || m_sections.contains(section))
+        return false;
+
+    if (!section->parent())
+        section->setParent(this);
+
+    m_sections.append(section);
+    m_sectionsCache.append(QVariant::fromValue(static_cast<QObject *>(section)));
+    QObject::connect(section,
+                     &QObject::destroyed,
+                     this,
+                     [this](QObject *sectionObject) {
+                         removeSectionObject(sectionObject);
+                     });
+    emitSectionsChanged();
+    return true;
+}
+
+void AppForm::removeSectionObject(QObject *sectionObject)
+{
+    bool changed = false;
+    for (int index = 0; index < m_sections.size(); ++index) {
+        if (m_sections.at(index) != sectionObject)
+            continue;
+
+        if (m_defaultSection == sectionObject)
+            m_defaultSection = nullptr;
+
+        m_sections.removeAt(index);
+        if (index < m_sectionsCache.size())
+            m_sectionsCache.removeAt(index);
+        changed = true;
+        break;
+    }
+
+    if (changed)
+        emitSectionsChanged();
+}
+
+void AppForm::emitSectionsChanged()
+{
+    if (m_updateDepth > 0) {
+        m_sectionsDirty = true;
+        return;
+    }
+
+    emit sectionsChanged();
 }
 
 } // namespace EarthUI

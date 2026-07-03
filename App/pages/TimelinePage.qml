@@ -30,6 +30,7 @@ Item {
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
     readonly property var visibleTimelineCommands: buildVisibleTimelineCommands()
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
+    readonly property bool timelineRunning: timelineController && timelineController.state === 1
     readonly property var selectedCommand: selectedCommandIndex >= 0
         && selectedCommandIndex < deviceCommands.length
         ? deviceCommands[selectedCommandIndex]
@@ -152,6 +153,9 @@ Item {
     }
 
     function setTimelineCurrentTimeMs(currentTimeMs) {
+        if (timelineRunning)
+            return
+
         var normalizedTimeMs = Math.max(0, Math.round(Number(currentTimeMs || 0)))
         if (timelineController)
             timelineController.seek(normalizedTimeMs)
@@ -265,8 +269,8 @@ Item {
     }
 
     function executeTimeline() {
-        if (timelineController)
-            timelineController.start()
+        if (appRuntime)
+            appRuntime.startTimeline()
         executionStatusText = qsTr("Timeline execution started")
     }
 
@@ -345,6 +349,7 @@ Item {
                         scrollX: root.timelineScrollX
                         startTimeX: root.timelineTrackLabelWidth + Math.max(0, width - root.timelineTrackLabelWidth) / 2
                         timeScale: root.timelineTimeScale
+                        dragEnabled: !root.timelineRunning
                         onScrollXChangeRequested: function(nextScrollX) {
                             root.timelineScrollX = nextScrollX
                         }
@@ -391,129 +396,6 @@ Item {
                         text: qsTr("Execution")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("Devices")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
-                            textTone: "primary"
-                            elide: Text.ElideRight
-                        }
-
-                        Base.AppText {
-                            text: qsTr("%1").arg(root.devices.length)
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-                    }
-
-                    Base.AppSurface {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumHeight: 156
-                        Layout.preferredHeight: 220
-                        sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
-
-                        ListView {
-                            id: deviceList
-
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            spacing: 6
-                            model: root.devices
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
-                            }
-
-                            delegate: Item {
-                                id: deviceRow
-
-                                readonly property var deviceData: modelData
-                                readonly property bool selected: String(deviceData.id || "") === root.selectedTimelineDeviceId
-
-                                width: deviceList.width
-                                height: 58
-
-                                Base.AppSurface {
-                                    anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: deviceRow.selected ? "highlight" : "ghost"
-                                    active: deviceRow.selected
-                                    hoveredState: deviceMouse.containsMouse
-                                    interactive: true
-                                    strokeWidth: deviceRow.selected || deviceMouse.containsMouse ? 1 : 0
-                                    borderOverride: deviceRow.selected ? "#60a5fa" : "#334155"
-                                    hoverOverlayOpacity: 0.08
-                                }
-
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 3
-                                    height: parent.height - 18
-                                    radius: 2
-                                    color: deviceRow.selected ? "#60a5fa" : "#334155"
-                                    opacity: deviceRow.selected ? 1 : (deviceMouse.containsMouse ? 0.44 : 0.18)
-                                }
-
-                                MouseArea {
-                                    id: deviceMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectTimelineDevice(String(deviceRow.deviceData.id || ""))
-                                }
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 18
-                                    anchors.rightMargin: 12
-                                    anchors.topMargin: 7
-                                    anchors.bottomMargin: 7
-                                    spacing: 2
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.deviceName(deviceRow.deviceData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        colorOverride: deviceRow.selected ? "#f8fafc" : undefined
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.deviceAddress(deviceRow.deviceData) + " / " + root.deviceMeta(deviceRow.deviceData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-                        }
-
-                        Base.AppText {
-                            anchors.centerIn: parent
-                            visible: root.devices.length === 0
-                            text: qsTr("No devices")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
                     }
 
                     RowLayout {
@@ -754,7 +636,11 @@ Item {
                                     width: 3
                                     height: parent.height - 18
                                     radius: 2
-                                    color: timelineCommandRow.selected ? "#60a5fa" : "#334155"
+                                    color: timelineCommandRow.selected
+                                        ? "#60a5fa"
+                                        : String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateColor
+                                            ? timelineCommandRow.commandData.stateColor
+                                            : "#334155")
                                     opacity: timelineCommandRow.selected ? 1 : (timelineCommandMouse.containsMouse ? 0.44 : 0.18)
                                 }
 
@@ -787,6 +673,10 @@ Item {
                                     Base.AppText {
                                         Layout.fillWidth: true
                                         text: root.timelineCommandMeta(timelineCommandRow.commandData)
+                                            + " / "
+                                            + String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateText
+                                                ? timelineCommandRow.commandData.stateText
+                                                : qsTr("Pending"))
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
                                         textTone: "secondary"

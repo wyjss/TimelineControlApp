@@ -3,6 +3,7 @@ import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import QtQuick.Window 2.14
 import "../../foundation"
+import "../base/internal/AppThemeUtils.js" as ThemeUtils
 
 Item {
     id: root
@@ -56,12 +57,7 @@ Item {
     property alias contentLayout: formColumn
 
     function densityValue(name, fallback) {
-        if (resolvedTheme && resolvedTheme.density && resolvedTheme.density[name] !== undefined)
-            return Number(resolvedTheme.density[name])
-
-        return resolvedTheme && resolvedTheme.metrics && resolvedTheme.metrics[name] !== undefined
-            ? Number(resolvedTheme.metrics[name])
-            : fallback
+        return ThemeUtils.densityValue(resolvedTheme, name, fallback)
     }
 
     implicitWidth: formContextRoot.implicitWidth

@@ -18,8 +18,12 @@ class AppMenuModel : public QObject
     Q_PROPERTY(int paneWidth READ paneWidth WRITE setPaneWidth NOTIFY paneWidthChanged)
     //! 菜单顶部固定内容块列表，不参与滚动。
     Q_PROPERTY(QVariantList fixedTopBlocks READ fixedTopBlocks NOTIFY fixedTopBlocksChanged)
+    //! 菜单顶部固定内容块数量。
+    Q_PROPERTY(int fixedTopBlockCount READ fixedTopBlockCount NOTIFY fixedTopBlocksChanged)
     //! 菜单滚动内容块列表，可追加 AppForm 或自定义块。
     Q_PROPERTY(QVariantList blocks READ blocks NOTIFY blocksChanged)
+    //! 菜单滚动内容块数量。
+    Q_PROPERTY(int blockCount READ blockCount NOTIFY blocksChanged)
 
 public:
     explicit AppMenuModel(QObject *parent = nullptr);
@@ -35,6 +39,11 @@ public:
 
     QVariantList blocks() const;
     QVariantList fixedTopBlocks() const;
+    int blockCount() const;
+    int fixedTopBlockCount() const;
+    Q_INVOKABLE QObject *blockAt(int index) const;
+    Q_INVOKABLE QObject *fixedTopBlockAt(int index) const;
+    Q_INVOKABLE bool setFieldValue(const QString &fieldKey, const QVariant &value);
     void appendBlock(QObject *block);
     void appendFixedTopBlock(QObject *block);
     void clearBlocks();
@@ -50,11 +59,17 @@ signals:
     void blocksChanged();
 
 private:
+    bool appendBlockObject(QObject *block, bool fixedTop);
+    void removeBlockObject(QObject *blockObject);
+    void emitBlocksChanged(bool fixedTop);
+
     QString m_title;
     QString m_subtitle;
     int m_paneWidth = 0;
     QList<QObject *> m_fixedTopBlocks;
     QList<QObject *> m_blocks;
+    QVariantList m_fixedTopBlocksCache;
+    QVariantList m_blocksCache;
 };
 
 } // namespace EarthUI

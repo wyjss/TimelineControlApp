@@ -66,6 +66,8 @@ ApplicationWindow {
         inspectorData: shellController ? shellController.inspectorData : ({})
         selectionData: shellController ? shellController.selectionData : ({})
         timelineState: appRuntime && appRuntime.timelineController ? appRuntime.timelineController.state : 0
+        planFilePath: appRuntime ? appRuntime.currentPlanFilePath : ""
+        planName: appRuntime ? appRuntime.currentPlanName : ""
 
         onDrawerRequested: {
             if (shellController)

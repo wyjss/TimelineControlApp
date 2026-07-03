@@ -75,8 +75,22 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
 
     auto *runtime = qobject_cast<TimelineRuntime *>(parent());
     if (runtime && runtime->timelineController()) {
+        if (actionId == QStringLiteral("timeline.plan.save")) {
+            if (runtime->state() == TimelineRuntime::Stopped) {
+                const QString filePath = payload.value(QStringLiteral("filePath")).toString();
+                runtime->savePlanToFile(filePath.isEmpty() ? runtime->currentPlanFilePath() : filePath);
+            }
+            return;
+        }
+
+        if (actionId == QStringLiteral("timeline.plan.load")) {
+            if (runtime->state() == TimelineRuntime::Stopped)
+                runtime->loadPlanFromFile(payload.value(QStringLiteral("filePath")).toString());
+            return;
+        }
+
         if (actionId == QStringLiteral("timeline.start")) {
-            runtime->timelineController()->start();
+            runtime->startTimeline();
             return;
         }
 

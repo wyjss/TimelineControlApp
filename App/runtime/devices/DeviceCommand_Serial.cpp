@@ -70,6 +70,11 @@ QString DeviceCommand_Serial::protocol() const
     return protocolName();
 }
 
+void DeviceCommand_Serial::execute()
+{
+
+}
+
 QString DeviceCommand_Serial::protocolName()
 {
     return QStringLiteral("serial");

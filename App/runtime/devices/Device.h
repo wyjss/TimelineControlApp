@@ -7,6 +7,8 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+class QDataStream;
+
 namespace TimelineControl {
 
 class DeviceCommand;
@@ -71,7 +73,9 @@ public:
     bool removeCommand(TimelineControl::DeviceCommand *command);
 
     Q_INVOKABLE bool setFieldValue(const QString &field, const QVariant &value);
-
+public:
+	void writeToStream(QDataStream& stream) const;
+	void readFromStream(QDataStream& stream);
 signals:
     void deviceTypeChanged();
     void nameChanged();

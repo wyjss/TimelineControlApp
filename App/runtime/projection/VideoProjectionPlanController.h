@@ -14,6 +14,8 @@
 
 #include "models/VariantListModel.h"
 
+class QDataStream;
+
 namespace TimelineControl {
 
 //! 视频取景区域，rect 使用视频源像素坐标。
@@ -104,6 +106,9 @@ public:
     //! 返回当前方案的只读指针；无当前方案时返回 nullptr。
     const VideoProjectionPlan *currentPlan() const;
 
+    void writeToStream(QDataStream &stream) const;
+    void readFromStream(QDataStream &stream);
+
     //! 创建一个新方案并切换为当前方案，返回新方案索引。
     Q_INVOKABLE int createPlan(const QString &name = QString());
     //! 返回指定方案的 QVariantMap 数据。
@@ -151,6 +156,7 @@ public:
     Q_INVOKABLE QVariantMap mappingForCapture(int captureIndex) const;
     //! 返回指定 PC 设备上的映射数量。
     Q_INVOKABLE int mappingCountForPc(const QString &pcId) const;
+    Q_INVOKABLE void removeMappingsForPc(const QString &pcId);
     //! 修改映射输出矩形，坐标为目标 PC 总屏幕像素坐标。
     Q_INVOKABLE void setMappingRect(int index, int x, int y, int width, int height);
 

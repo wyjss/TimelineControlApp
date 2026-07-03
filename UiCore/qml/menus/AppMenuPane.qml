@@ -261,15 +261,28 @@ Base.AppPanel {
                 value: formBlockSection.blockExpandedState
             }
 
-            Form.AppFormContent {
+            Loader {
+                id: formContentLoader
+
                 Layout.fillWidth: true
-                theme: root.theme
-                formData: blockData
-                onFieldEdited: function(fieldKey, value) {
-                    root.handleFieldEdited(fieldKey, root.normalizedValue(value))
-                }
-                onActionTriggered: function(actionId, payload) {
-                    root.dispatchAction(actionId, payload)
+                Layout.preferredHeight: item ? item.implicitHeight : 0
+                active: formBlockSection.expanded
+                sourceComponent: formContentComponent
+            }
+
+            Component {
+                id: formContentComponent
+
+                Form.AppFormContent {
+                    width: formContentLoader.width
+                    theme: root.theme
+                    formData: blockData
+                    onFieldEdited: function(fieldKey, value) {
+                        root.handleFieldEdited(fieldKey, root.normalizedValue(value))
+                    }
+                    onActionTriggered: function(actionId, payload) {
+                        root.dispatchAction(actionId, payload)
+                    }
                 }
             }
         }

@@ -2,6 +2,9 @@
 
 #include "devices/DeviceCommand.h"
 
+#include <QDataStream>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QMetaProperty>
 #include <QUuid>
 
@@ -246,4 +249,89 @@ bool Device::setFieldValue(const QString &field, const QVariant &value)
         return true;
 
     return setProperty(propertyName.constData(), value);
+}
+
+void Device::writeToStream(QDataStream& stream) const
+{
+    stream << m_id
+           << m_templateName
+           << m_deviceType
+           << m_name
+           << m_protocol
+           << m_address
+           << m_description
+           << m_configValues
+           << m_commands.size();
+
+    for (DeviceCommand *command : m_commands) {
+        const QByteArray commandData = command
+            ? QJsonDocument(command->toJson()).toJson(QJsonDocument::Compact)
+            : QByteArray();
+        stream << commandData;
+    }
+}
+
+void Device::readFromStream(QDataStream& stream)
+{
+    QString id;
+    QString templateName;
+    QString deviceType;
+    QString name;
+    QString protocol;
+    QString address;
+    QString description;
+    QVariantMap configValues;
+    int commandCount = 0;
+
+    stream >> id
+           >> templateName
+           >> deviceType
+           >> name
+           >> protocol
+           >> address
+           >> description
+           >> configValues
+           >> commandCount;
+
+    if (stream.status() != QDataStream::Ok || commandCount < 0)
+        return;
+
+    QList<DeviceCommand *> commands;
+    for (int index = 0; index < commandCount; ++index) {
+        QByteArray commandData;
+        stream >> commandData;
+        if (stream.status() != QDataStream::Ok)
+            break;
+
+        const QJsonDocument document = QJsonDocument::fromJson(commandData);
+        DeviceCommand *command = document.isObject()
+            ? DeviceCommand::createFromJson(document.object(), this)
+            : nullptr;
+        if (command)
+            commands.append(command);
+    }
+
+    if (stream.status() != QDataStream::Ok) {
+        for (DeviceCommand *command : commands)
+            delete command;
+        return;
+    }
+
+    m_id = id;
+    m_templateName = templateName;
+    setDeviceType(deviceType);
+    setName(name);
+    setProtocol(protocol);
+    setAddress(address);
+    setDescription(description);
+    setConfigValues(configValues);
+
+    for (DeviceCommand *command : m_commands)
+        delete command;
+    m_commands = commands;
+    for (DeviceCommand *command : m_commands) {
+        if (command->parent() != this)
+            command->setParent(this);
+    }
+    emit commandsChanged();
 }

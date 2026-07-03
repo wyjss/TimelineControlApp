@@ -2,6 +2,7 @@
 
 #include "devices/DeviceCommand.h"
 
+#include <QDataStream>
 #include <QJsonObject>
 #include <QUuid>
 
@@ -115,6 +116,38 @@ void TimelineCommand::setState(State state)
     emit stateChanged();
 }
 
+QString TimelineCommand::stateText() const
+{
+    switch (m_state) {
+    case Running:
+        return tr("Running");
+    case Succeeded:
+        return tr("Succeeded");
+    case Failed:
+        return m_errorMessage.isEmpty() ? tr("Failed") : tr("Failed: %1").arg(m_errorMessage);
+    case Idle:
+        break;
+    }
+
+    return tr("Pending");
+}
+
+QString TimelineCommand::stateColor() const
+{
+    switch (m_state) {
+    case Running:
+        return QStringLiteral("#f59e0b");
+    case Succeeded:
+        return QStringLiteral("#22c55e");
+    case Failed:
+        return QStringLiteral("#ef4444");
+    case Idle:
+        break;
+    }
+
+    return QStringLiteral("#334155");
+}
+
 QString TimelineCommand::errorMessage() const
 {
     return m_errorMessage;
@@ -127,6 +160,45 @@ void TimelineCommand::setErrorMessage(const QString &errorMessage)
 
     m_errorMessage = errorMessage;
     emit errorMessageChanged();
+}
+
+void TimelineCommand::writeToStream(QDataStream &stream) const
+{
+    stream << m_id
+           << m_startTimeMs
+           << m_targetDeviceId
+           << m_commandName
+           << m_commandParams;
+}
+
+void TimelineCommand::readFromStream(QDataStream &stream)
+{
+    QString id;
+    qint64 startTimeMs = 0;
+    QString targetDeviceId;
+    QString commandName;
+    QVariantMap commandParams;
+
+    stream >> id
+           >> startTimeMs
+           >> targetDeviceId
+           >> commandName
+           >> commandParams;
+
+    if (stream.status() != QDataStream::Ok)
+        return;
+
+    if (m_targetCommand)
+        disconnect(m_targetCommand.data(), nullptr, this, nullptr);
+
+    m_id = id;
+    m_targetDeviceId = targetDeviceId.trimmed();
+    m_commandName = commandName;
+    m_targetCommand.clear();
+    m_state = Idle;
+    m_errorMessage.clear();
+    setStartTimeMs(startTimeMs);
+    setCommandParams(commandParams);
 }
 
 TimelineCommandModel::TimelineCommandModel(QObject *parent)
@@ -307,6 +379,50 @@ void TimelineCommandModel::clear()
     clearItems();
     setSelectedCommandId(QString());
     qDeleteAll(oldCommands);
+}
+
+void TimelineCommandModel::writeToStream(QDataStream &stream) const
+{
+    const QList<TimelineCommand *> currentItems = items();
+    stream << currentItems.size();
+
+    for (TimelineCommand *command : currentItems)
+        command->writeToStream(stream);
+
+    stream << m_selectedCommandId;
+}
+
+void TimelineCommandModel::readFromStream(QDataStream &stream)
+{
+    int commandCount = 0;
+    stream >> commandCount;
+    if (stream.status() != QDataStream::Ok || commandCount < 0)
+        return;
+
+    QList<TimelineCommand *> commands;
+    commands.reserve(commandCount);
+    for (int index = 0; index < commandCount; ++index) {
+        auto *command = new TimelineCommand(0, QString(), QString(), QVariantMap(), nullptr, this);
+        command->readFromStream(stream);
+        if (stream.status() != QDataStream::Ok) {
+            delete command;
+            break;
+        }
+        commands.append(command);
+    }
+
+    QString selectedCommandId;
+    if (stream.status() == QDataStream::Ok)
+        stream >> selectedCommandId;
+
+    if (stream.status() != QDataStream::Ok || commands.size() != commandCount) {
+        qDeleteAll(commands);
+        return;
+    }
+
+    resetCommands(commands);
+    setLastCommand(nullptr);
+    setSelectedCommandId(commandById(selectedCommandId) ? selectedCommandId : QString());
 }
 
 void TimelineCommandModel::removeCommandsForDevice(const QString &deviceId)

@@ -9,6 +9,8 @@
 
 #include "models/TypedListModel.h"
 
+class QDataStream;
+
 namespace TimelineControl {
 
 class DeviceCommand;
@@ -23,6 +25,8 @@ class TimelineCommand final : public QObject
     Q_PROPERTY(QVariantMap commandParams READ commandParams WRITE setCommandParams NOTIFY commandParamsChanged FINAL)
     Q_PROPERTY(qint64 durationMs READ durationMs NOTIFY commandParamsChanged FINAL)
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
+    Q_PROPERTY(QString stateText READ stateText NOTIFY stateChanged FINAL)
+    Q_PROPERTY(QString stateColor READ stateColor NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString errorMessage READ errorMessage WRITE setErrorMessage NOTIFY errorMessageChanged FINAL)
 
 public:
@@ -60,9 +64,14 @@ public:
 
     State state() const;
     void setState(State state);
+    QString stateText() const;
+    QString stateColor() const;
 
     QString errorMessage() const;
     void setErrorMessage(const QString &errorMessage);
+
+    void writeToStream(QDataStream &stream) const;
+    void readFromStream(QDataStream &stream);
 
 signals:
     void startTimeMsChanged();
@@ -125,6 +134,9 @@ public:
     Q_INVOKABLE bool removeCommandById(const QString &commandId);
     bool removeCommand(TimelineCommand *command);
     void clear();
+
+    void writeToStream(QDataStream &stream) const;
+    void readFromStream(QDataStream &stream);
 
 public slots:
     void removeCommandsForDevice(const QString &deviceId);

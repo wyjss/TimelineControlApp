@@ -119,42 +119,12 @@ ColumnLayout {
     function parsedSize(value) {
         if (value && value.width !== undefined && value.height !== undefined)
             return Qt.size(Math.round(Number(value.width)), Math.round(Number(value.height)))
-        var match = String(value).trim().match(/^(\d+)\s*[xX,]\s*(\d+)$/)
+        var match = String(value).match(/^\s*(\d+)\s*[xX,]\s*(\d+)\s*$/)
         return match ? Qt.size(Math.round(Number(match[1])), Math.round(Number(match[2]))) : Qt.size(0, 0)
     }
 
-    function isBlank(value) {
-        return value === undefined || value === null || String(value).trim().length === 0
-    }
-
     function fieldInvalidReason(field) {
-        var value = fieldValue(field)
-        var label = field && field.label !== undefined ? String(field.label) : fieldKey(field)
-        var type = field ? String(field.type) : ""
-        if (field && field.required && isBlank(value))
-            return qsTr("%1 is required").arg(label)
-        if (isBlank(value))
-            return ""
-        if (type === "size" && !/^(\d+)\s*[xX,]\s*(\d+)$/.test(sizeText(value)))
-            return qsTr("%1 must use width x height").arg(label)
-        if (field && field.pattern !== undefined && String(field.pattern).length > 0) {
-            try {
-                if (!(new RegExp(String(field.pattern))).test(String(value)))
-                    return qsTr("%1 has an invalid format").arg(label)
-            } catch (error) {
-                return qsTr("%1 has an invalid pattern").arg(label)
-            }
-        }
-        if (type === "int" || type === "double") {
-            var numberValue = Number(value)
-            if (isNaN(numberValue))
-                return qsTr("%1 must be numeric").arg(label)
-            if (field.minimum !== undefined && numberValue < Number(field.minimum))
-                return qsTr("%1 is below minimum").arg(label)
-            if (field.maximum !== undefined && numberValue > Number(field.maximum))
-                return qsTr("%1 is above maximum").arg(label)
-        }
-        return ""
+        return field && field.invalidReason ? field.invalidReason(fieldValue(field)) : ""
     }
 
     function firstInvalidReason() {

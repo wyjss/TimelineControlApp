@@ -2,6 +2,10 @@
 
 #include "runtime/app/BaseRuntime.h"
 
+#include <QString>
+
+class QDataStream;
+
 namespace TimelineControl {
 
 class DeviceManager;
@@ -30,6 +34,8 @@ class TimelineRuntime final : public EarthUI::BaseRuntime
     Q_PROPERTY(TimelineControl::VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::TimelineController *timelineController READ timelineController CONSTANT FINAL)
     Q_PROPERTY(TimelineControl::TimelineCommandModel *timelineCommandModel READ timelineCommandModel CONSTANT FINAL)
+    Q_PROPERTY(QString currentPlanFilePath READ currentPlanFilePath NOTIFY currentPlanFilePathChanged FINAL)
+    Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanFilePathChanged FINAL)
 
 public:
     enum State
@@ -53,9 +59,19 @@ public:
     VideoProjectionPlanController *videoProjectionPlanController() const;
     TimelineController *timelineController() const;
     TimelineCommandModel *timelineCommandModel() const;
+    QString currentPlanFilePath() const;
+    QString currentPlanName() const;
+
+    Q_INVOKABLE void startTimeline();
+
+    void writePlanToStream(QDataStream &stream) const;
+    void readPlanFromStream(QDataStream &stream);
+    Q_INVOKABLE bool savePlanToFile(const QString &filePath);
+    Q_INVOKABLE bool loadPlanFromFile(const QString &filePath);
 
 signals:
     void stateChanged();
+    void currentPlanFilePathChanged();
 
 private:
     State m_state = Stopped;
@@ -67,6 +83,8 @@ private:
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
     TimelineController *m_timelineController = nullptr;
     TimelineCommandModel *m_timelineCommandModel = nullptr;
+    QString m_currentPlanFilePath;
+    int m_runId = 0;
 };
 
 } // namespace TimelineControl

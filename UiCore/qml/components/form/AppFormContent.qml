@@ -22,6 +22,8 @@ Item {
         ? theme
         : (applicationWindowTheme ? applicationWindowTheme : windowTheme)
     property var formData: ({})
+    // true: 折叠 section 中的字段 renderer 不创建，展开时再按需加载。
+    property bool lazyCollapsedSections: true
 
     signal fieldEdited(string fieldKey, var value)
     signal actionTriggered(string actionId, var payload)
@@ -106,18 +108,56 @@ Item {
         }
     }
 
-    function sectionControls(sectionData) {
-        if (isTypedFormNode(sectionData, AppUiEnums.FormNodeKind.Section))
-            return controlValue(sectionData, "fields", [])
+    function nodeCount(source, countKey, listKey) {
+        var explicitCount = Number(controlValue(source, countKey, -1))
+        if (explicitCount >= 0)
+            return explicitCount
 
-        return controlValue(
-            sectionData,
-            "controls",
-            controlValue(sectionData, "fields", [])
-        )
+        var values = controlValue(source, listKey, [])
+        return values && values.length !== undefined ? values.length : 0
     }
 
-    readonly property var sections: controlValue(formData, "sections", [])
+    function nodeAt(source, index, getterName, listKey) {
+        try {
+            if (source !== undefined && source !== null && source[getterName] !== undefined)
+                return source[getterName](index)
+        } catch (error) {
+        }
+
+        var values = controlValue(source, listKey, [])
+        return values && index >= 0 && index < values.length ? values[index] : ({})
+    }
+
+    function sectionControlCount(sectionData) {
+        if (isTypedFormNode(sectionData, AppUiEnums.FormNodeKind.Section))
+            return nodeCount(sectionData, "fieldCount", "fields")
+
+        var explicitCount = Number(controlValue(sectionData, "controlCount", -1))
+        if (explicitCount >= 0)
+            return explicitCount
+
+        var controls = controlValue(sectionData, "controls", null)
+        if (controls !== null && controls !== undefined && controls.length !== undefined)
+            return controls.length
+
+        return nodeCount(sectionData, "fieldCount", "fields")
+    }
+
+    function sectionControlAt(sectionData, index) {
+        try {
+            if (sectionData !== undefined && sectionData !== null && sectionData.fieldAt !== undefined)
+                return sectionData.fieldAt(index)
+        } catch (error) {
+        }
+
+        var controls = controlValue(sectionData, "controls", null)
+        if (controls !== null && controls !== undefined)
+            return index >= 0 && index < controls.length ? controls[index] : ({})
+
+        return nodeAt(sectionData, index, "fieldAt", "fields")
+    }
+
+    readonly property int sectionModelCount: nodeCount(formData, "sectionCount", "sections")
     readonly property int resolvedLayoutModeValue: AppUiEnums.normalizeLayoutMode(
         controlValue(formData, "layoutMode", AppUiEnums.LayoutMode.Horizontal)
     )
@@ -143,14 +183,14 @@ Item {
         spacing: root.sectionSpacing
 
         Repeater {
-            model: root.sections
+            model: root.sectionModelCount
 
             delegate: Base.AppSection {
                 id: sectionPane
 
-                readonly property var sectionData: modelData
+                readonly property var sectionData: root.nodeAt(root.formData, index, "sectionAt", "sections")
                 readonly property string sectionTitle: root.controlValue(sectionData, "title", "")
-                readonly property var controls: root.sectionControls(sectionData)
+                readonly property int controlCount: root.sectionControlCount(sectionData)
                 readonly property bool sectionCollapsible: !!root.controlValue(sectionData, "collapsible", false)
                 readonly property bool modelExpanded: !!root.controlValue(sectionData, "expanded", true)
                 property bool sectionExpandedState: modelExpanded
@@ -222,18 +262,18 @@ Item {
                     )
 
                     Repeater {
-                        model: sectionPane.controls
+                        model: sectionPane.controlCount
 
                         delegate: ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 0
 
-                            readonly property var controlData: modelData
+                            readonly property var controlData: root.sectionControlAt(sectionPane.sectionData, index)
                             readonly property bool showDivider: !!root.controlValue(
                                 sectionPane.sectionData,
                                 "showFieldDividers",
                                 root.showFieldDividers
-                            ) && index < sectionPane.controls.length - 1
+                            ) && index < sectionPane.controlCount - 1
 
                             Item {
                                 Layout.fillWidth: true
@@ -245,9 +285,15 @@ Item {
 
                                     width: parent ? parent.width : 0
                                     height: item ? item.implicitHeight : 0
+                                    active: !root.lazyCollapsedSections
+                                        || !sectionPane.sectionCollapsible
+                                        || sectionPane.expanded
 
-                                    readonly property var controlData: modelData
+                                    readonly property var controlData: root.sectionControlAt(sectionPane.sectionData, index)
                                     sourceComponent: {
+                                        if (!active)
+                                            return null
+
                                         switch (root.controlKind(controlData)) {
                                         case AppUiEnums.FormFieldKind.Summary:
                                             return summaryComponent
