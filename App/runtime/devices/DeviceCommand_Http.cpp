@@ -10,11 +10,6 @@
 
 namespace {
 
-QString ipAddressPattern()
-{
-	return QStringLiteral("^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(:[0-9]{1,5})?$");
-}
-
 QVariantMap option(const QString &label, const QString &value)
 {
     return QVariantMap{
@@ -28,21 +23,21 @@ QVariantMap option(const QString &label, const QString &value)
 using namespace TimelineControl;
 
 DeviceCommand_Http::DeviceCommand_Http(QObject *parent)
-    : DeviceCommand(QStringLiteral("HTTP Cue"), parent)
+    : DeviceCommand(QStringLiteral("HTTP 指令"), parent)
 {
     //
 	auto* ipField = new DeviceParamSpec(DeviceKey::Ip,
-											 tr("ip"),
+											 tr("IP"),
 											 "",
 											 DeviceParamSpec::StringType,
 											 DeviceParamSpec::TextEditor,
 											 parent);
-    ipField->setPattern(ipAddressPattern());
+    ipField->setPattern(DevicePattern::Ip);
     ipField->setPlaceholderText(QStringLiteral("192.168.1.10"));
     addCreationInputField(ipField);
 	//
 	auto* portField = new DeviceParamSpec(DeviceKey::IpPort,
-										  tr("port"),
+										  tr("端口"),
 										  10001,
 										  DeviceParamSpec::IntType,
 										  DeviceParamSpec::AutoEditor,
@@ -52,7 +47,7 @@ DeviceCommand_Http::DeviceCommand_Http(QObject *parent)
     addCreationInputField(portField);
 	//
 	auto* methodField = new DeviceParamSpec(DeviceKey::HttpMethod,
-											tr("Method"),
+											tr("方法"),
 											"GET",
 											DeviceParamSpec::SelectType,
 											DeviceParamSpec::SelectEditor,
@@ -64,7 +59,7 @@ DeviceCommand_Http::DeviceCommand_Http(QObject *parent)
     addCreationInputField(methodField);
 	//
 	auto* pathField = new DeviceParamSpec(DeviceKey::ApiPath,
-										  tr("Path"),
+										  tr("路径"),
 										  "",
 										  DeviceParamSpec::StringType,
 										  DeviceParamSpec::TextEditor,
@@ -85,7 +80,7 @@ DeviceCommand_Http::DeviceCommand_Http(QObject *parent)
 	// 	fields.append(queryField);
 		//
 	auto* bodyField = new DeviceParamSpec(DeviceKey::HttpBody,
-										  tr("Body"),
+										  tr("内容"),
 										  "",
 										  DeviceParamSpec::StringType,
 										  DeviceParamSpec::TextEditor,
@@ -104,7 +99,7 @@ void DeviceCommand_Http::execute()
     const QString ip = ipField() ? ipField()->stringValue() : QString();
     const QString path = pathField() ? pathField()->stringValue() : QString();
     if (ip.isEmpty() || path.isEmpty()) {
-        emit executionFinished(false, tr("HTTP address or path is empty"));
+        emit executionFinished(false, tr("HTTP 地址或路径为空"));
         return;
     }
 
@@ -114,7 +109,7 @@ void DeviceCommand_Http::execute()
     url.setPort(portField() ? portField()->intValue() : 80);
     url.setPath(path);
     if (!url.isValid()) {
-        emit executionFinished(false, tr("Invalid HTTP URL"));
+        emit executionFinished(false, tr("HTTP URL 无效"));
         return;
     }
 
@@ -143,7 +138,7 @@ void DeviceCommand_Http::execute()
         QString errorMessage;
         if (!success)
             errorMessage = reply->property("timedOut").toBool()
-                ? tr("HTTP request timed out")
+                ? tr("HTTP 请求超时")
                 : (reply->error() == QNetworkReply::NoError ? tr("HTTP %1").arg(httpStatus) : reply->errorString());
         emit executionFinished(success, errorMessage);
     });

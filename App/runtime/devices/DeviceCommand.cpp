@@ -49,13 +49,14 @@ void DeviceCommand::setName(const QString &name)
 
 DeviceCommand *DeviceCommand::createForProtocol(const QString &protocol, QObject *parent)
 {
-    if (protocol == DeviceCommand_Dmx512::protocolName())
+    const QString protocolValue = protocol.trimmed();
+    if (protocolValue == DeviceCommand_Dmx512::protocolName())
         return new DeviceCommand_Dmx512(parent);
-    if (protocol == DeviceCommand_Http::protocolName())
+    if (protocolValue == DeviceCommand_Http::protocolName())
         return new DeviceCommand_Http(parent);
-    if (protocol == DeviceCommand_PC::protocolName())
+    if (protocolValue == DeviceCommand_PC::protocolName())
         return new DeviceCommand_PC(parent);
-    if (protocol == DeviceCommand_Serial::protocolName())
+    if (protocolValue == DeviceCommand_Serial::protocolName())
         return new DeviceCommand_Serial(parent);
 
     return nullptr;
@@ -142,7 +143,7 @@ QString DeviceCommand::validateParams() const
 
 void DeviceCommand::execute()
 {
-    emit executionFinished(false, tr("Command execution is not implemented"));
+    emit executionFinished(false, tr("指令执行尚未实现"));
 }
 
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
@@ -185,6 +186,28 @@ QVariantList DeviceCommand::creationInputFields() const
     for (DeviceParamSpec *field : m_creationInputFields)
         result.append(QVariant::fromValue(field));
     return result;
+}
+
+void DeviceCommand::updateConfigMap(const QVariantMap &configMap)
+{
+    for (auto it = configMap.cbegin(); it != configMap.cend(); ++it)
+        m_configMap.insert(it.key(), it.value());
+
+    for (DeviceParamSpec *field : m_creationInputFields) {
+        if (m_configMap.contains(field->key()))
+            field->setValue(m_configMap.value(field->key()));
+    }
+}
+
+QVariantList DeviceCommand::creationMinInputFields() const
+{
+	QVariantList result;
+    for (DeviceParamSpec *field : m_creationInputFields) {
+        if (!m_configMap.contains(field->key()))
+            result.append(QVariant::fromValue(field));
+    }
+		
+	return result;
 }
 
 QVariantList DeviceCommand::executionInputFields() const

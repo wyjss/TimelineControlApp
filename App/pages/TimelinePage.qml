@@ -111,7 +111,7 @@ Item {
 
     function addSelectedCommandAtCurrentTime() {
         if (!timelineCommandModel || !selectedTimelineDevice || !selectedCommand) {
-            executionStatusText = qsTr("Select a device command first")
+            executionStatusText = qsTr("请先选择设备指令")
             return
         }
 
@@ -125,7 +125,7 @@ Item {
                                               String(selectedTimelineDevice.id || ""),
                                               selectedCommand,
                                               extraParams)
-        executionStatusText = qsTr("Added %1 at %2 ms").arg(commandName(selectedCommand)).arg(startTimeMs)
+        executionStatusText = qsTr("已在 %2 ms 添加 %1").arg(commandName(selectedCommand)).arg(startTimeMs)
     }
 
     function buildVisibleTimelineCommands() {
@@ -165,18 +165,23 @@ Item {
 
     function deviceName(device) {
         if (!device)
-            return qsTr("Unassigned")
+            return qsTr("未分配")
 
         var name = String(device.name || "").trim()
-        return name.length > 0 ? name : String(device.id || qsTr("Device"))
+        return name.length > 0 ? name : String(device.id || qsTr("设备"))
     }
 
     function deviceAddress(device) {
         if (!device)
-            return qsTr("No address")
+            return qsTr("无地址")
 
-        var address = String(device.address || "").trim()
-        return address.length > 0 ? address : qsTr("Unassigned")
+        var values = device.configValues || {}
+        var ip = String(values.ip || "").trim()
+        var port = String(values.ipPort || values.port || "").trim()
+        var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
+        if (address.length === 0)
+            address = String(values.serialPort || "").trim()
+        return address.length > 0 ? address : qsTr("未分配")
     }
 
     function deviceMeta(device) {
@@ -184,8 +189,8 @@ Item {
             return ""
 
         var parts = []
-        var protocolText = String(device.protocol || "").trim()
-        var typeText = protocolText.toLowerCase() === "pc"
+        var protocolText = String((device.supportedProtocols || []).join(", ")).trim()
+        var typeText = (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))
             ? "PC"
             : String(device.deviceType || "").trim()
         var statusText = String(device.status || "").trim()
@@ -200,10 +205,10 @@ Item {
 
     function commandName(command) {
         if (!command)
-            return qsTr("Command")
+            return qsTr("指令")
 
         var name = String(command.name || "").trim()
-        return name.length > 0 ? name : qsTr("Command")
+        return name.length > 0 ? name : qsTr("指令")
     }
 
     function commandProtocol(command) {
@@ -235,15 +240,18 @@ Item {
         }
 
         if (protocol === "serial") {
+            var serialPort = String(commandFieldValue(command, "serialPort", "") || "").trim()
+            var baudRate = String(commandFieldValue(command, "baudRate", "") || "").trim()
             var payload = String(commandFieldValue(command, "payload", "") || "").trim()
-            return payload.length > 0 ? payload : commandProtocol(command)
+            var serialSummary = [serialPort, baudRate, payload].filter(function(part) { return part.length > 0 }).join(" / ")
+            return serialSummary.length > 0 ? serialSummary : commandProtocol(command)
         }
 
         if (protocol === "dmx512") {
             var channel = String(commandFieldValue(command, "channel", "") || "").trim()
             var value = String(commandFieldValue(command, "value", "") || "").trim()
-            var dmxSummary = [channel.length > 0 ? qsTr("CH %1").arg(channel) : "",
-                              value.length > 0 ? qsTr("Value %1").arg(value) : ""]
+            var dmxSummary = [channel.length > 0 ? qsTr("通道 %1").arg(channel) : "",
+                              value.length > 0 ? qsTr("值 %1").arg(value) : ""]
                 .filter(function(part) { return part.length > 0 }).join(" / ")
             return dmxSummary.length > 0 ? dmxSummary : commandProtocol(command)
         }
@@ -271,7 +279,7 @@ Item {
     function executeTimeline() {
         if (appRuntime)
             appRuntime.startTimeline()
-        executionStatusText = qsTr("Timeline execution started")
+        executionStatusText = qsTr("时间线已开始执行")
     }
 
     ColumnLayout {
@@ -287,7 +295,7 @@ Item {
             spacing: 10
 
             Base.AppText {
-                text: qsTr("Timeline")
+                text: qsTr("时间线")
                 theme: root.pageTheme
                 styleRole: "titleL"
             }
@@ -297,7 +305,7 @@ Item {
             }
 
             Base.AppButton {
-                text: qsTr("Preview Move")
+                text: qsTr("预览移动")
                 theme: root.pageTheme
                 iconName: "resources"
                 enabled: root.devices.length > 1
@@ -305,7 +313,7 @@ Item {
             }
 
             Base.AppButton {
-                text: qsTr("Execute")
+                text: qsTr("执行")
                 theme: root.pageTheme
                 iconName: "background-task"
                 onClicked: root.executeTimeline()
@@ -333,7 +341,7 @@ Item {
                     spacing: 12
 
                     Base.AppText {
-                        text: qsTr("Control Track")
+                        text: qsTr("控制轨")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
                     }
@@ -393,7 +401,7 @@ Item {
                     spacing: 14
 
                     Base.AppText {
-                        text: qsTr("Execution")
+                        text: qsTr("执行")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
                     }
@@ -404,7 +412,7 @@ Item {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            text: qsTr("Commands")
+                            text: qsTr("指令")
                             theme: root.pageTheme
                             styleRole: "bodyM"
                             textTone: "primary"
@@ -514,7 +522,7 @@ Item {
                         Base.AppText {
                             anchors.centerIn: parent
                             visible: root.deviceCommands.length === 0
-                            text: qsTr("No commands")
+                            text: qsTr("暂无指令")
                             theme: root.pageTheme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -523,7 +531,7 @@ Item {
 
                     Base.AppButton {
                         Layout.fillWidth: true
-                        text: qsTr("Add Selected")
+                        text: qsTr("添加所选")
                         theme: root.pageTheme
                         iconName: "workflow"
                         enabled: root.timelineCommandModel && root.selectedTimelineDevice && root.selectedCommand
@@ -560,7 +568,7 @@ Item {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            text: qsTr("Timeline Commands")
+                            text: qsTr("时间线指令")
                             theme: root.pageTheme
                             styleRole: "sectionTitle"
                             elide: Text.ElideRight
@@ -578,8 +586,8 @@ Item {
                         Layout.fillWidth: true
                         theme: root.pageTheme
                         options: [
-                            { "label": qsTr("All"), "value": "all" },
-                            { "label": qsTr("Device"), "value": "device" }
+                            { "label": qsTr("全部"), "value": "all" },
+                            { "label": qsTr("设备"), "value": "device" }
                         ]
                         value: root.timelineCommandListMode
                         onValueSelected: function(nextValue) {
@@ -663,7 +671,7 @@ Item {
 
                                     Base.AppText {
                                         Layout.fillWidth: true
-                                        text: String(timelineCommandRow.commandData.commandName || qsTr("Command"))
+                                        text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
                                         theme: root.pageTheme
                                         styleRole: "bodyM"
                                         colorOverride: timelineCommandRow.selected ? "#f8fafc" : undefined
@@ -676,7 +684,7 @@ Item {
                                             + " / "
                                             + String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateText
                                                 ? timelineCommandRow.commandData.stateText
-                                                : qsTr("Pending"))
+                                                : qsTr("待执行"))
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
                                         textTone: "secondary"
@@ -689,7 +697,7 @@ Item {
                         Base.AppText {
                             anchors.centerIn: parent
                             visible: root.visibleTimelineCommands.length === 0
-                            text: qsTr("No timeline commands")
+                            text: qsTr("暂无时间线指令")
                             theme: root.pageTheme
                             styleRole: "bodyS"
                             textTone: "secondary"

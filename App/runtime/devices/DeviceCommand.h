@@ -6,13 +6,13 @@
 #include <QObject>
 #include <QString>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceConstants.h"
 
 namespace TimelineControl {
 
-    class Device;
 //! 设备指令实例基类，保存设备指令通用信息，不绑定时间线调度。
 class DeviceCommand : public QObject
 {
@@ -50,7 +50,9 @@ public:
     void addCreationInputField(DeviceParamSpec *field);
     void addExecutionInputField(DeviceParamSpec *field);
 
+    Q_INVOKABLE void updateConfigMap(const QVariantMap &configMap);
     Q_INVOKABLE QVariantList creationInputFields() const;
+    Q_INVOKABLE QVariantList creationMinInputFields() const;
     Q_INVOKABLE QVariantList executionInputFields() const;
 
     virtual void execute();
@@ -70,6 +72,7 @@ private:
     QMap<QString, DeviceParamSpec *> m_creationInputFieldMap;
     QList<DeviceParamSpec *> m_creationInputFields;
     QList<DeviceParamSpec *> m_executionInputFields;
+    QVariantMap m_configMap;
 };
 
 } // namespace TimelineControl

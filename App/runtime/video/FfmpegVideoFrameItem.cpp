@@ -110,7 +110,7 @@ void FfmpegVideoFrameItem::play()
         seek(0);
 
     if (!m_reader || !m_reader->play()) {
-        setErrorString(tr("Failed to start AVReader playback."));
+        setErrorString(tr("AVReader 播放启动失败。"));
         return;
     }
 
@@ -146,7 +146,7 @@ void FfmpegVideoFrameItem::seek(qint64 positionMs)
     const qint64 upperBound = m_durationMs > 0 ? m_durationMs : positionMs;
     const qint64 clampedPosition = qBound<qint64>(0, positionMs, upperBound);
     if (!m_reader->seek(static_cast<double>(clampedPosition) / 1000.0)) {
-        setErrorString(tr("Failed to seek AVReader playback."));
+        setErrorString(tr("AVReader 跳转播放失败。"));
         return;
     }
 
@@ -199,7 +199,7 @@ bool FfmpegVideoFrameItem::openCurrentSource()
 
     const QString path = sourcePath();
     if (path.isEmpty()) {
-        setErrorString(tr("Video source is empty."));
+        setErrorString(tr("视频源为空。"));
         return false;
     }
 
@@ -212,7 +212,7 @@ bool FfmpegVideoFrameItem::openCurrentSource()
     options.outputAudioFrame = false;
 
     if (!reader->open(options)) {
-        setErrorString(tr("Failed to open video source with AVReader."));
+        setErrorString(tr("无法用 AVReader 打开视频源。"));
         return false;
     }
 
@@ -332,7 +332,7 @@ bool FfmpegVideoFrameItem::convertFrame(const PixelTool::AVFramePixelData &frame
 
     PixelTool::AVFramePixelDataPtr convertedFrame = m_converter->conv(frameData.getAVFrame(), PixelTool::Pixel_BGRA, 1);
     if (!convertedFrame || !convertedFrame->hasData()) {
-        setErrorString(tr("Failed to create video converter."));
+        setErrorString(tr("视频转换器创建失败。"));
         return false;
     }
 
@@ -346,7 +346,7 @@ bool FfmpegVideoFrameItem::convertFrame(const PixelTool::AVFramePixelData &frame
                        frameSize.width() * 4,
                        QImage::Format_RGB32);
     if (image.isNull()) {
-        setErrorString(tr("Failed to allocate image buffer."));
+        setErrorString(tr("图像缓冲区分配失败。"));
         return false;
     }
 

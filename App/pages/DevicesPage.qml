@@ -230,10 +230,10 @@ Item {
 
     function commandName(command) {
         if (!command)
-            return qsTr("Command")
+            return qsTr("指令")
 
         var name = String(command.name || "").trim()
-        return name.length > 0 ? name : qsTr("Command")
+        return name.length > 0 ? name : qsTr("指令")
     }
 
     function commandProtocol(command) {
@@ -273,14 +273,15 @@ Item {
         }
         if (protocol === "serial") {
             var serialPort = String(commandFieldValue(command, "serialPort", "") || "").trim()
+            var baudRate = String(commandFieldValue(command, "baudRate", "") || "").trim()
             var payload = String(commandFieldValue(command, "payload", "") || "").trim()
-            return [serialPort, payload].filter(function(part) { return part.length > 0 }).join(" / ")
+            return [serialPort, baudRate, payload].filter(function(part) { return part.length > 0 }).join(" / ")
         }
         if (protocol === "dmx512")
-            return qsTr("Channel %1 / Value %2")
+            return qsTr("通道 %1 / 值 %2")
                 .arg(commandFieldValue(command, "channel", 1))
                 .arg(commandFieldValue(command, "value", 0))
-        return qsTr("%1 fields").arg(root.commandInputCount(command))
+        return qsTr("%1 个字段").arg(root.commandInputCount(command))
     }
 
     function selectDeviceType(deviceType) {
@@ -316,16 +317,30 @@ Item {
 
     function groupDescription(groupData) {
         if (deviceDisplayMode === "type")
-            return qsTr("%1 devices").arg(deviceCountForType(groupData))
+            return qsTr("%1 台设备").arg(deviceCountForType(groupData))
 
-        return String(groupData.protocol || "") + " - " + String(groupData.description || "")
+        return String((groupData.supportedProtocols || []).join(", ")) + " - " + String(groupData.description || "")
     }
 
     function groupFootnote(groupData) {
         if (deviceDisplayMode === "type")
-            return qsTr("Device type")
+            return qsTr("设备类型")
 
-        return qsTr("%1 config").arg(groupData.configSpecs ? groupData.configSpecs.length : 0)
+        return qsTr("%1 项配置").arg(groupData.configSpecs ? groupData.configSpecs.length : 0)
+    }
+
+    function deviceAddress(device) {
+        var values = device && device.configValues ? device.configValues : {}
+        var ip = String(values.ip || "").trim()
+        var port = String(values.ipPort || values.port || "").trim()
+        var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
+        if (address.length === 0)
+            address = String(values.serialPort || "").trim()
+        return address.length > 0 ? address : qsTr("未分配")
+    }
+
+    function deviceProtocols(device) {
+        return String((device && device.supportedProtocols ? device.supportedProtocols : []).join(", "))
     }
 
     function groupSelected(groupData) {
@@ -375,7 +390,7 @@ Item {
 
     function configSpecSummary(configSpec) {
         var defaultText = configSpec.defaultValue === undefined || configSpec.defaultValue === null
-            ? qsTr("Empty")
+            ? qsTr("空")
             : String(configSpec.defaultValue)
         return String(configSpec.type) + " / " + defaultText
     }
@@ -393,7 +408,7 @@ Item {
             spacing: 10
 
             Base.AppText {
-                text: qsTr("Devices")
+                text: qsTr("设备")
                 theme: root.pageTheme
                 styleRole: "titleL"
             }
@@ -407,7 +422,7 @@ Item {
 
                 Base.AppText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("%1 templates").arg(root.deviceTemplates.length)
+                    text: qsTr("%1 个模板").arg(root.deviceTemplates.length)
                     theme: root.pageTheme
                     styleRole: "bodyS"
                     textTone: "secondary"
@@ -423,7 +438,7 @@ Item {
 
                 Base.AppText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("%1 devices").arg(root.filteredDevices.length)
+                    text: qsTr("%1 台设备").arg(root.filteredDevices.length)
                     theme: root.pageTheme
                     styleRole: "bodyS"
                     textTone: "secondary"
@@ -436,7 +451,7 @@ Item {
 
             Base.AppButton {
                 visible: root.deviceDisplayMode === "template"
-                text: qsTr("Create Device")
+                text: qsTr("创建设备")
                 theme: root.pageTheme
                 iconName: "resources"
                 onClicked: root.createDeviceFromSelectedTemplate()
@@ -463,7 +478,7 @@ Item {
                     spacing: 12
 
                     Base.AppText {
-                        text: root.deviceDisplayMode === "type" ? qsTr("Device Types") : qsTr("Device Templates")
+                        text: root.deviceDisplayMode === "type" ? qsTr("设备类型") : qsTr("设备模板")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
                     }
@@ -474,7 +489,7 @@ Item {
 
                         Base.AppButton {
                             Layout.fillWidth: true
-                            text: qsTr("Templates")
+                            text: qsTr("模板")
                             theme: root.pageTheme
                             highlighted: root.deviceDisplayMode === "template"
                             onClicked: root.setDeviceDisplayMode("template")
@@ -482,7 +497,7 @@ Item {
 
                         Base.AppButton {
                             Layout.fillWidth: true
-                            text: qsTr("Types")
+                            text: qsTr("类型")
                             theme: root.pageTheme
                             highlighted: root.deviceDisplayMode === "type"
                             onClicked: root.setDeviceDisplayMode("type")
@@ -583,14 +598,14 @@ Item {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            text: qsTr("Device Instances")
+                            text: qsTr("设备实例")
                             theme: root.pageTheme
                             styleRole: "sectionTitle"
                         }
 
                         Base.AppText {
                             Layout.preferredWidth: 90
-                            text: qsTr("Protocol")
+                            text: qsTr("协议")
                             theme: root.pageTheme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -598,7 +613,7 @@ Item {
 
                         Base.AppText {
                             Layout.preferredWidth: 88
-                            text: qsTr("Status")
+                            text: qsTr("状态")
                             theme: root.pageTheme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -652,7 +667,7 @@ Item {
 
                                         Base.AppText {
                                             Layout.fillWidth: true
-                                            text: modelData.address
+                                            text: root.deviceAddress(modelData)
                                             theme: root.pageTheme
                                             styleRole: "bodyS"
                                             textTone: "secondary"
@@ -662,7 +677,7 @@ Item {
 
                                     Base.AppText {
                                         Layout.preferredWidth: 90
-                                        text: modelData.protocol
+                                        text: root.deviceProtocols(modelData)
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
                                         textTone: "secondary"
@@ -674,7 +689,7 @@ Item {
                                         text: modelData.status
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
-                                        textTone: modelData.status === qsTr("Online") ? "accent" : "secondary"
+                                        textTone: modelData.status === qsTr("在线") ? "accent" : "secondary"
                                         horizontalAlignment: Text.AlignRight
                                         elide: Text.ElideRight
                                     }
@@ -710,7 +725,7 @@ Item {
 
                     Base.AppText {
                         Layout.fillWidth: true
-                        text: root.deviceDisplayMode === "type" ? qsTr("Type Detail") : qsTr("Template Detail")
+                        text: root.deviceDisplayMode === "type" ? qsTr("类型详情") : qsTr("模板详情")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
                     }
@@ -730,8 +745,8 @@ Item {
                             Base.AppText {
                                 Layout.fillWidth: true
                                 text: root.deviceDisplayMode === "type"
-                                    ? (root.selectedDeviceType.length > 0 ? root.selectedDeviceType : qsTr("No type"))
-                                    : root.templateValue("name", qsTr("No template"))
+                                    ? (root.selectedDeviceType.length > 0 ? root.selectedDeviceType : qsTr("无类型"))
+                                    : root.templateValue("name", qsTr("无模板"))
                                 theme: root.pageTheme
                                 styleRole: "bodyM"
                                 elide: Text.ElideRight
@@ -740,8 +755,8 @@ Item {
                             Base.AppText {
                                 Layout.fillWidth: true
                                 text: root.deviceDisplayMode === "type"
-                                    ? qsTr("%1 devices").arg(root.filteredDevices.length)
-                                    : root.templateValue("protocol", "") + " - " + root.templateValue("description", "")
+                                    ? qsTr("%1 台设备").arg(root.filteredDevices.length)
+                                    : String((root.selectedTemplate && root.selectedTemplate.supportedProtocols ? root.selectedTemplate.supportedProtocols : []).join(", ")) + " - " + root.templateValue("description", "")
                                 theme: root.pageTheme
                                 styleRole: "bodyS"
                                 textTone: "secondary"
@@ -751,7 +766,7 @@ Item {
                             Base.AppButton {
                                 Layout.fillWidth: true
                                 visible: root.deviceDisplayMode === "template"
-                                text: qsTr("Create Device From Template")
+                                text: qsTr("从模板创建设备")
                                 theme: root.pageTheme
                                 iconName: "resources"
                                 onClicked: root.createDeviceFromSelectedTemplate()
@@ -765,14 +780,14 @@ Item {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            text: qsTr("Device Profile")
+                            text: qsTr("设备档案")
                             theme: root.pageTheme
                             styleRole: "sectionTitle"
                             elide: Text.ElideRight
                         }
 
                         Base.AppButton {
-                            text: qsTr("Delete")
+                            text: qsTr("删除")
                             theme: root.pageTheme
                             enabled: root.selectedDeviceInCurrentView
                             onClicked: root.requestRemoveSelectedDevice()
@@ -801,7 +816,7 @@ Item {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            text: qsTr("Device Commands")
+                            text: qsTr("设备指令")
                             theme: root.pageTheme
                             styleRole: "titleM"
                             elide: Text.ElideRight
@@ -820,7 +835,7 @@ Item {
                                 id: commandCountText
 
                                 anchors.centerIn: parent
-                                text: qsTr("%1 commands").arg(root.selectedDeviceCommands.length)
+                                text: qsTr("%1 条指令").arg(root.selectedDeviceCommands.length)
                                 theme: root.pageTheme
                                 styleRole: "bodyS"
                                 colorOverride: "#bfdbfe"
@@ -829,7 +844,7 @@ Item {
                         }
 
                         Base.AppButton {
-                            text: qsTr("Add")
+                            text: qsTr("添加")
                             theme: root.pageTheme
                             iconName: "workflow"
                             enabled: root.selectedDeviceInCurrentView
@@ -843,7 +858,7 @@ Item {
                     Base.AppText {
                         Layout.fillWidth: true
                         visible: root.selectedDeviceInCurrentView && root.selectedDeviceCommands.length === 0
-                        text: qsTr("No commands")
+                        text: qsTr("暂无指令")
                         theme: root.pageTheme
                         styleRole: "bodyS"
                         textTone: "secondary"
@@ -946,7 +961,7 @@ Item {
                                                 Layout.fillWidth: true
                                                 text: commandRow.summaryText.length > 0
                                                     ? commandRow.summaryText
-                                                    : qsTr("%1 fields").arg(commandRow.inputCount)
+                                                    : qsTr("%1 个字段").arg(commandRow.inputCount)
                                                 theme: root.pageTheme
                                                 styleRole: "bodyS"
                                                 textTone: "secondary"
@@ -1002,7 +1017,7 @@ Item {
                                         }
 
                                         Base.AppButton {
-                                            text: qsTr("Remove")
+                                            text: qsTr("移除")
                                             theme: root.pageTheme
                                             onClicked: root.removeSelectedCommand()
                                         }
@@ -1019,7 +1034,7 @@ Item {
                                     Base.AppText {
                                         visible: commandRow.expanded
                                         Layout.fillWidth: true
-                                        text: qsTr("Creation Parameters")
+                                        text: qsTr("创建参数")
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
                                         textTone: "secondary"
@@ -1033,13 +1048,13 @@ Item {
                                         readOnly: true
                                         writeBack: true
                                         theme: root.pageTheme
-                                        emptyText: qsTr("No creation parameters")
+                                        emptyText: qsTr("无创建参数")
                                     }
 
                                     Base.AppText {
                                         Layout.fillWidth: true
                                         visible: commandRow.expanded && commandRow.hasExecutionFields
-                                        text: qsTr("Execution Parameters")
+                                        text: qsTr("执行参数")
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
                                         textTone: "secondary"
@@ -1053,7 +1068,7 @@ Item {
                                         readOnly: true
                                         writeBack: true
                                         theme: root.pageTheme
-                                        emptyText: qsTr("No execution parameters")
+                                        emptyText: qsTr("无执行参数")
                                     }
                                 }
                             }
@@ -1085,7 +1100,7 @@ Item {
         }
 
         function defaultDeviceName(nextTemplate) {
-            return nextTemplate ? qsTr("New %1").arg(String(nextTemplate.name)) : qsTr("New Device")
+            return nextTemplate ? qsTr("新建 %1").arg(String(nextTemplate.name)) : qsTr("新设备")
         }
 
         function templateDeviceType(nextTemplate) {
@@ -1129,7 +1144,7 @@ Item {
                 if (creationReason.length > 0)
                     return creationReason
             } else if (isBlank(deviceName)) {
-                return qsTr("Device name is required")
+                return qsTr("设备名称必填")
             }
 
             return createDeviceFieldForm.firstInvalidReason()
@@ -1177,7 +1192,7 @@ Item {
 
                 Base.AppText {
                     Layout.fillWidth: true
-                    text: qsTr("Create Device")
+                    text: qsTr("创建设备")
                     theme: root.pageTheme
                     styleRole: "titleM"
                     elide: Text.ElideRight
@@ -1186,7 +1201,7 @@ Item {
                 Base.AppText {
                     Layout.fillWidth: true
                     text: createDevicePopup.deviceTemplate
-                        ? String(createDevicePopup.deviceTemplate.name) + " / " + String(createDevicePopup.deviceTemplate.protocol)
+                        ? String(createDevicePopup.deviceTemplate.name) + " / " + String((createDevicePopup.deviceTemplate.supportedProtocols || []).join(", "))
                         : ""
                     theme: root.pageTheme
                     styleRole: "bodyS"
@@ -1196,13 +1211,13 @@ Item {
             }
 
             Base.AppButton {
-                text: qsTr("Cancel")
+                text: qsTr("取消")
                 theme: root.pageTheme
                 onClicked: createDevicePopup.close()
             }
 
             Base.AppButton {
-                text: qsTr("Create")
+                text: qsTr("创建")
                 theme: root.pageTheme
                 enabled: createDevicePopup.formValid
                 iconName: "resources"
@@ -1215,7 +1230,7 @@ Item {
             spacing: 6
 
             Base.AppText {
-                text: qsTr("Name") + " *"
+                text: qsTr("名称") + " *"
                 theme: root.pageTheme
                 styleRole: "bodyS"
                 textTone: "secondary"
@@ -1225,7 +1240,7 @@ Item {
                 Layout.fillWidth: true
                 theme: root.pageTheme
                 text: createDevicePopup.deviceName
-                placeholderText: qsTr("Device name")
+                placeholderText: qsTr("设备名称")
                 onTextChanged: createDevicePopup.deviceName = text
             }
         }
@@ -1235,7 +1250,7 @@ Item {
             spacing: 6
 
             Base.AppText {
-                text: qsTr("Device Type") + " *"
+                text: qsTr("设备类型") + " *"
                 theme: root.pageTheme
                 styleRole: "bodyS"
                 textTone: "secondary"
@@ -1258,7 +1273,7 @@ Item {
                     visible: createDevicePopup.deviceTypeOptions.length > 0
                     Layout.preferredWidth: 180
                     theme: root.pageTheme
-                    placeholderText: qsTr("Existing type")
+                    placeholderText: qsTr("现有类型")
                     options: createDevicePopup.deviceTypeOptions
                     value: createDevicePopup.deviceType
                     onValueSelected: createDevicePopup.deviceType = String(nextValue)
@@ -1268,7 +1283,7 @@ Item {
                     Layout.fillWidth: true
                     theme: root.pageTheme
                     text: createDevicePopup.deviceType
-                    placeholderText: qsTr("Device type")
+                    placeholderText: qsTr("设备类型")
                     onTextChanged: createDevicePopup.deviceType = text
                 }
             }
@@ -1298,7 +1313,7 @@ Item {
                 fields: createDevicePopup.fieldSpecs
                 writeBack: false
                 theme: root.pageTheme
-                emptyText: qsTr("No initial parameters")
+                emptyText: qsTr("无初始参数")
             }
         }
     }
@@ -1311,7 +1326,7 @@ Item {
 
         function openForDevice(device) {
             deviceId = String(device.id || "")
-            deviceName = root.deviceValue("name", qsTr("Device"))
+            deviceName = root.deviceValue("name", qsTr("设备"))
             open()
         }
 
@@ -1334,7 +1349,7 @@ Item {
 
         Base.AppText {
             Layout.fillWidth: true
-            text: qsTr("Delete Device")
+            text: qsTr("删除设备")
             theme: root.pageTheme
             styleRole: "titleM"
             elide: Text.ElideRight
@@ -1342,7 +1357,7 @@ Item {
 
         Base.AppText {
             Layout.fillWidth: true
-            text: qsTr("Delete %1? Related timeline commands and projection mappings will be removed.").arg(removeDevicePopup.deviceName)
+            text: qsTr("确定删除 %1？关联的时间线指令和投影映射也会被移除。").arg(removeDevicePopup.deviceName)
             theme: root.pageTheme
             styleRole: "bodyM"
             textTone: "secondary"
@@ -1358,13 +1373,13 @@ Item {
             }
 
             Base.AppButton {
-                text: qsTr("Cancel")
+                text: qsTr("取消")
                 theme: root.pageTheme
                 onClicked: removeDevicePopup.close()
             }
 
             Base.AppButton {
-                text: qsTr("Delete")
+                text: qsTr("删除")
                 theme: root.pageTheme
                 onClicked: removeDevicePopup.commit()
             }

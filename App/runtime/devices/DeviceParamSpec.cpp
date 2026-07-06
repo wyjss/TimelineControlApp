@@ -2,7 +2,6 @@
 
 #include <QColor>
 #include <QRegularExpression>
-#include <QSize>
 
 using namespace TimelineControl;
 
@@ -64,33 +63,27 @@ QString DeviceParamSpec::invalidReason(const QVariant &value) const
     const QString labelText = label().isEmpty() ? key() : label();
     const QString text = checkedValue.toString();
     if (required() && text.isEmpty())
-        return tr("%1 is required").arg(labelText);
+        return tr("%1 必填").arg(labelText);
     if (text.isEmpty())
         return QString();
-
-    if (valueType() == SizeType) {
-        const QRegularExpression sizeExpression(QStringLiteral("^\\s*\\d+\\s*[xX,]\\s*\\d+\\s*$"));
-        if (!checkedValue.toSize().isValid() && !sizeExpression.match(text).hasMatch())
-            return tr("%1 must use width x height").arg(labelText);
-    }
 
     if (!pattern().isEmpty()) {
         const QRegularExpression expression(pattern());
         if (!expression.isValid())
-            return tr("%1 has an invalid pattern").arg(labelText);
+            return tr("%1 的校验规则无效").arg(labelText);
         if (!expression.match(text).hasMatch())
-            return tr("%1 has an invalid format").arg(labelText);
+            return tr("%1 格式无效").arg(labelText);
     }
 
     if (valueType() == IntType || valueType() == DoubleType) {
         bool ok = false;
         const double numberValue = checkedValue.toDouble(&ok);
         if (!ok)
-            return tr("%1 must be numeric").arg(labelText);
+            return tr("%1 必须是数字").arg(labelText);
         if (numberValue < minimum())
-            return tr("%1 is below minimum").arg(labelText);
+            return tr("%1 低于最小值").arg(labelText);
         if (numberValue > maximum())
-            return tr("%1 is above maximum").arg(labelText);
+            return tr("%1 高于最大值").arg(labelText);
     }
 
     return QString();
@@ -100,26 +93,24 @@ QString DeviceParamSpec::typeName(ValueType valueType)
 {
     switch (valueType) {
     case IntType:
-        return QStringLiteral("int");
+        return QStringLiteral("整数");
     case DoubleType:
-        return QStringLiteral("double");
+        return QStringLiteral("小数");
     case StringType:
-        return QStringLiteral("string");
+        return QStringLiteral("文本");
     case BoolType:
-        return QStringLiteral("bool");
+        return QStringLiteral("布尔");
     case SelectType:
-        return QStringLiteral("select");
+        return QStringLiteral("选项");
     case ColorType:
-        return QStringLiteral("color");
-    case SizeType:
-        return QStringLiteral("size");
+        return QStringLiteral("颜色");
     case VariantType:
-        return QStringLiteral("variant");
+        return QStringLiteral("通用");
     case InvalidType:
         break;
     }
 
-    return QStringLiteral("invalid");
+    return QStringLiteral("无效");
 }
 
 QVariant DeviceParamSpec::normalizedValue(ValueType valueType, const QVariant &value)
@@ -136,8 +127,6 @@ QVariant DeviceParamSpec::normalizedValue(ValueType valueType, const QVariant &v
         return value.toBool();
     case ColorType:
         return value.value<QColor>();
-    case SizeType:
-        return value.value<QSize>();
     case VariantType:
     case InvalidType:
         break;

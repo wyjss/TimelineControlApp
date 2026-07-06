@@ -120,16 +120,16 @@ QString TimelineCommand::stateText() const
 {
     switch (m_state) {
     case Running:
-        return tr("Running");
+        return tr("运行中");
     case Succeeded:
-        return tr("Succeeded");
+        return tr("已成功");
     case Failed:
-        return m_errorMessage.isEmpty() ? tr("Failed") : tr("Failed: %1").arg(m_errorMessage);
+        return m_errorMessage.isEmpty() ? tr("已失败") : tr("失败：%1").arg(m_errorMessage);
     case Idle:
         break;
     }
 
-    return tr("Pending");
+    return tr("待执行");
 }
 
 QString TimelineCommand::stateColor() const

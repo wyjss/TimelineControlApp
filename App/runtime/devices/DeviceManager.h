@@ -13,6 +13,7 @@
 namespace TimelineControl {
 
 class Device;
+class DeviceExecutorManager;
 class DeviceModel;
 class DeviceTemplate;
 class DeviceTemplateModel;
@@ -24,6 +25,7 @@ class DeviceManager final : public QObject
 public:
     explicit DeviceManager(DeviceModel *deviceModel,
                            DeviceTemplateModel *deviceTemplateModel,
+                           DeviceExecutorManager *deviceExecutorManager = nullptr,
                            QObject *parent = nullptr);
 
     Q_INVOKABLE void createDevice();
@@ -40,7 +42,6 @@ private:
     Device *makeDeviceFromTemplate(const QString &templateName,
                                    const QString &deviceType,
                                    const QString &name,
-                                   const QString &address,
                                    const QString &status,
                                    const QString &lastSeen,
                                    const QVariantMap &configValues);
@@ -48,6 +49,7 @@ private:
 
     DeviceModel *m_deviceModel = nullptr;
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;
+    DeviceExecutorManager *m_deviceExecutorManager = nullptr;
 };
 
 } // namespace TimelineControl

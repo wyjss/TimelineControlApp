@@ -24,7 +24,6 @@ public:
     static constexpr ValueType StringType = EarthUI::BaseField::StringType;
     static constexpr ValueType SelectType = EarthUI::BaseField::EnumType;
     static constexpr ValueType ColorType = EarthUI::BaseField::ColorType;
-    static constexpr ValueType SizeType = EarthUI::BaseField::SizeType;
     static constexpr ValueType VariantType = EarthUI::BaseField::VariantType;
 
     static constexpr EditorHint AutoEditor = EarthUI::BaseField::AutoEditor;
@@ -35,7 +34,6 @@ public:
     static constexpr EditorHint ChoiceEditor = EarthUI::BaseField::ChoiceEditor;
     static constexpr EditorHint SegmentedEditor = EarthUI::BaseField::SegmentedEditor;
     static constexpr EditorHint ColorEditor = EarthUI::BaseField::ColorEditor;
-    static constexpr EditorHint SizeEditor = EarthUI::BaseField::SizeEditor;
     static constexpr EditorHint CustomEditor = EarthUI::BaseField::CustomEditor;
 
     explicit DeviceParamSpec(QObject *parent = nullptr);

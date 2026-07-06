@@ -43,7 +43,7 @@ ApplicationWindow {
     visible: true
     title: appRuntime && appRuntime.settings && appRuntime.settings.applicationName
         ? String(appRuntime.settings.applicationName)
-        : qsTr("Timeline Control App")
+        : qsTr("时间线控制应用")
     color: appTheme.colors.window
 
     Ui.AppShell {

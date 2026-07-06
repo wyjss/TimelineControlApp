@@ -7,12 +7,14 @@
 #include "devices/DeviceCommand_Http.h"
 #include "devices/DeviceCommand_PC.h"
 #include "devices/DeviceCommand_Serial.h"
+#include "devices/DeviceConstants.h"
 #include "devices/DeviceInspectorFormProvider.h"
 #include "devices/DeviceManager.h"
 #include "devices/DeviceModel.h"
 #include "devices/Device.h"
 #include "devices/DeviceTemplate.h"
 #include "devices/DeviceTemplateModel.h"
+#include "devices/executors/DeviceExecutorManager.h"
 #include "projection/VideoProjectionPlanController.h"
 #include "timeline/TimelineController.h"
 #include "timeline/TimelineCommand.h"
@@ -35,7 +37,8 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     , m_taskManager(new TaskManager(this))
     , m_deviceModel(new DeviceModel(this))
     , m_deviceTemplateModel(new DeviceTemplateModel(this))
-    , m_deviceManager(new DeviceManager(m_deviceModel, m_deviceTemplateModel, this))
+    , m_deviceExecutorManager(new DeviceExecutorManager(this))
+    , m_deviceManager(new DeviceManager(m_deviceModel, m_deviceTemplateModel, m_deviceExecutorManager, this))
     , m_deviceInspectorFormProvider(new DeviceInspectorFormProvider(m_deviceModel,
                                                                     m_deviceTemplateModel,
                                                                     this))
@@ -91,9 +94,18 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
                 || timelineCommand->startTimeMs() > currentTimeMs)
                 continue;
 
-            DeviceCommand *deviceCommand = DeviceCommand::createFromJson(QJsonObject::fromVariantMap(timelineCommand->commandParams()), this);
+            const QVariantMap commandParams = timelineCommand->commandParams();
+            const QString commandProtocol = commandParams.value(DeviceKey::Protocol).toString().trimmed();
+            Device *targetDevice = m_deviceModel ? m_deviceModel->deviceById(timelineCommand->targetDeviceId()) : nullptr;
+            if (targetDevice && !targetDevice->supportsProtocol(commandProtocol)) {
+                timelineCommand->setErrorMessage(tr("设备不支持该协议"));
+                timelineCommand->setState(TimelineCommand::Failed);
+                continue;
+            }
+
+            DeviceCommand *deviceCommand = DeviceCommand::createFromJson(QJsonObject::fromVariantMap(commandParams), this);
             if (!deviceCommand) {
-                timelineCommand->setErrorMessage(tr("Invalid command"));
+                timelineCommand->setErrorMessage(tr("无效指令"));
                 timelineCommand->setState(TimelineCommand::Failed);
                 continue;
             }

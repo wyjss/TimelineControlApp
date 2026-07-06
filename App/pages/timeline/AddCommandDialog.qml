@@ -11,7 +11,7 @@ Base.AppPopup {
     property string selectedProtocol: "serial"
     property int startTimeMs: 0
     readonly property var protocolOptions: [
-        { "label": qsTr("Serial"), "value": "serial" },
+        { "label": qsTr("串口"), "value": "serial" },
         { "label": qsTr("DMX512"), "value": "dmx512" },
         { "label": qsTr("HTTP"), "value": "http" },
         { "label": qsTr("PC"), "value": "pc" }
@@ -29,38 +29,38 @@ Base.AppPopup {
 
     function fieldsForProtocol(protocol) {
         var commonFields = [
-            { "key": "name", "label": qsTr("Name"), "type": "string", "editor": "text", "required": true, "defaultValue": defaultNameForProtocol(protocol) },
-            { "key": "durationMs", "label": qsTr("Duration"), "type": "int", "editor": "text", "defaultValue": 0, "minimum": 0, "maximum": 3600000, "suffix": "ms" }
+            { "key": "name", "label": qsTr("名称"), "type": "string", "editor": "text", "required": true, "defaultValue": defaultNameForProtocol(protocol) },
+            { "key": "durationMs", "label": qsTr("持续时间"), "type": "int", "editor": "text", "defaultValue": 0, "minimum": 0, "maximum": 3600000, "suffix": "ms" }
         ]
 
         switch (String(protocol)) {
         case "dmx512":
             return commonFields.concat([
-                { "key": "channel", "label": qsTr("Channel"), "type": "int", "editor": "text", "required": true, "defaultValue": 1, "minimum": 1, "maximum": 512 },
-                { "key": "value", "label": qsTr("Value"), "type": "int", "editor": "slider", "required": true, "defaultValue": 255, "minimum": 0, "maximum": 255, "stepSize": 1 }
+                { "key": "channel", "label": qsTr("通道"), "type": "int", "editor": "text", "required": true, "defaultValue": 1, "minimum": 1, "maximum": 512 },
+                { "key": "value", "label": qsTr("值"), "type": "int", "editor": "slider", "required": true, "defaultValue": 255, "minimum": 0, "maximum": 255, "stepSize": 1 }
             ])
         case "http":
             return commonFields.concat([
-                { "key": "address", "label": qsTr("Address"), "type": "string", "editor": "text", "required": true, "defaultValue": "", "placeholder": "http://192.168.1.10:8080", "pattern": "^(http://)?((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(:[0-9]{1,5})?$" },
-                { "key": "method", "label": qsTr("Method"), "type": "enum", "editor": "select", "required": true, "defaultValue": "POST", "options": [
+                { "key": "address", "label": qsTr("地址"), "type": "string", "editor": "text", "required": true, "defaultValue": "", "placeholder": "http://192.168.1.10:8080", "pattern": "^(http://)?((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(:[0-9]{1,5})?$" },
+                { "key": "method", "label": qsTr("方法"), "type": "enum", "editor": "select", "required": true, "defaultValue": "POST", "options": [
                     { "label": "GET", "value": "GET" },
                     { "label": "POST", "value": "POST" },
                     { "label": "PUT", "value": "PUT" },
                     { "label": "PATCH", "value": "PATCH" },
                     { "label": "DELETE", "value": "DELETE" }
                 ] },
-                { "key": "path", "label": qsTr("Path"), "type": "string", "editor": "text", "required": true, "defaultValue": "/api/command", "placeholder": "/api/command", "pattern": "^/.*" },
-                { "key": "body", "label": qsTr("Body"), "type": "string", "editor": "textarea", "defaultValue": "{ \"enabled\": true }" }
+                { "key": "path", "label": qsTr("路径"), "type": "string", "editor": "text", "required": true, "defaultValue": "/api/command", "placeholder": "/api/command", "pattern": "^/.*" },
+                { "key": "body", "label": qsTr("内容"), "type": "string", "editor": "textarea", "defaultValue": "{ \"enabled\": true }" }
             ])
         case "pc":
             return commonFields.concat([
-                { "key": "path", "label": qsTr("Path"), "type": "string", "editor": "text", "required": true, "defaultValue": "/api/command", "placeholder": "/api/command", "pattern": "^/.*" }
+                { "key": "path", "label": qsTr("路径"), "type": "string", "editor": "text", "required": true, "defaultValue": "/api/command", "placeholder": "/api/command", "pattern": "^/.*" }
             ])
         case "serial":
         default:
             return commonFields.concat([
-                { "key": "hex", "label": qsTr("Hex"), "type": "bool", "editor": "toggle", "defaultValue": true, "trueLabel": "HEX", "falseLabel": qsTr("Text") },
-                { "key": "payload", "label": qsTr("Payload"), "type": "string", "editor": "textarea", "required": true, "defaultValue": "", "placeholder": "A5 5A 01 00" }
+                { "key": "hex", "label": qsTr("十六进制"), "type": "bool", "editor": "toggle", "defaultValue": true, "trueLabel": "HEX", "falseLabel": qsTr("文本") },
+                { "key": "payload", "label": qsTr("数据内容"), "type": "string", "editor": "textarea", "required": true, "defaultValue": "", "placeholder": "A5 5A 01 00" }
             ])
         }
     }
@@ -68,14 +68,14 @@ Base.AppPopup {
     function defaultNameForProtocol(protocol) {
         switch (String(protocol)) {
         case "dmx512":
-            return qsTr("DMX Cue")
+            return qsTr("DMX 指令")
         case "http":
-            return qsTr("HTTP Cue")
+            return qsTr("HTTP 指令")
         case "pc":
-            return qsTr("PC Cue")
+            return qsTr("PC 指令")
         case "serial":
         default:
-            return qsTr("Serial Cue")
+            return qsTr("串口指令")
         }
     }
 
@@ -94,7 +94,7 @@ Base.AppPopup {
     function serialInvalidReason() {
         var values = fieldForm.valueMap()
         if (selectedProtocol === "serial" && !!values.hex && !hexPayloadPattern().test(String(values.payload || "").trim()))
-            return qsTr("Payload must be hex bytes")
+            return qsTr("数据内容必须为十六进制字节")
         return ""
     }
 
@@ -157,14 +157,14 @@ Base.AppPopup {
 
             Base.AppText {
                 Layout.fillWidth: true
-                text: qsTr("Add Command")
+                text: qsTr("添加指令")
                 theme: root.theme
                 styleRole: "titleM"
             }
 
             Base.AppText {
                 Layout.fillWidth: true
-                text: qsTr("Create a protocol command at the current timeline position.")
+                text: qsTr("在当前时间线位置创建协议指令。")
                 theme: root.theme
                 styleRole: "bodyS"
                 textTone: "secondary"
@@ -173,13 +173,13 @@ Base.AppPopup {
         }
 
         Base.AppButton {
-            text: qsTr("Cancel")
+            text: qsTr("取消")
             theme: root.theme
             onClicked: root.close()
         }
 
         Base.AppButton {
-            text: qsTr("Add")
+            text: qsTr("添加")
             theme: root.theme
             enabled: root.commandValid
             iconName: "workflow"
@@ -192,7 +192,7 @@ Base.AppPopup {
         spacing: 12
 
         Base.AppText {
-            text: qsTr("Protocol")
+            text: qsTr("协议")
             theme: root.theme
             styleRole: "bodyS"
             textTone: "secondary"
@@ -234,7 +234,7 @@ Base.AppPopup {
             fields: root.fieldSpecs
             writeBack: false
             theme: root.theme
-            emptyText: qsTr("No command parameters")
+            emptyText: qsTr("无指令参数")
         }
     }
 
@@ -251,7 +251,7 @@ Base.AppPopup {
             spacing: 4
 
             Base.AppText {
-                text: qsTr("Preview")
+                text: qsTr("预览")
                 theme: root.theme
                 styleRole: "bodyS"
                 textTone: "secondary"

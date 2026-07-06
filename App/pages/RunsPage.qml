@@ -18,10 +18,10 @@ Item {
     readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
 
     readonly property var runRows: [
-        { "name": "Current Run", "time": "00:14.000", "state": "Armed" },
-        { "name": "Rehearsal A", "time": "02:18.420", "state": "Finished" },
-        { "name": "Device Sync", "time": "00:31.120", "state": "Finished" },
-        { "name": "Dry Run", "time": "01:02.000", "state": "Cancelled" }
+        { "name": "当前运行", "time": "00:14.000", "state": "已就绪" },
+        { "name": "彩排 A", "time": "02:18.420", "state": "已完成" },
+        { "name": "设备同步", "time": "00:31.120", "state": "已完成" },
+        { "name": "试运行", "time": "01:02.000", "state": "已取消" }
     ]
 
     ColumnLayout {
@@ -37,7 +37,7 @@ Item {
             spacing: 10
 
             Base.AppText {
-                text: qsTr("Runs")
+                text: qsTr("运行记录")
                 theme: root.pageTheme
                 styleRole: "titleL"
             }
@@ -47,7 +47,7 @@ Item {
             }
 
             Base.AppButton {
-                text: qsTr("Export")
+                text: qsTr("导出")
                 theme: root.pageTheme
                 iconName: "background-task"
             }
@@ -74,7 +74,7 @@ Item {
                     spacing: 12
 
                     Base.AppText {
-                        text: qsTr("Execution History")
+                        text: qsTr("执行历史")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
                     }
@@ -144,7 +144,7 @@ Item {
                     spacing: 14
 
                     Base.AppText {
-                        text: qsTr("Live State")
+                        text: qsTr("实时状态")
                         theme: root.pageTheme
                         styleRole: "sectionTitle"
                     }
@@ -162,7 +162,7 @@ Item {
                             spacing: 4
 
                             Base.AppText {
-                                text: qsTr("Clock")
+                                text: qsTr("时钟")
                                 theme: root.pageTheme
                                 styleRole: "bodyS"
                                 textTone: "secondary"
@@ -191,7 +191,7 @@ Item {
                             spacing: 4
 
                             Base.AppText {
-                                text: qsTr("Next Cue")
+                                text: qsTr("下一条指令")
                                 theme: root.pageTheme
                                 styleRole: "bodyS"
                                 textTone: "secondary"
@@ -199,7 +199,7 @@ Item {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: qsTr("Audio Cue")
+                                text: qsTr("音频指令")
                                 theme: root.pageTheme
                                 styleRole: "bodyM"
                                 elide: Text.ElideRight

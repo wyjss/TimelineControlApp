@@ -261,11 +261,11 @@ private:
             return;
 
         if (m_steps.isEmpty()) {
-            applyState(Ready, 0.0f, QStringLiteral("No steps configured"), QString());
+            applyState(Ready, 0.0f, QStringLiteral("未配置步骤"), QString());
             return;
         }
 
-        applyState(Ready, 0.0f, QStringLiteral("Ready to start flow"), QString());
+        applyState(Ready, 0.0f, QStringLiteral("流程已就绪"), QString());
     }
 
     void enterRunningState()
@@ -300,7 +300,7 @@ private:
         const float progress = completedProgress();
         const QString message = step && !step->message().isEmpty()
             ? step->message()
-            : QStringLiteral("Step completed. Call advance() to continue");
+            : QStringLiteral("步骤已完成，请调用 advance() 继续");
 
         applyState(Running,
                    progress,
@@ -312,7 +312,7 @@ private:
     {
         m_waitingForAdvance = false;
         m_stepOutcomePosted = true;
-        applyState(Succeeded, 1.0f, QStringLiteral("Flow completed"), QString());
+        applyState(Succeeded, 1.0f, QStringLiteral("流程已完成"), QString());
     }
 
     void enterFailedState()
@@ -323,12 +323,12 @@ private:
         Task* step = currentStep();
         const QString error = step && !step->error().isEmpty()
             ? step->error()
-            : QStringLiteral("Step failed");
+            : QStringLiteral("步骤失败");
         const QString name = currentStepName();
 
         applyState(Failed,
                    currentProgress(),
-                   name.isEmpty() ? QStringLiteral("Flow failed") : QStringLiteral("%1 failed").arg(name),
+                   name.isEmpty() ? QStringLiteral("流程失败") : QStringLiteral("%1 失败").arg(name),
                    error);
     }
 
@@ -340,7 +340,7 @@ private:
         Task* step = currentStep();
         const QString message = step && !step->message().isEmpty()
             ? step->message()
-            : QStringLiteral("Flow cancelled");
+            : QStringLiteral("流程已取消");
 
         applyState(Cancelled, currentProgress(), message, QString());
     }
@@ -387,13 +387,13 @@ private:
     {
         Task* step = currentStep();
         if (!step) {
-            applyState(Failed, currentProgress(), QStringLiteral("Current step is missing"), QStringLiteral("Current step is missing"));
+            applyState(Failed, currentProgress(), QStringLiteral("当前步骤缺失"), QStringLiteral("当前步骤缺失"));
             return;
         }
 
         const QString name = currentStepName();
         const QString stepMessage = step->message().isEmpty()
-            ? QStringLiteral("Running")
+            ? QStringLiteral("运行中")
             : step->message();
 
         applyState(Running,

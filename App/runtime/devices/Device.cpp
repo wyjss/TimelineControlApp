@@ -1,6 +1,7 @@
 #include "devices/Device.h"
 
 #include "devices/DeviceCommand.h"
+#include "devices/DeviceConstants.h"
 
 #include <QDataStream>
 #include <QJsonDocument>
@@ -11,6 +12,8 @@
 using namespace TimelineControl;
 
 namespace {
+
+const char *kSupportedProtocolsConfigKey = "__supportedProtocols";
 
 QString createDeviceId()
 {
@@ -64,32 +67,31 @@ void Device::setName(const QString &name)
     emit nameChanged();
 }
 
-QString Device::protocol() const
+QStringList Device::supportedProtocols() const
 {
-    return m_protocol;
+    return m_supportedProtocols;
 }
 
-void Device::setProtocol(const QString &protocol)
+void Device::setSupportedProtocols(const QStringList &supportedProtocols)
 {
-    if (m_protocol == protocol)
+    QStringList nextSupportedProtocols;
+    for (const QString &protocol : supportedProtocols) {
+        const QString protocolValue = protocol.trimmed();
+        if (!protocolValue.isEmpty() && !nextSupportedProtocols.contains(protocolValue))
+            nextSupportedProtocols.append(protocolValue);
+    }
+
+    if (m_supportedProtocols == nextSupportedProtocols)
         return;
 
-    m_protocol = protocol;
-    emit protocolChanged();
+    m_supportedProtocols = nextSupportedProtocols;
+    emit supportedProtocolsChanged();
 }
 
-QString Device::address() const
+bool Device::supportsProtocol(const QString &protocol) const
 {
-    return m_address;
-}
-
-void Device::setAddress(const QString &address)
-{
-    if (m_address == address)
-        return;
-
-    m_address = address;
-    emit addressChanged();
+    const QString protocolValue = protocol.trimmed();
+    return !protocolValue.isEmpty() && supportedProtocols().contains(protocolValue);
 }
 
 QString Device::status() const
@@ -169,8 +171,16 @@ DeviceCommand *Device::commandAt(int index) const
 
 DeviceCommand *Device::createCommandDraft(const QString &protocol) const
 {
-    const QString commandProtocol = protocol.trimmed().isEmpty() ? m_protocol : protocol.trimmed();
-    return DeviceCommand::createForProtocol(commandProtocol, const_cast<Device *>(this));
+    const QString commandProtocol = protocol.trimmed().isEmpty() && !m_supportedProtocols.isEmpty()
+        ? m_supportedProtocols.first()
+        : protocol.trimmed();
+    if (!supportsProtocol(commandProtocol))
+        return nullptr;
+
+    DeviceCommand *command = DeviceCommand::createForProtocol(commandProtocol, const_cast<Device *>(this));
+    if (command)
+        command->updateConfigMap(m_configValues);
+    return command;
 }
 
 void Device::deleteCommandDraft(DeviceCommand *command) const
@@ -183,8 +193,7 @@ void Device::deleteCommandDraft(DeviceCommand *command) const
 
 DeviceCommand *Device::createCommand(const QString &protocol, const QString &name)
 {
-    const QString commandProtocol = protocol.trimmed().isEmpty() ? m_protocol : protocol.trimmed();
-    DeviceCommand *command = DeviceCommand::createForProtocol(commandProtocol, this);
+    DeviceCommand *command = createCommandDraft(protocol);
     if (!command)
         return nullptr;
 
@@ -253,14 +262,16 @@ bool Device::setFieldValue(const QString &field, const QVariant &value)
 
 void Device::writeToStream(QDataStream& stream) const
 {
+    QVariantMap streamConfigValues = m_configValues;
+    if (!supportedProtocols().isEmpty())
+        streamConfigValues.insert(QString::fromLatin1(kSupportedProtocolsConfigKey), supportedProtocols());
+
     stream << m_id
            << m_templateName
            << m_deviceType
            << m_name
-           << m_protocol
-           << m_address
            << m_description
-           << m_configValues
+           << streamConfigValues
            << m_commands.size();
 
     for (DeviceCommand *command : m_commands) {
@@ -277,8 +288,6 @@ void Device::readFromStream(QDataStream& stream)
     QString templateName;
     QString deviceType;
     QString name;
-    QString protocol;
-    QString address;
     QString description;
     QVariantMap configValues;
     int commandCount = 0;
@@ -287,8 +296,6 @@ void Device::readFromStream(QDataStream& stream)
            >> templateName
            >> deviceType
            >> name
-           >> protocol
-           >> address
            >> description
            >> configValues
            >> commandCount;
@@ -321,10 +328,11 @@ void Device::readFromStream(QDataStream& stream)
     m_templateName = templateName;
     setDeviceType(deviceType);
     setName(name);
-    setProtocol(protocol);
-    setAddress(address);
     setDescription(description);
+    const QStringList restoredSupportedProtocols = configValues.take(QString::fromLatin1(kSupportedProtocolsConfigKey)).toStringList();
     setConfigValues(configValues);
+    if (!restoredSupportedProtocols.isEmpty())
+        setSupportedProtocols(restoredSupportedProtocols);
 
     for (DeviceCommand *command : m_commands)
         delete command;

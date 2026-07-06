@@ -11,6 +11,7 @@ namespace TimelineControl {
 class DeviceManager;
 class DeviceModel;
 class DeviceTemplateModel;
+class DeviceExecutorManager;
 class DeviceInspectorFormProvider;
 class VideoProjectionPlanController;
 class TimelineController;
@@ -78,6 +79,7 @@ private:
     TaskManager *m_taskManager = nullptr;
     DeviceModel *m_deviceModel = nullptr;
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;
+    DeviceExecutorManager *m_deviceExecutorManager = nullptr;
     DeviceManager *m_deviceManager = nullptr;
     DeviceInspectorFormProvider *m_deviceInspectorFormProvider = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;

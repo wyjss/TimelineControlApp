@@ -5,7 +5,6 @@
 #include <QColor>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QSize>
 #include <QStringList>
 #include <QUrl>
 #include <QVariantList>
@@ -36,12 +35,7 @@ T *objectFromVariant(const QVariant &value)
 
 QString boolText(bool value)
 {
-    return value ? QStringLiteral("true") : QStringLiteral("false");
-}
-
-QString sizeText(const QSize &size)
-{
-    return QStringLiteral("%1x%2").arg(size.width()).arg(size.height());
+    return value ? QStringLiteral("是") : QStringLiteral("否");
 }
 
 QString jsonText(const QVariant &value)
@@ -56,16 +50,10 @@ QString jsonText(const QVariant &value)
 QString displayValue(const QVariant &value)
 {
     if (!value.isValid() || value.isNull())
-        return QStringLiteral("Empty");
+        return QStringLiteral("空");
 
     if (value.type() == QVariant::Bool)
         return boolText(value.toBool());
-
-    if (value.canConvert<QSize>()) {
-        const QSize size = value.toSize();
-        if (size.isValid())
-            return sizeText(size);
-    }
 
     if (value.canConvert<QColor>()) {
         const QColor color = value.value<QColor>();
@@ -80,7 +68,7 @@ QString displayValue(const QVariant &value)
     }
 
     const QString text = value.toString();
-    return text.trimmed().isEmpty() ? QStringLiteral("Empty") : text;
+    return text.trimmed().isEmpty() ? QStringLiteral("空") : text;
 }
 
 QString specSubtitle(const TimelineControl::DeviceParamSpec *spec)
@@ -91,9 +79,9 @@ QString specSubtitle(const TimelineControl::DeviceParamSpec *spec)
     QStringList parts;
     parts.append(spec->typeName());
     if (spec->required())
-        parts.append(QStringLiteral("required"));
+        parts.append(QStringLiteral("必填"));
     if (spec->readOnly())
-        parts.append(QStringLiteral("read only"));
+        parts.append(QStringLiteral("只读"));
     if (!spec->suffix().isEmpty())
         parts.append(spec->suffix());
     return parts.join(QStringLiteral(" / "));
@@ -310,25 +298,25 @@ void DeviceInspectorFormProvider::rebuildCommandForm()
 
 EarthUI::AppForm *DeviceInspectorFormProvider::buildTemplateForm(const DeviceTemplate *deviceTemplate)
 {
-    auto *form = makeForm(tr("Template"));
-    auto *summarySection = makeSection(form, tr("Template"));
+    auto *form = makeForm(tr("模板"));
+    auto *summarySection = makeSection(form, tr("模板"));
     summarySection->appendField(makeSummaryField(QStringLiteral("name"),
-                                                 tr("Name"),
+                                                 tr("名称"),
                                                  deviceTemplate ? deviceTemplate->name() : QVariant()));
     summarySection->appendField(makeSummaryField(QStringLiteral("deviceType"),
-                                                 tr("Device Type"),
+                                                 tr("设备类型"),
                                                  deviceTemplate ? deviceTemplate->deviceType() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("protocol"),
-                                                 tr("Protocol"),
-                                                 deviceTemplate ? deviceTemplate->protocol() : QVariant()));
+    summarySection->appendField(makeSummaryField(QStringLiteral("supportedProtocols"),
+                                                 tr("支持协议"),
+                                                 deviceTemplate ? deviceTemplate->supportedProtocols().join(QStringLiteral(", ")) : QVariant()));
     summarySection->appendField(makeSummaryField(QStringLiteral("description"),
-                                                 tr("Description"),
+                                                 tr("描述"),
                                                  deviceTemplate ? deviceTemplate->description() : QVariant()));
     summarySection->appendField(makeSummaryField(QStringLiteral("configCount"),
-                                                 tr("Config Count"),
+                                                 tr("配置数量"),
                                                  deviceTemplate ? deviceTemplate->configSpecObjects().size() : 0));
 
-    auto *configSection = makeSection(form, tr("Fixed Config"));
+    auto *configSection = makeSection(form, tr("固定配置"));
     if (deviceTemplate) {
         const QList<DeviceParamSpec *> specs = deviceTemplate->configSpecObjects();
         for (const DeviceParamSpec *spec : specs)
@@ -364,13 +352,13 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *dev
     auto *form = makeForm();
     auto *profileSection = makeSection(form, QString());
     profileSection->appendField(makeReadOnlyField(QStringLiteral("templateName"),
-                                                  tr("Template"),
+                                                  tr("模板"),
                                                   device ? device->templateName() : QVariant()));
     profileSection->appendField(makeReadOnlyField(QStringLiteral("deviceType"),
-                                                  tr("Device Type"),
+                                                  tr("设备类型"),
                                                   device ? device->deviceType() : QVariant()));
     profileSection->appendField(makeReadOnlyField(QStringLiteral("name"),
-                                                  tr("Name"),
+                                                  tr("名称"),
                                                   device ? device->name() : QVariant()));
 
     auto *protocolStatusField = new EarthUI::AppFormField(profileSection);
@@ -378,18 +366,15 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *dev
     protocolStatusField->setKey(QStringLiteral("protocolStatus"));
     protocolStatusField->setDelegateSource(QUrl(QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceProfilePairField.qml")));
     protocolStatusField->setCustomData(QVariantMap{
-        {QStringLiteral("leftLabel"), tr("Protocol")},
-        {QStringLiteral("leftValue"), displayValue(device ? device->protocol() : QVariant())},
-        {QStringLiteral("rightLabel"), tr("Status")},
+        {QStringLiteral("leftLabel"), tr("支持协议")},
+        {QStringLiteral("leftValue"), device ? device->supportedProtocols().join(QStringLiteral(", ")) : QVariant()},
+        {QStringLiteral("rightLabel"), tr("状态")},
         {QStringLiteral("rightValue"), displayValue(device ? device->status() : QVariant())}
     });
     profileSection->appendField(protocolStatusField);
 
-    profileSection->appendField(makeReadOnlyField(QStringLiteral("address"),
-                                                  tr("Address"),
-                                                  device ? device->address() : QVariant()));
     profileSection->appendField(makeReadOnlyField(QStringLiteral("description"),
-                                                  tr("Description"),
+                                                  tr("描述"),
                                                   device ? device->description() : QVariant()));
 
     return form;
@@ -397,22 +382,22 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *dev
 
 EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandForm(const DeviceCommand *command)
 {
-    auto *form = makeForm(tr("Command"));
-    auto *summarySection = makeSection(form, tr("Command"));
-    summarySection->appendField(makeSummaryField(QStringLiteral("name"), tr("Name"), command ? command->name() : QVariant()));
-    summarySection->appendField(makeSummaryField(QStringLiteral("protocol"), tr("Protocol"), command ? command->protocol() : QVariant()));
+    auto *form = makeForm(tr("指令"));
+    auto *summarySection = makeSection(form, tr("指令"));
+    summarySection->appendField(makeSummaryField(QStringLiteral("name"), tr("名称"), command ? command->name() : QVariant()));
+    summarySection->appendField(makeSummaryField(QStringLiteral("protocol"), tr("协议"), command ? command->protocol() : QVariant()));
 
     if (!command)
         return form;
 
-    auto *creationSection = makeSection(form, tr("Creation Parameters"));
+    auto *creationSection = makeSection(form, tr("创建参数"));
     const QVariantList creationFields = command->creationInputFields();
     for (const QVariant &fieldValue : creationFields) {
         const DeviceParamSpec *spec = objectFromVariant<DeviceParamSpec>(fieldValue);
         appendParamSpecField(creationSection, spec, spec ? spec->value() : QVariant());
     }
 
-    auto *executionSection = makeSection(form, tr("Execution Parameters"));
+    auto *executionSection = makeSection(form, tr("执行参数"));
     const QVariantList executionFields = command->executionInputFields();
     for (const QVariant &fieldValue : executionFields) {
         const DeviceParamSpec *spec = objectFromVariant<DeviceParamSpec>(fieldValue);
@@ -424,8 +409,8 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandForm(const DeviceComm
 
 EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandMapForm(const QVariantMap &command)
 {
-    auto *form = makeForm(tr("Command"));
-    auto *summarySection = makeSection(form, tr("Command"));
+    auto *form = makeForm(tr("指令"));
+    auto *summarySection = makeSection(form, tr("指令"));
 
     const QStringList preferredKeys{
         QStringLiteral("name"),
@@ -457,7 +442,7 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandMapForm(const QVarian
 
     const QVariantMap params = command.value(QStringLiteral("params")).toMap();
     if (!params.isEmpty()) {
-        auto *paramsSection = makeSection(form, tr("Parameters"));
+        auto *paramsSection = makeSection(form, tr("参数"));
         QStringList paramKeys = params.keys();
         paramKeys.sort(Qt::CaseInsensitive);
         for (const QString &key : paramKeys)

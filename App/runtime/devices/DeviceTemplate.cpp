@@ -7,7 +7,7 @@ using namespace TimelineControl;
 
 DeviceTemplate::DeviceTemplate(const QString &name,
                                const QString &deviceType,
-                               const QString &protocol,
+                               const QStringList &supportedProtocols,
                                const QString &description,
                                QList<DeviceParamSpec*> configSpecs,
                                QList<DeviceCommand*> commands,
@@ -15,7 +15,7 @@ DeviceTemplate::DeviceTemplate(const QString &name,
     : QObject(parent)
     , m_name(name)
     , m_deviceType(deviceType)
-    , m_protocol(protocol)
+    , m_supportedProtocols(supportedProtocols)
     , m_description(description)
     , m_configSpecs(configSpecs)
     , m_commands(commands)
@@ -39,9 +39,9 @@ QString DeviceTemplate::deviceType() const
     return m_deviceType;
 }
 
-QString DeviceTemplate::protocol() const
+QStringList DeviceTemplate::supportedProtocols() const
 {
-    return m_protocol;
+    return m_supportedProtocols;
 }
 
 QString DeviceTemplate::description() const
@@ -69,7 +69,7 @@ Device* DeviceTemplate::createDevice(QObject* parent)
 {
     Device* device = new Device(name(), parent);
 	device->setDeviceType(deviceType());
-	device->setProtocol(protocol());
+    device->setSupportedProtocols(supportedProtocols());
 	device->setDescription(description());
 
     QVariantMap configValues;

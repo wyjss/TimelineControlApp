@@ -11,9 +11,6 @@ class DeviceCommand_PC : public DeviceCommand_Http
 
 public:
     explicit DeviceCommand_PC(QObject *parent = nullptr);
-    DeviceCommand_PC(const QString &name,
-                     const QString &path,
-                     QObject *parent = nullptr);
 
     QString protocol() const override;
 

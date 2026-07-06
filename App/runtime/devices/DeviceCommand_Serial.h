@@ -10,6 +10,7 @@ class DeviceCommand_Serial : public DeviceCommand
     Q_OBJECT
 
     Q_PROPERTY(QString serialPort READ serialPort WRITE setSerialPort NOTIFY serialPortChanged FINAL)
+    Q_PROPERTY(int baudRate READ baudRate WRITE setBaudRate NOTIFY baudRateChanged FINAL)
     Q_PROPERTY(QString payload READ payload WRITE setPayload NOTIFY payloadChanged FINAL)
 
 public:
@@ -19,10 +20,14 @@ public:
                          QObject *parent = nullptr);
 
     Q_INVOKABLE DeviceParamSpec *serialPortField() const { return getField(DeviceKey::SerialPort); }
+    Q_INVOKABLE DeviceParamSpec *baudRateField() const { return getField(DeviceKey::BaudRate); }
     Q_INVOKABLE DeviceParamSpec *payloadField() const { return getField(DeviceKey::Payload); }
 
     QString serialPort() const;
     void setSerialPort(const QString& serialPort);
+
+    int baudRate() const;
+    void setBaudRate(int baudRate);
 
     QString payload() const;
     void setPayload(const QString &payload);
@@ -34,6 +39,7 @@ public:
 
 signals:
     void serialPortChanged();
+    void baudRateChanged();
     void payloadChanged();
 };
 

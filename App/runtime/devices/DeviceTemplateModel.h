@@ -4,6 +4,7 @@
 #include "models/TypedListModel.h"
 
 #include <QString>
+#include <QStringList>
 #include <QVariantList>
 
 namespace TimelineControl {
@@ -42,7 +43,7 @@ private:
 
     DeviceTemplate *makeDeviceTemplate(const QString &name,
                                        const QString &deviceType,
-                                       const QString &protocol,
+                                       const QStringList &supportedProtocols,
                                        const QString &description,
                                        const QList<DeviceParamSpec *> &configSpecs,
                                        const QList<DeviceCommand *> &commands = {});

@@ -5,15 +5,12 @@ using namespace TimelineControl;
 DeviceCommand_PC::DeviceCommand_PC(QObject *parent)
     : DeviceCommand_Http(parent)
 {
-    setName(QStringLiteral("PC Cue"));
-}
-
-DeviceCommand_PC::DeviceCommand_PC(const QString &name,
-                                   const QString &path,
-                                   QObject *parent)
-    : DeviceCommand_Http(parent)
-{
-    setName(name);
+	setName(QStringLiteral("PC 指令"));
+	updateConfigMap({
+	   {DeviceKey::HttpMethod, "GET"},
+	   {DeviceKey::HttpBody, ""},
+	   {DeviceKey::IpPort, 11357},
+					});
 }
 
 QString DeviceCommand_PC::protocol() const

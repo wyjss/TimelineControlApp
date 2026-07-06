@@ -23,7 +23,7 @@ QVariantMap makeLeftPane(const QString &title, const QString &filterPlaceholder,
         {QStringLiteral("filterPlaceholder"), filterPlaceholder},
         {QStringLiteral("primaryAction"), QVariantMap{
             {QStringLiteral("actionId"), QStringLiteral("timeline.primaryAction")},
-            {QStringLiteral("text"), QObject::tr("Open")},
+            {QStringLiteral("text"), QObject::tr("打开")},
             {QStringLiteral("variant"), QStringLiteral("secondary")}
         }},
         {QStringLiteral("items"), items}
@@ -55,7 +55,7 @@ TimelineShellController::TimelineShellController(QObject *parent)
 {
     buildDrawers();
     setActiveDrawerKey(QStringLiteral("timeline"));
-    syncSelection(tr("Timeline"), tr("Ready to build timeline-based device control."));
+    syncSelection(tr("时间线"), tr("准备构建设备时间线控制。"));
 }
 
 void TimelineShellController::handleUiAction(const QString &actionId, const QVariantMap &payload)
@@ -69,7 +69,7 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
         const QVariantMap rowData = payload.value(QStringLiteral("rowData")).toMap();
         const QString label = rowData.value(QStringLiteral("label")).toString();
         const QString meta = rowData.value(QStringLiteral("meta")).toString();
-        syncSelection(label.isEmpty() ? tr("Selection") : label, meta);
+        syncSelection(label.isEmpty() ? tr("选择") : label, meta);
         return;
     }
 
@@ -112,99 +112,99 @@ void TimelineShellController::buildDrawers()
 {
     registerDrawer(makeDrawer(this,
                               QStringLiteral("timeline"),
-                              tr("Timeline"),
+                              tr("时间线"),
                               QStringLiteral("workflow"),
-                              tr("Tracks, cues, and playback state"),
-                              makeLeftPane(tr("Timeline"),
-                                           tr("Filter timeline items"),
+                              tr("轨道、指令与播放状态"),
+                              makeLeftPane(tr("时间线"),
+                                           tr("筛选时间线项目"),
                                            QVariantList{
                                                makePaneItem(QStringLiteral("sequence-main"),
-                                                            tr("Main Sequence"),
-                                                            tr("Primary control track"),
+                                                            tr("主序列"),
+                                                            tr("主控制轨"),
                                                             true),
                                                makePaneItem(QStringLiteral("cue-list"),
-                                                            tr("Cue List"),
-                                                            tr("Timed control events")),
+                                                            tr("指令列表"),
+                                                            tr("定时控制事件")),
                                                makePaneItem(QStringLiteral("playback"),
-                                                            tr("Playback"),
-                                                            tr("Transport and clock state"))
+                                                            tr("播放"),
+                                                            tr("播放控制与时钟状态"))
                                            })));
 
     registerDrawer(makeDrawer(this,
                               QStringLiteral("devices"),
-                              tr("Devices"),
+                              tr("设备"),
                               QStringLiteral("resources"),
-                              tr("Device groups and connection status"),
-                              makeLeftPane(tr("Devices"),
-                                           tr("Filter devices"),
+                              tr("设备分组与连接状态"),
+                              makeLeftPane(tr("设备"),
+                                           tr("筛选设备"),
                                            QVariantList{
                                                makePaneItem(QStringLiteral("device-groups"),
-                                                            tr("Device Groups"),
-                                                            tr("Logical control groups"),
+                                                            tr("设备分组"),
+                                                            tr("逻辑控制分组"),
                                                             true),
                                                makePaneItem(QStringLiteral("adapters"),
-                                                            tr("Adapters"),
-                                                            tr("Protocol adapters")),
+                                                            tr("适配器"),
+                                                            tr("协议适配器")),
                                                makePaneItem(QStringLiteral("health"),
-                                                            tr("Health"),
-                                                            tr("Connection diagnostics"))
+                                                            tr("状态"),
+                                                            tr("连接诊断"))
                                            })));
 
     registerDrawer(makeDrawer(this,
                               QStringLiteral("projection"),
-                              tr("Projection"),
+                              tr("投影"),
                               QStringLiteral("scene"),
-                              tr("Video crops and mapped PC screens"),
-                              makeLeftPane(tr("Projection"),
-                                           tr("Filter projection items"),
+                              tr("视频取景与 PC 屏幕映射"),
+                              makeLeftPane(tr("投影"),
+                                           tr("筛选投影项目"),
                                            QVariantList{
                                                makePaneItem(QStringLiteral("video-crops"),
-                                                            tr("Video Crops"),
-                                                            tr("Simulated capture rectangles"),
+                                                            tr("视频取景"),
+                                                            tr("模拟取景区域"),
                                                             true),
                                                makePaneItem(QStringLiteral("screen-map"),
-                                                            tr("Screen Map"),
-                                                            tr("Selected PC layout preview")),
+                                                            tr("屏幕映射"),
+                                                            tr("已选 PC 布局预览")),
                                                makePaneItem(QStringLiteral("pc-targets"),
-                                                            tr("PC Targets"),
-                                                            tr("Available projection devices"))
+                                                            tr("PC 目标"),
+                                                            tr("可用投影设备"))
                                            })));
 
     registerDrawer(makeDrawer(this,
                               QStringLiteral("keystone"),
-                              tr("Keystone"),
+                              tr("梯形校正"),
                               QStringLiteral("layer-config"),
-                              tr("PC screen corner calibration"),
-                              makeLeftPane(tr("Keystone"),
-                                           tr("Filter calibration items"),
+                              tr("PC 屏幕角点校正"),
+                              makeLeftPane(tr("梯形校正"),
+                                           tr("筛选校正项目"),
                                            QVariantList{
                                                makePaneItem(QStringLiteral("pc-keystone"),
-                                                            tr("PC Keystone"),
-                                                            tr("Calibrate PC screen corners"),
+                                                            tr("PC 梯形校正"),
+                                                            tr("校正 PC 屏幕角点"),
                                                             true),
                                                makePaneItem(QStringLiteral("screen-corners"),
-                                                            tr("Screen Corners"),
-                                                            tr("Per-screen correction points")),
+                                                            tr("屏幕角点"),
+                                                            tr("单屏校正点")),
                                                makePaneItem(QStringLiteral("device-config"),
-                                                            tr("Device Config"),
-                                                            tr("Stored in PC device config"))
+                                                            tr("设备配置"),
+                                                            tr("存储在 PC 设备配置中"))
                                            })));
 
     registerDrawer(makeDrawer(this,
                               QStringLiteral("runs"),
-                              tr("Runs"),
+                              tr("运行记录"),
                               QStringLiteral("background-task"),
-                              tr("Execution logs and background tasks"),
-                              makeLeftPane(tr("Runs"),
-                                           tr("Filter runs"),
+                              tr("执行日志与后台任务"),
+                              makeLeftPane(tr("运行记录"),
+                                           tr("筛选运行记录"),
                                            QVariantList{
                                                makePaneItem(QStringLiteral("current-run"),
-                                                            tr("Current Run"),
-                                                            tr("Live execution state"),
+                                                            tr("当前运行"),
+                                                            tr("实时执行状态"),
                                                             true),
                                                makePaneItem(QStringLiteral("history"),
-                                                            tr("History"),
-                                                            tr("Recent timeline runs"))
+                                                            tr("历史记录"),
+                                                            tr("最近的时间线运行"))
                                            })));
 }
 
@@ -227,7 +227,7 @@ void TimelineShellController::syncSelection(const QString &title, const QString 
     }
 
     setSelectionData(QVariantMap{
-        {QStringLiteral("title"), tr("Selection")},
+        {QStringLiteral("title"), tr("选择")},
         {QStringLiteral("lines"), lines}
     });
 }

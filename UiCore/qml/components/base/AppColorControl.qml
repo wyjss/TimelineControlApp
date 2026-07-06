@@ -194,7 +194,7 @@ Internal.AppControlBase {
 
     resources: ColorDialog {
         id: colorDialog
-        title: "Select Color"
+        title: qsTr("选择颜色")
         color: root.dialogColorValue
         currentColor: root.dialogColorValue
         showAlphaChannel: root.showAlphaChannel

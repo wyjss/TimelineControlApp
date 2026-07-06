@@ -201,14 +201,14 @@ Item {
             : (leftPanelAutoHideEnabled ? "" : activeDrawer.detail)
         drawerPane.filterPlaceholder = drawerPane.filterPlaceholder !== undefined
             ? drawerPane.filterPlaceholder
-            : qsTr("Filter visible items")
+            : qsTr("筛选可见项")
         drawerPane.filterText = effectiveLeftPaneFilterText
         drawerPane.items = filteredRows(sourceItems, effectiveLeftPaneFilterText)
 
         if (drawerPane.primaryAction === undefined) {
             drawerPane.primaryAction = {
                 "actionId": "leftPane.centerSelection",
-                "text": qsTr("Center On Selection"),
+                "text": qsTr("居中到选择项"),
                 "variant": "secondary"
             }
         }
@@ -512,7 +512,7 @@ Item {
                         Base.AppText {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("EarthUI")
+                            text: qsTr("时间线控制")
                             theme: root.theme
                             styleRole: "bodyM"
                             overrideWeight: theme ? theme.typography.weightBold : Font.Bold
@@ -532,7 +532,7 @@ Item {
                         Layout.preferredWidth: root.topBarSearchWidth
                         theme: root.theme
                         surfaceTone: "section"
-                        placeholderText: qsTr("Search layers, tools, and commands")
+                        placeholderText: qsTr("搜索图层、工具和命令")
                         trailingContent: [
                             Base.AppText {
                                 anchors.verticalCenter: parent.verticalCenter
@@ -565,7 +565,7 @@ Item {
                             spacing: 6
 
                             Base.AppText {
-                                text: qsTr("Timeline")
+                                text: qsTr("时间线")
                                 theme: root.theme
                                 styleRole: "bodyS"
                                 textTone: "secondary"
@@ -586,7 +586,7 @@ Item {
                             }
 
                             Base.AppButton {
-                                text: root.timelineStopped ? qsTr("Start") : qsTr("Stop")
+                                text: root.timelineStopped ? qsTr("开始") : qsTr("停止")
                                 theme: root.theme
                                 size: AppUiEnums.ButtonSize.Small
                                 variant: root.timelineStopped
@@ -597,7 +597,7 @@ Item {
                             }
 
                             Base.AppButton {
-                                text: root.timelinePaused ? qsTr("Resume") : qsTr("Pause")
+                                text: root.timelinePaused ? qsTr("继续") : qsTr("暂停")
                                 theme: root.theme
                                 size: AppUiEnums.ButtonSize.Small
                                 variant: AppUiEnums.ButtonVariant.Secondary
@@ -609,7 +609,7 @@ Item {
                             Base.AppButton {
                                 id: plansButton
 
-                                text: root.planName.length > 0 ? root.planName : qsTr("No Plan")
+                                text: root.planName.length > 0 ? root.planName : qsTr("未选择方案")
                                 theme: root.theme
                                 size: AppUiEnums.ButtonSize.Small
                                 variant: AppUiEnums.ButtonVariant.Secondary
@@ -1260,21 +1260,21 @@ Item {
                                 spacing: 14
 
                                 Base.AppText {
-                                    text: qsTr("CRS EPSG:3857")
+                                    text: qsTr("坐标系 EPSG:3857")
                                     theme: root.theme
                                     styleRole: "bodyS"
                                     textTone: "secondary"
                                 }
 
                                 Base.AppText {
-                                    text: qsTr("Zoom 11.4")
+                                    text: qsTr("缩放 11.4")
                                     theme: root.theme
                                     styleRole: "bodyS"
                                     textTone: "secondary"
                                 }
 
                                 Base.AppText {
-                                    text: qsTr("Cursor 114.058, 22.542")
+                                    text: qsTr("光标 114.058, 22.542")
                                     theme: root.theme
                                     styleRole: "bodyS"
                                     textTone: "secondary"
@@ -1285,7 +1285,7 @@ Item {
                                 }
 
                                 Base.AppText {
-                                    text: qsTr("Selection 3")
+                                    text: qsTr("已选 3")
                                     theme: root.theme
                                     styleRole: "bodyS"
                                     textTone: "accent"
@@ -1360,7 +1360,7 @@ Item {
 
         Base.AppButton {
             Layout.fillWidth: true
-            text: qsTr("Save")
+            text: qsTr("保存")
             theme: root.theme
             size: AppUiEnums.ButtonSize.Small
             enabled: root.timelineStopped
@@ -1375,7 +1375,7 @@ Item {
 
         Base.AppButton {
             Layout.fillWidth: true
-            text: qsTr("Save As...")
+            text: qsTr("另存为...")
             theme: root.theme
             size: AppUiEnums.ButtonSize.Small
             enabled: root.timelineStopped
@@ -1387,7 +1387,7 @@ Item {
 
         Base.AppButton {
             Layout.fillWidth: true
-            text: qsTr("Load...")
+            text: qsTr("加载...")
             theme: root.theme
             size: AppUiEnums.ButtonSize.Small
             enabled: root.timelineStopped
@@ -1401,9 +1401,9 @@ Item {
     FileDialog {
         id: savePlanDialog
 
-        title: qsTr("Save Timeline Plan")
+        title: qsTr("保存时间线方案")
         selectExisting: false
-        nameFilters: [qsTr("Timeline Plan (*.tlplan)"), qsTr("All Files (*)")]
+        nameFilters: [qsTr("时间线方案 (*.tlplan)"), qsTr("所有文件 (*)")]
         onAccepted: {
             if (root.timelineStopped)
                 root.uiActionRequested("timeline.plan.save", { "filePath": fileUrl })
@@ -1413,9 +1413,9 @@ Item {
     FileDialog {
         id: loadPlanDialog
 
-        title: qsTr("Load Timeline Plan")
+        title: qsTr("加载时间线方案")
         selectExisting: true
-        nameFilters: [qsTr("Timeline Plan (*.tlplan)"), qsTr("All Files (*)")]
+        nameFilters: [qsTr("时间线方案 (*.tlplan)"), qsTr("所有文件 (*)")]
         onAccepted: {
             if (root.timelineStopped)
                 root.uiActionRequested("timeline.plan.load", { "filePath": fileUrl })

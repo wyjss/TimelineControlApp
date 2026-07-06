@@ -12,11 +12,12 @@ Base.AppPopup {
     property string selectedProtocol: "serial"
     property bool validationVisible: false
     readonly property var protocolOptions: [
-        { "label": qsTr("Serial"), "value": "serial" },
+        { "label": qsTr("串口"), "value": "serial" },
         { "label": qsTr("DMX512"), "value": "dmx512" },
         { "label": qsTr("HTTP"), "value": "http" },
         { "label": qsTr("PC"), "value": "pc" }
     ]
+    readonly property var availableProtocolOptions: buildAvailableProtocolOptions()
     readonly property bool commandValid: draftCommand
         && creationFieldForm.valid
         && executionFieldForm.valid
@@ -34,14 +35,30 @@ Base.AppPopup {
     }
 
     function defaultProtocol(nextDevice) {
-        var protocol = nextDevice && nextDevice.protocol !== undefined
-            ? String(nextDevice.protocol).trim().toLowerCase()
-            : ""
-        for (var index = 0; index < protocolOptions.length; ++index) {
-            if (protocolOptions[index].value === protocol)
-                return protocol
+        var options = buildAvailableProtocolOptions(nextDevice)
+        return options.length > 0 ? String(options[0].value) : ""
+    }
+
+    function buildAvailableProtocolOptions(targetDevice) {
+        var sourceDevice = targetDevice || device
+        var protocols = sourceDevice && sourceDevice.supportedProtocols !== undefined
+            ? sourceDevice.supportedProtocols
+            : []
+        var supportedProtocols = []
+        for (var index = 0; index < protocols.length; ++index) {
+            var protocol = String(protocols[index] || "").trim().toLowerCase()
+            if (protocol.length > 0 && supportedProtocols.indexOf(protocol) < 0)
+                supportedProtocols.push(protocol)
         }
-        return "serial"
+        if (supportedProtocols.length === 0)
+            return []
+
+        var result = []
+        for (var index = 0; index < protocolOptions.length; ++index) {
+            if (supportedProtocols.indexOf(String(protocolOptions[index].value)) >= 0)
+                result.push(protocolOptions[index])
+        }
+        return result
     }
 
     function protocolLabel(protocol) {
@@ -67,9 +84,11 @@ Base.AppPopup {
 
     function firstInvalidReason() {
         if (!device)
-            return qsTr("No device selected")
+            return qsTr("未选择设备")
+        if (availableProtocolOptions.length === 0)
+            return qsTr("该设备没有可用协议")
         if (!draftCommand)
-            return qsTr("Unsupported protocol")
+            return qsTr("不支持的协议")
 
         var reason = creationFieldForm.firstInvalidReason()
         if (reason.length > 0)
@@ -142,7 +161,7 @@ Base.AppPopup {
 
             Base.AppText {
                 Layout.fillWidth: true
-                text: qsTr("Add Command")
+                text: qsTr("添加指令")
                 theme: root.theme
                 styleRole: "titleM"
                 elide: Text.ElideRight
@@ -159,13 +178,13 @@ Base.AppPopup {
         }
 
         Base.AppButton {
-            text: qsTr("Cancel")
+            text: qsTr("取消")
             theme: root.theme
             onClicked: root.close()
         }
 
         Base.AppButton {
-            text: qsTr("Add")
+            text: qsTr("添加")
             theme: root.theme
             enabled: root.draftCommand !== null
             iconName: "workflow"
@@ -178,7 +197,7 @@ Base.AppPopup {
         spacing: 8
 
         Base.AppText {
-            text: qsTr("Protocol")
+            text: qsTr("协议")
             theme: root.theme
             styleRole: "bodyS"
             textTone: "secondary"
@@ -187,7 +206,7 @@ Base.AppPopup {
         Base.AppSegmentedControl {
             Layout.fillWidth: true
             theme: root.theme
-            options: root.protocolOptions
+            options: root.availableProtocolOptions
             value: root.selectedProtocol
             onValueSelected: root.selectedProtocol = String(nextValue)
         }
@@ -216,7 +235,7 @@ Base.AppPopup {
 
             Base.AppText {
                 Layout.fillWidth: true
-                text: qsTr("Creation Parameters")
+                text: qsTr("创建参数")
                 theme: root.theme
                 styleRole: "bodyS"
                 textTone: "secondary"
@@ -227,17 +246,19 @@ Base.AppPopup {
                 id: creationFieldForm
 
                 Layout.fillWidth: true
-                fields: root.draftCommand ? root.draftCommand.creationInputFields : []
+                fields: root.draftCommand && root.draftCommand.creationMinInputFields !== undefined
+                    ? root.draftCommand.creationMinInputFields()
+                    : []
                 writeBack: true
                 showErrors: root.validationVisible
                 theme: root.theme
-                emptyText: qsTr("No creation parameters")
+                emptyText: qsTr("无创建参数")
             }
 
             Base.AppText {
                 Layout.fillWidth: true
                 visible: root.draftCommand && root.draftCommand.executionInputFields.length > 0
-                text: qsTr("Execution Parameters")
+                text: qsTr("执行参数")
                 theme: root.theme
                 styleRole: "sectionTitle"
                 elide: Text.ElideRight
@@ -252,7 +273,7 @@ Base.AppPopup {
                 writeBack: true
                 showErrors: root.validationVisible
                 theme: root.theme
-                emptyText: qsTr("No execution parameters")
+                emptyText: qsTr("无执行参数")
             }
         }
     }
@@ -270,7 +291,7 @@ Base.AppPopup {
             spacing: 4
 
             Base.AppText {
-                text: qsTr("Preview")
+                text: qsTr("预览")
                 theme: root.theme
                 styleRole: "bodyS"
                 textTone: "secondary"

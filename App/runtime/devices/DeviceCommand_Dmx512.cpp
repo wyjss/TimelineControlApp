@@ -10,10 +10,10 @@ const char *kValueKey = "value";
 using namespace TimelineControl;
 
 DeviceCommand_Dmx512::DeviceCommand_Dmx512(QObject *parent)
-    : DeviceCommand(QStringLiteral("DMX Cue"), parent)
+    : DeviceCommand(QStringLiteral("DMX 指令"), parent)
 {
     auto *channelField = new DeviceParamSpec(QString::fromLatin1(kChannelKey),
-                                             tr("Channel"),
+                                             tr("通道"),
                                              1,
                                              DeviceParamSpec::IntType,
                                              DeviceParamSpec::TextEditor,
@@ -24,7 +24,7 @@ DeviceCommand_Dmx512::DeviceCommand_Dmx512(QObject *parent)
     connect(channelField, &DeviceParamSpec::valueChanged, this, &DeviceCommand_Dmx512::channelChanged);
 
     auto *valueField = new DeviceParamSpec(QString::fromLatin1(kValueKey),
-                                           tr("Value"),
+                                           tr("值"),
                                            255,
                                            DeviceParamSpec::IntType,
                                            DeviceParamSpec::SliderEditor,

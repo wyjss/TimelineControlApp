@@ -38,12 +38,12 @@ Item {
     readonly property var selectedPc: selectedPcForId(selectedPcId)
     property int selectedCaptureIndex: -1
 
-    readonly property size selectedResolution: sizeFromValue(configValue(selectedPc, "screenSize", undefined), Qt.size(1920, 1080))
-    readonly property size selectedLayout: sizeFromValue(configValue(selectedPc, "screenLayout", undefined), Qt.size(1, 1))
-    readonly property int screenColumns: Math.max(1, Math.round(selectedLayout.width))
-    readonly property int screenRows: Math.max(1, Math.round(selectedLayout.height))
-    readonly property int totalScreenWidth: Math.max(1, Math.round(selectedResolution.width)) * screenColumns
-    readonly property int totalScreenHeight: Math.max(1, Math.round(selectedResolution.height)) * screenRows
+    readonly property int selectedScreenWidth: Math.max(1, Math.round(Number(configValue(selectedPc, "screenWidth", 1920))))
+    readonly property int selectedScreenHeight: Math.max(1, Math.round(Number(configValue(selectedPc, "screenHeight", 1080))))
+    readonly property int screenColumns: Math.max(1, Math.round(Number(configValue(selectedPc, "screenColumns", 1))))
+    readonly property int screenRows: Math.max(1, Math.round(Number(configValue(selectedPc, "screenRows", 1))))
+    readonly property int totalScreenWidth: selectedScreenWidth * screenColumns
+    readonly property int totalScreenHeight: selectedScreenHeight * screenRows
     property url videoSource: ""
     property size videoNativeSize: Qt.size(1920, 1080)
     readonly property bool hasVideoSource: videoSource.toString().length > 0
@@ -236,9 +236,11 @@ Item {
             var device = devices[index]
             var deviceType = String(device.deviceType || "")
             var templateName = String(device.templateName || "")
-            var protocol = String(device.protocol || "").toLowerCase()
-            if (deviceType === "电脑" || templateName === "电脑" || protocol === "pc")
+            if (deviceType === "电脑"
+                    || templateName === "电脑"
+                    || (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))) {
                 result.push(device)
+            }
         }
 
         return result
@@ -274,25 +276,6 @@ Item {
 
         var values = device.configValues
         return values[key] !== undefined && values[key] !== null ? values[key] : fallback
-    }
-
-    function sizeFromValue(value, fallback) {
-        if (value && value.width !== undefined && value.height !== undefined) {
-            var widthValue = Math.round(Number(value.width))
-            var heightValue = Math.round(Number(value.height))
-            if (widthValue > 0 && heightValue > 0)
-                return Qt.size(widthValue, heightValue)
-        }
-
-        var match = String(value || "").trim().match(/(\d+)\D+(\d+)/)
-        if (match) {
-            var parsedWidth = Math.round(Number(match[1]))
-            var parsedHeight = Math.round(Number(match[2]))
-            if (parsedWidth > 0 && parsedHeight > 0)
-                return Qt.size(parsedWidth, parsedHeight)
-        }
-
-        return fallback
     }
 
     function sizeText(sizeValue) {
@@ -467,7 +450,10 @@ Item {
         if (!device)
             return qsTr("无设备")
 
-        var address = String(device.address || "").trim()
+        var values = device.configValues || {}
+        var ip = String(values.ip || "").trim()
+        var port = String(values.ipPort || values.port || "").trim()
+        var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
         return address.length > 0 ? address : qsTr("未分配")
     }
 
@@ -819,8 +805,8 @@ Item {
                                         totalScreenHeight,
                                         screenColumns,
                                         screenRows,
-                                        Math.round(selectedResolution.width),
-                                        Math.round(selectedResolution.height))
+                                        selectedScreenWidth,
+                                        selectedScreenHeight)
     }
 
     ColumnLayout {
@@ -1614,7 +1600,7 @@ Item {
                                         Base.AppText {
                                             width: parent.width
                                             horizontalAlignment: Text.AlignHCenter
-                                            text: root.sizeText(root.selectedResolution)
+                                            text: root.sizeText(Qt.size(root.selectedScreenWidth, root.selectedScreenHeight))
                                             theme: root.pageTheme
                                             styleRole: "bodyS"
                                             textTone: "secondary"
@@ -1786,8 +1772,10 @@ Item {
 
                                 readonly property var pcDevice: modelData
                                 readonly property bool selected: String(pcDevice.id || "") === root.selectedPcId
-                                readonly property size resolution: root.sizeFromValue(root.configValue(pcDevice, "screenSize", undefined), Qt.size(1920, 1080))
-                                readonly property size layoutSize: root.sizeFromValue(root.configValue(pcDevice, "screenLayout", undefined), Qt.size(1, 1))
+                                readonly property int screenWidth: Math.max(1, Math.round(Number(root.configValue(pcDevice, "screenWidth", 1920))))
+                                readonly property int screenHeight: Math.max(1, Math.round(Number(root.configValue(pcDevice, "screenHeight", 1080))))
+                                readonly property int screenColumns: Math.max(1, Math.round(Number(root.configValue(pcDevice, "screenColumns", 1))))
+                                readonly property int screenRows: Math.max(1, Math.round(Number(root.configValue(pcDevice, "screenRows", 1))))
                                 readonly property int mappedCount: root.pcMappingCount(pcDevice)
                                 readonly property bool mapped: mappedCount > 0
 
@@ -1836,7 +1824,7 @@ Item {
 
                                     Base.AppText {
                                         width: parent.width
-                                        text: root.sizeText(resolution) + " / " + Math.round(layoutSize.width) + "x" + Math.round(layoutSize.height)
+                                        text: root.sizeText(Qt.size(pcRow.screenWidth, pcRow.screenHeight)) + " / " + pcRow.screenColumns + "x" + pcRow.screenRows
                                         theme: root.pageTheme
                                         styleRole: "bodyS"
                                         textTone: "secondary"

@@ -12,7 +12,7 @@ ColumnLayout {
     property bool readOnly: false
     property bool showErrors: true
     property QtObject theme
-    property string emptyText: qsTr("No fields")
+    property string emptyText: qsTr("无字段")
     readonly property bool valid: firstInvalidReason().length === 0
 
     signal fieldEdited(var field, var value)
@@ -99,28 +99,11 @@ ColumnLayout {
             return Number(value)
         if (type === "bool")
             return !!value
-        if (type === "size")
-            return parsedSize(value)
         return value
     }
 
     function displayValue(field, value) {
-        return field && String(field.type) === "size" ? sizeText(value) : value
-    }
-
-    function sizeText(value) {
-        if (value === undefined || value === null)
-            return ""
-        if (value.width !== undefined && value.height !== undefined)
-            return String(Math.round(Number(value.width))) + "x" + String(Math.round(Number(value.height)))
-        return String(value)
-    }
-
-    function parsedSize(value) {
-        if (value && value.width !== undefined && value.height !== undefined)
-            return Qt.size(Math.round(Number(value.width)), Math.round(Number(value.height)))
-        var match = String(value).match(/^\s*(\d+)\s*[xX,]\s*(\d+)\s*$/)
-        return match ? Qt.size(Math.round(Number(match[1])), Math.round(Number(match[2]))) : Qt.size(0, 0)
+        return value
     }
 
     function fieldInvalidReason(field) {
@@ -260,8 +243,8 @@ ColumnLayout {
                 Base.AppText {
                     Layout.fillWidth: true
                     text: root.fieldValue(fieldRow.fieldSpec)
-                        ? String(fieldRow.fieldSpec.trueLabel || qsTr("Enabled"))
-                        : String(fieldRow.fieldSpec.falseLabel || qsTr("Disabled"))
+                        ? String(fieldRow.fieldSpec.trueLabel || qsTr("已启用"))
+                        : String(fieldRow.fieldSpec.falseLabel || qsTr("已禁用"))
                     theme: root.theme
                     styleRole: "bodyS"
                     textTone: "secondary"

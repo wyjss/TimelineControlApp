@@ -56,7 +56,7 @@ Base.AppPopup {
         if (resolvedName.length > 0)
             return resolvedName
 
-        return qsTr("Unnamed Task")
+        return qsTr("未命名任务")
     }
 
     function taskPhaseName(taskItem) {
@@ -79,16 +79,16 @@ Base.AppPopup {
     function taskPhaseLabel(phaseName) {
         switch (String(phaseName)) {
         case "running":
-            return qsTr("Running")
+            return qsTr("运行中")
         case "succeeded":
-            return qsTr("Succeeded")
+            return qsTr("已成功")
         case "failed":
-            return qsTr("Failed")
+            return qsTr("已失败")
         case "cancelled":
-            return qsTr("Cancelled")
+            return qsTr("已取消")
         case "ready":
         default:
-            return qsTr("Ready")
+            return qsTr("就绪")
         }
     }
 
@@ -115,11 +115,11 @@ Base.AppPopup {
     }
 
     function taskExecutionModeLabel(mode) {
-        return Number(mode) === 1 ? qsTr("Parallel") : qsTr("Serial")
+        return Number(mode) === 1 ? qsTr("并行") : qsTr("串行")
     }
 
     function taskDispatchHintLabel(dispatchHint) {
-        return Number(dispatchHint) === 1 ? qsTr("Worker Thread") : qsTr("Direct")
+        return Number(dispatchHint) === 1 ? qsTr("工作线程") : qsTr("直接执行")
     }
 
     function taskProgressValue(taskItem) {
@@ -157,7 +157,7 @@ Base.AppPopup {
         if (detailText.length > 0)
             return detailText
 
-        return qsTr("No detail available")
+        return qsTr("暂无详情")
     }
 
     function taskProgressVisible(taskItem) {
@@ -196,7 +196,7 @@ Base.AppPopup {
 
     Base.AppText {
         Layout.fillWidth: true
-        text: qsTr("Background Tasks")
+        text: qsTr("后台任务")
         theme: root.theme
         styleRole: "sectionTitle"
     }
@@ -204,8 +204,8 @@ Base.AppPopup {
     Base.AppText {
         Layout.fillWidth: true
         text: root.taskItemCount > 0
-            ? qsTr("%1 total · %2 active · %3 finished").arg(root.taskItemCount).arg(root.activeTaskCount).arg(root.finishedTaskCount)
-            : qsTr("Queued, running, finished, failed, and cancelled tasks will appear here.")
+            ? qsTr("共 %1 个 · %2 个活跃 · %3 个已完成").arg(root.taskItemCount).arg(root.activeTaskCount).arg(root.finishedTaskCount)
+            : qsTr("排队、运行中、已完成、失败和已取消的任务会显示在这里。")
         theme: root.theme
         styleRole: "bodyS"
         textTone: "secondary"
@@ -229,7 +229,7 @@ Base.AppPopup {
             Base.AppText {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("All %1").arg(root.taskItemCount)
+                text: qsTr("全部 %1").arg(root.taskItemCount)
                 theme: root.theme
                 styleRole: "bodyS"
             }
@@ -247,7 +247,7 @@ Base.AppPopup {
             Base.AppText {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: qsTr("Active %1").arg(root.activeTaskCount)
+                text: qsTr("活跃 %1").arg(root.activeTaskCount)
                 theme: root.theme
                 styleRole: "bodyS"
                 textTone: root.activeTaskCount > 0 ? "accent" : "secondary"
@@ -351,7 +351,7 @@ Base.AppPopup {
 
                         Base.AppText {
                             Layout.preferredWidth: 88
-                            text: qsTr("Detail")
+                            text: qsTr("详情")
                             theme: root.theme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -359,7 +359,7 @@ Base.AppPopup {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            text: detailText.length > 0 ? detailText : qsTr("None")
+                            text: detailText.length > 0 ? detailText : qsTr("无")
                             theme: root.theme
                             styleRole: "bodyS"
                             wrapMode: Text.WordWrap
@@ -372,7 +372,7 @@ Base.AppPopup {
 
                         Base.AppText {
                             Layout.preferredWidth: 88
-                            text: qsTr("Mode")
+                            text: qsTr("模式")
                             theme: root.theme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -392,7 +392,7 @@ Base.AppPopup {
 
                         Base.AppText {
                             Layout.preferredWidth: 88
-                            text: qsTr("Dispatch")
+                            text: qsTr("调度")
                             theme: root.theme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -412,7 +412,7 @@ Base.AppPopup {
 
                         Base.AppText {
                             Layout.preferredWidth: 88
-                            text: qsTr("Progress")
+                            text: qsTr("进度")
                             theme: root.theme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -433,7 +433,7 @@ Base.AppPopup {
 
                         Base.AppText {
                             Layout.preferredWidth: 88
-                            text: qsTr("Key")
+                            text: qsTr("键")
                             theme: root.theme
                             styleRole: "bodyS"
                             textTone: "secondary"
@@ -463,7 +463,7 @@ Base.AppPopup {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: qsTr("Message")
+                                text: qsTr("消息")
                                 theme: root.theme
                                 styleRole: "bodyS"
                                 textTone: "secondary"
@@ -495,7 +495,7 @@ Base.AppPopup {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: qsTr("Error")
+                                text: qsTr("错误")
                                 theme: root.theme
                                 styleRole: "bodyS"
                                 colorOverride: root.colorValue("dangerText", "#ff9eb2")
@@ -528,13 +528,13 @@ Base.AppPopup {
             surfaced: true
             surfaceTone: "section"
             compact: false
-            title: qsTr("No Tasks Yet")
-            subtitle: qsTr("Background work items will appear here after they are registered.")
+            title: qsTr("暂无任务")
+            subtitle: qsTr("后台工作项注册后会显示在这里。")
             showSubtitle: true
 
             Base.AppText {
                 Layout.fillWidth: true
-                text: qsTr("This panel keeps active tasks together with completed and failed results.")
+                text: qsTr("此面板会同时显示活跃任务、已完成任务和失败结果。")
                 theme: root.theme
                 styleRole: "bodyS"
                 textTone: "secondary"

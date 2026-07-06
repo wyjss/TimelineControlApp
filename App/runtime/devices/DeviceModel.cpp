@@ -172,7 +172,17 @@ QVariantList DeviceModel::deviceOptionsForDeviceType(const QString &deviceType) 
         if (label.isEmpty())
             label = device->id();
 
-        const QString address = device->address().trimmed();
+        const QVariantMap configValues = device->configValues();
+        const QString ip = configValues.value(DeviceKey::Ip).toString().trimmed();
+        QString port = configValues.value(DeviceKey::IpPort).toString().trimmed();
+        if (port.isEmpty())
+            port = configValues.value(DeviceKey::Port).toString().trimmed();
+        QString address = !ip.isEmpty() && !port.isEmpty()
+            ? QStringLiteral("%1:%2").arg(ip, port)
+            : ip;
+        if (address.isEmpty())
+            address = configValues.value(DeviceKey::SerialPort).toString().trimmed();
+
         if (!address.isEmpty())
             label = QStringLiteral("%1 (%2)").arg(label, address);
 
@@ -342,8 +352,7 @@ void DeviceModel::prepareDevice(Device *device)
         emit deviceTypesChanged();
     });
     connect(device, &Device::nameChanged, this, notifyChanged);
-    connect(device, &Device::protocolChanged, this, notifyChanged);
-    connect(device, &Device::addressChanged, this, notifyChanged);
+    connect(device, &Device::supportedProtocolsChanged, this, notifyChanged);
     connect(device, &Device::statusChanged, this, notifyChanged);
     connect(device, &Device::lastSeenChanged, this, notifyChanged);
     connect(device, &Device::descriptionChanged, this, notifyChanged);

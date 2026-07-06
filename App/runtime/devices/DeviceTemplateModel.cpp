@@ -1,7 +1,5 @@
 #include "devices/DeviceTemplateModel.h"
 
-#include <QSize>
-
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceCommand.h"
@@ -94,7 +92,7 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
         
 
         auto *spec = new DeviceParamSpec(DeviceKey::Ip,
-                                         QStringLiteral("ip"),
+                                         QStringLiteral("IP"),
                                          QString(),
                                          DeviceParamSpec::StringType);
         spec->setPattern(DevicePattern::Ip);
@@ -103,21 +101,43 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
         specs.push_back(spec);
     }
     {
-        auto *spec = new DeviceParamSpec(DeviceKey::ScreenSize,
-                                         QStringLiteral("单屏分辨率"),
-                                         QSize(),
-                                         DeviceParamSpec::SizeType,
-                                         DeviceParamSpec::SizeEditor);
-        spec->setRequired(false);
+        auto *spec = new DeviceParamSpec(DeviceKey::ScreenWidth,
+                                         QStringLiteral("单屏宽度"),
+                                         1920,
+                                         DeviceParamSpec::IntType,
+                                         DeviceParamSpec::TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(16384);
         specs.push_back(spec);
     }
     {
-        auto *spec = new DeviceParamSpec(DeviceKey::ScreenLayout,
-                                         QStringLiteral("屏幕布局"),
-                                         QSize(1, 1),
-                                         DeviceParamSpec::SizeType,
-                                         DeviceParamSpec::SizeEditor);
-        spec->setRequired(false);
+        auto *spec = new DeviceParamSpec(DeviceKey::ScreenHeight,
+                                         QStringLiteral("单屏高度"),
+                                         1080,
+                                         DeviceParamSpec::IntType,
+                                         DeviceParamSpec::TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(16384);
+        specs.push_back(spec);
+    }
+    {
+        auto *spec = new DeviceParamSpec(DeviceKey::ScreenColumns,
+                                         QStringLiteral("屏幕列数"),
+                                         1,
+                                         DeviceParamSpec::IntType,
+                                         DeviceParamSpec::TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(64);
+        specs.push_back(spec);
+    }
+    {
+        auto *spec = new DeviceParamSpec(DeviceKey::ScreenRows,
+                                         QStringLiteral("屏幕行数"),
+                                         1,
+                                         DeviceParamSpec::IntType,
+                                         DeviceParamSpec::TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(64);
         specs.push_back(spec);
     }
 
@@ -132,7 +152,7 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
 
     return makeDeviceTemplate(tr("电脑"),
                               DeviceType::PC,
-                              DeviceProtocol::Pc,
+                              QStringList{DeviceProtocol::Pc},
                               tr("电脑设备"),
                               specs,
                               commands);
@@ -156,10 +176,10 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateDmx512Adapter()
         specs.push_back(spec);
     }
 
-    return makeDeviceTemplate(tr("Dmx512适配器"),
+    return makeDeviceTemplate(tr("DMX512适配器"),
                               DeviceType::Dmx512Adapter,
-                              DeviceProtocol::Dmx512,
-                              tr("Dmx512适配器"),
+                              QStringList{DeviceProtocol::Dmx512},
+                              tr("DMX512适配器"),
                               specs);
 }
 
@@ -168,7 +188,7 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateDmx512()
     QList<DeviceParamSpec *> specs;
     {
         auto *spec = new DeviceParamSpec(DeviceKey::Dmx512AdapterDeviceId,
-                                         QStringLiteral("目标Dmx512适配器"),
+                                         QStringLiteral("目标DMX512适配器"),
                                          QString(),
                                          DeviceParamSpec::SelectType,
                                          DeviceParamSpec::SelectEditor);
@@ -176,10 +196,10 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateDmx512()
         specs.push_back(spec);
     }
 
-    return makeDeviceTemplate(tr("Dmx512协议"),
+    return makeDeviceTemplate(tr("DMX512协议"),
                               QString(),
-                              DeviceProtocol::Dmx512,
-                              tr("Dmx512协议设备"),
+                              QStringList{DeviceProtocol::Dmx512},
+                              tr("DMX512协议设备"),
                               specs);
 }
 
@@ -187,20 +207,31 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateHttp()
 {
     QList<DeviceParamSpec *> specs;
     {
-        auto *spec = new DeviceParamSpec(DeviceKey::Address,
-                                         QStringLiteral("HTTP地址"),
+        auto *spec = new DeviceParamSpec(DeviceKey::Ip,
+                                         QStringLiteral("IP"),
                                          QString(),
                                          DeviceParamSpec::StringType,
                                          DeviceParamSpec::TextEditor);
-        spec->setPattern(DevicePattern::HttpAddress);
+        spec->setPattern(DevicePattern::Ip);
         spec->setRequired(true);
-        spec->setPlaceholderText(QStringLiteral("http://192.168.1.10:8080"));
+        spec->setPlaceholderText(QStringLiteral("192.168.1.10"));
+        specs.push_back(spec);
+    }
+    {
+        auto *spec = new DeviceParamSpec(DeviceKey::IpPort,
+                                         QStringLiteral("端口"),
+                                         8080,
+                                         DeviceParamSpec::IntType,
+                                         DeviceParamSpec::TextEditor);
+        spec->setRequired(true);
+        spec->setMinimum(1);
+        spec->setMaximum(65535);
         specs.push_back(spec);
     }
 
     return makeDeviceTemplate(tr("HTTP协议"),
                               QString(),
-                              DeviceProtocol::Http,
+                              QStringList{DeviceProtocol::Http},
                               tr("HTTP协议设备"),
                               specs);
 }
@@ -230,13 +261,15 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateSerial()
                                          DeviceParamSpec::IntType,
                                          DeviceParamSpec::SelectEditor);
         spec->setRequired(true);
+        spec->setMinimum(1);
+        spec->setMaximum(4000000);
         spec->setOptions(QVariantList{9600, 19200, 38400, 57600, 115200});
         specs.push_back(spec);
     }
 
     return makeDeviceTemplate(tr("串口协议"),
                               QString(),
-                              DeviceProtocol::Serial,
+                              QStringList{DeviceProtocol::Serial},
                               tr("串口协议设备"),
                               specs);
 }
@@ -246,7 +279,7 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateOsc()
     QList<DeviceParamSpec *> specs;
     {
         auto *spec = new DeviceParamSpec(DeviceKey::Ip,
-                                         QStringLiteral("ip"),
+                                         QStringLiteral("IP"),
                                          QString(),
                                          DeviceParamSpec::StringType,
                                          DeviceParamSpec::TextEditor);
@@ -270,18 +303,24 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateOsc()
 
     return makeDeviceTemplate(tr("OSC协议"),
                               QString(),
-                              DeviceProtocol::Osc,
+                              QStringList{DeviceProtocol::Osc},
                               tr("OSC协议设备"),
                               specs);
 }
 
 DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,
                                                         const QString &deviceType,
-                                                        const QString &protocol,
+                                                        const QStringList &supportedProtocols,
                                                         const QString &description,
                                                         const QList<DeviceParamSpec *> &configSpecs,
                                                         const QList<DeviceCommand *> &commands)
 {
-    return new DeviceTemplate(name, deviceType, protocol, description, configSpecs, commands, this);
+    return new DeviceTemplate(name,
+                              deviceType,
+                              supportedProtocols,
+                              description,
+                              configSpecs,
+                              commands,
+                              this);
 }
 

@@ -18,6 +18,7 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(CollectSources)
 
 set(AVRB_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/libavrb")
 set(AVRB_INCLUDE_DIR "${AVRB_ROOT}/include/avrb")
@@ -32,6 +33,7 @@ find_package(Qt5 5.14 REQUIRED COMPONENTS
     QuickControls2
     Network
     Widgets
+    SerialPort
 )
 
 add_subdirectory(UiCore)
@@ -40,50 +42,23 @@ qt5_add_resources(TIMELINE_APP_RESOURCES
     App/App.qrc
 )
 
+set(TIMELINE_APP_SOURCES "")
+COLLECT_SOURCES_TYPE(./App TIMELINE_APP_SOURCES . *.cpp)
+
+set(TIMELINE_RUNTIME_SOURCES "")
+COLLECT_SOURCES_TYPE(./App TIMELINE_RUNTIME_SOURCES runtime *.cpp)
+COLLECT_SOURCES_TYPE(./App TIMELINE_RUNTIME_SOURCES runtime *.h)
+COLLECT_SOURCES_TYPE(./App/runtime TIMELINE_RUNTIME_SOURCES devices *.cpp)
+COLLECT_SOURCES_TYPE(./App/runtime TIMELINE_RUNTIME_SOURCES devices *.h)
+COLLECT_SOURCES(./App/runtime/devices TIMELINE_RUNTIME_SOURCES executors)
+COLLECT_SOURCES(./App/runtime TIMELINE_RUNTIME_SOURCES models)
+COLLECT_SOURCES(./App/runtime TIMELINE_RUNTIME_SOURCES projection)
+COLLECT_SOURCES(./App/runtime TIMELINE_RUNTIME_SOURCES timeline)
+COLLECT_SOURCES(./App/runtime TIMELINE_RUNTIME_SOURCES video)
+
 add_executable(TimelineControlApp
-    App/main.cpp
-    App/runtime/devices/DeviceCommand.cpp
-    App/runtime/devices/DeviceCommand.h
-    App/runtime/devices/DeviceCommand_Dmx512.cpp
-    App/runtime/devices/DeviceCommand_Dmx512.h
-    App/runtime/devices/DeviceCommand_Http.cpp
-    App/runtime/devices/DeviceCommand_Http.h
-    App/runtime/devices/DeviceCommand_PC.cpp
-    App/runtime/devices/DeviceCommand_PC.h
-    App/runtime/devices/DeviceCommand_Serial.cpp
-    App/runtime/devices/DeviceCommand_Serial.h
-    App/runtime/devices/DeviceConstants.h
-    App/runtime/devices/DeviceInspectorFormProvider.cpp
-    App/runtime/devices/DeviceInspectorFormProvider.h
-    App/runtime/devices/DeviceParamSpec.cpp
-    App/runtime/devices/DeviceParamSpec.h
-    App/runtime/devices/Device.cpp
-    App/runtime/devices/Device.h
-    App/runtime/devices/DeviceManager.cpp
-    App/runtime/devices/DeviceManager.h
-    App/runtime/devices/DeviceModel.cpp
-    App/runtime/devices/DeviceModel.h
-    App/runtime/devices/DeviceTemplate.cpp
-    App/runtime/devices/DeviceTemplate.h
-    App/runtime/devices/DeviceTemplateModel.cpp
-    App/runtime/devices/DeviceTemplateModel.h
-    App/runtime/devices/LogMacros.h
-    App/runtime/devices/LogMacros.cpp
-    App/runtime/models/TypedListModel.h
-    App/runtime/models/VariantListModel.cpp
-    App/runtime/models/VariantListModel.h
-    App/runtime/projection/VideoProjectionPlanController.cpp
-    App/runtime/projection/VideoProjectionPlanController.h
-    App/runtime/timeline/TimelineController.cpp
-    App/runtime/timeline/TimelineController.h
-    App/runtime/timeline/TimelineCommand.cpp
-    App/runtime/timeline/TimelineCommand.h
-    App/runtime/TimelineRuntime.cpp
-    App/runtime/TimelineRuntime.h
-    App/runtime/TimelineShellController.cpp
-    App/runtime/TimelineShellController.h
-    App/runtime/video/FfmpegVideoFrameItem.cpp
-    App/runtime/video/FfmpegVideoFrameItem.h
+    ${TIMELINE_APP_SOURCES}
+    ${TIMELINE_RUNTIME_SOURCES}
     ${TIMELINE_APP_RESOURCES}
 )
 
@@ -103,6 +78,7 @@ target_link_libraries(TimelineControlApp PRIVATE
     Qt5::QuickControls2
     Qt5::Network
     Qt5::Widgets
+    Qt5::SerialPort
     spdlog::spdlog
 )
 

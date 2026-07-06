@@ -537,7 +537,7 @@ void VideoProjectionPlanController::setMappingRect(int index, int x, int y, int 
 
 QString VideoProjectionPlanController::defaultPlanName() const
 {
-    return tr("Video Projection Plan %1").arg(m_plans.size() + 1);
+    return tr("投影方案 %1").arg(m_plans.size() + 1);
 }
 
 QVariantMap VideoProjectionPlanController::planToMap(const VideoProjectionPlan &plan, int index) const
@@ -632,7 +632,7 @@ QRect VideoProjectionPlanController::boundedRect(int x, int y, int width, int he
 
 QString VideoProjectionPlanController::defaultCaptureName(int index) const
 {
-    return tr("Capture %1").arg(index + 1);
+    return tr("取景 %1").arg(index + 1);
 }
 
 void VideoProjectionPlanController::touchCurrentPlan()

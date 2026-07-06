@@ -4,17 +4,42 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QStringList>
+#include <QSerialPort>
+#include <QSerialPortInfo>
 #include <qqml.h>
 #include <QUrl>
 
+#include <iostream>
 #include "runtime/app/AppSettings.h"
 #include "runtime/TimelineRuntime.h"
 #include "runtime/TimelineShellController.h"
 #include "runtime/video/FfmpegVideoFrameItem.h"
 
-
+//template<typename TDds, typename TProto>
+//static inline void copyFieldValueToDds(const TProto& p, TDds& d, int maxCharXSize)
+//{
+//	if constexpr (
+//		std::is_array_v<std::remove_reference_t<TDds>> &&
+//		std::is_same_v<std::remove_extent_t<std::remove_reference_t<TDds>>, char>) {
+//
+//		using Arr = std::remove_reference_t<TDds>;
+//		constexpr size_t N = std::extent_v<Arr>;
+//
+//		//memcpy(d, p.c_str(), std::min<int>(N - 1, p.size()));
+//		d[N - 1] = '\0';
+//
+//        std::cout << N << "\n";
+//		std::cout << typeid(p).name() << ", " << typeid(d).name() << "\n";
+//		std::cout << sizeof(TProto) << ", " << sizeof(p) << "\n";
+//	}
+//
+//   
+//}
 int main(int argc, char *argv[])
 {
+    //char ddd[10];
+    //copyFieldValueToDds(ddd, ddd, 0);
+    //exit(0);
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
@@ -24,7 +49,7 @@ int main(int argc, char *argv[])
     QApplication application(argc, argv);
     application.setOrganizationName(QStringLiteral("TimelineControlApp"));
     application.setOrganizationDomain(QStringLiteral("timeline-control.local"));
-    application.setApplicationName(QStringLiteral("Timeline Control App"));
+    application.setApplicationName(QStringLiteral("时间线控制应用"));
 
     QString projectionVideoSource;
     const QStringList arguments = application.arguments();
@@ -47,7 +72,7 @@ int main(int argc, char *argv[])
     TimelineControl::TimelineRuntime runtime;
     TimelineControl::TimelineShellController shellController(&runtime);
     runtime.setShell(&shellController);
-    runtime.settings()->setApplicationName(QStringLiteral("Timeline Control App"));
+    runtime.settings()->setApplicationName(QStringLiteral("时间线控制应用"));
     runtime.settings()->setLocale(QStringLiteral("zh_CN"));
     runtime.settings()->setThemeMode(QStringLiteral("dark"));
     runtime.settings()->setValues(QVariantMap{

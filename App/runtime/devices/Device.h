@@ -3,6 +3,7 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QVariant>
 #include <QVariantList>
 #include <QVariantMap>
@@ -23,8 +24,7 @@ class Device final : public QObject
     Q_PROPERTY(QString templateName READ templateName CONSTANT FINAL)
     Q_PROPERTY(QString deviceType READ deviceType WRITE setDeviceType NOTIFY deviceTypeChanged FINAL)
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
-    Q_PROPERTY(QString protocol READ protocol WRITE setProtocol NOTIFY protocolChanged FINAL)
-    Q_PROPERTY(QString address READ address WRITE setAddress NOTIFY addressChanged FINAL)
+    Q_PROPERTY(QStringList supportedProtocols READ supportedProtocols WRITE setSupportedProtocols NOTIFY supportedProtocolsChanged FINAL)
     Q_PROPERTY(QString status READ status WRITE setStatus NOTIFY statusChanged FINAL)
     Q_PROPERTY(QString lastSeen READ lastSeen WRITE setLastSeen NOTIFY lastSeenChanged FINAL)
     Q_PROPERTY(QString description READ description WRITE setDescription NOTIFY descriptionChanged FINAL)
@@ -43,11 +43,9 @@ public:
     QString name() const;
     void setName(const QString &name);
 
-    QString protocol() const;
-    void setProtocol(const QString &protocol);
-
-    QString address() const;
-    void setAddress(const QString &address);
+    QStringList supportedProtocols() const;
+    void setSupportedProtocols(const QStringList &supportedProtocols);
+    Q_INVOKABLE bool supportsProtocol(const QString &protocol) const;
 
     QString status() const;
     void setStatus(const QString &status);
@@ -79,8 +77,7 @@ public:
 signals:
     void deviceTypeChanged();
     void nameChanged();
-    void protocolChanged();
-    void addressChanged();
+    void supportedProtocolsChanged();
     void statusChanged();
     void lastSeenChanged();
     void descriptionChanged();
@@ -92,8 +89,7 @@ private:
     QString m_templateName;
     QString m_deviceType;
     QString m_name;
-    QString m_protocol;
-    QString m_address;
+    QStringList m_supportedProtocols;
     QString m_status;
     QString m_lastSeen;
     QString m_description;

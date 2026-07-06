@@ -86,10 +86,10 @@ Item {
 
     function deviceName(device) {
         if (!device)
-            return qsTr("Device")
+            return qsTr("设备")
 
         var name = String(device.name || "").trim()
-        return name.length > 0 ? name : String(device.id || qsTr("Device"))
+        return name.length > 0 ? name : String(device.id || qsTr("设备"))
     }
 
     function deviceMeta(device) {
@@ -97,8 +97,8 @@ Item {
             return ""
 
         var parts = []
-        var protocolText = String(device.protocol || "").trim()
-        var typeText = protocolText.toLowerCase() === "pc"
+        var protocolText = String((device.supportedProtocols || []).join(", ")).trim()
+        var typeText = (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))
             ? "PC"
             : String(device.deviceType || "").trim()
         var statusText = String(device.status || "").trim()
@@ -346,7 +346,7 @@ Item {
                             : "#dbeafe"
                         readonly property string commandText: String(commandData && commandData.commandName
                             ? commandData.commandName
-                            : qsTr("Command"))
+                            : qsTr("指令"))
                         readonly property int stackIndex: root.commandStackIndex(commandData, trackRow.targetDeviceId)
                         readonly property int stackCount: root.commandStackCount(commandData, trackRow.targetDeviceId)
                         readonly property real stackOffsetY: (stackIndex - (stackCount - 1) / 2) * 8
