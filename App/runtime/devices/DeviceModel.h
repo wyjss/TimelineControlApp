@@ -27,24 +27,16 @@ public:
     QString currentDeviceId() const;
     void setCurrentDeviceId(const QString &deviceId);
     Device *currentDevice() const;
-    Device *deviceAt(int row) const;
     Device *deviceById(const QString &deviceId) const;
-    int indexOfDevice(Device *device) const;
-    int indexOfDeviceId(const QString &deviceId) const;
-    bool deviceMatchesDeviceType(const Device *device, const QString &deviceType) const;
     bool hasDeviceName(const QString &deviceType, const QString &deviceName) const;
 
     QStringList deviceTypes(bool manual = false) const;
 
-    Q_INVOKABLE QVariantList devicesForDeviceType(const QString &deviceType) const;
-    Q_INVOKABLE QVariantList deviceOptionsForDeviceType(const QString &deviceType) const;
+    QVariantList deviceOptionsForDeviceType(const QString &deviceType) const;
     Q_INVOKABLE void selectDevice(const QString &deviceId);
-    Q_INVOKABLE bool removeDeviceAt(int row);
     Q_INVOKABLE bool removeDevice(const QString &deviceId);
 
     void appendDevice(Device *device);
-    Device *takeDeviceAt(int row);
-    Device *takeDevice(const QString &deviceId);
 
     void writeToStream(QDataStream &stream) const;
     void readFromStream(QDataStream &stream);
@@ -64,6 +56,12 @@ protected:
     void itemRemoved(Device *device, int row) override;
 
 private:
+    Device *deviceAt(int row) const;
+    int indexOfDevice(Device *device) const;
+    int indexOfDeviceId(const QString &deviceId) const;
+    bool deviceMatchesDeviceType(const Device *device, const QString &deviceType) const;
+    bool removeDeviceAt(int row);
+    Device *takeDeviceAt(int row);
     void prepareDevice(Device *device);
     void disconnectDevice(Device *device);
     void emitDeviceChanged(Device *device);

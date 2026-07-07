@@ -15,7 +15,6 @@ class DeviceCommandExecutor : public QObject
 public:
     explicit DeviceCommandExecutor(QObject *parent = nullptr);
 
-    bool online() const;
     void execute(DeviceCommand *command, const QVariantMap &params);
     void checkOnline(const QStringList &requestIds, const QVariantMap &params);
 
@@ -31,7 +30,6 @@ protected:
     virtual bool checkOnlineImpl(const QVariantMap &params) = 0;
 
 private:
-    bool m_online = false;
     bool m_failed = false;
     QString m_errorMessage;
 };

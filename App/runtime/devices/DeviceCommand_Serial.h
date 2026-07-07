@@ -19,9 +19,9 @@ public:
                          const QString &payload,
                          QObject *parent = nullptr);
 
-    Q_INVOKABLE DeviceParamSpec *serialPortField() const { return getField(DeviceKey::SerialPort); }
-    Q_INVOKABLE DeviceParamSpec *baudRateField() const { return getField(DeviceKey::BaudRate); }
-    Q_INVOKABLE DeviceParamSpec *payloadField() const { return getField(DeviceKey::Payload); }
+    DeviceParamSpec *serialPortField() const { return getField(DeviceKey::SerialPort); }
+    DeviceParamSpec *baudRateField() const { return getField(DeviceKey::BaudRate); }
+    DeviceParamSpec *payloadField() const { return getField(DeviceKey::Payload); }
 
     QString serialPort() const;
     void setSerialPort(const QString& serialPort);
@@ -33,7 +33,6 @@ public:
     void setPayload(const QString &payload);
 
     QString protocol() const override;
-    void execute() override;
 
     static QString protocolName();
 

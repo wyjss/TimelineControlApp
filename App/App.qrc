@@ -9,9 +9,7 @@
         <file alias="App/pages/ProjectionEditableRect.qml">pages/ProjectionEditableRect.qml</file>
         <file alias="App/pages/ProjectionKeystonePage.qml">pages/ProjectionKeystonePage.qml</file>
         <file alias="App/pages/ProjectionPage.qml">pages/ProjectionPage.qml</file>
-        <file alias="App/pages/RunsPage.qml">pages/RunsPage.qml</file>
         <file alias="App/pages/TimelinePage.qml">pages/TimelinePage.qml</file>
-        <file alias="App/pages/timeline/AddCommandDialog.qml">pages/timeline/AddCommandDialog.qml</file>
         <file alias="App/pages/timeline/TimelineDeviceTrackArea.qml">pages/timeline/TimelineDeviceTrackArea.qml</file>
         <file alias="App/pages/timeline/TimelineRuler.qml">pages/timeline/TimelineRuler.qml</file>
         <file alias="App/pages/timeline/TimelineTrackArea.qml">pages/timeline/TimelineTrackArea.qml</file>

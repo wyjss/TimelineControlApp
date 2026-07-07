@@ -29,8 +29,6 @@ ApplicationWindow {
             return "qrc:/TimelineControlApp/App/pages/ProjectionKeystonePage.qml"
         case "devices":
             return "qrc:/TimelineControlApp/App/pages/DevicesPage.qml"
-        case "runs":
-            return "qrc:/TimelineControlApp/App/pages/RunsPage.qml"
         default:
             return defaultCanvasDelegateSource
         }

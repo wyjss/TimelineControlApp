@@ -113,14 +113,17 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
             timelineCommand->setState(TimelineCommand::Running);
             const int runId = m_runId;
             QPointer<TimelineCommand> timelineCommandGuard(timelineCommand);
-            connect(deviceCommand, &DeviceCommand::executionFinished, this, [this, runId, timelineCommandGuard, deviceCommand](bool success, const QString &errorMessage) {
+            connect(m_deviceExecutorManager, &DeviceExecutorManager::executionFinished, deviceCommand, [this, runId, timelineCommandGuard, deviceCommand](DeviceCommand *finishedCommand, bool success, const QString &errorMessage) {
+                if (finishedCommand != deviceCommand)
+                    return;
+
                 if (m_runId == runId && timelineCommandGuard) {
                     timelineCommandGuard->setErrorMessage(errorMessage);
                     timelineCommandGuard->setState(success ? TimelineCommand::Succeeded : TimelineCommand::Failed);
                 }
                 deviceCommand->deleteLater();
             });
-            deviceCommand->execute();
+            m_deviceExecutorManager->execute(targetDevice, deviceCommand);
         }
     });
 

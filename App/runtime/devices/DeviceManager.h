@@ -28,7 +28,6 @@ public:
                            DeviceExecutorManager *deviceExecutorManager = nullptr,
                            QObject *parent = nullptr);
 
-    Q_INVOKABLE void createDevice();
     Q_INVOKABLE QString validateDeviceCreation(const QString &deviceType,
                                                const QString &deviceName,
                                                const QString &templateName = QString()) const;

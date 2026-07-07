@@ -21,11 +21,6 @@ QVariantMap makeLeftPane(const QString &title, const QString &filterPlaceholder,
     return QVariantMap{
         {QStringLiteral("title"), title},
         {QStringLiteral("filterPlaceholder"), filterPlaceholder},
-        {QStringLiteral("primaryAction"), QVariantMap{
-            {QStringLiteral("actionId"), QStringLiteral("timeline.primaryAction")},
-            {QStringLiteral("text"), QObject::tr("打开")},
-            {QStringLiteral("variant"), QStringLiteral("secondary")}
-        }},
         {QStringLiteral("items"), items}
     };
 }
@@ -54,8 +49,8 @@ TimelineShellController::TimelineShellController(QObject *parent)
     : AppShellController(parent)
 {
     buildDrawers();
-    setActiveDrawerKey(QStringLiteral("timeline"));
-    syncSelection(tr("时间线"), tr("准备构建设备时间线控制。"));
+    setActiveDrawerKey(QStringLiteral("devices"));
+    syncSelection(tr("设备"), tr("设备分组与连接状态"));
 }
 
 void TimelineShellController::handleUiAction(const QString &actionId, const QVariantMap &payload)
@@ -111,26 +106,6 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
 void TimelineShellController::buildDrawers()
 {
     registerDrawer(makeDrawer(this,
-                              QStringLiteral("timeline"),
-                              tr("时间线"),
-                              QStringLiteral("workflow"),
-                              tr("轨道、指令与播放状态"),
-                              makeLeftPane(tr("时间线"),
-                                           tr("筛选时间线项目"),
-                                           QVariantList{
-                                               makePaneItem(QStringLiteral("sequence-main"),
-                                                            tr("主序列"),
-                                                            tr("主控制轨"),
-                                                            true),
-                                               makePaneItem(QStringLiteral("cue-list"),
-                                                            tr("指令列表"),
-                                                            tr("定时控制事件")),
-                                               makePaneItem(QStringLiteral("playback"),
-                                                            tr("播放"),
-                                                            tr("播放控制与时钟状态"))
-                                           })));
-
-    registerDrawer(makeDrawer(this,
                               QStringLiteral("devices"),
                               tr("设备"),
                               QStringLiteral("resources"),
@@ -148,6 +123,26 @@ void TimelineShellController::buildDrawers()
                                                makePaneItem(QStringLiteral("health"),
                                                             tr("状态"),
                                                             tr("连接诊断"))
+                                           })));
+
+    registerDrawer(makeDrawer(this,
+                              QStringLiteral("timeline"),
+                              tr("时间线"),
+                              QStringLiteral("workflow"),
+                              tr("轨道、指令与播放状态"),
+                              makeLeftPane(tr("时间线"),
+                                           tr("筛选时间线项目"),
+                                           QVariantList{
+                                               makePaneItem(QStringLiteral("sequence-main"),
+                                                            tr("主序列"),
+                                                            tr("主控制轨"),
+                                                            true),
+                                               makePaneItem(QStringLiteral("cue-list"),
+                                                            tr("指令列表"),
+                                                            tr("定时控制事件")),
+                                               makePaneItem(QStringLiteral("playback"),
+                                                            tr("播放"),
+                                                            tr("播放控制与时钟状态"))
                                            })));
 
     registerDrawer(makeDrawer(this,
@@ -190,22 +185,6 @@ void TimelineShellController::buildDrawers()
                                                             tr("存储在 PC 设备配置中"))
                                            })));
 
-    registerDrawer(makeDrawer(this,
-                              QStringLiteral("runs"),
-                              tr("运行记录"),
-                              QStringLiteral("background-task"),
-                              tr("执行日志与后台任务"),
-                              makeLeftPane(tr("运行记录"),
-                                           tr("筛选运行记录"),
-                                           QVariantList{
-                                               makePaneItem(QStringLiteral("current-run"),
-                                                            tr("当前运行"),
-                                                            tr("实时执行状态"),
-                                                            true),
-                                               makePaneItem(QStringLiteral("history"),
-                                                            tr("历史记录"),
-                                                            tr("最近的时间线运行"))
-                                           })));
 }
 
 void TimelineShellController::syncSelection(const QString &title, const QString &detail)

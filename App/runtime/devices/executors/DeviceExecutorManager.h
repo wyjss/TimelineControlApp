@@ -34,7 +34,6 @@ signals:
 private:
     struct OnlineCheck
     {
-        QString protocol;
         QVariantMap params;
         QString executorKey;
     };

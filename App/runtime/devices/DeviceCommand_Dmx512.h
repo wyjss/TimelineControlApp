@@ -19,8 +19,8 @@ public:
                          int value,
                          QObject *parent = nullptr);
 
-    Q_INVOKABLE DeviceParamSpec *channelField() const { return getField(QStringLiteral("channel")); }
-    Q_INVOKABLE DeviceParamSpec *valueField() const { return getField(QStringLiteral("value")); }
+    DeviceParamSpec *channelField() const { return getField(QStringLiteral("channel")); }
+    DeviceParamSpec *valueField() const { return getField(QStringLiteral("value")); }
 
     int channel() const;
     void setChannel(int channel);

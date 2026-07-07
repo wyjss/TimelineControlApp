@@ -167,11 +167,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
 
 }
 
-void DeviceManager::createDevice()
-{
-    createDeviceFromTemplate(tr("DMX512协议"), QVariantMap(), QString(), DeviceType::Light);
-}
-
 QString DeviceManager::validateDeviceCreation(const QString &deviceType,
                                               const QString &deviceName,
                                               const QString &templateName) const

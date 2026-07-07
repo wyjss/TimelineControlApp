@@ -13,7 +13,6 @@ Base.AppPopup {
     property bool validationVisible: false
     readonly property var protocolOptions: [
         { "label": qsTr("串口"), "value": "serial" },
-        { "label": qsTr("DMX512"), "value": "dmx512" },
         { "label": qsTr("HTTP"), "value": "http" },
         { "label": qsTr("PC"), "value": "pc" }
     ]

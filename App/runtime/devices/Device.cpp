@@ -14,6 +14,8 @@ using namespace TimelineControl;
 namespace {
 
 const char *kSupportedProtocolsConfigKey = "__supportedProtocols";
+const char *kStatusConfigKey = "__status";
+const char *kLastSeenConfigKey = "__lastSeen";
 
 QString createDeviceId()
 {
@@ -159,16 +161,6 @@ QVariantList Device::commands() const
     return result;
 }
 
-int Device::commandCount() const
-{
-    return m_commands.size();
-}
-
-DeviceCommand *Device::commandAt(int index) const
-{
-    return index >= 0 && index < m_commands.size() ? m_commands.at(index) : nullptr;
-}
-
 DeviceCommand *Device::createCommandDraft(const QString &protocol) const
 {
     const QString commandProtocol = protocol.trimmed().isEmpty() && !m_supportedProtocols.isEmpty()
@@ -222,10 +214,10 @@ void Device::appendCommand(DeviceCommand *command)
 
 bool Device::removeCommandAt(int index)
 {
-    DeviceCommand *command = commandAt(index);
-    if (!command)
+    if (index < 0 || index >= m_commands.size())
         return false;
 
+    DeviceCommand *command = m_commands.at(index);
     m_commands.removeAt(index);
     if (command->parent() == this)
         command->setParent(nullptr);
@@ -265,6 +257,8 @@ void Device::writeToStream(QDataStream& stream) const
     QVariantMap streamConfigValues = m_configValues;
     if (!supportedProtocols().isEmpty())
         streamConfigValues.insert(QString::fromLatin1(kSupportedProtocolsConfigKey), supportedProtocols());
+    streamConfigValues.insert(QString::fromLatin1(kStatusConfigKey), status());
+    streamConfigValues.insert(QString::fromLatin1(kLastSeenConfigKey), lastSeen());
 
     stream << m_id
            << m_templateName
@@ -330,9 +324,13 @@ void Device::readFromStream(QDataStream& stream)
     setName(name);
     setDescription(description);
     const QStringList restoredSupportedProtocols = configValues.take(QString::fromLatin1(kSupportedProtocolsConfigKey)).toStringList();
+    const QString restoredStatus = configValues.take(QString::fromLatin1(kStatusConfigKey)).toString();
+    const QString restoredLastSeen = configValues.take(QString::fromLatin1(kLastSeenConfigKey)).toString();
     setConfigValues(configValues);
     if (!restoredSupportedProtocols.isEmpty())
         setSupportedProtocols(restoredSupportedProtocols);
+    setStatus(restoredStatus);
+    setLastSeen(restoredLastSeen);
 
     for (DeviceCommand *command : m_commands)
         delete command;

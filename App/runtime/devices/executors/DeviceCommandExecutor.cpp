@@ -9,11 +9,6 @@ DeviceCommandExecutor::DeviceCommandExecutor(QObject *parent)
 {
 }
 
-bool DeviceCommandExecutor::online() const
-{
-    return m_online;
-}
-
 void DeviceCommandExecutor::execute(DeviceCommand *command, const QVariantMap &params)
 {
     if (!command)
@@ -29,9 +24,9 @@ void DeviceCommandExecutor::execute(DeviceCommand *command, const QVariantMap &p
 
 void DeviceCommandExecutor::checkOnline(const QStringList &requestIds, const QVariantMap &params)
 {
-    m_online = checkOnlineImpl(params);
+    const bool online = checkOnlineImpl(params);
     for (const QString &requestId : requestIds)
-        emit onlineChecked(requestId, m_online);
+        emit onlineChecked(requestId, online);
 }
 
 void DeviceCommandExecutor::markFailed(const QString &errorMessage)

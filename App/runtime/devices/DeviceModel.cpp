@@ -146,19 +146,6 @@ QStringList DeviceModel::deviceTypes(bool manual) const
     return types;
 }
 
-QVariantList DeviceModel::devicesForDeviceType(const QString &deviceType) const
-{
-    QVariantList result;
-
-    const QList<Device *> currentItems = items();
-    for (Device *device : currentItems) {
-        if (deviceMatchesDeviceType(device, deviceType))
-            result.append(QVariant::fromValue(device));
-    }
-
-    return result;
-}
-
 QVariantList DeviceModel::deviceOptionsForDeviceType(const QString &deviceType) const
 {
     QVariantList result;
@@ -260,11 +247,6 @@ Device *DeviceModel::takeDeviceAt(int row)
     return device;
 }
 
-Device *DeviceModel::takeDevice(const QString &deviceId)
-{
-    return takeDeviceAt(indexOfDeviceId(deviceId));
-}
-
 void DeviceModel::writeToStream(QDataStream &stream) const
 {
     const QList<Device *> currentItems = items();
@@ -313,6 +295,8 @@ void DeviceModel::readFromStream(QDataStream &stream)
     qDeleteAll(oldDevices);
     emit devicesChanged();
     emit deviceTypesChanged();
+    for (Device *device : devices)
+        emit deviceAdded(device);
 
     const QString restoredCurrentDeviceId = deviceById(currentDeviceId) ? currentDeviceId : QString();
     if (m_currentDeviceId == restoredCurrentDeviceId)

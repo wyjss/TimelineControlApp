@@ -31,7 +31,7 @@ public:
     explicit DeviceCommand(QObject *parent = nullptr);
     DeviceCommand(const QString &name, QObject *parent = nullptr);
 
-    Q_INVOKABLE DeviceParamSpec* nameField() const { return getField(DeviceKey::Name); }
+    DeviceParamSpec* nameField() const { return getField(DeviceKey::Name); }
 
     QString name() const;
     void setName(const QString &name);
@@ -41,7 +41,7 @@ public:
     static DeviceCommand *createForProtocol(const QString &protocol, QObject *parent = nullptr);
     static DeviceCommand *createFromJson(const QJsonObject &json, QObject *parent = nullptr);
 
-    Q_INVOKABLE DeviceParamSpec* getField(const QString& key) const;
+    DeviceParamSpec* getField(const QString& key) const;
 
     QJsonObject toJson() const;
     bool loadFromJson(const QJsonObject &json);
@@ -55,13 +55,11 @@ public:
     Q_INVOKABLE QVariantList creationMinInputFields() const;
     Q_INVOKABLE QVariantList executionInputFields() const;
 
-    virtual void execute();
     virtual DeviceCommand *clone(QObject *parent = nullptr) const;
 
 signals:
     void nameChanged();
     void fieldChanged(DeviceParamSpec *field);
-    void executionFinished(bool success, const QString &errorMessage);
 
 protected:
     virtual QString validateParams() const;

@@ -141,11 +141,6 @@ QString DeviceCommand::validateParams() const
     return QString();
 }
 
-void DeviceCommand::execute()
-{
-    emit executionFinished(false, tr("指令执行尚未实现"));
-}
-
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
 {
     return createFromJson(toJson(), parent);

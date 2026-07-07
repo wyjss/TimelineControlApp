@@ -67,7 +67,7 @@ void DeviceExecutorManager::bindDevice(Device *device)
             return;
 
         const QString deviceId = device->id();
-        m_onlineChecks.insert(deviceId, OnlineCheck{protocolValue, params, executorKey});
+        m_onlineChecks.insert(deviceId, OnlineCheck{params, executorKey});
         QStringList deviceIds = m_deviceIdsByExecutorKey.value(executorKey);
         if (!deviceIds.contains(deviceId)) {
             deviceIds.append(deviceId);

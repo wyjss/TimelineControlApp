@@ -263,19 +263,6 @@ void TimelineCommandModel::setSelectedCommandId(const QString &selectedCommandId
     emit selectedCommandIdChanged();
 }
 
-TimelineCommand *TimelineCommandModel::lastCommand() const
-{
-    return m_lastCommand;
-}
-
-TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
-                                                  const QString &targetDeviceId,
-                                                  const QString &commandName,
-                                                  const QVariantMap &commandParams)
-{
-    return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, nullptr);
-}
-
 TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
                                                         const QString &targetDeviceId,
                                                         DeviceCommand *targetCommand,
@@ -309,23 +296,7 @@ TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
         return nullptr;
     }
 
-    setLastCommand(command);
     return command;
-}
-
-void TimelineCommandModel::clearCommands()
-{
-    if (items().isEmpty()) {
-        setLastCommand(nullptr);
-        return;
-    }
-
-    clear();
-}
-
-void TimelineCommandModel::appendCommand(TimelineCommand *command)
-{
-    appendItem(command);
 }
 
 void TimelineCommandModel::resetCommands(const QList<TimelineCommand *> &commands)
@@ -354,12 +325,6 @@ void TimelineCommandModel::removeCommandAt(int row)
     }
 }
 
-bool TimelineCommandModel::removeCommandById(const QString &commandId)
-{
-    TimelineCommand *command = commandById(commandId);
-    return removeCommand(command);
-}
-
 bool TimelineCommandModel::removeCommand(TimelineCommand *command)
 {
     const int row = indexOfCommand(command);
@@ -368,17 +333,6 @@ bool TimelineCommandModel::removeCommand(TimelineCommand *command)
 
     removeCommandAt(row);
     return true;
-}
-
-void TimelineCommandModel::clear()
-{
-    if (items().isEmpty())
-        return;
-
-    const QList<TimelineCommand *> oldCommands = items();
-    clearItems();
-    setSelectedCommandId(QString());
-    qDeleteAll(oldCommands);
 }
 
 void TimelineCommandModel::writeToStream(QDataStream &stream) const
@@ -421,7 +375,6 @@ void TimelineCommandModel::readFromStream(QDataStream &stream)
     }
 
     resetCommands(commands);
-    setLastCommand(nullptr);
     setSelectedCommandId(commandById(selectedCommandId) ? selectedCommandId : QString());
 }
 
@@ -453,9 +406,6 @@ void TimelineCommandModel::itemInserted(TimelineCommand *command, int row)
 void TimelineCommandModel::itemRemoved(TimelineCommand *command, int row)
 {
     Q_UNUSED(row)
-    emit commandAboutToBeRemoved(command);
-    if (m_lastCommand == command)
-        setLastCommand(nullptr);
     disconnectCommand(command);
     emit commandsChanged();
 }
@@ -499,14 +449,5 @@ void TimelineCommandModel::emitCommandChanged(TimelineCommand *command)
 
     notifyItemChanged(row);
     emit commandsChanged();
-}
-
-void TimelineCommandModel::setLastCommand(TimelineCommand *command)
-{
-    if (m_lastCommand == command)
-        return;
-
-    m_lastCommand = command;
-    emit lastCommandChanged();
 }
 

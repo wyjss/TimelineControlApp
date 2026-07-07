@@ -95,7 +95,6 @@ class TimelineCommandModel final : public TypedListModel<TimelineCommand *>
 {
     Q_OBJECT
     Q_PROPERTY(QVariantList commands READ commandVariants NOTIFY commandsChanged FINAL)
-    Q_PROPERTY(TimelineControl::TimelineCommand *lastCommand READ lastCommand NOTIFY lastCommandChanged FINAL)
     Q_PROPERTY(QString selectedCommandId READ selectedCommandId WRITE setSelectedCommandId NOTIFY selectedCommandIdChanged FINAL)
 
 public:
@@ -111,12 +110,6 @@ public:
     QString selectedCommandId() const;
     void setSelectedCommandId(const QString &selectedCommandId);
 
-    TimelineCommand *lastCommand() const;
-
-    Q_INVOKABLE TimelineControl::TimelineCommand *addCommand(qint64 startTimeMs,
-                                                             const QString &targetDeviceId,
-                                                             const QString &commandName,
-                                                             const QVariantMap &commandParams);
     Q_INVOKABLE TimelineControl::TimelineCommand *addDeviceCommand(qint64 startTimeMs,
                                                                    const QString &targetDeviceId,
                                                                    TimelineControl::DeviceCommand *targetCommand,
@@ -126,26 +119,19 @@ public:
                                                  const QString &commandName,
                                                  const QVariantMap &commandParams,
                                                  TimelineControl::DeviceCommand *targetCommand);
-    Q_INVOKABLE void clearCommands();
 
-    void appendCommand(TimelineCommand *command);
     void resetCommands(const QList<TimelineCommand *> &commands);
     void removeCommandAt(int row);
-    Q_INVOKABLE bool removeCommandById(const QString &commandId);
     bool removeCommand(TimelineCommand *command);
-    void clear();
 
     void writeToStream(QDataStream &stream) const;
     void readFromStream(QDataStream &stream);
 
-public slots:
     void removeCommandsForDevice(const QString &deviceId);
 
 signals:
     void commandsChanged();
-    void lastCommandChanged();
     void selectedCommandIdChanged();
-    void commandAboutToBeRemoved(TimelineControl::TimelineCommand *command);
 
 protected:
     bool acceptsItem(TimelineCommand *command) const override;
@@ -156,9 +142,7 @@ private:
     void prepareCommand(TimelineCommand *command);
     void disconnectCommand(TimelineCommand *command);
     void emitCommandChanged(TimelineCommand *command);
-    void setLastCommand(TimelineCommand *command);
 
-    TimelineCommand *m_lastCommand = nullptr;
     QString m_selectedCommandId;
 };
 

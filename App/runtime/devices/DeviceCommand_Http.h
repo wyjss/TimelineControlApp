@@ -11,14 +11,13 @@ class DeviceCommand_Http : public DeviceCommand
 public:
     explicit DeviceCommand_Http(QObject *parent = nullptr);
 
-	Q_INVOKABLE DeviceParamSpec* ipField() const { return getField(DeviceKey::Ip); }
-	Q_INVOKABLE DeviceParamSpec* portField() const { return getField(DeviceKey::IpPort); }
-	Q_INVOKABLE DeviceParamSpec* methodField() const { return getField(DeviceKey::HttpMethod); }
-	Q_INVOKABLE DeviceParamSpec* pathField() const { return getField(DeviceKey::ApiPath); }
-	Q_INVOKABLE DeviceParamSpec* bodyField() const { return getField(DeviceKey::HttpBody); }
+	DeviceParamSpec* ipField() const { return getField(DeviceKey::Ip); }
+	DeviceParamSpec* portField() const { return getField(DeviceKey::IpPort); }
+	DeviceParamSpec* methodField() const { return getField(DeviceKey::HttpMethod); }
+	DeviceParamSpec* pathField() const { return getField(DeviceKey::ApiPath); }
+	DeviceParamSpec* bodyField() const { return getField(DeviceKey::HttpBody); }
 
     QString protocol() const override;
-	void execute() override;
 
     static QString protocolName();
 };
