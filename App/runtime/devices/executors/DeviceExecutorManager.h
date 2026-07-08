@@ -23,7 +23,7 @@ public:
 
     void bindDevice(Device *device);
     void unbindDevice(Device *device);
-    void execute(Device *device, DeviceCommand *command);
+    void execute(Device *device, DeviceCommand *command, const QVariantMap &executionInputValues = QVariantMap());
 
 signals:
     void executionFinished(TimelineControl::DeviceCommand *command,

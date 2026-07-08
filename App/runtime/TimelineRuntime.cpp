@@ -3,10 +3,7 @@
 #include <QMetaType>
 
 #include "devices/DeviceCommand.h"
-#include "devices/DeviceCommand_Dmx512.h"
-#include "devices/DeviceCommand_Http.h"
-#include "devices/DeviceCommand_PC.h"
-#include "devices/DeviceCommand_Serial.h"
+#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceInspectorFormProvider.h"
 #include "devices/DeviceManager.h"
@@ -47,10 +44,6 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     , m_timelineCommandModel(new TimelineCommandModel(this))
 {
     qRegisterMetaType<TimelineControl::DeviceCommand *>("TimelineControl::DeviceCommand*");
-    qRegisterMetaType<TimelineControl::DeviceCommand_Dmx512 *>("TimelineControl::DeviceCommand_Dmx512*");
-    qRegisterMetaType<TimelineControl::DeviceCommand_Http *>("TimelineControl::DeviceCommand_Http*");
-    qRegisterMetaType<TimelineControl::DeviceCommand_PC *>("TimelineControl::DeviceCommand_PC*");
-    qRegisterMetaType<TimelineControl::DeviceCommand_Serial *>("TimelineControl::DeviceCommand_Serial*");
     qRegisterMetaType<TimelineControl::Device *>("TimelineControl::Device*");
     qRegisterMetaType<TimelineControl::DeviceTemplate *>("TimelineControl::DeviceTemplate*");
     qRegisterMetaType<TimelineControl::DeviceInspectorFormProvider *>("TimelineControl::DeviceInspectorFormProvider*");
@@ -74,6 +67,12 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
             : (m_timelineController->state() == TimelineController::Paused ? Paused : Stopped);
         if (nextState == Stopped) {
             ++m_runId;
+            for (TimelineCommand *command : m_timelineCommandModel->commands()) {
+                if (command && command->state() == TimelineCommand::Running) {
+                    command->setErrorMessage(tr("已停止"));
+                    command->setState(TimelineCommand::Failed);
+                }
+            }
             m_timelineController->setDurationMs(24 * 60 * 60 * 1000);
         }
 
@@ -97,13 +96,19 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
             const QVariantMap commandParams = timelineCommand->commandParams();
             const QString commandProtocol = commandParams.value(DeviceKey::Protocol).toString().trimmed();
             Device *targetDevice = m_deviceModel ? m_deviceModel->deviceById(timelineCommand->targetDeviceId()) : nullptr;
-            if (targetDevice && !targetDevice->supportsProtocol(commandProtocol)) {
+            if (!targetDevice) {
+                timelineCommand->setErrorMessage(tr("目标设备不存在"));
+                timelineCommand->setState(TimelineCommand::Failed);
+                continue;
+            }
+
+            if (!targetDevice->supportsProtocol(commandProtocol)) {
                 timelineCommand->setErrorMessage(tr("设备不支持该协议"));
                 timelineCommand->setState(TimelineCommand::Failed);
                 continue;
             }
 
-            DeviceCommand *deviceCommand = DeviceCommand::createFromJson(QJsonObject::fromVariantMap(commandParams), this);
+            DeviceCommand *deviceCommand = DeviceCommandFactory::createFromJson(QJsonObject::fromVariantMap(commandParams), this);
             if (!deviceCommand) {
                 timelineCommand->setErrorMessage(tr("无效指令"));
                 timelineCommand->setState(TimelineCommand::Failed);
@@ -123,7 +128,9 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
                 }
                 deviceCommand->deleteLater();
             });
-            m_deviceExecutorManager->execute(targetDevice, deviceCommand);
+            m_deviceExecutorManager->execute(targetDevice,
+                                             deviceCommand,
+                                             commandParams.value(QStringLiteral("executionInputFields")).toMap());
         }
     });
 

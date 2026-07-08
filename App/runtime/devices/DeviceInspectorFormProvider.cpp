@@ -397,13 +397,6 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandForm(const DeviceComm
         appendParamSpecField(creationSection, spec, spec ? spec->value() : QVariant());
     }
 
-    auto *executionSection = makeSection(form, tr("执行参数"));
-    const QVariantList executionFields = command->executionInputFields();
-    for (const QVariant &fieldValue : executionFields) {
-        const DeviceParamSpec *spec = objectFromVariant<DeviceParamSpec>(fieldValue);
-        appendParamSpecField(executionSection, spec, spec ? spec->value() : QVariant());
-    }
-
     return form;
 }
 

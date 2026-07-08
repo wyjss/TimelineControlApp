@@ -2,8 +2,8 @@
 
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
+#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
-#include "devices/DeviceParamSpec.h"
 #include "devices/executors/DeviceCommandExecutor.h"
 #include "devices/executors/HttpCommandExecutor.h"
 #include "devices/executors/SerialCommandExecutor.h"
@@ -33,6 +33,8 @@ void DeviceExecutorManager::bindDevice(Device *device)
         return;
 
     unbindDevice(device);
+    disconnect(this, &DeviceExecutorManager::onlineChecked, device, nullptr);
+    disconnect(device, &QObject::destroyed, this, nullptr);
 
     for (const QString &protocol : device->supportedProtocols()) {
         const QString protocolValue = protocol.trimmed();
@@ -42,29 +44,20 @@ void DeviceExecutorManager::bindDevice(Device *device)
             continue;
 
         QVariantMap params = device->configValues();
-        DeviceCommand *command = DeviceCommand::createForProtocol(protocolValue);
+        DeviceCommand *command = DeviceCommandFactory::createForProtocol(protocolValue);
         if (command) {
             command->updateConfigMap(params);
-            const QVariantList creationFields = command->creationInputFields();
-            for (const QVariant &fieldValue : creationFields) {
-                DeviceParamSpec *field = fieldValue.value<DeviceParamSpec *>();
-                if (field)
-                    params.insert(field->key(), field->value());
-            }
-            const QVariantList executionFields = command->executionInputFields();
-            for (const QVariant &fieldValue : executionFields) {
-                DeviceParamSpec *field = fieldValue.value<DeviceParamSpec *>();
-                if (field)
-                    params.insert(field->key(), field->value());
-            }
+            params = command->resolvedParams();
             delete command;
         }
 
         QString executorKey;
         bool created = false;
         DeviceCommandExecutor *executor = executorFor(protocolValue, params, &executorKey, &created);
-        if (!executor)
+        if (!executor) {
+            device->setStatus(tr("离线"));
             return;
+        }
 
         const QString deviceId = device->id();
         m_onlineChecks.insert(deviceId, OnlineCheck{params, executorKey});
@@ -94,7 +87,7 @@ void DeviceExecutorManager::unbindDevice(Device *device)
         unbindDeviceId(device->id());
 }
 
-void DeviceExecutorManager::execute(Device *device, DeviceCommand *command)
+void DeviceExecutorManager::execute(Device *device, DeviceCommand *command, const QVariantMap &executionInputValues)
 {
     if (!command)
         return;
@@ -102,19 +95,7 @@ void DeviceExecutorManager::execute(Device *device, DeviceCommand *command)
     if (device)
         command->updateConfigMap(device->configValues());
 
-    QVariantMap params;
-    const QVariantList creationFields = command->creationInputFields();
-    for (const QVariant &fieldValue : creationFields) {
-        DeviceParamSpec *field = fieldValue.value<DeviceParamSpec *>();
-        if (field)
-            params.insert(field->key(), field->value());
-    }
-    const QVariantList executionFields = command->executionInputFields();
-    for (const QVariant &fieldValue : executionFields) {
-        DeviceParamSpec *field = fieldValue.value<DeviceParamSpec *>();
-        if (field)
-            params.insert(field->key(), field->value());
-    }
+    const QVariantMap params = command->resolvedParams(executionInputValues);
 
     DeviceCommandExecutor *executor = executorFor(command->protocol(), params);
     if (executor) {
@@ -216,7 +197,7 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
         if (ip.isEmpty() || port <= 0)
             return nullptr;
 
-        const QString key = QStringLiteral("%1:%2:%3").arg(protocolValue, ip).arg(port);
+        const QString key = QStringLiteral("http:%1:%2").arg(ip).arg(port);
         if (executorKey)
             *executorKey = key;
         DeviceCommandExecutor *executor = m_executors.value(key);

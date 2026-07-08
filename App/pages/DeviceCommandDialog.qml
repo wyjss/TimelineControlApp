@@ -19,7 +19,6 @@ Base.AppPopup {
     readonly property var availableProtocolOptions: buildAvailableProtocolOptions()
     readonly property bool commandValid: draftCommand
         && creationFieldForm.valid
-        && executionFieldForm.valid
         && firstInvalidReason().length === 0
 
     signal commandAccepted(var command)
@@ -93,15 +92,6 @@ Base.AppPopup {
         if (reason.length > 0)
             return reason
 
-        reason = executionFieldForm.firstInvalidReason()
-        if (reason.length > 0)
-            return reason
-
-        if (draftCommand.validate !== undefined) {
-            reason = String(draftCommand.validate())
-            if (reason.length > 0)
-                return reason
-        }
         return ""
     }
 
@@ -125,7 +115,6 @@ Base.AppPopup {
             return
 
         applyFieldValues(command.creationInputFields || [], creationValues)
-        applyFieldValues(command.executionInputFields || [], executionFieldForm.valueMap())
         commandAccepted(command)
         close()
     }
@@ -252,27 +241,6 @@ Base.AppPopup {
                 showErrors: root.validationVisible
                 theme: root.theme
                 emptyText: qsTr("无创建参数")
-            }
-
-            Base.AppText {
-                Layout.fillWidth: true
-                visible: root.draftCommand && root.draftCommand.executionInputFields.length > 0
-                text: qsTr("执行参数")
-                theme: root.theme
-                styleRole: "sectionTitle"
-                elide: Text.ElideRight
-            }
-
-            DeviceFieldForm {
-                id: executionFieldForm
-
-                Layout.fillWidth: true
-                visible: root.draftCommand && root.draftCommand.executionInputFields.length > 0
-                fields: root.draftCommand ? root.draftCommand.executionInputFields : []
-                writeBack: true
-                showErrors: root.validationVisible
-                theme: root.theme
-                emptyText: qsTr("无执行参数")
             }
         }
     }

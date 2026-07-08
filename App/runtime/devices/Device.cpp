@@ -1,6 +1,7 @@
 #include "devices/Device.h"
 
 #include "devices/DeviceCommand.h"
+#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 
 #include <QDataStream>
@@ -169,7 +170,7 @@ DeviceCommand *Device::createCommandDraft(const QString &protocol) const
     if (!supportsProtocol(commandProtocol))
         return nullptr;
 
-    DeviceCommand *command = DeviceCommand::createForProtocol(commandProtocol, const_cast<Device *>(this));
+    DeviceCommand *command = DeviceCommandFactory::createForProtocol(commandProtocol, const_cast<Device *>(this));
     if (command)
         command->updateConfigMap(m_configValues);
     return command;
@@ -306,7 +307,7 @@ void Device::readFromStream(QDataStream& stream)
 
         const QJsonDocument document = QJsonDocument::fromJson(commandData);
         DeviceCommand *command = document.isObject()
-            ? DeviceCommand::createFromJson(document.object(), this)
+            ? DeviceCommandFactory::createFromJson(document.object(), this)
             : nullptr;
         if (command)
             commands.append(command);

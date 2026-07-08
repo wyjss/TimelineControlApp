@@ -33,7 +33,10 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
     url.setScheme(QStringLiteral("http"));
     url.setHost(m_ip);
     url.setPort(m_port);
-    url.setPath(path);
+    const int queryIndex = path.indexOf(QLatin1Char('?'));
+    url.setPath(queryIndex < 0 ? path : path.left(queryIndex));
+    if (queryIndex >= 0)
+        url.setQuery(path.mid(queryIndex + 1));
     if (!url.isValid()) {
         emit executionFinished(command, false, tr("HTTP URL 无效"));
         return;

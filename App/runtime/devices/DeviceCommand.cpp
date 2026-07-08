@@ -1,10 +1,8 @@
 #include "devices/DeviceCommand.h"
 
+#include "devices/DeviceCommandExecutionParamUpdater.h"
+#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
-#include "devices/DeviceCommand_Dmx512.h"
-#include "devices/DeviceCommand_Http.h"
-#include "devices/DeviceCommand_PC.h"
-#include "devices/DeviceCommand_Serial.h"
 
 #include <QVariant>
 
@@ -12,18 +10,20 @@ namespace {
 
 const char *kProtocolKey = "protocol";
 const char *kExecutionInputFieldsKey = "executionInputFields";
+const char *kExecutionParamUpdaterKey = "executionParamUpdater";
 
 } // namespace
 
 using namespace TimelineControl;
 
 DeviceCommand::DeviceCommand(QObject *parent)
-    : DeviceCommand("", parent)
+    : DeviceCommand(QString(), QString(), parent)
 {
 }
 
-DeviceCommand::DeviceCommand(const QString &name, QObject *parent)
+DeviceCommand::DeviceCommand(const QString &protocol, const QString &name, QObject *parent)
     : QObject(parent)
+    , m_protocol(protocol.trimmed())
 {
 	auto nameField = new DeviceParamSpec(
 		DeviceKey::Name,
@@ -47,33 +47,9 @@ void DeviceCommand::setName(const QString &name)
     getField(DeviceKey::Name)->setValue(name);
 }
 
-DeviceCommand *DeviceCommand::createForProtocol(const QString &protocol, QObject *parent)
+QString DeviceCommand::protocol() const
 {
-    const QString protocolValue = protocol.trimmed();
-    if (protocolValue == DeviceCommand_Dmx512::protocolName())
-        return new DeviceCommand_Dmx512(parent);
-    if (protocolValue == DeviceCommand_Http::protocolName())
-        return new DeviceCommand_Http(parent);
-    if (protocolValue == DeviceCommand_PC::protocolName())
-        return new DeviceCommand_PC(parent);
-    if (protocolValue == DeviceCommand_Serial::protocolName())
-        return new DeviceCommand_Serial(parent);
-
-    return nullptr;
-}
-
-DeviceCommand *DeviceCommand::createFromJson(const QJsonObject &json, QObject *parent)
-{
-    auto *command = createForProtocol(json.value(QString::fromLatin1(kProtocolKey)).toString(), parent);
-    if (!command)
-        return nullptr;
-
-    if (!command->loadFromJson(json)) {
-        delete command;
-        return nullptr;
-    }
-
-    return command;
+    return m_protocol;
 }
 
 DeviceParamSpec* DeviceCommand::getField(const QString& key) const
@@ -86,15 +62,11 @@ QJsonObject DeviceCommand::toJson() const
     QJsonObject json;
 
     json.insert(QString::fromLatin1(kProtocolKey), protocol());
+    if (!m_executionParamUpdaterName.isEmpty())
+        json.insert(QString::fromLatin1(kExecutionParamUpdaterKey), m_executionParamUpdaterName);
+
     for (DeviceParamSpec *field : m_creationInputFields)
         json.insert(field->key(), QJsonValue::fromVariant(field->value()));
-
-    if (!m_executionInputFields.isEmpty()) {
-        QJsonObject executionInputFields;
-        for (DeviceParamSpec *field : m_executionInputFields)
-            executionInputFields.insert(field->key(), QJsonValue::fromVariant(field->value()));
-        json.insert(QString::fromLatin1(kExecutionInputFieldsKey), executionInputFields);
-    }
 
     return json;
 }
@@ -104,6 +76,8 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
     const QString jsonProtocol = json.value(QString::fromLatin1(kProtocolKey)).toString();
     if (!jsonProtocol.isEmpty() && jsonProtocol != protocol())
         return false;
+
+    setExecutionParamUpdaterName(json.value(QString::fromLatin1(kExecutionParamUpdaterKey)).toString());
 
     for (auto itr = json.begin(); itr != json.end(); ++itr) {
         if (auto field = getField(itr.key()))
@@ -119,31 +93,38 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
     return true;
 }
 
-QString DeviceCommand::validate() const
+QVariantMap DeviceCommand::resolvedParams(const QVariantMap &executionInputValues)
 {
-    for (DeviceParamSpec *field : m_creationInputFields) {
-        const QString reason = field->invalidReason();
-        if (!reason.isEmpty())
-            return reason;
-    }
+    updateExecutionParams(executionInputValues);
 
-    for (DeviceParamSpec *field : m_executionInputFields) {
-        const QString reason = field->invalidReason();
-        if (!reason.isEmpty())
-            return reason;
-    }
+    QVariantMap params = m_configMap;
+    params.remove(QString::fromLatin1(kExecutionInputFieldsKey));
+    params.remove(QString::fromLatin1(kExecutionParamUpdaterKey));
 
-    return validateParams();
+    for (DeviceParamSpec *field : m_creationInputFields)
+        params.insert(field->key(), field->value());
+
+    return params;
 }
 
-QString DeviceCommand::validateParams() const
+void DeviceCommand::updateExecutionParams(const QVariantMap &params)
 {
-    return QString();
+    DeviceCommandExecutionParamUpdater::update(m_executionParamUpdaterName, this, params);
+}
+
+void DeviceCommand::setExecutionParamUpdaterName(const QString &name)
+{
+    const QString updaterName = name.trimmed();
+    if (m_executionParamUpdaterName == updaterName)
+        return;
+
+    m_executionParamUpdaterName = updaterName;
+    DeviceCommandExecutionParamUpdater::install(m_executionParamUpdaterName, this);
 }
 
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
 {
-    return createFromJson(toJson(), parent);
+    return DeviceCommandFactory::createFromJson(toJson(), parent);
 }
 
 void DeviceCommand::addCreationInputField(DeviceParamSpec *field)
@@ -185,8 +166,13 @@ QVariantList DeviceCommand::creationInputFields() const
 
 void DeviceCommand::updateConfigMap(const QVariantMap &configMap)
 {
-    for (auto it = configMap.cbegin(); it != configMap.cend(); ++it)
+    const QString executionInputFieldsKey = QString::fromLatin1(kExecutionInputFieldsKey);
+    const QString executionParamUpdaterKey = QString::fromLatin1(kExecutionParamUpdaterKey);
+    for (auto it = configMap.cbegin(); it != configMap.cend(); ++it) {
+        if (it.key() == executionInputFieldsKey || it.key() == executionParamUpdaterKey)
+            continue;
         m_configMap.insert(it.key(), it.value());
+    }
 
     for (DeviceParamSpec *field : m_creationInputFields) {
         if (m_configMap.contains(field->key()))

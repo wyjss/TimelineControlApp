@@ -115,17 +115,29 @@ Item {
             return
         }
 
-        var extraParams = {
-            "targetDeviceName": deviceName(selectedTimelineDevice),
-            "targetDeviceAddress": deviceAddress(selectedTimelineDevice)
+        var startTimeMs = Math.max(0, Math.round(timelineCurrentTimeMs))
+        var executionFields = selectedCommand.executionInputFields || []
+        if (executionFields.length > 0) {
+            addTimelineCommandPopup.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
+            return
         }
 
-        var startTimeMs = Math.max(0, Math.round(timelineCurrentTimeMs))
+        addTimelineCommand(selectedTimelineDevice, selectedCommand, startTimeMs, {})
+    }
+
+    function addTimelineCommand(targetDevice, targetCommand, startTimeMs, executionValues) {
+        var extraParams = {
+            "targetDeviceName": deviceName(targetDevice),
+            "targetDeviceAddress": deviceAddress(targetDevice)
+        }
+        if (executionValues && Object.keys(executionValues).length > 0)
+            extraParams.executionInputFields = executionValues
+
         timelineCommandModel.addDeviceCommand(startTimeMs,
-                                              String(selectedTimelineDevice.id || ""),
-                                              selectedCommand,
+                                              String(targetDevice.id || ""),
+                                              targetCommand,
                                               extraParams)
-        executionStatusText = qsTr("已在 %2 ms 添加 %1").arg(commandName(selectedCommand)).arg(startTimeMs)
+        executionStatusText = qsTr("已在 %2 ms 添加 %1").arg(commandName(targetCommand)).arg(startTimeMs)
     }
 
     function buildVisibleTimelineCommands() {
@@ -704,6 +716,122 @@ Item {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    Base.AppPopup {
+        id: addTimelineCommandPopup
+
+        property var targetDevice: null
+        property var targetCommand: null
+        property int targetStartTimeMs: 0
+        property bool validationVisible: false
+        readonly property var executionFields: targetCommand ? targetCommand.executionInputFields || [] : []
+        readonly property bool formValid: executionFieldForm.valid
+
+        function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
+            targetDevice = nextDevice
+            targetCommand = nextCommand
+            targetStartTimeMs = nextStartTimeMs
+            validationVisible = false
+            executionFieldForm.values = {}
+            executionFieldForm.resetValues()
+            open()
+        }
+
+        function commit() {
+            validationVisible = true
+            if (!formValid || !targetDevice || !targetCommand)
+                return
+
+            root.addTimelineCommand(targetDevice,
+                                    targetCommand,
+                                    targetStartTimeMs,
+                                    executionFieldForm.valueMap())
+            close()
+        }
+
+        modal: true
+        focus: true
+        width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
+        height: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        padding: 18
+        spacing: 14
+        theme: root.pageTheme
+        surfaceTone: "section"
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
+
+                Base.AppText {
+                    Layout.fillWidth: true
+                    text: qsTr("执行参数")
+                    theme: root.pageTheme
+                    styleRole: "titleM"
+                    elide: Text.ElideRight
+                }
+
+                Base.AppText {
+                    Layout.fillWidth: true
+                    text: addTimelineCommandPopup.targetCommand
+                        ? root.commandName(addTimelineCommandPopup.targetCommand)
+                        : ""
+                    theme: root.pageTheme
+                    styleRole: "bodyS"
+                    textTone: "secondary"
+                    elide: Text.ElideRight
+                }
+            }
+
+            Base.AppButton {
+                text: qsTr("取消")
+                theme: root.pageTheme
+                onClicked: addTimelineCommandPopup.close()
+            }
+
+            Base.AppButton {
+                text: qsTr("添加")
+                theme: root.pageTheme
+                iconName: "workflow"
+                onClicked: addTimelineCommandPopup.commit()
+            }
+        }
+
+        Base.AppText {
+            Layout.fillWidth: true
+            text: executionFieldForm.firstInvalidReason()
+            visible: addTimelineCommandPopup.validationVisible && text.length > 0
+            theme: root.pageTheme
+            styleRole: "bodyS"
+            colorOverride: "#ef4444"
+            elide: Text.ElideRight
+        }
+
+        Base.AppScrollPane {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            theme: root.pageTheme
+            contentSpacing: 12
+            fillContentWidth: true
+
+            DeviceFieldForm {
+                id: executionFieldForm
+
+                Layout.fillWidth: true
+                fields: addTimelineCommandPopup.executionFields
+                writeBack: false
+                showErrors: addTimelineCommandPopup.validationVisible
+                theme: root.pageTheme
+                emptyText: qsTr("无执行参数")
             }
         }
     }

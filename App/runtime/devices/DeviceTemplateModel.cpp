@@ -3,6 +3,8 @@
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceCommand.h"
+#include "devices/DeviceCommandFactory.h"
+#include "devices/DeviceCommandExecutionParamUpdater.h"
 
 using namespace TimelineControl;
 
@@ -142,13 +144,30 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
     }
 
 	QList<DeviceCommand*> commands;
-    {
-        DeviceCommand *cmd = DeviceCommand::createForProtocol(DeviceProtocol::Pc, nullptr);
-        if (cmd) {
-            cmd->setName("播放视频");
-            commands.push_back(cmd);
-        }
-    }
+	{
+		DeviceCommand* cmd = DeviceCommandFactory::createForProtocol(DeviceProtocol::Pc, nullptr);
+		cmd->setName("开始播放");
+		cmd->getField(DeviceKey::ApiPath)->setValue("/video/play");
+		commands.push_back(cmd);
+	}
+	{
+		DeviceCommand* cmd = DeviceCommandFactory::createForProtocol(DeviceProtocol::Pc, nullptr);
+		cmd->setName("暂停播放");
+		cmd->getField(DeviceKey::ApiPath)->setValue("/video/pause");
+		commands.push_back(cmd);
+	}
+	{
+		DeviceCommand* cmd = DeviceCommandFactory::createForProtocol(DeviceProtocol::Pc, nullptr);
+		cmd->setName("停止播放");
+		cmd->getField(DeviceKey::ApiPath)->setValue("/video/stop");
+		commands.push_back(cmd);
+	}
+	{
+		DeviceCommand* cmd = DeviceCommandFactory::createForProtocol(DeviceProtocol::Pc, nullptr);
+		cmd->setName("播放全景视频");
+		cmd->setExecutionParamUpdaterName(DeviceCommandExecutionParamUpdaterName::PcPlayDomeVideo);
+		commands.push_back(cmd);
+	}
 
     return makeDeviceTemplate(tr("电脑"),
                               DeviceType::PC,

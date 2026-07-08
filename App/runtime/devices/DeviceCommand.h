@@ -29,48 +29,44 @@ class DeviceCommand : public QObject
 
 public:
     explicit DeviceCommand(QObject *parent = nullptr);
-    DeviceCommand(const QString &name, QObject *parent = nullptr);
-
-    DeviceParamSpec* nameField() const { return getField(DeviceKey::Name); }
+    DeviceCommand(const QString &protocol, const QString &name, QObject *parent = nullptr);
 
     QString name() const;
     void setName(const QString &name);
 
-    virtual QString protocol() const = 0;
-
-    static DeviceCommand *createForProtocol(const QString &protocol, QObject *parent = nullptr);
-    static DeviceCommand *createFromJson(const QJsonObject &json, QObject *parent = nullptr);
+    QString protocol() const;
 
     DeviceParamSpec* getField(const QString& key) const;
 
     QJsonObject toJson() const;
     bool loadFromJson(const QJsonObject &json);
-    Q_INVOKABLE QString validate() const;
+    QVariantMap resolvedParams(const QVariantMap &executionInputValues = QVariantMap());
+    void setExecutionParamUpdaterName(const QString &name);
 
     void addCreationInputField(DeviceParamSpec *field);
     void addExecutionInputField(DeviceParamSpec *field);
 
-    Q_INVOKABLE void updateConfigMap(const QVariantMap &configMap);
+    void updateConfigMap(const QVariantMap &configMap);
     Q_INVOKABLE QVariantList creationInputFields() const;
     Q_INVOKABLE QVariantList creationMinInputFields() const;
     Q_INVOKABLE QVariantList executionInputFields() const;
 
-    virtual DeviceCommand *clone(QObject *parent = nullptr) const;
+    DeviceCommand *clone(QObject *parent = nullptr) const;
 
 signals:
     void nameChanged();
     void fieldChanged(DeviceParamSpec *field);
 
-protected:
-    virtual QString validateParams() const;
-
 private:
+    void updateExecutionParams(const QVariantMap &params);
     void emitFieldChanged();
 
     QMap<QString, DeviceParamSpec *> m_creationInputFieldMap;
     QList<DeviceParamSpec *> m_creationInputFields;
     QList<DeviceParamSpec *> m_executionInputFields;
     QVariantMap m_configMap;
+    QString m_protocol;
+    QString m_executionParamUpdaterName;
 };
 
 } // namespace TimelineControl

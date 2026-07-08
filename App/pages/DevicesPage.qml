@@ -247,8 +247,7 @@ Item {
             return 0
 
         var creationFields = command.creationInputFields || []
-        var executionFields = command.executionInputFields || []
-        return creationFields.length + executionFields.length
+        return creationFields.length
     }
 
     function commandFieldValue(command, key, fallback) {
@@ -881,9 +880,6 @@ Item {
                                 readonly property bool expanded: index === root.expandedCommandIndex
                                 readonly property string summaryText: root.commandSummary(modelData)
                                 readonly property int inputCount: root.commandInputCount(modelData)
-                                readonly property bool hasExecutionFields: commandData
-                                    && commandData.executionInputFields
-                                    && commandData.executionInputFields.length > 0
 
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: commandRow.expanded
@@ -1051,25 +1047,6 @@ Item {
                                         emptyText: qsTr("无创建参数")
                                     }
 
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        visible: commandRow.expanded && commandRow.hasExecutionFields
-                                        text: qsTr("执行参数")
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
-                                        elide: Text.ElideRight
-                                    }
-
-                                    DeviceFieldForm {
-                                        Layout.fillWidth: true
-                                        visible: commandRow.expanded && commandRow.hasExecutionFields
-                                        fields: commandRow.commandData ? commandRow.commandData.executionInputFields : []
-                                        readOnly: true
-                                        writeBack: true
-                                        theme: root.pageTheme
-                                        emptyText: qsTr("无执行参数")
-                                    }
                                 }
                             }
                         }

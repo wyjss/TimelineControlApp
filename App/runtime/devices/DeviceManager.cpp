@@ -142,6 +142,10 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
         connect(m_deviceModel, &DeviceModel::deviceAdded,
                 this, [this](Device *device) {
                     refreshDmx512AdapterOptions();
+                    connect(device, &Device::configValuesChanged, this, [this, device]() {
+                        if (m_deviceExecutorManager)
+                            m_deviceExecutorManager->bindDevice(device);
+                    });
                     if (m_deviceExecutorManager)
                         m_deviceExecutorManager->bindDevice(device);
                 });
@@ -158,8 +162,13 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
     }
     if (m_deviceExecutorManager) {
         if (m_deviceModel) {
-            for (Device *device : m_deviceModel->items())
+            for (Device *device : m_deviceModel->items()) {
+                connect(device, &Device::configValuesChanged, this, [this, device]() {
+                    if (m_deviceExecutorManager)
+                        m_deviceExecutorManager->bindDevice(device);
+                });
                 m_deviceExecutorManager->bindDevice(device);
+            }
         }
     }
 
