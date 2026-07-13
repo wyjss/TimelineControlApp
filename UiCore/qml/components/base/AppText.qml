@@ -98,7 +98,7 @@ Label {
 
     font.family: familyOverride.length > 0
         ? familyOverride
-        : (resolvedTheme && resolvedTheme.typography ? resolvedTheme.typography.familySans : "")
+        : (resolvedTheme && resolvedTheme.typography ? resolvedTheme.typography.familySans : "Microsoft YaHei UI")
     font.pixelSize: resolvedPixelSize()
     font.weight: resolvedWeight()
     color: resolvedColor()

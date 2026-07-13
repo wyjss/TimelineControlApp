@@ -64,7 +64,7 @@ Control {
             color: root.color
             font.family: root.resolvedTheme && root.resolvedTheme.typography
                 ? root.resolvedTheme.typography.familySans
-                : ""
+                : "Microsoft YaHei UI"
             font.pixelSize: Math.max(10, Math.round(root.size * 0.72))
             font.weight: root.resolvedTheme && root.resolvedTheme.typography
                 ? root.resolvedTheme.typography.weightBold

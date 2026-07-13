@@ -169,10 +169,11 @@ Item {
     }
 
     function ensureSelectedCommandForDevice() {
+        var commands = selectedDeviceCommands || []
         var nextIndex = selectedCommandIndex
-        if (!selectedDeviceInCurrentView || selectedDeviceCommands.length === 0)
+        if (!selectedDeviceInCurrentView || commands.length === 0)
             nextIndex = -1
-        else if (nextIndex < 0 || nextIndex >= selectedDeviceCommands.length)
+        else if (nextIndex < 0 || nextIndex >= commands.length)
             nextIndex = 0
 
         if (selectedCommandIndex !== nextIndex)
@@ -180,7 +181,7 @@ Item {
         else
             syncCommandInspector()
 
-        if (expandedCommandIndex >= selectedDeviceCommands.length)
+        if (expandedCommandIndex >= commands.length)
             expandedCommandIndex = -1
     }
 

@@ -140,9 +140,23 @@ void TimelineShellController::buildDrawers()
                                                makePaneItem(QStringLiteral("cue-list"),
                                                             tr("指令列表"),
                                                             tr("定时控制事件")),
-                                               makePaneItem(QStringLiteral("playback"),
-                                                            tr("播放"),
-                                                            tr("播放控制与时钟状态"))
+                                                makePaneItem(QStringLiteral("playback"),
+                                                             tr("播放"),
+                                                             tr("播放控制与时钟状态"))
+                                            })));
+
+    registerDrawer(makeDrawer(this,
+                              QStringLiteral("virtual-playback"),
+                              tr("虚拟播放"),
+                              QStringLiteral("scene"),
+                              tr("虚拟播放指令编辑"),
+                              makeLeftPane(tr("虚拟播放"),
+                                           tr("筛选虚拟播放"),
+                                           QVariantList{
+                                               makePaneItem(QStringLiteral("virtual-command-editor"),
+                                                            tr("指令编辑"),
+                                                            tr("PC与视频框"),
+                                                            true)
                                            })));
 
     registerDrawer(makeDrawer(this,

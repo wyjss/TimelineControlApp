@@ -75,7 +75,7 @@ TextField {
     selectedTextColor: colorValue("inverseText", "#f8fafc")
     selectionColor: colorValue("highlightFill", "#2563eb")
 
-    font.family: typographyValue("familySans", "")
+    font.family: typographyValue("familySans", "Microsoft YaHei UI")
     font.pixelSize: Number(typographyValue("bodyM", 13))
     font.weight: Number(typographyValue("weightRegular", Font.Normal))
 

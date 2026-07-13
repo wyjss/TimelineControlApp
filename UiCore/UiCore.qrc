@@ -66,8 +66,11 @@
         <file alias="assets/icons/inspector.svg">assets/icons/inspector.svg</file>
         <file alias="assets/icons/layer-config.svg">assets/icons/layer-config.svg</file>
         <file alias="assets/icons/layers.svg">assets/icons/layers.svg</file>
+        <file alias="assets/icons/pause.svg">assets/icons/pause.svg</file>
+        <file alias="assets/icons/play.svg">assets/icons/play.svg</file>
         <file alias="assets/icons/resources.svg">assets/icons/resources.svg</file>
         <file alias="assets/icons/scene.svg">assets/icons/scene.svg</file>
+        <file alias="assets/icons/stop.svg">assets/icons/stop.svg</file>
         <file alias="assets/icons/tile-store.svg">assets/icons/tile-store.svg</file>
         <file alias="assets/icons/weather.svg">assets/icons/weather.svg</file>
         <file alias="assets/icons/workflow.svg">assets/icons/workflow.svg</file>

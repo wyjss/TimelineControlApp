@@ -112,10 +112,6 @@ Popup {
     contentItem: ColumnLayout {
         id: contentColumn
 
-        width: parent && parent.width > 0 ? parent.width : (root.width > 0 ? root.width : implicitWidth)
-        height: parent && parent.height > 0
-            ? parent.height
-            : implicitHeight
         spacing: root.spacing
     }
 
