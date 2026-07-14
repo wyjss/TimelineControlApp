@@ -7,7 +7,6 @@
 #include <QModelIndex>
 #include <QVariant>
 
-namespace TimelineControl {
 
 class _SelectedListModel : public QAbstractListModel
 {
@@ -299,5 +298,3 @@ private:
     QByteArray m_roleName;
     //T m_selectedItem;
 };
-
-} // namespace TimelineControl

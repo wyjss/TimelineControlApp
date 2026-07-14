@@ -7,7 +7,6 @@
 #include <QStringList>
 #include <QVariantList>
 
-namespace TimelineControl {
 
 class DeviceTemplateModel final : public TypedListModel<DeviceTemplate *>
 {
@@ -49,6 +48,5 @@ private:
                                        const QList<DeviceCommand *> &commands = {});
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::DeviceTemplateModel *)
+Q_DECLARE_METATYPE(DeviceTemplateModel *)

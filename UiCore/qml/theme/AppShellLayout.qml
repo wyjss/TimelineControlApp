@@ -12,7 +12,6 @@ QtObject {
     readonly property int railWidth: 48
     readonly property int railPadding: 4
     readonly property int railButtonSize: 38
-    readonly property int statusBarHeight: 30
     readonly property int shellOverlayMargin: 8
     readonly property int shellSeamFadeSize: 14
 }

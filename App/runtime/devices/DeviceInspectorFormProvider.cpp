@@ -71,7 +71,7 @@ QString displayValue(const QVariant &value)
     return text.trimmed().isEmpty() ? QStringLiteral("空") : text;
 }
 
-QString specSubtitle(const TimelineControl::DeviceParamSpec *spec)
+QString specSubtitle(const DeviceParamSpec *spec)
 {
     if (!spec)
         return QString();
@@ -119,7 +119,6 @@ void replaceForm(EarthUI::AppForm *&target, EarthUI::AppForm *next)
 
 } // namespace
 
-using namespace TimelineControl;
 
 DeviceInspectorFormProvider::DeviceInspectorFormProvider(DeviceModel *deviceModel,
                                                          DeviceTemplateModel *deviceTemplateModel,
@@ -155,6 +154,9 @@ DeviceInspectorFormProvider::DeviceInspectorFormProvider(DeviceModel *deviceMode
         });
         connect(m_deviceModel, &DeviceModel::currentDeviceIdChanged, this, [this]() {
             setDeviceId(m_deviceModel ? m_deviceModel->currentDeviceId() : QString());
+        });
+        connect(m_deviceModel, &QAbstractItemModel::dataChanged, this, [this]() {
+            rebuildDeviceForm();
         });
     }
 

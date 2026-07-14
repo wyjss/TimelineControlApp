@@ -11,7 +11,6 @@
 
 class QDataStream;
 
-namespace TimelineControl {
 
 class DeviceCommand;
 
@@ -110,19 +109,19 @@ public:
     QString selectedCommandId() const;
     void setSelectedCommandId(const QString &selectedCommandId);
 
-    Q_INVOKABLE TimelineControl::TimelineCommand *addDeviceCommand(qint64 startTimeMs,
+    Q_INVOKABLE TimelineCommand *addDeviceCommand(qint64 startTimeMs,
                                                                    const QString &targetDeviceId,
-                                                                   TimelineControl::DeviceCommand *targetCommand,
+                                                                   DeviceCommand *targetCommand,
                                                                    const QVariantMap &extraParams);
-    TimelineControl::TimelineCommand *addCommand(qint64 startTimeMs,
+    TimelineCommand *addCommand(qint64 startTimeMs,
                                                  const QString &targetDeviceId,
                                                  const QString &commandName,
                                                  const QVariantMap &commandParams,
-                                                 TimelineControl::DeviceCommand *targetCommand);
+                                                 DeviceCommand *targetCommand);
 
     void resetCommands(const QList<TimelineCommand *> &commands);
     void removeCommandAt(int row);
-    bool removeCommand(TimelineCommand *command);
+    Q_INVOKABLE bool removeCommand(TimelineCommand *command);
 
     void writeToStream(QDataStream &stream) const;
     void readFromStream(QDataStream &stream);
@@ -146,7 +145,6 @@ private:
     QString m_selectedCommandId;
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::TimelineCommand *)
-Q_DECLARE_METATYPE(TimelineControl::TimelineCommandModel *)
+Q_DECLARE_METATYPE(TimelineCommand *)
+Q_DECLARE_METATYPE(TimelineCommandModel *)

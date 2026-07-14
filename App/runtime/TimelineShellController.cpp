@@ -43,7 +43,6 @@ EarthUI::AppDrawer *makeDrawer(QObject *parent,
 
 } // namespace
 
-using namespace TimelineControl;
 
 TimelineShellController::TimelineShellController(QObject *parent)
     : AppShellController(parent)

@@ -8,7 +8,6 @@
 #include <QTimer>
 #include <QVariantMap>
 
-namespace TimelineControl {
 
 class Device;
 class DeviceCommand;
@@ -26,7 +25,7 @@ public:
     void execute(Device *device, DeviceCommand *command, const QVariantMap &executionInputValues = QVariantMap());
 
 signals:
-    void executionFinished(TimelineControl::DeviceCommand *command,
+    void executionFinished(DeviceCommand *command,
                            bool success,
                            const QString &errorMessage);
     void onlineChecked(const QString &deviceId, bool online);
@@ -53,5 +52,3 @@ private:
     QHash<QString, QStringList> m_deviceIdsByExecutorKey;
     bool m_onlineCheckRequested = false;
 };
-
-} // namespace TimelineControl

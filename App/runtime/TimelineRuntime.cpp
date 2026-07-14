@@ -27,7 +27,6 @@
 #include <QPointer>
 #include <QUrl>
 
-using namespace TimelineControl;
 
 TimelineRuntime::TimelineRuntime(QObject *parent)
     : BaseRuntime(parent)
@@ -43,19 +42,19 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     , m_timelineController(new TimelineController(this))
     , m_timelineCommandModel(new TimelineCommandModel(this))
 {
-    qRegisterMetaType<TimelineControl::DeviceCommand *>("TimelineControl::DeviceCommand*");
-    qRegisterMetaType<TimelineControl::Device *>("TimelineControl::Device*");
-    qRegisterMetaType<TimelineControl::DeviceTemplate *>("TimelineControl::DeviceTemplate*");
-    qRegisterMetaType<TimelineControl::DeviceInspectorFormProvider *>("TimelineControl::DeviceInspectorFormProvider*");
+    qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
+    qRegisterMetaType<Device *>("Device*");
+    qRegisterMetaType<DeviceTemplate *>("DeviceTemplate*");
+    qRegisterMetaType<DeviceInspectorFormProvider *>("DeviceInspectorFormProvider*");
     qRegisterMetaType<EarthUI::AppForm *>("EarthUI::AppForm*");
     qRegisterMetaType<TaskManager *>("TaskManager*");
-    qRegisterMetaType<TimelineControl::DeviceManager *>("TimelineControl::DeviceManager*");
-    qRegisterMetaType<TimelineControl::DeviceModel *>("TimelineControl::DeviceModel*");
-    qRegisterMetaType<TimelineControl::DeviceTemplateModel *>("TimelineControl::DeviceTemplateModel*");
-    qRegisterMetaType<TimelineControl::VideoProjectionPlanController *>("TimelineControl::VideoProjectionPlanController*");
-    qRegisterMetaType<TimelineControl::TimelineController *>("TimelineControl::TimelineController*");
-    qRegisterMetaType<TimelineControl::TimelineCommand *>("TimelineControl::TimelineCommand*");
-    qRegisterMetaType<TimelineControl::TimelineCommandModel *>("TimelineControl::TimelineCommandModel*");
+    qRegisterMetaType<DeviceManager *>("DeviceManager*");
+    qRegisterMetaType<DeviceModel *>("DeviceModel*");
+    qRegisterMetaType<DeviceTemplateModel *>("DeviceTemplateModel*");
+    qRegisterMetaType<VideoProjectionPlanController *>("VideoProjectionPlanController*");
+    qRegisterMetaType<TimelineController *>("TimelineController*");
+    qRegisterMetaType<TimelineCommand *>("TimelineCommand*");
+    qRegisterMetaType<TimelineCommandModel *>("TimelineCommandModel*");
 
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_timelineCommandModel, &TimelineCommandModel::removeCommandsForDevice);

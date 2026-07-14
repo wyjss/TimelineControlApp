@@ -5,14 +5,14 @@
 #include <QString>
 #include <QStringList>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include "devices/DeviceParamSpec.h"
 
-namespace TimelineControl {
 
     class DeviceCommand;
     class Device;
-class DeviceTemplate final : public QObject
+class DeviceTemplate : public QObject
 {
     Q_OBJECT
 
@@ -39,8 +39,8 @@ public:
     QVariantList configSpecs() const;
     QList<DeviceParamSpec *> configSpecObjects() const;
 
-    Device* createDevice(QObject* parent);
-private:
+    virtual Device *createDevice(QObject *parent, const QVariantMap &configValues);
+protected:
     QString m_name;
     QString m_deviceType;
     QStringList m_supportedProtocols;
@@ -49,6 +49,11 @@ private:
     QList<DeviceCommand*> m_commands;
 };
 
-} // namespace TimelineControl
+class SerialPowerDeviceTemplate : public DeviceTemplate
+{
+public:
+    SerialPowerDeviceTemplate(QObject* parent = nullptr);
+    Device *createDevice(QObject *parent, const QVariantMap &configValues) override;
+};
 
-Q_DECLARE_METATYPE(TimelineControl::DeviceTemplate *)
+Q_DECLARE_METATYPE(DeviceTemplate *)

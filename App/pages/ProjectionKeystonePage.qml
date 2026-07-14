@@ -142,7 +142,7 @@ Item {
 
         var values = device.configValues || {}
         var ip = String(values.ip || "").trim()
-        var port = String(values.ipPort || values.port || "").trim()
+        var port = String(values.port || "").trim()
         var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
         return address.length > 0 ? address : qsTr("未分配")
     }

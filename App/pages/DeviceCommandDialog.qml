@@ -52,9 +52,13 @@ Base.AppPopup {
             return []
 
         var result = []
-        for (var index = 0; index < protocolOptions.length; ++index) {
-            if (supportedProtocols.indexOf(String(protocolOptions[index].value)) >= 0)
-                result.push(protocolOptions[index])
+        for (var index = 0; index < supportedProtocols.length; ++index) {
+            for (var optionIndex = 0; optionIndex < protocolOptions.length; ++optionIndex) {
+                if (String(protocolOptions[optionIndex].value) === supportedProtocols[index]) {
+                    result.push(protocolOptions[optionIndex])
+                    break
+                }
+            }
         }
         return result
     }

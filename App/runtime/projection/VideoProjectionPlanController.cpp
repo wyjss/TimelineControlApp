@@ -2,7 +2,6 @@
 
 #include <QDataStream>
 
-using namespace TimelineControl;
 
 VideoProjectionPlanController::VideoProjectionPlanController(QObject *parent)
     : QObject(parent)

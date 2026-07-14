@@ -1,6 +1,5 @@
 #include "devices/DeviceCommand.h"
 
-#include "devices/DeviceCommandExecutionParamUpdater.h"
 #include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 
@@ -10,11 +9,9 @@ namespace {
 
 const char *kProtocolKey = "protocol";
 const char *kExecutionInputFieldsKey = "executionInputFields";
-const char *kExecutionParamUpdaterKey = "executionParamUpdater";
 
 } // namespace
 
-using namespace TimelineControl;
 
 DeviceCommand::DeviceCommand(QObject *parent)
     : DeviceCommand(QString(), QString(), parent)
@@ -22,17 +19,21 @@ DeviceCommand::DeviceCommand(QObject *parent)
 }
 
 DeviceCommand::DeviceCommand(const QString &protocol, const QString &name, QObject *parent)
+    : DeviceCommand(protocol, name, QString(), parent)
+{
+}
+
+DeviceCommand::DeviceCommand(const QString &protocol,
+                             const QString &name,
+                             const QString &commandType,
+                             QObject *parent)
     : QObject(parent)
     , m_protocol(protocol.trimmed())
+    , m_commandType(commandType.trimmed())
 {
-	auto nameField = new DeviceParamSpec(
-		DeviceKey::Name,
-		"名称",
-		name,
-		DeviceParamSpec::StringType,
-		DeviceParamSpec::TextEditor,
-		this
-	);
+    auto *nameField = DeviceParamSpec::createForKey(DeviceKey::Name);
+    nameField->setValue(name);
+    nameField->setDefaultValue(name);
 	connect(nameField, &DeviceParamSpec::valueChanged, this, &DeviceCommand::nameChanged);
 	addCreationInputField(nameField);
 }
@@ -52,6 +53,11 @@ QString DeviceCommand::protocol() const
     return m_protocol;
 }
 
+QString DeviceCommand::commandType() const
+{
+    return m_commandType;
+}
+
 DeviceParamSpec* DeviceCommand::getField(const QString& key) const
 {
     return m_creationInputFieldMap.value(key, nullptr);
@@ -62,8 +68,8 @@ QJsonObject DeviceCommand::toJson() const
     QJsonObject json;
 
     json.insert(QString::fromLatin1(kProtocolKey), protocol());
-    if (!m_executionParamUpdaterName.isEmpty())
-        json.insert(QString::fromLatin1(kExecutionParamUpdaterKey), m_executionParamUpdaterName);
+    if (!commandType().isEmpty())
+        json.insert(DeviceKey::CommandType, commandType());
 
     for (DeviceParamSpec *field : m_creationInputFields)
         json.insert(field->key(), QJsonValue::fromVariant(field->value()));
@@ -77,7 +83,8 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
     if (!jsonProtocol.isEmpty() && jsonProtocol != protocol())
         return false;
 
-    setExecutionParamUpdaterName(json.value(QString::fromLatin1(kExecutionParamUpdaterKey)).toString());
+    if (json.value(DeviceKey::CommandType).toString() != commandType())
+        return false;
 
     for (auto itr = json.begin(); itr != json.end(); ++itr) {
         if (auto field = getField(itr.key()))
@@ -93,33 +100,15 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
     return true;
 }
 
-QVariantMap DeviceCommand::resolvedParams(const QVariantMap &executionInputValues)
+QVariantMap DeviceCommand::resolvedParams(const QVariantMap &) const
 {
-    updateExecutionParams(executionInputValues);
-
     QVariantMap params = m_configMap;
     params.remove(QString::fromLatin1(kExecutionInputFieldsKey));
-    params.remove(QString::fromLatin1(kExecutionParamUpdaterKey));
 
     for (DeviceParamSpec *field : m_creationInputFields)
         params.insert(field->key(), field->value());
 
     return params;
-}
-
-void DeviceCommand::updateExecutionParams(const QVariantMap &params)
-{
-    DeviceCommandExecutionParamUpdater::update(m_executionParamUpdaterName, this, params);
-}
-
-void DeviceCommand::setExecutionParamUpdaterName(const QString &name)
-{
-    const QString updaterName = name.trimmed();
-    if (m_executionParamUpdaterName == updaterName)
-        return;
-
-    m_executionParamUpdaterName = updaterName;
-    DeviceCommandExecutionParamUpdater::install(m_executionParamUpdaterName, this);
 }
 
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
@@ -167,9 +156,8 @@ QVariantList DeviceCommand::creationInputFields() const
 void DeviceCommand::updateConfigMap(const QVariantMap &configMap)
 {
     const QString executionInputFieldsKey = QString::fromLatin1(kExecutionInputFieldsKey);
-    const QString executionParamUpdaterKey = QString::fromLatin1(kExecutionParamUpdaterKey);
     for (auto it = configMap.cbegin(); it != configMap.cend(); ++it) {
-        if (it.key() == executionInputFieldsKey || it.key() == executionParamUpdaterKey)
+        if (it.key() == executionInputFieldsKey)
             continue;
         m_configMap.insert(it.key(), it.value());
     }
@@ -203,4 +191,39 @@ QVariantList DeviceCommand::executionInputFields() const
 void DeviceCommand::emitFieldChanged()
 {
     emit fieldChanged(qobject_cast<DeviceParamSpec *>(sender()));
+}
+
+DeviceCommand_Http::DeviceCommand_Http(QObject *parent)
+    : DeviceCommand_Http(DeviceProtocol::Http, QStringLiteral("HTTP指令"), QString(), parent)
+{
+}
+
+DeviceCommand_Http::DeviceCommand_Http(const QString &protocol,
+                                       const QString &name,
+                                       const QString &commandType,
+                                       QObject *parent)
+    : DeviceCommand(protocol, name, commandType, parent)
+{
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::HttpMethod));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::ApiPath));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::HttpBody));
+}
+
+DeviceCommand_PC::DeviceCommand_PC(QObject *parent)
+    : DeviceCommand_PC(QStringLiteral("PC指令"), QString(), parent)
+{
+}
+
+DeviceCommand_PC::DeviceCommand_PC(const QString &name,
+                                   const QString &commandType,
+                                   QObject *parent)
+    : DeviceCommand_Http(DeviceProtocol::Pc, name, commandType, parent)
+{
+    updateConfigMap({
+        {DeviceKey::HttpMethod, QStringLiteral("GET")},
+        {DeviceKey::HttpBody, QString()},
+        {DeviceKey::Port, 11357}
+    });
 }

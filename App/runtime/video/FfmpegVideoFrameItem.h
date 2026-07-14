@@ -14,7 +14,6 @@ class PixelConvProcessor;
 struct AVFramePixelData;
 }
 
-namespace TimelineControl {
 
 class FfmpegVideoFrameItem : public QQuickPaintedItem
 {
@@ -88,5 +87,3 @@ private:
     std::unique_ptr<AVReader> m_reader;
     std::unique_ptr<PixelTool::PixelConvProcessor> m_converter;
 };
-
-} // namespace TimelineControl

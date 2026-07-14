@@ -5,7 +5,6 @@
 #include <QVector>
 #include <QVector2D>
 
-namespace TimelineControl {
 
 
 	//! 通用的设备类型
@@ -19,17 +18,17 @@ namespace TimelineControl {
 //! Stable keys used by device config specs and command params.
 namespace DeviceKey {
 inline const QString Name = QStringLiteral("name");
+inline const QString CommandType = QStringLiteral("commandType");
 inline const QString Protocol = QStringLiteral("protocol");
 inline const QString BaudRate = QStringLiteral("baudRate");
 inline const QString Dmx512AdapterDeviceId = QStringLiteral("dmx512AdapterDeviceId");
 inline const QString Ip = QStringLiteral("ip");
-inline const QString IpPort = QStringLiteral("ipPort");
 inline const QString HttpMethod = QStringLiteral("httpMethod");
 //inline const QString HttpQueryParams = QStringLiteral("httpQueryParams");
 inline const QString HttpBody = QStringLiteral("httpBody");
 inline const QString ApiPath = QStringLiteral("apiPath");
 inline const QString KeystoneCorrection = QStringLiteral("keystoneCorrection");
-inline const QString Payload = QStringLiteral("payload");
+inline const QString SerialPayload = QStringLiteral("serialPayload");
 inline const QString Port = QStringLiteral("port");
 inline const QString Resolution = QStringLiteral("resolution");
 inline const QString ScreenColumns = QStringLiteral("screenColumns");
@@ -37,6 +36,7 @@ inline const QString ScreenHeight = QStringLiteral("screenHeight");
 inline const QString ScreenRows = QStringLiteral("screenRows");
 inline const QString ScreenWidth = QStringLiteral("screenWidth");
 inline const QString SerialPort = QStringLiteral("serialPort");
+inline const QString Videos = QStringLiteral("videos");
 } // namespace DeviceKey
 
 //! Device transport/protocol names.
@@ -142,4 +142,3 @@ inline QVector<DeviceKeystoneCorrectionItem> listFromVariant(const QVariant &val
 }
 
 } // namespace DeviceKeystoneCorrectionCodec
-} // namespace TimelineControl

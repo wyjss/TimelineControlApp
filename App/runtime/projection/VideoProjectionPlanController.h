@@ -16,7 +16,6 @@
 
 class QDataStream;
 
-namespace TimelineControl {
 
 //! 视频取景区域，rect 使用视频源像素坐标。
 struct VideoProjectionCapture
@@ -191,9 +190,8 @@ private:
     int m_currentPlanIndex = -1;
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::VideoProjectionCapture)
-Q_DECLARE_METATYPE(TimelineControl::VideoProjectionMapping)
-Q_DECLARE_METATYPE(TimelineControl::VideoProjectionPlan)
-Q_DECLARE_METATYPE(TimelineControl::VideoProjectionPlanController *)
+Q_DECLARE_METATYPE(VideoProjectionCapture)
+Q_DECLARE_METATYPE(VideoProjectionMapping)
+Q_DECLARE_METATYPE(VideoProjectionPlan)
+Q_DECLARE_METATYPE(VideoProjectionPlanController *)

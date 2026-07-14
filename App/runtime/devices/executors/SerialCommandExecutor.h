@@ -6,7 +6,6 @@
 
 class QSerialPort;
 
-namespace TimelineControl {
 
 class SerialCommandExecutor final : public DeviceCommandExecutor
 {
@@ -22,5 +21,3 @@ private:
     QString m_portName;
     QSerialPort *m_port = nullptr;
 };
-
-} // namespace TimelineControl

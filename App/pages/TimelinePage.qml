@@ -189,7 +189,7 @@ Item {
 
         var values = device.configValues || {}
         var ip = String(values.ip || "").trim()
-        var port = String(values.ipPort || values.port || "").trim()
+        var port = String(values.port || "").trim()
         var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
         if (address.length === 0)
             address = String(values.serialPort || "").trim()
@@ -229,6 +229,17 @@ Item {
             : ""
     }
 
+    function executionParameterNames(command) {
+        var fields = command ? command.executionInputFields || [] : []
+        var names = []
+        for (var index = 0; index < fields.length; ++index) {
+            var name = String(fields[index].label || fields[index].key || "").trim()
+            if (name.length > 0)
+                names.push(name)
+        }
+        return names.join("、")
+    }
+
     function commandFieldValue(command, key, fallback) {
         var fields = command ? command.creationInputFields || [] : []
         for (var index = 0; index < fields.length; ++index) {
@@ -242,7 +253,7 @@ Item {
         var protocol = commandProtocol(command).toLowerCase()
         if (protocol === "http" || protocol === "pc") {
             var address = String(commandFieldValue(command, "ip", "") || "").trim()
-            var port = String(commandFieldValue(command, "ipPort", "") || "").trim()
+            var port = String(commandFieldValue(command, "port", "") || "").trim()
             var path = String(commandFieldValue(command, "apiPath", "") || "").trim()
             var method = String(commandFieldValue(command, "httpMethod", "") || "").trim()
             if (address.length > 0 && port.length > 0)
@@ -254,8 +265,8 @@ Item {
         if (protocol === "serial") {
             var serialPort = String(commandFieldValue(command, "serialPort", "") || "").trim()
             var baudRate = String(commandFieldValue(command, "baudRate", "") || "").trim()
-            var payload = String(commandFieldValue(command, "payload", "") || "").trim()
-            var serialSummary = [serialPort, baudRate, payload].filter(function(part) { return part.length > 0 }).join(" / ")
+            var serialPayload = String(commandFieldValue(command, "serialPayload", "") || "").trim()
+            var serialSummary = [serialPort, baudRate, serialPayload].filter(function(part) { return part.length > 0 }).join(" / ")
             return serialSummary.length > 0 ? serialSummary : commandProtocol(command)
         }
 
@@ -510,13 +521,28 @@ Item {
                                     anchors.bottomMargin: 7
                                     spacing: 2
 
-                                    Base.AppText {
+                                    RowLayout {
                                         Layout.fillWidth: true
-                                        text: root.commandName(commandRow.commandData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        colorOverride: commandRow.selected ? "#f8fafc" : undefined
-                                        elide: Text.ElideRight
+                                        spacing: 8
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: root.commandName(commandRow.commandData)
+                                            theme: root.pageTheme
+                                            styleRole: "bodyM"
+                                            colorOverride: commandRow.selected ? "#f8fafc" : undefined
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Base.AppText {
+                                            Layout.maximumWidth: 120
+                                            text: root.executionParameterNames(commandRow.commandData)
+                                            visible: text.length > 0
+                                            theme: root.pageTheme
+                                            styleRole: "bodyS"
+                                            colorOverride: "#ef4444"
+                                            elide: Text.ElideRight
+                                        }
                                     }
 
                                     Base.AppText {
@@ -673,34 +699,50 @@ Item {
                                     onClicked: root.selectTimelineCommand(timelineCommandRow.commandData)
                                 }
 
-                                ColumnLayout {
+                                RowLayout {
                                     anchors.fill: parent
                                     anchors.leftMargin: 18
                                     anchors.rightMargin: 12
                                     anchors.topMargin: 7
                                     anchors.bottomMargin: 7
-                                    spacing: 2
+                                    spacing: 8
 
-                                    Base.AppText {
+                                    ColumnLayout {
                                         Layout.fillWidth: true
-                                        text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        colorOverride: timelineCommandRow.selected ? "#f8fafc" : undefined
-                                        elide: Text.ElideRight
+                                        spacing: 2
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
+                                            theme: root.pageTheme
+                                            styleRole: "bodyM"
+                                            colorOverride: timelineCommandRow.selected ? "#f8fafc" : undefined
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: root.timelineCommandMeta(timelineCommandRow.commandData)
+                                                + " / "
+                                                + String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateText
+                                                    ? timelineCommandRow.commandData.stateText
+                                                    : qsTr("待执行"))
+                                            theme: root.pageTheme
+                                            styleRole: "bodyS"
+                                            textTone: "secondary"
+                                            elide: Text.ElideRight
+                                        }
                                     }
 
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.timelineCommandMeta(timelineCommandRow.commandData)
-                                            + " / "
-                                            + String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateText
-                                                ? timelineCommandRow.commandData.stateText
-                                                : qsTr("待执行"))
+                                    Base.AppButton {
+                                        visible: timelineCommandRow.selected
+                                        text: qsTr("删除")
                                         theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
-                                        elide: Text.ElideRight
+                                        enabled: !root.timelineRunning
+                                        onClicked: {
+                                            if (root.timelineCommandModel)
+                                                root.timelineCommandModel.removeCommand(timelineCommandRow.commandData)
+                                        }
                                     }
                                 }
                             }

@@ -10,7 +10,6 @@
 
 #include <QMetaObject>
 
-using namespace TimelineControl;
 
 DeviceExecutorManager::DeviceExecutorManager(QObject *parent)
     : QObject(parent)
@@ -193,7 +192,7 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
 
     if (protocolValue == DeviceProtocol::Http || protocolValue == DeviceProtocol::Pc) {
         const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
-        const int port = params.value(DeviceKey::IpPort).toInt();
+        const int port = params.value(DeviceKey::Port).toInt();
         if (ip.isEmpty() || port <= 0)
             return nullptr;
 

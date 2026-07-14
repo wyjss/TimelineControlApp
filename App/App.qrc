@@ -13,6 +13,5 @@
         <file alias="App/pages/VirtualPlaybackCommandPage.qml">pages/VirtualPlaybackCommandPage.qml</file>
         <file alias="App/pages/timeline/TimelineDeviceTrackArea.qml">pages/timeline/TimelineDeviceTrackArea.qml</file>
         <file alias="App/pages/timeline/TimelineRuler.qml">pages/timeline/TimelineRuler.qml</file>
-        <file alias="App/pages/timeline/TimelineTrackArea.qml">pages/timeline/TimelineTrackArea.qml</file>
     </qresource>
 </RCC>

@@ -5,7 +5,6 @@
 #include <QStringList>
 #include <QVariantMap>
 
-namespace TimelineControl {
 
 class DeviceCommand;
 
@@ -19,7 +18,7 @@ public:
     void checkOnline(const QStringList &requestIds, const QVariantMap &params);
 
 signals:
-    void executionFinished(TimelineControl::DeviceCommand *command,
+    void executionFinished(DeviceCommand *command,
                            bool success,
                            const QString &errorMessage);
     void onlineChecked(const QString &requestId, bool online);
@@ -33,5 +32,3 @@ private:
     bool m_failed = false;
     QString m_errorMessage;
 };
-
-} // namespace TimelineControl

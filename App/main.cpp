@@ -69,8 +69,8 @@ int main(int argc, char *argv[])
             projectionVideoSource = QUrl::fromLocalFile(QFileInfo(projectionVideoSource).absoluteFilePath()).toString();
     }
 
-    TimelineControl::TimelineRuntime runtime;
-    TimelineControl::TimelineShellController shellController(&runtime);
+    TimelineRuntime runtime;
+    TimelineShellController shellController(&runtime);
     runtime.setShell(&shellController);
     runtime.settings()->setApplicationName(QStringLiteral("时间线控制应用"));
     runtime.settings()->setLocale(QStringLiteral("zh_CN"));
@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
         {QStringLiteral("projectionVideoSource"), projectionVideoSource}
     });
 
-    qmlRegisterType<TimelineControl::FfmpegVideoFrameItem>("TimelineControl.Media", 1, 0, "FfmpegVideoFrameItem");
+    qmlRegisterType<FfmpegVideoFrameItem>("TimelineControl.Media", 1, 0, "FfmpegVideoFrameItem");
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("app"), &runtime);

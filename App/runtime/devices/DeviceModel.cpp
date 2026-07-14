@@ -15,7 +15,6 @@ QVariantMap option(const QString &label, const QString &value)
 
 } // namespace
 
-using namespace TimelineControl;
 
 DeviceModel::DeviceModel(QObject *parent)
     : TypedListModel<Device *>(parent)
@@ -161,9 +160,7 @@ QVariantList DeviceModel::deviceOptionsForDeviceType(const QString &deviceType) 
 
         const QVariantMap configValues = device->configValues();
         const QString ip = configValues.value(DeviceKey::Ip).toString().trimmed();
-        QString port = configValues.value(DeviceKey::IpPort).toString().trimmed();
-        if (port.isEmpty())
-            port = configValues.value(DeviceKey::Port).toString().trimmed();
+        const QString port = configValues.value(DeviceKey::Port).toString().trimmed();
         QString address = !ip.isEmpty() && !port.isEmpty()
             ? QStringLiteral("%1:%2").arg(ip, port)
             : ip;

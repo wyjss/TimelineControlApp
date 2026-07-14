@@ -17,13 +17,12 @@ namespace {
 bool isTemplateOnlyDeviceType(const QString &deviceType)
 {
     const QString normalizedDeviceType = deviceType.trimmed();
-    return normalizedDeviceType.compare(TimelineControl::DeviceType::PC, Qt::CaseInsensitive) == 0
-        || normalizedDeviceType.compare(TimelineControl::DeviceType::Dmx512Adapter, Qt::CaseInsensitive) == 0;
+    return normalizedDeviceType.compare(DeviceType::PC, Qt::CaseInsensitive) == 0
+        || normalizedDeviceType.compare(DeviceType::Dmx512Adapter, Qt::CaseInsensitive) == 0;
 }
 
 } // namespace
 
-using namespace TimelineControl;
 
 DeviceManager::DeviceManager(DeviceModel *deviceModel,
                              DeviceTemplateModel *deviceTemplateModel,
@@ -34,9 +33,9 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
     , m_deviceTemplateModel(deviceTemplateModel)
     , m_deviceExecutorManager(deviceExecutorManager)
 {
-    qRegisterMetaType<TimelineControl::Device *>("TimelineControl::Device*");
-    qRegisterMetaType<TimelineControl::DeviceParamSpec *>("TimelineControl::DeviceParamSpec*");
-    qRegisterMetaType<TimelineControl::DeviceTemplate *>("TimelineControl::DeviceTemplate*");
+    qRegisterMetaType<Device *>("Device*");
+    qRegisterMetaType<DeviceParamSpec *>("DeviceParamSpec*");
+    qRegisterMetaType<DeviceTemplate *>("DeviceTemplate*");
 
     m_deviceTemplateModel->loadDefaultTemplates();
 
@@ -126,7 +125,7 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
 
     QVariantMap otherConfig;
     otherConfig.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
-    otherConfig.insert(DeviceKey::IpPort, 8080);
+    otherConfig.insert(DeviceKey::Port, 8080);
     m_deviceModel->appendDevice(makeDeviceFromTemplate(
                                                tr("HTTP协议"),
                                                tr("其他"),
@@ -177,8 +176,8 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
 }
 
 QString DeviceManager::validateDeviceCreation(const QString &deviceType,
-                                              const QString &deviceName,
-                                              const QString &templateName) const
+                                               const QString &deviceName,
+                                               const QString &templateName) const
 {
     const QString normalizedDeviceType = deviceType.trimmed();
     if (normalizedDeviceType.isEmpty())
@@ -187,6 +186,10 @@ QString DeviceManager::validateDeviceCreation(const QString &deviceType,
     const QString normalizedDeviceName = deviceName.trimmed();
     if (normalizedDeviceName.isEmpty())
         return tr("设备名称必填");
+    for (const QChar character : deviceName) {
+        if (character.isSpace())
+            return tr("设备名称不能包含空格");
+    }
 
     DeviceTemplate *sourceTemplate = m_deviceTemplateModel ? m_deviceTemplateModel->templateByName(templateName) : nullptr;
     if (sourceTemplate) {
@@ -220,7 +223,7 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
         ? deviceType.trimmed()
         : templateDeviceType;
     const QString resolvedDeviceName = deviceName.trimmed().isEmpty()
-        ? tr("新建 %1").arg(selectedTemplate->name())
+        ? tr("新建%1").arg(selectedTemplate->name())
         : deviceName.trimmed();
 
     if (!validateDeviceCreation(resolvedDeviceType, resolvedDeviceName, selectedTemplate->name()).isEmpty())
@@ -276,7 +279,7 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &templateName,
     if (!sourceTemplate)
         return nullptr;
 
-    auto *device = sourceTemplate->createDevice(m_deviceModel);
+    auto *device = sourceTemplate->createDevice(m_deviceModel, configValues);
     device->setDeviceType(deviceType);
     device->setName(name);
     device->setSupportedProtocols(sourceTemplate->supportedProtocols());
@@ -284,15 +287,6 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &templateName,
     device->setLastSeen(lastSeen);
     device->setDescription(sourceTemplate->description());
 
-    QVariantMap deviceConfigValues = configValues;
-//     qDebug() << deviceConfigValues;
-//     QByteArray ba;
-//     QDataStream ds(&ba, QIODevice::ReadWrite);
-//     ds << deviceConfigValues;
-//     deviceConfigValues.clear();
-//     ds.device()->seek(0);
-//     ds >> deviceConfigValues;
-    device->setConfigValues(deviceConfigValues);
     return device;
 }
 

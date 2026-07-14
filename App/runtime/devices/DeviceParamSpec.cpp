@@ -1,9 +1,8 @@
 #include "devices/DeviceParamSpec.h"
-
+#include "devices/DeviceConstants.h"
 #include <QColor>
 #include <QRegularExpression>
 
-using namespace TimelineControl;
 
 DeviceParamSpec::DeviceParamSpec(QObject *parent)
     : BaseField(parent)
@@ -135,3 +134,155 @@ QVariant DeviceParamSpec::normalizedValue(ValueType valueType, const QVariant &v
     return value;
 }
 
+DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey)
+{
+    if (deviceKey == DeviceKey::Name) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("名称"),
+                                         QString(),
+                                         StringType,
+                                         TextEditor);
+        spec->setPattern(QStringLiteral("^\\S+$"));
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::Ip) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("主机IP"),
+                                         QStringLiteral("127.0.0.1"),
+                                         StringType,
+                                         TextEditor);
+        spec->setPattern(DevicePattern::Ip);
+        spec->setPlaceholderText(QStringLiteral("192.168.1.10"));
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::Port) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("端口"),
+                                         8080,
+                                         IntType,
+                                         TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(65535);
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::SerialPort) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("串口"),
+                                         QStringLiteral("COM0"),
+                                         SelectType,
+                                         SelectEditor);
+        spec->setPlaceholderText(QStringLiteral("COM1"));
+        QVariantList options;
+        for (int i = 0; i < 10; ++i)
+            options.append(QStringLiteral("COM%1").arg(i));
+        spec->setOptions(options);
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::BaudRate) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("波特率"),
+                                         9600,
+                                         IntType,
+                                         SelectEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(4000000);
+        spec->setOptions(QVariantList{9600, 19200, 38400, 57600, 115200});
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::HttpMethod) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("方法"),
+                                         QStringLiteral("GET"),
+                                         SelectType,
+                                         SelectEditor);
+        spec->setOptions(QVariantList{
+            QVariantMap{{QStringLiteral("label"), QStringLiteral("GET")},
+                        {QStringLiteral("value"), QStringLiteral("GET")}},
+            QVariantMap{{QStringLiteral("label"), QStringLiteral("POST")},
+                        {QStringLiteral("value"), QStringLiteral("POST")}}
+        });
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::ApiPath) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("路径"),
+                                         QString(),
+                                         StringType,
+                                         TextEditor);
+        spec->setPattern(QStringLiteral("^/.*"));
+        spec->setPlaceholderText(QStringLiteral("/api/command"));
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::HttpBody) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("内容"),
+                                         QString(),
+                                         StringType,
+                                         TextEditor);
+        spec->setRequired(false);
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::SerialPayload) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("数据内容"),
+                                         QString(),
+                                         StringType,
+                                         TextEditor);
+        spec->setPlaceholderText(QStringLiteral("A5 5A 01 00"));
+        spec->setPattern(QStringLiteral("^([0-9A-Fa-f]{2})(\\s+[0-9A-Fa-f]{2})*$"));
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::ScreenWidth || deviceKey == DeviceKey::ScreenHeight) {
+        const bool width = deviceKey == DeviceKey::ScreenWidth;
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         width ? QStringLiteral("单屏宽度") : QStringLiteral("单屏高度"),
+                                         width ? 1920 : 1080,
+                                         IntType,
+                                         TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(16384);
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::ScreenColumns || deviceKey == DeviceKey::ScreenRows) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         deviceKey == DeviceKey::ScreenColumns
+                                             ? QStringLiteral("屏幕列数")
+                                             : QStringLiteral("屏幕行数"),
+                                         1,
+                                         IntType,
+                                         TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(64);
+        return spec;
+    }
+
+    if (deviceKey == DeviceKey::Dmx512AdapterDeviceId)
+        return new DeviceParamSpec(deviceKey,
+                                   QStringLiteral("目标DMX512适配器"),
+                                   QString(),
+                                   SelectType,
+                                   SelectEditor);
+
+    if (deviceKey == DeviceKey::Videos) {
+        auto *spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("视频"),
+                                         QVariantList(),
+                                         VariantType,
+                                         CustomEditor);
+        spec->setRequired(false);
+        spec->setReadOnly(true);
+        return spec;
+    }
+
+    return nullptr;
+}

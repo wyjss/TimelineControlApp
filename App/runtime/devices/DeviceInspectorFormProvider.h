@@ -13,7 +13,6 @@ class AppFormSection;
 
 } // namespace EarthUI
 
-namespace TimelineControl {
 
 class Device;
 class DeviceCommand;
@@ -51,7 +50,7 @@ public:
 
     Q_INVOKABLE void inspectTemplate(const QString &templateName);
     Q_INVOKABLE void inspectDevice(const QString &deviceId);
-    Q_INVOKABLE void inspectCommand(TimelineControl::DeviceCommand *command);
+    Q_INVOKABLE void inspectCommand(DeviceCommand *command);
     Q_INVOKABLE void inspectCommandMap(const QVariantMap &command);
 
 signals:
@@ -104,6 +103,5 @@ private:
     EarthUI::AppForm *m_commandForm = nullptr;
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::DeviceInspectorFormProvider *)
+Q_DECLARE_METATYPE(DeviceInspectorFormProvider *)

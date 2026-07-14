@@ -10,7 +10,6 @@
 
 #include "devices/DeviceParamSpec.h"
 
-namespace TimelineControl {
 
 class Device;
 class DeviceExecutorManager;
@@ -51,6 +50,5 @@ private:
     DeviceExecutorManager *m_deviceExecutorManager = nullptr;
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::DeviceManager *)
+Q_DECLARE_METATYPE(DeviceManager *)

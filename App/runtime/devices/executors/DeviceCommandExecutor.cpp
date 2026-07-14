@@ -2,7 +2,6 @@
 
 #include "devices/DeviceCommand.h"
 
-using namespace TimelineControl;
 
 DeviceCommandExecutor::DeviceCommandExecutor(QObject *parent)
     : QObject(parent)

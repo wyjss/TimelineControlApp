@@ -46,7 +46,6 @@ Item {
     readonly property QtObject shellTheme: theme && theme.shell ? theme.shell : null
     readonly property int topBarHeight: shellTheme ? shellTheme.topBarHeight : 44
     readonly property int railWidth: shellTheme ? shellTheme.railWidth : 52
-    readonly property int statusBarHeight: shellTheme ? shellTheme.statusBarHeight : 30
     readonly property int topBarPadding: shellTheme ? shellTheme.topBarPadding : 10
     readonly property int topBarSearchWidth: shellTheme ? shellTheme.topBarSearchWidth : 336
     readonly property int topBarIconButtonSize: shellTheme ? shellTheme.topBarIconButtonSize : 30
@@ -58,7 +57,6 @@ Item {
     readonly property int seamFadeSize: shellTheme ? shellTheme.shellSeamFadeSize : 14
     readonly property int leftRevealDelay: theme && theme.motion ? theme.motion.shellPanelRevealDelay : 140
     readonly property int leftHideDelay: theme && theme.motion ? theme.motion.shellPanelHideDelay : 280
-    readonly property int canvasBottomInset: statusBarHeight + overlayMargin
     readonly property int defaultLeftPanelWidth: shellTheme ? shellTheme.sidebarWidth : 260
     readonly property int rightPanelWidth: shellTheme ? shellTheme.inspectorWidth : 304
     readonly property bool timelineStopped: timelineState === 0
@@ -836,24 +834,6 @@ Item {
                                 }
                             }
 
-                            Base.AppSurface {
-                                Layout.alignment: Qt.AlignHCenter
-                                Layout.preferredWidth: root.railButtonSize
-                                Layout.preferredHeight: root.railButtonSize
-                                sizeToContent: false
-                                theme: root.theme
-                                surfaceTone: "highlight"
-                                shapeRole: AppUiEnums.ShapeRole.Control
-                                strokeWidth: 1
-
-                                Base.AppText {
-                                    anchors.centerIn: parent
-                                    text: root.hasInteractiveCanvas ? qsTr("3D") : qsTr("2D")
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "accent"
-                                }
-                            }
                         }
                     }
 
@@ -893,7 +873,6 @@ Item {
                             id: earthCanvasLoader
 
                             anchors.fill: parent
-                            anchors.bottomMargin: root.statusBarHeight
                             active: root.hasInteractiveCanvas
                             source: root.canvasDelegateSource
                             onLoaded: {
@@ -904,7 +883,6 @@ Item {
 
                         Item {
                             anchors.fill: parent
-                            anchors.bottomMargin: root.statusBarHeight
                             visible: !earthCanvasLoader.active
 
                             Canvas {
@@ -1030,7 +1008,6 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
-                            anchors.bottomMargin: root.statusBarHeight
                             height: root.seamFadeSize
                             z: 1
                             gradient: Gradient {
@@ -1052,7 +1029,7 @@ Item {
                             x: 0
                             y: root.overlayMargin
                             width: root.overlayMargin
-                            height: Math.max(0, parent.height - root.canvasBottomInset - root.overlayMargin)
+                            height: Math.max(0, parent.height - root.overlayMargin * 2)
                             visible: root.leftPanelAutoHideActive && root.leftPanelVisible
                             z: 2
                         }
@@ -1064,7 +1041,7 @@ Item {
                             x: root.leftPanelVisible ? root.overlayMargin : -width - root.overlayMargin
                             y: root.overlayMargin
                             width: root.leftPanelWidth
-                            height: Math.max(0, parent.height - root.canvasBottomInset - root.overlayMargin)
+                            height: Math.max(0, parent.height - root.overlayMargin * 2)
                             visible: opacity > 0 || root.leftPanelVisible
                             opacity: root.leftPanelVisible ? 1 : 0
                             z: 3
@@ -1102,7 +1079,7 @@ Item {
                             x: root.rightPanelVisible ? parent.width - width - root.overlayMargin : parent.width + root.overlayMargin
                             y: root.overlayMargin
                             width: root.rightPanelWidth
-                            height: Math.max(0, parent.height - root.canvasBottomInset - root.overlayMargin)
+                            height: Math.max(0, parent.height - root.overlayMargin * 2)
                             visible: opacity > 0 || root.rightPanelVisible
                             opacity: root.rightPanelVisible ? 1 : 0
                             z: 3
@@ -1241,57 +1218,6 @@ Item {
                             }
                         }
 
-                        Base.AppSurface {
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.bottom: parent.bottom
-                            height: root.statusBarHeight
-                            sizeToContent: false
-                            theme: root.theme
-                            surfaceTone: "surface"
-                            shapeRole: AppUiEnums.ShapeRole.None
-                            strokeWidth: 0
-                            z: 4
-
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 12
-                                anchors.rightMargin: 12
-                                spacing: 14
-
-                                Base.AppText {
-                                    text: qsTr("坐标系 EPSG:3857")
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                }
-
-                                Base.AppText {
-                                    text: qsTr("缩放 11.4")
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                }
-
-                                Base.AppText {
-                                    text: qsTr("光标 114.058, 22.542")
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                }
-
-                                Item {
-                                    Layout.fillWidth: true
-                                }
-
-                                Base.AppText {
-                                    text: qsTr("已选 3")
-                                    theme: root.theme
-                                    styleRole: "bodyS"
-                                    textTone: "accent"
-                                }
-                            }
-                        }
                     }
                 }
             }

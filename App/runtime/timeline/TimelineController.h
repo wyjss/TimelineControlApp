@@ -4,7 +4,6 @@
 #include <QObject>
 #include <QTimer>
 
-namespace TimelineControl {
 
 class TimelineController final : public QObject
 {
@@ -60,6 +59,5 @@ private:
     int m_tickIntervalMs = 16;
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::TimelineController *)
+Q_DECLARE_METATYPE(TimelineController *)

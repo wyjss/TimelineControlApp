@@ -24,7 +24,6 @@ qint64 variantInt64(const QVariantMap &map, const QString &key, qint64 fallback)
 
 } // namespace
 
-using namespace TimelineControl;
 
 TimelineCommand::TimelineCommand(qint64 startTimeMs,
                                  const QString &targetDeviceId,
@@ -277,7 +276,10 @@ TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
             commandParams.insert(it.key(), it.value());
     }
 
-    return addCommand(startTimeMs, targetDeviceId, targetCommand->name(), commandParams, targetCommand);
+    const QVariantMap executionValues = extraParams.value(QStringLiteral("executionInputFields")).toMap();
+    const QString commandName = targetCommand->resolvedParams(executionValues)
+                                    .value(DeviceKey::Name, targetCommand->name()).toString();
+    return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, targetCommand);
 }
 
 TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,

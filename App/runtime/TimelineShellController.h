@@ -2,7 +2,6 @@
 
 #include "runtime/shell/AppShellController.h"
 
-namespace TimelineControl {
 
 class TimelineShellController final : public EarthUI::AppShellController
 {
@@ -17,5 +16,3 @@ private:
     void buildDrawers();
     void syncSelection(const QString &title, const QString &detail);
 };
-
-} // namespace TimelineControl

@@ -3,7 +3,6 @@
 #include "devices/DeviceCommand.h"
 #include <QVariant>
 
-using namespace TimelineControl;
 
 DeviceTemplate::DeviceTemplate(const QString &name,
                                const QString &deviceType,
@@ -20,6 +19,7 @@ DeviceTemplate::DeviceTemplate(const QString &name,
     , m_configSpecs(configSpecs)
     , m_commands(commands)
 {
+    m_configSpecs.prepend(DeviceParamSpec::createForKey(DeviceKey::Ip));
 
 	for (auto spec : m_configSpecs) {
 		spec->setParent(this);
@@ -65,19 +65,14 @@ QList<DeviceParamSpec *> DeviceTemplate::configSpecObjects() const
     return m_configSpecs;
 }
 
-Device* DeviceTemplate::createDevice(QObject* parent)
+Device *DeviceTemplate::createDevice(QObject *parent, const QVariantMap &configValues)
 {
-    Device* device = new Device(name(), parent);
+    auto *device = new Device(name(), parent);
 	device->setDeviceType(deviceType());
     device->setSupportedProtocols(supportedProtocols());
 	device->setDescription(description());
-
-    QVariantMap configValues;
-    for (auto spec : m_configSpecs) {
-        configValues[spec->key()] = spec->value();
-    }
     device->setConfigValues(configValues);
-    
+
     for (auto cmd : m_commands) {
         auto newCmd = cmd->clone(device);
         Q_ASSERT(newCmd);
@@ -87,3 +82,45 @@ Device* DeviceTemplate::createDevice(QObject* parent)
 	return device;
 }
 
+SerialPowerDeviceTemplate::SerialPowerDeviceTemplate(QObject* parent /* = nullptr */)
+    : DeviceTemplate("串口开关设备",
+                     /*DeviceType::Projector*/"",
+                     {DeviceProtocol::Serial},
+                     "串口开关设备",
+                     {DeviceParamSpec::createForKey(DeviceKey::SerialPort),
+                     DeviceParamSpec::createForKey(DeviceKey::BaudRate)},
+                     {},
+                     parent
+    )
+{
+	auto openPayload = DeviceParamSpec::createForKey(DeviceKey::SerialPayload);
+	openPayload->setKey("open");
+	openPayload->setLabel("开机码");
+    openPayload->setParent(this);
+    m_configSpecs << openPayload;
+
+	auto closePayload = DeviceParamSpec::createForKey(DeviceKey::SerialPayload);
+    closePayload->setKey("close");
+    closePayload->setLabel("关机码");
+    closePayload->setParent(this);
+    m_configSpecs << closePayload;
+}
+
+Device * SerialPowerDeviceTemplate::createDevice(QObject *parent, const QVariantMap &configValues)
+{
+    Device *device = DeviceTemplate::createDevice(parent, configValues);
+
+    {
+        DeviceCommand* command = device->createCommand(DeviceProtocol::Serial, QStringLiteral("开机"));
+        DeviceParamSpec* payload = command->getField(DeviceKey::SerialPayload);
+        payload->setValue(configValues.value(QStringLiteral("open")));
+    }
+   
+    {
+		DeviceCommand* command = device->createCommand(DeviceProtocol::Serial, QStringLiteral("关机"));
+		DeviceParamSpec* payload = command->getField(DeviceKey::SerialPayload);
+		payload->setValue(configValues.value(QStringLiteral("close")));
+    }
+
+    return device;
+}

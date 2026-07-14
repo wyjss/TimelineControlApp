@@ -4,7 +4,6 @@
 
 #include "runtime/fields/BaseField.h"
 
-namespace TimelineControl {
 
 class DeviceParamSpec final : public EarthUI::BaseField
 {
@@ -49,11 +48,11 @@ public:
     Q_INVOKABLE QString invalidReason(const QVariant &value = QVariant()) const;
 
     static QString typeName(ValueType valueType);
+    static DeviceParamSpec *createForKey(const QString &deviceKey);
 
 private:
     static QVariant normalizedValue(ValueType valueType, const QVariant &value);
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::DeviceParamSpec *)
+Q_DECLARE_METATYPE(DeviceParamSpec *)

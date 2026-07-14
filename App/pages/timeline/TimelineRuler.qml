@@ -33,6 +33,7 @@ Item {
     property real wheelScaleStep: 1.05
     // 是否允许拖动更新时间。
     property bool dragEnabled: true
+    readonly property real labelWidth: 72
 
     readonly property real targetMajorTickSeconds: Math.max(1, baseMajorTickSeconds) * safeTimeScale()
     readonly property real majorTickSeconds: calcRealMajorTickSeconds(baseMajorTickSeconds)
@@ -195,9 +196,16 @@ Item {
         var result = []
         var startTick = Math.max(0, Math.floor(visibleStartMs / majorTickMs) * majorTickMs)
         var endTick = Math.min(durationMs, visibleEndMs + majorTickMs)
+        var lastLabelRight = -1
 
-        for (var tickMs = startTick; tickMs <= endTick; tickMs += majorTickMs)
-            result.push({ "timeMs": tickMs, "label": formatTime(tickMs), "x": timeToX(tickMs) })
+        for (var tickMs = startTick; tickMs <= endTick; tickMs += majorTickMs) {
+            var tickX = timeToX(tickMs)
+            var labelX = clampLabelX(tickX, labelWidth)
+            if (tickX < 0 || tickX > width || labelX < lastLabelRight)
+                continue
+            result.push({ "timeMs": tickMs, "label": formatTime(tickMs), "x": tickX })
+            lastLabelRight = labelX + labelWidth
+        }
 
         return result
     }
@@ -304,11 +312,9 @@ Item {
         model: root.labelTicks
 
         delegate: Base.AppText {
-            readonly property real labelWidth: 72
-
-            x: Math.round(root.clampLabelX(modelData.x, labelWidth))
+            x: Math.round(root.clampLabelX(modelData.x, root.labelWidth))
             y: 6
-            width: labelWidth
+            width: root.labelWidth
             text: modelData.label
             theme: root.theme
             styleRole: "bodyS"

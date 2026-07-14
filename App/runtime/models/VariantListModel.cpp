@@ -1,6 +1,5 @@
 #include "models/VariantListModel.h"
 
-using namespace TimelineControl;
 
 VariantListModel::VariantListModel(QObject *parent)
     : QAbstractListModel(parent)

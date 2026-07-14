@@ -6,7 +6,6 @@
 
 class QDataStream;
 
-namespace TimelineControl {
 
 class DeviceManager;
 class DeviceModel;
@@ -17,24 +16,22 @@ class VideoProjectionPlanController;
 class TimelineController;
 class TimelineCommandModel;
 
-} // namespace TimelineControl
 
 class TaskManager;
 
-namespace TimelineControl {
 
 class TimelineRuntime final : public EarthUI::BaseRuntime
 {
     Q_OBJECT
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
     Q_PROPERTY(TaskManager *taskManager READ taskManager CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::DeviceManager *deviceManager READ deviceManager CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::DeviceModel *deviceModel READ deviceModel CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::DeviceInspectorFormProvider *deviceInspectorFormProvider READ deviceInspectorFormProvider CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::TimelineController *timelineController READ timelineController CONSTANT FINAL)
-    Q_PROPERTY(TimelineControl::TimelineCommandModel *timelineCommandModel READ timelineCommandModel CONSTANT FINAL)
+    Q_PROPERTY(DeviceManager *deviceManager READ deviceManager CONSTANT FINAL)
+    Q_PROPERTY(DeviceModel *deviceModel READ deviceModel CONSTANT FINAL)
+    Q_PROPERTY(DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
+    Q_PROPERTY(DeviceInspectorFormProvider *deviceInspectorFormProvider READ deviceInspectorFormProvider CONSTANT FINAL)
+    Q_PROPERTY(VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
+    Q_PROPERTY(TimelineController *timelineController READ timelineController CONSTANT FINAL)
+    Q_PROPERTY(TimelineCommandModel *timelineCommandModel READ timelineCommandModel CONSTANT FINAL)
     Q_PROPERTY(QString currentPlanFilePath READ currentPlanFilePath NOTIFY currentPlanFilePathChanged FINAL)
     Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanFilePathChanged FINAL)
 
@@ -88,5 +85,3 @@ private:
     QString m_currentPlanFilePath;
     int m_runId = 0;
 };
-
-} // namespace TimelineControl

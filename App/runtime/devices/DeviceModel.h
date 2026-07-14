@@ -9,14 +9,13 @@
 
 class QDataStream;
 
-namespace TimelineControl {
 
 class DeviceModel final : public TypedListModel<Device *>
 {
     Q_OBJECT
     Q_PROPERTY(QVariantList devices READ devices NOTIFY devicesChanged FINAL)
     Q_PROPERTY(QString currentDeviceId READ currentDeviceId WRITE setCurrentDeviceId NOTIFY currentDeviceIdChanged FINAL)
-    Q_PROPERTY(TimelineControl::Device *currentDevice READ currentDevice NOTIFY currentDeviceChanged FINAL)
+    Q_PROPERTY(Device *currentDevice READ currentDevice NOTIFY currentDeviceChanged FINAL)
     Q_PROPERTY(QStringList deviceTypes READ deviceTypes NOTIFY deviceTypesChanged FINAL)
 
 public:
@@ -43,8 +42,8 @@ public:
 
 signals:
     void devicesChanged();
-    void deviceAdded(TimelineControl::Device *device);
-    void deviceAboutToBeRemoved(TimelineControl::Device *device, const QString &deviceId);
+    void deviceAdded(Device *device);
+    void deviceAboutToBeRemoved(Device *device, const QString &deviceId);
     void deviceRemoved(const QString &deviceId);
     void deviceTypesChanged();
     void currentDeviceIdChanged();
@@ -69,6 +68,5 @@ private:
     QString m_currentDeviceId;
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::DeviceModel *)
+Q_DECLARE_METATYPE(DeviceModel *)

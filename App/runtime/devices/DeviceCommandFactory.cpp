@@ -3,167 +3,291 @@
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
 
-#include <QVariantList>
+#include <QList>
+#include <QUrl>
 #include <QVariantMap>
 
-using namespace TimelineControl;
 
 namespace {
 
 const char *kProtocolKey = "protocol";
-const char *kHexPayloadPattern = "^([0-9A-Fa-f]{2})(\\s+[0-9A-Fa-f]{2})*$";
 
-QVariantMap option(const QString &label, const QString &value)
+struct RegisteredCommand
 {
-    return QVariantMap{
-        {QStringLiteral("label"), label},
-        {QStringLiteral("value"), value}
-    };
+    QString protocol;
+    QString commandType;
+    DeviceCommandFactory::Creator creator;
+};
+
+QList<RegisteredCommand> &registeredCommands()
+{
+    static QList<RegisteredCommand> commands;
+    return commands;
 }
 
-void addHttpFields(DeviceCommand *command)
+class SerialCommand final : public DeviceCommand
 {
-    auto *ipField = new DeviceParamSpec(DeviceKey::Ip,
-                                        QStringLiteral("IP"),
-                                        QString(),
-                                        DeviceParamSpec::StringType,
-                                        DeviceParamSpec::TextEditor,
-                                        command);
-    ipField->setPattern(DevicePattern::Ip);
-    ipField->setPlaceholderText(QStringLiteral("192.168.1.10"));
-    command->addCreationInputField(ipField);
+public:
+    explicit SerialCommand(QObject *parent)
+        : DeviceCommand(DeviceProtocol::Serial, QStringLiteral("串口指令"), parent)
+    {
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPort));
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::BaudRate));
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPayload));
+    }
+};
 
-    auto *portField = new DeviceParamSpec(DeviceKey::IpPort,
-                                          QStringLiteral("端口"),
-                                          10001,
-                                          DeviceParamSpec::IntType,
-                                          DeviceParamSpec::AutoEditor,
-                                          command);
-    portField->setMinimum(1);
-    portField->setMaximum(65535);
-    command->addCreationInputField(portField);
-
-    auto *methodField = new DeviceParamSpec(DeviceKey::HttpMethod,
-                                            QStringLiteral("方法"),
-                                            QStringLiteral("GET"),
-                                            DeviceParamSpec::SelectType,
-                                            DeviceParamSpec::SelectEditor,
-                                            command);
-    methodField->setOptions(QVariantList{
-        option(QStringLiteral("GET"), QStringLiteral("GET")),
-        option(QStringLiteral("POST"), QStringLiteral("POST"))
-    });
-    command->addCreationInputField(methodField);
-
-    auto *pathField = new DeviceParamSpec(DeviceKey::ApiPath,
-                                          QStringLiteral("路径"),
-                                          QString(),
-                                          DeviceParamSpec::StringType,
-                                          DeviceParamSpec::TextEditor,
-                                          command);
-    pathField->setPattern(QStringLiteral("^/.*"));
-    pathField->setPlaceholderText(QStringLiteral("/api/command"));
-    command->addCreationInputField(pathField);
-
-    auto *bodyField = new DeviceParamSpec(DeviceKey::HttpBody,
-                                          QStringLiteral("内容"),
-                                          QString(),
-                                          DeviceParamSpec::StringType,
-                                          DeviceParamSpec::TextEditor,
-                                          command);
-    bodyField->setRequired(false);
-    command->addCreationInputField(bodyField);
-}
-
-} // namespace
-
-DeviceCommand *DeviceCommandFactory::createForProtocol(const QString &protocol, QObject *parent)
+class Dmx512Command final : public DeviceCommand
 {
-    const QString protocolValue = protocol.trimmed();
-    if (protocolValue == DeviceProtocol::Http) {
-        auto *command = new DeviceCommand(protocolValue, QStringLiteral("HTTP 指令"), parent);
-        addHttpFields(command);
-        return command;
-    }
-
-    if (protocolValue == DeviceProtocol::Pc) {
-        auto *command = new DeviceCommand(protocolValue, QStringLiteral("PC 指令"), parent);
-        addHttpFields(command);
-        command->updateConfigMap({
-            {DeviceKey::HttpMethod, QStringLiteral("GET")},
-            {DeviceKey::HttpBody, QString()},
-            {DeviceKey::IpPort, 11357}
-        });
-        return command;
-    }
-
-    if (protocolValue == DeviceProtocol::Serial) {
-        auto *command = new DeviceCommand(protocolValue, QStringLiteral("串口指令"), parent);
-        auto *serialPortField = new DeviceParamSpec(DeviceKey::SerialPort,
-                                                    QStringLiteral("串口"),
-                                                    QStringLiteral("COM0"),
-                                                    DeviceParamSpec::StringType,
-                                                    DeviceParamSpec::TextEditor,
-                                                    command);
-        serialPortField->setPlaceholderText(QStringLiteral("COM1"));
-        serialPortField->setRequired(true);
-        command->addCreationInputField(serialPortField);
-
-        auto *baudRateField = new DeviceParamSpec(DeviceKey::BaudRate,
-                                                  QStringLiteral("波特率"),
-                                                  9600,
-                                                  DeviceParamSpec::IntType,
-                                                  DeviceParamSpec::TextEditor,
-                                                  command);
-        baudRateField->setRequired(true);
-        baudRateField->setMinimum(1);
-        baudRateField->setMaximum(4000000);
-        command->addCreationInputField(baudRateField);
-
-        auto *payloadField = new DeviceParamSpec(DeviceKey::Payload,
-                                                 QStringLiteral("数据内容"),
-                                                 QString(),
-                                                 DeviceParamSpec::StringType,
-                                                 DeviceParamSpec::TextEditor,
-                                                 command);
-        payloadField->setPlaceholderText(QStringLiteral("A5 5A 01 00"));
-        payloadField->setPattern(QString::fromLatin1(kHexPayloadPattern));
-        payloadField->setRequired(true);
-        command->addCreationInputField(payloadField);
-        return command;
-    }
-
-    if (protocolValue == DeviceProtocol::Dmx512) {
-        auto *command = new DeviceCommand(protocolValue, QStringLiteral("DMX 指令"), parent);
+public:
+    explicit Dmx512Command(QObject *parent)
+        : DeviceCommand(DeviceProtocol::Dmx512, QStringLiteral("DMX指令"), parent)
+    {
         auto *channelField = new DeviceParamSpec(QStringLiteral("channel"),
                                                  QStringLiteral("通道"),
                                                  1,
                                                  DeviceParamSpec::IntType,
                                                  DeviceParamSpec::TextEditor,
-                                                 command);
+                                                 this);
         channelField->setMinimum(1);
         channelField->setMaximum(512);
-        command->addCreationInputField(channelField);
+        addCreationInputField(channelField);
 
         auto *valueField = new DeviceParamSpec(QStringLiteral("value"),
                                                QStringLiteral("值"),
                                                255,
                                                DeviceParamSpec::IntType,
                                                DeviceParamSpec::SliderEditor,
-                                               command);
+                                               this);
         valueField->setMinimum(0);
         valueField->setMaximum(255);
         valueField->setStepSize(1);
-        command->addCreationInputField(valueField);
-        return command;
+        addCreationInputField(valueField);
+    }
+};
+
+class PlayVideoCommand : public DeviceCommand_PC
+{
+public:
+    explicit PlayVideoCommand(QObject *parent)
+        : DeviceCommand_PC(QStringLiteral("播放视频"),
+                           QStringLiteral("playVideo"),
+                           parent)
+    {
+        auto *videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
+                                                   QStringLiteral("视频文件"),
+                                                   QString(),
+                                                   DeviceParamSpec::StringType,
+                                                   DeviceParamSpec::TextEditor,
+                                                   this);
+        videoFileField->setRequired(false);
+        addExecutionInputField(videoFileField);
     }
 
+    virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+    {
+        auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
+        QString api = "/video/play";
+        QString url = executionInputValues.value("videoFile", "").toString();
+        if (!url.isEmpty()) {
+            api += QString("?url=%1").arg(url);
+            params[DeviceKey::Name] = this->name() + "-" + url;
+        }
+        params[DeviceKey::ApiPath] = api;
+        return params;
+    }
+};
+
+class PauseVideoCommand : public DeviceCommand_PC
+{
+public:
+	explicit PauseVideoCommand(QObject* parent)
+		: DeviceCommand_PC(QStringLiteral("暂停播放"),
+						   QStringLiteral("pauseVideo"),
+						   parent)
+	{
+		auto* videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
+												   QStringLiteral("视频文件"),
+												   QString(),
+												   DeviceParamSpec::StringType,
+												   DeviceParamSpec::TextEditor,
+												   this);
+		videoFileField->setRequired(false);
+		addExecutionInputField(videoFileField);
+	}
+
+	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+	{
+		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
+		QString api = "/video/pause";
+		QString url = executionInputValues.value("videoFile", "").toString();
+		if (!url.isEmpty()) {
+			api += QString("?url=%1").arg(url);
+			params[DeviceKey::Name] = this->name() + "-" + url;
+		}
+		params[DeviceKey::ApiPath] = api;
+		return params;
+	}
+};
+
+class StopVideoCommand : public DeviceCommand_PC
+{
+public:
+	explicit StopVideoCommand(QObject* parent)
+		: DeviceCommand_PC(QStringLiteral("停止播放"),
+						   QStringLiteral("stopVideo"),
+						   parent)
+	{
+		auto* videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
+												   QStringLiteral("视频文件"),
+												   QString(),
+												   DeviceParamSpec::StringType,
+												   DeviceParamSpec::TextEditor,
+												   this);
+		videoFileField->setRequired(false);
+		addExecutionInputField(videoFileField);
+	}
+
+	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+	{
+		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
+		QString api = "/video/stop";
+		QString url = executionInputValues.value("videoFile", "").toString();
+		if (!url.isEmpty()) {
+			api += QString("?url=%1").arg(url);
+			params[DeviceKey::Name] = this->name() + "-" + url;
+		}
+		params[DeviceKey::ApiPath] = api;
+		return params;
+	}
+};
+
+class PlayDomeVideoCommand final : public DeviceCommand_PC
+{
+public:
+    explicit PlayDomeVideoCommand(QObject *parent)
+        : DeviceCommand_PC(QStringLiteral("播放全景视频"),
+                           QStringLiteral("playDomeVideo"),
+                           parent)
+    {
+        auto *videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
+                                                   QStringLiteral("视频文件"),
+                                                   QString(),
+                                                   DeviceParamSpec::StringType,
+                                                   DeviceParamSpec::TextEditor,
+                                                   this);
+        videoFileField->setRequired(true);
+        addExecutionInputField(videoFileField);
+    }
+
+    QVariantMap resolvedParams(const QVariantMap &executionInputValues) const override
+    {
+        QVariantMap params = DeviceCommand::resolvedParams();
+        const QString videoFile = executionInputValues.value(QStringLiteral("videoFile")).toString().trimmed();
+        if (!videoFile.isEmpty()) {
+            params.insert(DeviceKey::ApiPath,
+                          QStringLiteral("/video/play?mode=dome&url=")
+                              + QString::fromLatin1(QUrl::toPercentEncoding(videoFile)));
+        }
+        return params;
+    }
+};
+
+class VirtualPlaybackCommand final : public DeviceCommand_PC
+{
+public:
+    explicit VirtualPlaybackCommand(QObject *parent)
+        : DeviceCommand_PC(QStringLiteral("虚拟播放"),
+                           QStringLiteral("virtualPlayback"),
+                           parent)
+    {
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Videos));
+    }
+};
+
+void registerBuiltInCommands()
+{
+    static const bool registered = [] {
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new DeviceCommand_Http(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new DeviceCommand_PC(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new SerialCommand(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new Dmx512Command(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new PlayVideoCommand(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new PauseVideoCommand(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new StopVideoCommand(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new PlayDomeVideoCommand(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new VirtualPlaybackCommand(parent);
+        });
+        return true;
+    }();
+    Q_UNUSED(registered)
+}
+
+} // namespace
+
+void DeviceCommandFactory::registerCommand(Creator creator)
+{
+    if (!creator)
+        return;
+
+    DeviceCommand *command = creator(nullptr);
+    if (!command)
+        return;
+
+    const QString protocol = command->protocol();
+    const QString commandType = command->commandType();
+    for (const RegisteredCommand &registered : registeredCommands()) {
+        if (registered.protocol == protocol && registered.commandType == commandType) {
+            delete command;
+            return;
+        }
+    }
+
+    registeredCommands().append({protocol, commandType, creator});
+    delete command;
+}
+
+DeviceCommand *DeviceCommandFactory::create(const QString &protocol,
+                                            const QString &commandType,
+                                            QObject *parent)
+{
+    registerBuiltInCommands();
+    const QString protocolValue = protocol.trimmed();
+    const QString commandTypeValue = commandType.trimmed();
+    for (const RegisteredCommand &registered : registeredCommands()) {
+        if (registered.protocol == protocolValue && registered.commandType == commandTypeValue)
+            return registered.creator(parent);
+    }
     return nullptr;
+}
+
+DeviceCommand *DeviceCommandFactory::createForProtocol(const QString &protocol, QObject *parent)
+{
+    return create(protocol, QString(), parent);
 }
 
 DeviceCommand *DeviceCommandFactory::createFromJson(const QJsonObject &json, QObject *parent)
 {
-    DeviceCommand *command = createForProtocol(json.value(QString::fromLatin1(kProtocolKey)).toString(), parent);
+    DeviceCommand *command = create(json.value(QString::fromLatin1(kProtocolKey)).toString(),
+                                    json.value(DeviceKey::CommandType).toString(),
+                                    parent);
     if (!command)
         return nullptr;
 

@@ -10,7 +10,6 @@
 
 class QDataStream;
 
-namespace TimelineControl {
 
 class DeviceCommand;
 
@@ -60,13 +59,14 @@ public:
     void setConfigValues(const QVariantMap &configValues);
 
     QVariantList commands() const;
-    Q_INVOKABLE TimelineControl::DeviceCommand *createCommandDraft(const QString &protocol = QString()) const;
-    Q_INVOKABLE void deleteCommandDraft(TimelineControl::DeviceCommand *command) const;
-    Q_INVOKABLE TimelineControl::DeviceCommand *createCommand(const QString &protocol = QString(),
+    Q_INVOKABLE DeviceCommand *createCommandDraft(const QString &protocol = QString()) const;
+    Q_INVOKABLE void deleteCommandDraft(DeviceCommand *command) const;
+    Q_INVOKABLE DeviceCommand *createCommand(const QString &protocol = QString(),
                                                               const QString &name = QString());
-    void appendCommand(TimelineControl::DeviceCommand *command);
+    Q_INVOKABLE DeviceCommand *createCommandForType(const QString &commandType);
+    void appendCommand(DeviceCommand *command);
     Q_INVOKABLE bool removeCommandAt(int index);
-    bool removeCommand(TimelineControl::DeviceCommand *command);
+    bool removeCommand(DeviceCommand *command);
 
     Q_INVOKABLE bool setFieldValue(const QString &field, const QVariant &value);
 public:
@@ -95,6 +95,5 @@ private:
     QList<DeviceCommand *> m_commands;
 };
 
-} // namespace TimelineControl
 
-Q_DECLARE_METATYPE(TimelineControl::Device *)
+Q_DECLARE_METATYPE(Device *)

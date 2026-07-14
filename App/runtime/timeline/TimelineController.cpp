@@ -2,7 +2,6 @@
 
 #include <QtGlobal>
 
-using namespace TimelineControl;
 
 TimelineController::TimelineController(QObject *parent)
     : QObject(parent)

@@ -243,6 +243,17 @@ Item {
             : ""
     }
 
+    function executionParameterNames(command) {
+        var fields = command ? command.executionInputFields || [] : []
+        var names = []
+        for (var index = 0; index < fields.length; ++index) {
+            var name = String(fields[index].label || fields[index].key || "").trim()
+            if (name.length > 0)
+                names.push(name)
+        }
+        return names.join("、")
+    }
+
     function commandInputCount(command) {
         if (!command)
             return 0
@@ -264,7 +275,7 @@ Item {
         var protocol = root.commandProtocol(command).toLowerCase()
         if (protocol === "http" || protocol === "pc") {
             var address = String(commandFieldValue(command, "ip", "") || "").trim()
-            var port = String(commandFieldValue(command, "ipPort", "") || "").trim()
+            var port = String(commandFieldValue(command, "port", "") || "").trim()
             var path = String(commandFieldValue(command, "apiPath", "") || "").trim()
             var method = String(commandFieldValue(command, "httpMethod", "") || "").trim()
             if (address.length > 0 && port.length > 0)
@@ -274,8 +285,8 @@ Item {
         if (protocol === "serial") {
             var serialPort = String(commandFieldValue(command, "serialPort", "") || "").trim()
             var baudRate = String(commandFieldValue(command, "baudRate", "") || "").trim()
-            var payload = String(commandFieldValue(command, "payload", "") || "").trim()
-            return [serialPort, baudRate, payload].filter(function(part) { return part.length > 0 }).join(" / ")
+            var serialPayload = String(commandFieldValue(command, "serialPayload", "") || "").trim()
+            return [serialPort, baudRate, serialPayload].filter(function(part) { return part.length > 0 }).join(" / ")
         }
         if (protocol === "dmx512")
             return qsTr("通道 %1 / 值 %2")
@@ -332,7 +343,7 @@ Item {
     function deviceAddress(device) {
         var values = device && device.configValues ? device.configValues : {}
         var ip = String(values.ip || "").trim()
-        var port = String(values.ipPort || values.port || "").trim()
+        var port = String(values.port || "").trim()
         var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
         if (address.length === 0)
             address = String(values.serialPort || "").trim()
@@ -945,13 +956,28 @@ Item {
                                             Layout.fillWidth: true
                                             spacing: 2
 
-                                            Base.AppText {
+                                            RowLayout {
                                                 Layout.fillWidth: true
-                                                text: root.commandName(commandRow.commandData)
-                                                theme: root.pageTheme
-                                                styleRole: "bodyM"
-                                                colorOverride: commandRow.selected ? "#f8fafc" : undefined
-                                                elide: Text.ElideRight
+                                                spacing: 8
+
+                                                Base.AppText {
+                                                    Layout.fillWidth: true
+                                                    text: root.commandName(commandRow.commandData)
+                                                    theme: root.pageTheme
+                                                    styleRole: "bodyM"
+                                                    colorOverride: commandRow.selected ? "#f8fafc" : undefined
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                Base.AppText {
+                                                    Layout.maximumWidth: 120
+                                                    text: root.executionParameterNames(commandRow.commandData)
+                                                    visible: text.length > 0
+                                                    theme: root.pageTheme
+                                                    styleRole: "bodyS"
+                                                    colorOverride: "#ef4444"
+                                                    elide: Text.ElideRight
+                                                }
                                             }
 
                                             Base.AppText {
@@ -1078,7 +1104,7 @@ Item {
         }
 
         function defaultDeviceName(nextTemplate) {
-            return nextTemplate ? qsTr("新建 %1").arg(String(nextTemplate.name)) : qsTr("新设备")
+            return nextTemplate ? qsTr("新建%1").arg(String(nextTemplate.name)) : qsTr("新设备")
         }
 
         function templateDeviceType(nextTemplate) {

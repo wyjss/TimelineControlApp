@@ -12,7 +12,6 @@
 #include <QUrl>
 
 
-using namespace TimelineControl;
 
 HttpCommandExecutor::HttpCommandExecutor(const QString &ip, int port, QObject *parent)
     : DeviceCommandExecutor(parent)
@@ -81,7 +80,7 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
 bool HttpCommandExecutor::checkOnlineImpl(const QVariantMap &params)
 {
     const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
-    const int port = params.value(DeviceKey::IpPort).toInt();
+    const int port = params.value(DeviceKey::Port).toInt();
     if (ip.isEmpty() || port <= 0)
         return false;
 

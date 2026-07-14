@@ -4,7 +4,6 @@
 #include <QVariant>
 #include <QVariantList>
 
-namespace TimelineControl {
 
 class VariantListModel : public QAbstractListModel
 {
@@ -32,5 +31,3 @@ public:
 private:
     QVariantList m_values;
 };
-
-} // namespace TimelineControl

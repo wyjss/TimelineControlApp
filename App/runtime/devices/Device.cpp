@@ -10,7 +10,6 @@
 #include <QMetaProperty>
 #include <QUuid>
 
-using namespace TimelineControl;
 
 namespace {
 
@@ -186,6 +185,11 @@ void Device::deleteCommandDraft(DeviceCommand *command) const
 
 DeviceCommand *Device::createCommand(const QString &protocol, const QString &name)
 {
+    for (const QChar character : name) {
+        if (character.isSpace())
+            return nullptr;
+    }
+
     DeviceCommand *command = createCommandDraft(protocol);
     if (!command)
         return nullptr;
@@ -196,6 +200,21 @@ DeviceCommand *Device::createCommand(const QString &protocol, const QString &nam
 
     appendCommand(command);
     return command;
+}
+
+DeviceCommand *Device::createCommandForType(const QString &commandType)
+{
+    for (const QString &protocol : m_supportedProtocols) {
+        DeviceCommand *command = DeviceCommandFactory::create(protocol, commandType, this);
+        if (!command)
+            continue;
+
+        command->updateConfigMap(m_configValues);
+        appendCommand(command);
+        return command;
+    }
+
+    return nullptr;
 }
 
 void Device::appendCommand(DeviceCommand *command)
@@ -210,6 +229,9 @@ void Device::appendCommand(DeviceCommand *command)
         command->setParent(this);
 
     m_commands.append(command);
+
+    command->onInstall(this);
+
     emit commandsChanged();
 }
 
@@ -335,10 +357,9 @@ void Device::readFromStream(QDataStream& stream)
 
     for (DeviceCommand *command : m_commands)
         delete command;
-    m_commands = commands;
-    for (DeviceCommand *command : m_commands) {
-        if (command->parent() != this)
-            command->setParent(this);
+
+    for (DeviceCommand *command : commands) {
+        appendCommand(command);
     }
     emit commandsChanged();
 }

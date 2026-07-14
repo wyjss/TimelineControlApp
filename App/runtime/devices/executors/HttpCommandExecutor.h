@@ -6,7 +6,6 @@
 
 class QNetworkAccessManager;
 
-namespace TimelineControl {
 
 class HttpCommandExecutor final : public DeviceCommandExecutor
 {
@@ -23,5 +22,3 @@ private:
     int m_port = 80;
     QNetworkAccessManager *m_manager = nullptr;
 };
-
-} // namespace TimelineControl

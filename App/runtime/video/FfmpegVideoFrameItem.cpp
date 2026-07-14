@@ -10,7 +10,6 @@
 #include "avreader/avreader.h"
 #include "pixeltool/avframefactory.h"
 
-using namespace TimelineControl;
 namespace {
 
 qint64 secondsToMilliseconds(double seconds)

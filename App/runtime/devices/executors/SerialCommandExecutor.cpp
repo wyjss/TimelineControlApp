@@ -9,7 +9,6 @@
 #include <QSerialPortInfo>
 #include <QStringList>
 
-using namespace TimelineControl;
 
 namespace {
 
@@ -25,7 +24,7 @@ SerialCommandExecutor::SerialCommandExecutor(const QString &portName, QObject *p
 
 void SerialCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap &params)
 {
-    const QStringList parts = params.value(DeviceKey::Payload).toString().simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+    const QStringList parts = params.value(DeviceKey::SerialPayload).toString().simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
     QByteArray bytes;
     bytes.reserve(parts.size());
     for (const QString &part : parts) {
