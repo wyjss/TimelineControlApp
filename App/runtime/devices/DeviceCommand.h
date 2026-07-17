@@ -95,5 +95,11 @@ protected:
     DeviceCommand_PC(const QString &name, const QString &commandType, QObject *parent);
 };
 
+class DeviceCommand_Osc : public DeviceCommand
+{
+public:
+    explicit DeviceCommand_Osc(QObject *parent = nullptr);
+};
+
 
 Q_DECLARE_METATYPE(DeviceCommand *)

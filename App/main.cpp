@@ -8,12 +8,14 @@
 #include <QSerialPortInfo>
 #include <qqml.h>
 #include <QUrl>
+//#include <QScreen>
 
 #include <iostream>
 #include "runtime/app/AppSettings.h"
 #include "runtime/TimelineRuntime.h"
 #include "runtime/TimelineShellController.h"
 #include "runtime/video/FfmpegVideoFrameItem.h"
+#include "runtime/video/PcTimelinePreviewGenerator.h"
 
 //template<typename TDds, typename TProto>
 //static inline void copyFieldValueToDds(const TProto& p, TDds& d, int maxCharXSize)
@@ -50,7 +52,9 @@ int main(int argc, char *argv[])
     application.setOrganizationName(QStringLiteral("TimelineControlApp"));
     application.setOrganizationDomain(QStringLiteral("timeline-control.local"));
     application.setApplicationName(QStringLiteral("时间线控制应用"));
-
+    //QRect virtualGeometry = QGuiApplication::primaryScreen()->virtualGeometry();
+    //qDebug() << virtualGeometry;
+   // exit(0);
     QString projectionVideoSource;
     const QStringList arguments = application.arguments();
     for (int index = 1; index < arguments.size(); ++index) {
@@ -72,6 +76,10 @@ int main(int argc, char *argv[])
     TimelineRuntime runtime;
     TimelineShellController shellController(&runtime);
     runtime.setShell(&shellController);
+    PcTimelinePreviewGenerator pcTimelinePreviewGenerator(runtime.timelineController(),
+                                                           runtime.timelineCommandModel(),
+                                                           runtime.deviceModel(),
+                                                           &shellController);
     runtime.settings()->setApplicationName(QStringLiteral("时间线控制应用"));
     runtime.settings()->setLocale(QStringLiteral("zh_CN"));
     runtime.settings()->setThemeMode(QStringLiteral("dark"));
@@ -85,6 +93,8 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("app"), &runtime);
     engine.rootContext()->setContextProperty(QStringLiteral("timelineShellController"), &shellController);
+    engine.rootContext()->setContextProperty(QStringLiteral("pcTimelinePreviewGenerator"),
+                                             &pcTimelinePreviewGenerator);
 
     const QUrl mainUrl(QStringLiteral("qrc:/TimelineControlApp/App/main.qml"));
     QObject::connect(&engine,

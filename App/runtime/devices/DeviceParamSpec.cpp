@@ -2,7 +2,7 @@
 #include "devices/DeviceConstants.h"
 #include <QColor>
 #include <QRegularExpression>
-
+#include <QDir>
 
 DeviceParamSpec::DeviceParamSpec(QObject *parent)
     : BaseField(parent)
@@ -230,6 +230,25 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey)
         return spec;
     }
 
+	if (deviceKey == DeviceKey::OscTransProtocol) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("传输协议"),
+										 QString(),
+                                         SelectType,
+                                         SelectEditor);
+        spec->setValue("UDP");
+        spec->setDefaultValue("UDP");
+        spec->setOptions(QVariantList{"UDP", "TCP"});
+		return spec;
+	}
+
+    if (deviceKey == DeviceKey::OscMessage)
+        return new DeviceParamSpec(deviceKey,
+                                   QStringLiteral("OSC消息"),
+                                   QString(),
+                                   StringType,
+                                   TextEditor);
+
     if (deviceKey == DeviceKey::SerialPayload) {
         auto *spec = new DeviceParamSpec(deviceKey,
                                          QStringLiteral("数据内容"),
@@ -240,6 +259,18 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey)
         spec->setPattern(QStringLiteral("^([0-9A-Fa-f]{2})(\\s+[0-9A-Fa-f]{2})*$"));
         return spec;
     }
+
+	if (deviceKey == DeviceKey::VirtualScreenWidth || deviceKey == DeviceKey::VirtualScreenHeight) {
+		const bool width = deviceKey == DeviceKey::VirtualScreenWidth;
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 width ? QStringLiteral("虚拟大屏宽度") : QStringLiteral("虚拟大屏高度"),
+										 width ? 1920 : 1080,
+										 IntType,
+										 TextEditor);
+		spec->setMinimum(1);
+		spec->setMaximum(16384);
+		return spec;
+	}
 
     if (deviceKey == DeviceKey::ScreenWidth || deviceKey == DeviceKey::ScreenHeight) {
         const bool width = deviceKey == DeviceKey::ScreenWidth;
@@ -273,14 +304,46 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey)
                                    SelectType,
                                    SelectEditor);
 
-    if (deviceKey == DeviceKey::Videos) {
-        auto *spec = new DeviceParamSpec(deviceKey,
-                                         QStringLiteral("视频"),
-                                         QVariantList(),
-                                         VariantType,
-                                         CustomEditor);
-        spec->setRequired(false);
-        spec->setReadOnly(true);
+	if (deviceKey == DeviceKey::Videos) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频"),
+										 QVariantList(),
+										 VariantType,
+										 CustomEditor);
+		spec->setRequired(false);
+		spec->setReadOnly(true);
+		return spec;
+	}
+
+	if (deviceKey == DeviceKey::VideoFile) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频文件"),
+										 "",
+										 SelectType,
+										 SelectEditor);
+		spec->setRequired(true);
+		spec->setReadOnly(false);
+        // @todo read video dir
+        static QVariantList s_videos = []()->QVariantList {
+            QVariantList videos;
+            QDir dir(DeviceConstants::LocalVideoPrefix);
+            auto infos = dir.entryInfoList({"*.mp4", "*.avi"});
+            for (const auto& info : infos) {
+                videos.push_back(QString("$") + info.fileName());
+            }
+            return videos;
+        }();
+        spec->setOptions(s_videos);
+		return spec;
+	}
+
+    if (deviceKey == DeviceKey::Rect) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("目标矩形（x,y,w,h）"),
+										 "",
+										 StringType,
+										 TextEditor);
+        spec->setPattern(DevicePattern::Rect);
         return spec;
     }
 

@@ -27,17 +27,26 @@ inline const QString HttpMethod = QStringLiteral("httpMethod");
 //inline const QString HttpQueryParams = QStringLiteral("httpQueryParams");
 inline const QString HttpBody = QStringLiteral("httpBody");
 inline const QString ApiPath = QStringLiteral("apiPath");
+inline const QString OscTransProtocol = QStringLiteral("oscTransProtocol");
+inline const QString OscMessage = QStringLiteral("oscMessage");
 inline const QString KeystoneCorrection = QStringLiteral("keystoneCorrection");
 inline const QString SerialPayload = QStringLiteral("serialPayload");
 inline const QString Port = QStringLiteral("port");
-inline const QString Resolution = QStringLiteral("resolution");
+inline const QString VirtualScreenWidth = QStringLiteral("virtualScreenWidth");
+inline const QString VirtualScreenHeight = QStringLiteral("virtualScreenHeight");
 inline const QString ScreenColumns = QStringLiteral("screenColumns");
 inline const QString ScreenHeight = QStringLiteral("screenHeight");
 inline const QString ScreenRows = QStringLiteral("screenRows");
 inline const QString ScreenWidth = QStringLiteral("screenWidth");
 inline const QString SerialPort = QStringLiteral("serialPort");
 inline const QString Videos = QStringLiteral("videos");
+inline const QString VideoFile = QStringLiteral("videoFile");
+inline const QString Rect = QStringLiteral("rect");
 } // namespace DeviceKey
+
+namespace DeviceConstants {
+	inline const QString LocalVideoPrefix = "D:/video/";
+}
 
 //! Device transport/protocol names.
 namespace DeviceProtocol {
@@ -52,6 +61,7 @@ inline const QString Pc = QStringLiteral("pc");
 //! Common validation patterns.
 namespace DevicePattern {
 inline const QString Ip = QStringLiteral("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
+inline const QString Rect = QStringLiteral("^\\d+(,\\d+){3}$");
 } // namespace DevicePattern
 
 struct DeviceKeystoneCorrectionItem {

@@ -227,3 +227,12 @@ DeviceCommand_PC::DeviceCommand_PC(const QString &name,
         {DeviceKey::Port, 11357}
     });
 }
+
+DeviceCommand_Osc::DeviceCommand_Osc(QObject *parent)
+    : DeviceCommand(DeviceProtocol::Osc, QStringLiteral("OSC指令"), parent)
+{
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::OscTransProtocol));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::OscMessage));
+}

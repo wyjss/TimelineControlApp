@@ -5,6 +5,7 @@
 
 #include <QList>
 #include <QUrl>
+#include <QUrlQuery>
 #include <QVariantMap>
 
 
@@ -66,99 +67,133 @@ public:
     }
 };
 
-class PlayVideoCommand : public DeviceCommand_PC
+class _VideoControlCommand : public DeviceCommand_PC
 {
 public:
-    explicit PlayVideoCommand(QObject *parent)
-        : DeviceCommand_PC(QStringLiteral("播放视频"),
-                           QStringLiteral("playVideo"),
-                           parent)
-    {
-        auto *videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
-                                                   QStringLiteral("视频文件"),
-                                                   QString(),
-                                                   DeviceParamSpec::StringType,
-                                                   DeviceParamSpec::TextEditor,
-                                                   this);
-        videoFileField->setRequired(false);
-        addExecutionInputField(videoFileField);
-    }
+	explicit _VideoControlCommand(const QString& name,
+								 const QString& commandType,
+								 const QString& api,
+								 QObject* parent)
+		: DeviceCommand_PC(name,
+						   commandType,
+						   parent)
+        , m_api(api)
+	{
+        auto* videoFileField = DeviceParamSpec::createForKey(DeviceKey::VideoFile);
+		videoFileField->setRequired(false);
+		addExecutionInputField(videoFileField);
+	}
 
-    virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
-    {
-        auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
-        QString api = "/video/play";
-        QString url = executionInputValues.value("videoFile", "").toString();
-        if (!url.isEmpty()) {
-            api += QString("?url=%1").arg(url);
-            params[DeviceKey::Name] = this->name() + "-" + url;
+	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+	{
+		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
+		QString api = m_api;
+		QString url = executionInputValues.value("videoFile", "").toString();
+		if (!url.isEmpty()) {
+            QUrl qurl(api);
+            QUrlQuery query(qurl);
+            query.addQueryItem("url", url);
+            qurl.setQuery(query);
+            api = qurl.url();
+			params[DeviceKey::Name] = this->name() + "-" + url;
+		}
+		params[DeviceKey::ApiPath] = api;
+		return params;
+	}
+private:
+    QString m_api;
+};
+
+class OpenVideoCommand : public DeviceCommand_PC
+{
+public:
+	explicit OpenVideoCommand(QObject* parent)
+		: DeviceCommand_PC("加载视频",
+						   "openVideo",
+						   parent)
+	{
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoFile));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::Rect));
+
+		auto* playField = new DeviceParamSpec(QStringLiteral("play"),
+												   QStringLiteral("立即播放"),
+												   true,
+												   DeviceParamSpec::BoolType,
+												   DeviceParamSpec::AutoEditor,
+												   this);
+        playField->setRequired(true);
+		addExecutionInputField(playField);
+
+	}
+
+	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+	{
+		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
+		QString url = executionInputValues.value("videoFile", "").toString();
+        if (url.startsWith("$")) {
+            url = url.replace("$", DeviceConstants::LocalVideoPrefix);
         }
-        params[DeviceKey::ApiPath] = api;
-        return params;
+
+        QUrlQuery query;
+        query.addQueryItem("mode", "virtual");
+        query.addQueryItem("url", url);
+        query.addQueryItem("play", executionInputValues.value("play", true).toString());
+        query.addQueryItem("rect", executionInputValues[DeviceKey::Rect].toString());
+
+        QString api = QString("/video/open?") + query.toString();
+        params[DeviceKey::Name] = this->name() + "-" + url;
+		params[DeviceKey::ApiPath] = api;
+		return params;
+	}
+private:
+	QString m_api;
+};
+
+class PlayVideoCommand : public _VideoControlCommand
+{
+public:
+	explicit PlayVideoCommand(QObject* parent)
+		: _VideoControlCommand("播放视频",
+							   "playVideo",
+							   "/video/play",
+							   parent)
+    {
     }
 };
 
-class PauseVideoCommand : public DeviceCommand_PC
+class PauseVideoCommand : public _VideoControlCommand
 {
 public:
 	explicit PauseVideoCommand(QObject* parent)
-		: DeviceCommand_PC(QStringLiteral("暂停播放"),
-						   QStringLiteral("pauseVideo"),
-						   parent)
+		: _VideoControlCommand("暂停播放",
+							   "pauseVideo",
+							   "/video/pause",
+							   parent)
 	{
-		auto* videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
-												   QStringLiteral("视频文件"),
-												   QString(),
-												   DeviceParamSpec::StringType,
-												   DeviceParamSpec::TextEditor,
-												   this);
-		videoFileField->setRequired(false);
-		addExecutionInputField(videoFileField);
-	}
-
-	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
-	{
-		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
-		QString api = "/video/pause";
-		QString url = executionInputValues.value("videoFile", "").toString();
-		if (!url.isEmpty()) {
-			api += QString("?url=%1").arg(url);
-			params[DeviceKey::Name] = this->name() + "-" + url;
-		}
-		params[DeviceKey::ApiPath] = api;
-		return params;
 	}
 };
 
-class StopVideoCommand : public DeviceCommand_PC
+class StopVideoCommand : public _VideoControlCommand
 {
 public:
 	explicit StopVideoCommand(QObject* parent)
-		: DeviceCommand_PC(QStringLiteral("停止播放"),
-						   QStringLiteral("stopVideo"),
+		: _VideoControlCommand("停止播放",
+							   "closeVideo",
+							   "/video/close",
+							   parent)
+	{
+	}
+};
+
+class ClosePlayerCommand : public DeviceCommand_PC
+{
+public:
+	explicit ClosePlayerCommand(QObject* parent)
+		: DeviceCommand_PC("关闭播放器",
+						   "closePlayer",
 						   parent)
 	{
-		auto* videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
-												   QStringLiteral("视频文件"),
-												   QString(),
-												   DeviceParamSpec::StringType,
-												   DeviceParamSpec::TextEditor,
-												   this);
-		videoFileField->setRequired(false);
-		addExecutionInputField(videoFileField);
-	}
-
-	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
-	{
-		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
-		QString api = "/video/stop";
-		QString url = executionInputValues.value("videoFile", "").toString();
-		if (!url.isEmpty()) {
-			api += QString("?url=%1").arg(url);
-			params[DeviceKey::Name] = this->name() + "-" + url;
-		}
-		params[DeviceKey::ApiPath] = api;
-		return params;
+        getField(DeviceKey::ApiPath)->setValue("/video/closePlayer");
 	}
 };
 
@@ -218,8 +253,14 @@ void registerBuiltInCommands()
             return new SerialCommand(parent);
         });
         DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
+            return new DeviceCommand_Osc(parent);
+        });
+        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
             return new Dmx512Command(parent);
         });
+		DeviceCommandFactory::registerCommand([](QObject* parent) -> DeviceCommand* {
+			return new OpenVideoCommand(parent);
+											  });
         DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
             return new PlayVideoCommand(parent);
         });
@@ -228,7 +269,10 @@ void registerBuiltInCommands()
         });
         DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
             return new StopVideoCommand(parent);
-        });
+											  });
+		DeviceCommandFactory::registerCommand([](QObject* parent) -> DeviceCommand* {
+			return new ClosePlayerCommand(parent);
+											  });
         DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
             return new PlayDomeVideoCommand(parent);
         });

@@ -14,7 +14,8 @@ Base.AppPopup {
     readonly property var protocolOptions: [
         { "label": qsTr("串口"), "value": "serial" },
         { "label": qsTr("HTTP"), "value": "http" },
-        { "label": qsTr("PC"), "value": "pc" }
+        { "label": qsTr("PC"), "value": "pc" },
+        { "label": qsTr("OSC"), "value": "osc" }
     ]
     readonly property var availableProtocolOptions: buildAvailableProtocolOptions()
     readonly property bool commandValid: draftCommand

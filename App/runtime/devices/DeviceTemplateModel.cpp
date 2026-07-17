@@ -89,6 +89,8 @@ bool DeviceTemplateModel::acceptsItem(DeviceTemplate *deviceTemplate) const
 DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
 {
     const QList<DeviceParamSpec *> specs{
+        DeviceParamSpec::createForKey(DeviceKey::VirtualScreenWidth),
+        DeviceParamSpec::createForKey(DeviceKey::VirtualScreenHeight),
         DeviceParamSpec::createForKey(DeviceKey::ScreenWidth),
         DeviceParamSpec::createForKey(DeviceKey::ScreenHeight),
         DeviceParamSpec::createForKey(DeviceKey::ScreenColumns),
@@ -97,9 +99,11 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplatePc()
 
 	QList<DeviceCommand*> commands;
 
+    commands << DeviceCommandFactory::create(DeviceProtocol::Pc, "openVideo", nullptr);
     commands << DeviceCommandFactory::create(DeviceProtocol::Pc, "playVideo", nullptr);
     commands << DeviceCommandFactory::create(DeviceProtocol::Pc, "pauseVideo", nullptr);
-    commands << DeviceCommandFactory::create(DeviceProtocol::Pc, "stopVideo", nullptr);
+    commands << DeviceCommandFactory::create(DeviceProtocol::Pc, "closeVideo", nullptr);
+    commands << DeviceCommandFactory::create(DeviceProtocol::Pc, "closePlayer", nullptr);
 
 	{
 		DeviceCommand* cmd = DeviceCommandFactory::create(DeviceProtocol::Pc,
@@ -173,15 +177,25 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateSerial()
 
 DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateOsc()
 {
+    QList<DeviceParamSpec*> params;
+
     auto *portSpec = DeviceParamSpec::createForKey(DeviceKey::Port);
     portSpec->setValue(8000);
     portSpec->setDefaultValue(8000);
+    params << portSpec;
+
+    params << DeviceParamSpec::createForKey(DeviceKey::OscTransProtocol);
+
+	QList<DeviceCommand*> commands;
+	commands << DeviceCommandFactory::createForProtocol(DeviceProtocol::Osc, nullptr);
+
 
     return makeDeviceTemplate(tr("OSC协议"),
-                              QString(),
+                              QString(""),
                               QStringList{DeviceProtocol::Osc},
                               tr("OSC协议设备"),
-                              {portSpec});
+                              params,
+                              commands);
 }
 
 DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,

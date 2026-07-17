@@ -171,47 +171,38 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
         *created = false;
 
     const QString protocolValue = protocol.trimmed();
+    QString key;
+    DeviceCommandExecutor *executor = nullptr;
     if (protocolValue == DeviceProtocol::Serial) {
         const QString portName = params.value(DeviceKey::SerialPort).toString().trimmed();
-        const QString key = QStringLiteral("serial:%1").arg(portName);
+        key = QStringLiteral("serial:%1").arg(portName);
         if (executorKey)
             *executorKey = key;
-        DeviceCommandExecutor *executor = m_executors.value(key);
-        if (!executor && !portName.isEmpty()) {
+        executor = m_executors.value(key);
+        if (!executor && !portName.isEmpty())
             executor = new SerialCommandExecutor(portName);
-            executor->moveToThread(&m_thread);
-            m_executors.insert(key, executor);
-            connect(executor, &DeviceCommandExecutor::executionFinished, this, &DeviceExecutorManager::executionFinished);
-            connect(executor, &DeviceCommandExecutor::onlineChecked, this, &DeviceExecutorManager::onlineChecked);
-            connect(&m_thread, &QThread::finished, executor, &QObject::deleteLater);
-            if (created)
-                *created = true;
-        }
-        return executor;
-    }
-
-    if (protocolValue == DeviceProtocol::Http || protocolValue == DeviceProtocol::Pc) {
+    } else if (protocolValue == DeviceProtocol::Http || protocolValue == DeviceProtocol::Pc) {
         const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
         const int port = params.value(DeviceKey::Port).toInt();
         if (ip.isEmpty() || port <= 0)
             return nullptr;
 
-        const QString key = QStringLiteral("http:%1:%2").arg(ip).arg(port);
+        key = QStringLiteral("http:%1:%2").arg(ip).arg(port);
         if (executorKey)
             *executorKey = key;
-        DeviceCommandExecutor *executor = m_executors.value(key);
-        if (!executor) {
+        executor = m_executors.value(key);
+        if (!executor)
             executor = new HttpCommandExecutor(ip, port);
-            executor->moveToThread(&m_thread);
-            m_executors.insert(key, executor);
-            connect(executor, &DeviceCommandExecutor::executionFinished, this, &DeviceExecutorManager::executionFinished);
-            connect(executor, &DeviceCommandExecutor::onlineChecked, this, &DeviceExecutorManager::onlineChecked);
-            connect(&m_thread, &QThread::finished, executor, &QObject::deleteLater);
-            if (created)
-                *created = true;
-        }
-        return executor;
     }
 
-    return nullptr;
+    if (executor && !m_executors.contains(key)) {
+        executor->moveToThread(&m_thread);
+        m_executors.insert(key, executor);
+        connect(executor, &DeviceCommandExecutor::executionFinished, this, &DeviceExecutorManager::executionFinished);
+        connect(executor, &DeviceCommandExecutor::onlineChecked, this, &DeviceExecutorManager::onlineChecked);
+        connect(&m_thread, &QThread::finished, executor, &QObject::deleteLater);
+        if (created)
+            *created = true;
+    }
+    return executor;
 }

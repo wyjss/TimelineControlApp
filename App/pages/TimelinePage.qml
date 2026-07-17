@@ -22,6 +22,9 @@ Item {
     property var timelineController: appRuntime && appRuntime.timelineController ? appRuntime.timelineController : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
+    property var pcPreviewGenerator: typeof pcTimelinePreviewGenerator !== "undefined"
+        ? pcTimelinePreviewGenerator
+        : null
     readonly property int preStartTimelineDurationMs: 24 * 60 * 60 * 1000
     readonly property int timelineDurationMs: timelineController ? timelineController.durationMs : preStartTimelineDurationMs
     readonly property int timelineTrackLabelWidth: 224
@@ -76,7 +79,7 @@ Item {
         }
 
         if (!deviceForId(selectedTimelineDeviceId)) {
-            selectedTimelineDeviceId = String(devices[0].id || "")
+            selectTimelineDevice(String(devices[0].id || ""))
             return
         }
 
@@ -755,6 +758,63 @@ Item {
                             theme: root.pageTheme
                             styleRole: "bodyS"
                             textTone: "secondary"
+                        }
+                    }
+
+                    Base.AppSurface {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 188
+                        visible: root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
+                        sizeToContent: false
+                        theme: root.pageTheme
+                        surfaceTone: "surface"
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("PC 预览")
+                                    theme: root.pageTheme
+                                    styleRole: "bodyM"
+                                }
+
+                                Base.AppText {
+                                    text: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
+                                        ? qsTr("生成中…")
+                                        : qsTr("%1 ms").arg(root.pcPreviewGenerator
+                                            ? root.pcPreviewGenerator.previewTimeMs
+                                            : 0)
+                                    theme: root.pageTheme
+                                    styleRole: "bodyS"
+                                    textTone: "secondary"
+                                }
+                            }
+
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+
+                                Image {
+                                    anchors.fill: parent
+                                    source: root.pcPreviewGenerator
+                                        ? root.pcPreviewGenerator.previewUrl
+                                        : ""
+                                    fillMode: Image.PreserveAspectFit
+                                    cache: false
+                                }
+
+                                BusyIndicator {
+                                    anchors.centerIn: parent
+                                    running: visible
+                                    visible: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
+                                }
+                            }
                         }
                     }
                 }

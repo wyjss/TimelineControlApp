@@ -1089,8 +1089,14 @@ Item {
         property var deviceTemplate: null
         property var fieldSpecs: []
         property string deviceName: ""
-        property string deviceType: ""
+        property string selectedDeviceTypeOption: ""
+        property string customDeviceType: ""
+        readonly property string customDeviceTypeOption: "__custom__"
         readonly property bool templateHasDeviceType: templateDeviceType(deviceTemplate).length > 0
+        readonly property bool customDeviceTypeSelected: selectedDeviceTypeOption === customDeviceTypeOption
+        readonly property string deviceType: templateHasDeviceType
+            ? templateDeviceType(deviceTemplate)
+            : (customDeviceTypeSelected ? customDeviceType : selectedDeviceTypeOption)
         readonly property var deviceTypeOptions: buildDeviceTypeOptions()
         readonly property bool formValid: firstInvalidReason().length === 0
 
@@ -1098,7 +1104,8 @@ Item {
             deviceTemplate = nextTemplate
             fieldSpecs = nextFieldSpecs || []
             deviceName = defaultDeviceName(nextTemplate)
-            deviceType = defaultDeviceType(nextTemplate)
+            selectedDeviceTypeOption = defaultDeviceType(nextTemplate)
+            customDeviceType = ""
             createDeviceFieldForm.resetValues()
             open()
         }
@@ -1131,6 +1138,7 @@ Item {
                 var nextType = String(root.manualDeviceTypes[index])
                 result.push({ "label": nextType, "value": nextType })
             }
+            result.push({ "label": qsTr("其它"), "value": customDeviceTypeOption })
             return result
         }
 
@@ -1274,21 +1282,21 @@ Item {
                 spacing: 8
 
                 Base.AppSelect {
-                    visible: createDevicePopup.deviceTypeOptions.length > 0
-                    Layout.preferredWidth: 180
+                    Layout.fillWidth: true
                     theme: root.pageTheme
                     placeholderText: qsTr("现有类型")
                     options: createDevicePopup.deviceTypeOptions
-                    value: createDevicePopup.deviceType
-                    onValueSelected: createDevicePopup.deviceType = String(nextValue)
+                    value: createDevicePopup.selectedDeviceTypeOption
+                    onValueSelected: createDevicePopup.selectedDeviceTypeOption = String(nextValue)
                 }
 
                 Base.AppTextField {
+                    visible: createDevicePopup.customDeviceTypeSelected
                     Layout.fillWidth: true
                     theme: root.pageTheme
-                    text: createDevicePopup.deviceType
+                    text: createDevicePopup.customDeviceType
                     placeholderText: qsTr("设备类型")
-                    onTextChanged: createDevicePopup.deviceType = text
+                    onTextChanged: createDevicePopup.customDeviceType = text
                 }
             }
         }

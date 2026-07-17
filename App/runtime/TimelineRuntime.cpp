@@ -18,8 +18,8 @@
 #include "runtime/task/TaskManager.h"
 #include "runtime/form/AppForm.h"
 
-#include <QCoreApplication>
 #include <QDataStream>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QIODevice>
@@ -133,7 +133,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
         }
     });
 
-    const QString defaultPlanFilePath = QCoreApplication::applicationDirPath() + QStringLiteral("/default.tlplan");
+    const QString defaultPlanFilePath = QDir::current().filePath(QStringLiteral("default.tlplan"));
     if (QFile::exists(defaultPlanFilePath))
         loadPlanFromFile(defaultPlanFilePath);
 }
