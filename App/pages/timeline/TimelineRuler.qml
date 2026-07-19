@@ -13,6 +13,8 @@ Item {
     property int currentTimeMs: 0
     // 时间轴内容水平偏移，单位像素；值越大，内容越向左移动。
     property real scrollX: 0
+    // 时间轴内容在组件内的左边界，单位像素。
+    property real trackLeftX: 0
     // 0ms 起点在组件内的 x 坐标，单位像素。
     property real startTimeX: 0
     // 刻度尺高度，单位像素。
@@ -31,8 +33,10 @@ Item {
     readonly property real maxTimeScale: calcMaxTimeScale()
     // 滚轮缩放步进；值越大，单次滚轮缩放越明显。
     property real wheelScaleStep: 1.05
-    // 是否允许拖动更新时间。
+    // 是否允许拖动时间轴。
     property bool dragEnabled: true
+    // 是否允许拖动时刻线。
+    property bool currentTimeDragEnabled: true
     readonly property real labelWidth: 72
 
     readonly property real targetMajorTickSeconds: Math.max(1, baseMajorTickSeconds) * safeTimeScale()
@@ -43,6 +47,7 @@ Item {
     // 当前缩放和吸附后的时间像素比例，单位 px/s。
     readonly property real effectivePixelsPerSecond: majorTickSeconds > 0 ? majorTickPixelSpacing / majorTickSeconds : 1
     readonly property real safePixelsPerSecond: Math.max(0.001, effectivePixelsPerSecond)
+    readonly property real resolvedTrackLeftX: Math.max(0, Math.min(width, trackLeftX))
     readonly property real resolvedStartTimeX: Math.max(0, startTimeX)
     readonly property int resolvedCurrentTimeMs: Math.max(0, Math.min(durationMs, currentTimeMs))
     // 当前时间在组件内的 x 坐标，单位像素。
@@ -62,7 +67,7 @@ Item {
     signal timeScaleChangeRequested(real nextTimeScale)
 
     implicitHeight: rulerHeight
-    clip: true
+    clip: false
 
 
     readonly property var _bestMajorIntervals: [1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 60.0]
@@ -94,18 +99,18 @@ Item {
             timeScaleChangeRequested(nextTimeScale)
     }
 
-    function requestScrollXForTimeMs(ms) {
-        var nextScrollX = scrollXForTimeMs(ms)
+    function requestScrollX(value) {
+        var nextScrollX = clampScrollX(value)
         if (Math.abs(nextScrollX - scrollX) > 0.0001)
             scrollXChangeRequested(nextScrollX)
     }
 
-    function updateRuler(clampScale, syncScroll) {
+    function updateRuler(clampScale, clampScroll) {
         tickCanvas.requestPaint()
         if (clampScale)
             requestClampedTimeScale()
-        if (syncScroll)
-            requestScrollXForTimeMs(resolvedCurrentTimeMs)
+        if (clampScroll)
+            requestScrollX(scrollX)
     }
 
     function clampScrollX(value) {
@@ -116,16 +121,10 @@ Item {
         return Math.max(0, Math.min(durationMs, Math.round(value)))
     }
 
-    // 计算让指定时间对齐到 startTimeX 时需要的 scrollX，入参单位毫秒。
-    function scrollXForTimeMs(ms) {
-        return clampScrollX(clampTimeMs(ms) / 1000 * effectivePixelsPerSecond)
-    }
-
     function requestCurrentTimeMs(value) {
         var nextCurrentTimeMs = clampTimeMs(value)
         if (nextCurrentTimeMs !== resolvedCurrentTimeMs)
             currentTimeMsChangeRequested(nextCurrentTimeMs)
-        requestScrollXForTimeMs(nextCurrentTimeMs)
     }
 
     function safeMinorTicksPerMajor() {
@@ -188,8 +187,8 @@ Item {
     }
 
     function clampLabelX(centerX, labelWidth) {
-        var maxX = Math.max(0, width - labelWidth)
-        return Math.max(0, Math.min(maxX, centerX - labelWidth / 2))
+        var maxX = Math.max(resolvedTrackLeftX, width - labelWidth)
+        return Math.max(resolvedTrackLeftX, Math.min(maxX, centerX - labelWidth / 2))
     }
 
     function buildLabelTicks() {
@@ -201,7 +200,7 @@ Item {
         for (var tickMs = startTick; tickMs <= endTick; tickMs += majorTickMs) {
             var tickX = timeToX(tickMs)
             var labelX = clampLabelX(tickX, labelWidth)
-            if (tickX < 0 || tickX > width || labelX < lastLabelRight)
+            if (tickX < resolvedTrackLeftX || tickX > width || labelX < lastLabelRight)
                 continue
             result.push({ "timeMs": tickMs, "label": formatTime(tickMs), "x": tickX })
             lastLabelRight = labelX + labelWidth
@@ -223,7 +222,7 @@ Item {
             var axisY = height - 1
             var majorTickHeight = 12
             var minorTickHeight = 5
-            var trackLeft = 0
+            var trackLeft = root.resolvedTrackLeftX
             var trackRight = width
             var axisColor = root.colorValue("border", "#334155")
             var tickColor = root.colorValue("neutralText", "#cbd5e1")
@@ -295,8 +294,9 @@ Item {
             target: root
             function onWidthChanged() { root.updateRuler(true, false) }
             function onDurationMsChanged() { root.updateRuler(true, true) }
-            function onCurrentTimeMsChanged() { root.updateRuler(false, true) }
+            function onCurrentTimeMsChanged() { root.updateRuler(false, false) }
             function onScrollXChanged() { root.updateRuler(false, false) }
+            function onTrackLeftXChanged() { root.updateRuler(false, false) }
             function onStartTimeXChanged() { root.updateRuler(true, false) }
             function onBaseMajorTickSecondsChanged() { root.updateRuler(true, false) }
             function onMinorTickPixelSpacingChanged() { root.updateRuler(true, false) }
@@ -324,17 +324,44 @@ Item {
         }
     }
 
+    Rectangle {
+        x: Math.round(root.clampLabelX(root.currentTimeX, width))
+        y: -22
+        z: 1
+        width: root.labelWidth
+        height: 20
+        radius: 4
+        visible: root.currentTimeX >= root.resolvedTrackLeftX && root.currentTimeX <= root.width
+        color: "#ef4444"
+
+        Base.AppText {
+            anchors.fill: parent
+            text: root.formatTime(root.resolvedCurrentTimeMs)
+            theme: root.theme
+            styleRole: "bodyS"
+            colorOverride: "#ffffff"
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+    }
+
     MouseArea {
         id: interactionArea
 
         property real pressX: 0
+        property real pressScrollX: 0
         property int pressCurrentTimeMs: 0
+        property bool draggingCurrentTime: false
 
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton
         hoverEnabled: true
         preventStealing: true
-        cursorShape: root.dragEnabled ? (pressed ? Qt.SizeHorCursor : Qt.PointingHandCursor) : Qt.ArrowCursor
+        cursorShape: root.dragEnabled
+            ? (root.currentTimeDragEnabled && Math.abs(mouseX - root.currentTimeX) <= 8
+                ? Qt.SizeHorCursor
+                : (pressed ? Qt.SizeHorCursor : Qt.PointingHandCursor))
+            : Qt.ArrowCursor
 
         onPressed: {
             if (!root.dragEnabled) {
@@ -343,7 +370,10 @@ Item {
             }
 
             pressX = mouse.x
+            pressScrollX = root.scrollX
             pressCurrentTimeMs = root.resolvedCurrentTimeMs
+            draggingCurrentTime = root.currentTimeDragEnabled
+                && Math.abs(mouse.x - root.currentTimeX) <= 8
             mouse.accepted = true
         }
 
@@ -351,17 +381,48 @@ Item {
             if (!root.dragEnabled || !pressed)
                 return
 
-            var deltaMs = (mouse.x - pressX) / root.safePixelsPerSecond * 1000
-            root.requestCurrentTimeMs(pressCurrentTimeMs - deltaMs)
+            var deltaX = mouse.x - pressX
+            if (draggingCurrentTime) {
+                root.requestCurrentTimeMs(pressCurrentTimeMs + deltaX / root.safePixelsPerSecond * 1000)
+                return
+            }
+
+            var nextScrollX = root.clampScrollX(pressScrollX - deltaX)
+            root.requestScrollX(nextScrollX)
         }
 
         onWheel: {
+            if (!root.dragEnabled) {
+                wheel.accepted = true
+                return
+            }
+
             var delta = wheel.angleDelta.y !== 0 ? wheel.angleDelta.y : wheel.pixelDelta.y
             if (delta === 0)
                 return
 
             var factor = delta > 0 ? 1 / root.wheelScaleStep : root.wheelScaleStep
-            root.timeScaleChangeRequested(root.clampTimeScale(root.timeScale * factor))
+            var previousScale = root.safeTimeScale()
+            var nextScale = root.clampTimeScale(previousScale * factor)
+            if (Math.abs(nextScale - previousScale) <= 0.0001) {
+                wheel.accepted = true
+                return
+            }
+
+            var anchorX = root.resolvedTrackLeftX + (root.width - root.resolvedTrackLeftX) / 2
+            var anchorTimeSeconds = (root.scrollX + anchorX - root.resolvedStartTimeX) / root.safePixelsPerSecond
+            var nextPixelsPerSecond = root.safePixelsPerSecond * previousScale / nextScale
+            var nextContentWidth = Math.max(root.width,
+                                            root.resolvedStartTimeX
+                                                + root.durationMs / 1000 * nextPixelsPerSecond
+                                                + root.endPaddingX)
+            var nextScrollX = root.resolvedStartTimeX
+                + anchorTimeSeconds * nextPixelsPerSecond
+                - anchorX
+            nextScrollX = Math.max(0, Math.min(Math.max(0, nextContentWidth - root.width), nextScrollX))
+
+            root.scrollXChangeRequested(nextScrollX)
+            root.timeScaleChangeRequested(nextScale)
             wheel.accepted = true
         }
     }

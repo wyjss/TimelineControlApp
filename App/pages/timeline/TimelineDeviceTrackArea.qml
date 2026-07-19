@@ -10,8 +10,11 @@ Item {
     property var devices: []
     property var commandModel: null
     property var commandList: commandModel && commandModel.commands ? commandModel.commands : []
+    property var childTracksByParentId: ({})
+    property var expandedParentTrackIds: ({})
     property string selectedDeviceId: ""
     property int rowHeight: 56
+    property int childRowHeight: 30
     property int rowSpacing: 4
     property int labelWidth: 224
     property int moveAnimationDuration: 220
@@ -147,6 +150,27 @@ Item {
         return Math.max(1, count)
     }
 
+    function childTracksForParent(parentTrackId) {
+        var tracks = childTracksByParentId
+            ? childTracksByParentId[String(parentTrackId || "")]
+            : null
+        return tracks && tracks.length !== undefined ? tracks : []
+    }
+
+    function parentTrackExpanded(parentTrackId) {
+        return expandedParentTrackIds
+            && expandedParentTrackIds[String(parentTrackId || "")] === true
+    }
+
+    function toggleParentTrack(parentTrackId) {
+        var normalizedParentTrackId = String(parentTrackId || "")
+        var nextExpandedIds = {}
+        for (var trackId in expandedParentTrackIds)
+            nextExpandedIds[trackId] = expandedParentTrackIds[trackId]
+        nextExpandedIds[normalizedParentTrackId] = !parentTrackExpanded(normalizedParentTrackId)
+        expandedParentTrackIds = nextExpandedIds
+    }
+
     function rebuildTrackModel() {
         trackModel.clear()
         for (var index = 0; index < root.devices.length; ++index)
@@ -233,12 +257,16 @@ Item {
                 : ({})
             readonly property string targetDeviceId: String(trackData.id || "")
             readonly property bool selected: root.trackSelectedState(trackData)
+            readonly property var childTracks: root.childTracksForParent(targetDeviceId)
+            readonly property bool expanded: childTracks.length > 0
+                && root.parentTrackExpanded(targetDeviceId)
 
             width: trackList.width
-            height: root.rowHeight
+            height: root.rowHeight + (expanded ? childTracks.length * root.childRowHeight : 0)
 
             Rectangle {
-                anchors.fill: parent
+                width: parent.width
+                height: root.rowHeight
                 radius: 6
                 color: trackRow.selected
                     ? Qt.rgba(96 / 255, 165 / 255, 250 / 255, 0.10)
@@ -268,9 +296,9 @@ Item {
             Rectangle {
                 anchors.left: parent.left
                 anchors.leftMargin: 2
-                anchors.verticalCenter: parent.verticalCenter
+                y: 9
                 width: 3
-                height: parent.height - 18
+                height: root.rowHeight - 18
                 radius: 2
                 color: trackRow.selected ? "#60a5fa" : root.colorValue("border", "#334155")
                 opacity: trackRow.selected ? 1 : (trackMouse.containsMouse ? 0.45 : 0.16)
@@ -279,15 +307,31 @@ Item {
             MouseArea {
                 id: trackMouse
 
-                anchors.fill: parent
+                width: parent.width
+                height: root.rowHeight
                 hoverEnabled: true
-                onClicked: root.trackSelected(trackRow.targetDeviceId)
+                onClicked: {
+                    root.trackSelected(trackRow.targetDeviceId)
+                    if (mouse.x < root.labelWidth && trackRow.childTracks.length > 0)
+                        root.toggleParentTrack(trackRow.targetDeviceId)
+                }
+            }
+
+            Base.AppText {
+                x: 10
+                y: Math.round((root.rowHeight - height) / 2)
+                visible: trackRow.childTracks.length > 0
+                text: trackRow.expanded ? "▾" : "›"
+                theme: root.theme
+                styleRole: "bodyS"
+                textTone: "secondary"
+                z: 2
             }
 
             Column {
-                x: 14
-                anchors.verticalCenter: parent.verticalCenter
-                width: Math.max(80, root.labelWidth - 28)
+                x: trackRow.childTracks.length > 0 ? 28 : 14
+                y: Math.round((root.rowHeight - height) / 2)
+                width: Math.max(80, root.labelWidth - x - 14)
                 spacing: 4
                 z: 2
 
@@ -316,7 +360,7 @@ Item {
                 x: root.labelWidth
                 y: 0
                 width: Math.max(0, parent.width - root.labelWidth)
-                height: parent.height
+                height: root.rowHeight
                 clip: true
 
                 Rectangle {
@@ -437,6 +481,106 @@ Item {
                             textTone: "inverse"
                             verticalAlignment: Text.AlignVCenter
                             elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+
+            Repeater {
+                model: trackRow.expanded ? trackRow.childTracks : []
+
+                delegate: Item {
+                    id: childTrackRow
+
+                    property var childTrackData: modelData || ({})
+
+                    x: 0
+                    y: root.rowHeight + index * root.childRowHeight
+                    width: trackRow.width
+                    height: root.childRowHeight
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: root.colorValue("surfaceElevated", "#172033")
+                        opacity: 0.28
+                    }
+
+                    Rectangle {
+                        x: root.labelWidth
+                        width: 1
+                        height: parent.height
+                        color: root.colorValue("border", "#334155")
+                        opacity: 0.38
+                    }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 1
+                        color: root.colorValue("border", "#334155")
+                        opacity: 0.12
+                    }
+
+                    Rectangle {
+                        x: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 6
+                        height: 6
+                        radius: 3
+                        color: String(childTrackRow.childTrackData.color || "#16a34a")
+                    }
+
+                    Base.AppText {
+                        x: 28
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Math.max(40, root.labelWidth - x - 12)
+                        text: String(childTrackRow.childTrackData.title || qsTr("子轨"))
+                        theme: root.theme
+                        styleRole: "bodyS"
+                        textTone: "secondary"
+                        elide: Text.ElideMiddle
+                    }
+
+                    Item {
+                        id: childTrackContent
+
+                        x: root.labelWidth
+                        width: Math.max(0, parent.width - root.labelWidth)
+                        height: parent.height
+                        clip: true
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: 1
+                            color: root.colorValue("border", "#334155")
+                            opacity: 0.14
+                        }
+
+                        Repeater {
+                            model: childTrackRow.childTrackData.segments || []
+
+                            delegate: Rectangle {
+                                property var segmentData: modelData || ({})
+                                readonly property real startTimeMs: Math.max(0, Number(segmentData.startTimeMs || 0))
+                                readonly property real sourceEndTimeMs: Number(segmentData.endTimeMs)
+                                readonly property real endTimeMs: sourceEndTimeMs < 0 && root.ruler
+                                    ? root.ruler.durationMs
+                                    : Math.max(startTimeMs, sourceEndTimeMs)
+                                readonly property real startX: root.timeToX(startTimeMs) - root.labelWidth
+                                readonly property real endX: root.timeToX(endTimeMs) - root.labelWidth
+
+                                x: Math.max(0, startX)
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: Math.max(1, Math.min(parent.width, endX) - x)
+                                height: 14
+                                radius: 3
+                                color: String(segmentData.color || childTrackRow.childTrackData.color || "#16a34a")
+                                opacity: 0.82
+                                visible: endTimeMs > startTimeMs && endX > 0 && startX < parent.width
+                            }
                         }
                     }
                 }

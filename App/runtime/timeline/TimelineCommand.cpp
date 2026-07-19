@@ -1,9 +1,13 @@
 #include "timeline/TimelineCommand.h"
 
 #include "devices/DeviceCommand.h"
+#include "devices/DeviceConstants.h"
 
+#include <algorithm>
 #include <QDataStream>
+#include <QFileInfo>
 #include <QJsonObject>
+#include <QMap>
 #include <QUuid>
 
 namespace {
@@ -226,6 +230,134 @@ QVariantList TimelineCommandModel::commandVariants() const
     return result;
 }
 
+QVariantMap TimelineCommandModel::childTracksByParentId() const
+{
+    struct ChildTrackState
+    {
+        QString source;
+        QString title;
+        QVariantList segments;
+        qint64 playingSinceMs = -1;
+        bool opened = false;
+    };
+    struct ParentTrackState
+    {
+        QMap<QString, ChildTrackState> tracks;
+        QStringList trackOrder;
+    };
+
+    QList<TimelineCommand *> sortedCommands = items();
+    std::stable_sort(sortedCommands.begin(), sortedCommands.end(), [](TimelineCommand *left, TimelineCommand *right) {
+        return left && right ? left->startTimeMs() < right->startTimeMs() : right != nullptr;
+    });
+
+    QMap<QString, ParentTrackState> parentStates;
+    const auto closeSegment = [](ChildTrackState &state, qint64 endTimeMs) {
+        if (state.playingSinceMs >= 0 && endTimeMs > state.playingSinceMs) {
+            state.segments.append(QVariantMap{
+                {QStringLiteral("startTimeMs"), state.playingSinceMs},
+                {QStringLiteral("endTimeMs"), endTimeMs}
+            });
+        }
+        state.playingSinceMs = -1;
+    };
+
+    for (TimelineCommand *command : sortedCommands) {
+        if (!command || command->targetDeviceId().isEmpty())
+            continue;
+
+        const QVariantMap params = command->commandParams();
+        const QString commandType = params.value(DeviceKey::CommandType).toString();
+        const bool openVideo = commandType == QStringLiteral("openVideo");
+        const bool playVideo = commandType == QStringLiteral("playVideo");
+        const bool pauseVideo = commandType == QStringLiteral("pauseVideo");
+        const bool closeVideo = commandType == QStringLiteral("closeVideo");
+        const bool closePlayer = commandType == QStringLiteral("closePlayer");
+        if (!openVideo && !playVideo && !pauseVideo && !closeVideo && !closePlayer)
+            continue;
+
+        const QVariantMap input = params.value(QStringLiteral("executionInputFields")).toMap();
+        QString source = input.value(DeviceKey::VideoFile).toString().trimmed();
+        if (source.startsWith(QLatin1Char('$')))
+            source = DeviceConstants::LocalVideoPrefix + source.mid(1);
+
+        ParentTrackState &parentState = parentStates[command->targetDeviceId()];
+        const qint64 eventTimeMs = command->startTimeMs();
+        if (openVideo) {
+            if (source.isEmpty())
+                continue;
+
+            if (!parentState.tracks.contains(source)) {
+                ChildTrackState state;
+                state.source = source;
+                state.title = QFileInfo(source).fileName();
+                if (state.title.isEmpty())
+                    state.title = source;
+                parentState.tracks.insert(source, state);
+                parentState.trackOrder.append(source);
+            }
+
+            ChildTrackState &state = parentState.tracks[source];
+            closeSegment(state, eventTimeMs);
+            state.opened = true;
+            if (input.value(QStringLiteral("play"), true).toBool())
+                state.playingSinceMs = eventTimeMs;
+            continue;
+        }
+
+        QStringList targetSources;
+        if (source.isEmpty())
+            targetSources = parentState.trackOrder;
+        else
+            targetSources.append(source);
+
+        for (const QString &targetSource : targetSources) {
+            auto stateIt = parentState.tracks.find(targetSource);
+            if (stateIt == parentState.tracks.end() || !stateIt->opened)
+                continue;
+
+            ChildTrackState &state = stateIt.value();
+            if (playVideo) {
+                if (state.playingSinceMs < 0)
+                    state.playingSinceMs = eventTimeMs;
+            } else if (pauseVideo) {
+                closeSegment(state, eventTimeMs);
+            } else if (closeVideo || closePlayer) {
+                closeSegment(state, eventTimeMs);
+                state.opened = false;
+            }
+        }
+    }
+
+    QVariantMap result;
+    for (auto parentIt = parentStates.cbegin(); parentIt != parentStates.cend(); ++parentIt) {
+        QVariantList childTracks;
+        const ParentTrackState &parentState = parentIt.value();
+        for (const QString &source : parentState.trackOrder) {
+            const ChildTrackState &state = parentState.tracks[source];
+            QVariantList segments = state.segments;
+            if (state.playingSinceMs >= 0) {
+                segments.append(QVariantMap{
+                    {QStringLiteral("startTimeMs"), state.playingSinceMs},
+                    {QStringLiteral("endTimeMs"), -1}
+                });
+            }
+
+            childTracks.append(QVariantMap{
+                {QStringLiteral("id"), QStringLiteral("video:%1:%2").arg(parentIt.key(), source)},
+                {QStringLiteral("type"), QStringLiteral("video")},
+                {QStringLiteral("title"), state.title},
+                {QStringLiteral("detail"), state.source},
+                {QStringLiteral("color"), QStringLiteral("#16a34a")},
+                {QStringLiteral("segments"), segments}
+            });
+        }
+        if (!childTracks.isEmpty())
+            result.insert(parentIt.key(), childTracks);
+    }
+    return result;
+}
+
 TimelineCommand *TimelineCommandModel::commandAt(int row) const
 {
     return itemAt(row);
@@ -308,6 +440,7 @@ void TimelineCommandModel::resetCommands(const QList<TimelineCommand *> &command
         qDeleteAll(oldCommands);
         if (!m_selectedCommandId.isEmpty() && !commandById(m_selectedCommandId))
             setSelectedCommandId(QString());
+        emit commandsChanged();
     }
 }
 
@@ -324,6 +457,7 @@ void TimelineCommandModel::removeCommandAt(int row)
             setSelectedCommandId(nextCommand ? nextCommand->id() : QString());
         }
         command->deleteLater();
+        emit commandsChanged();
     }
 }
 
@@ -409,7 +543,6 @@ void TimelineCommandModel::itemRemoved(TimelineCommand *command, int row)
 {
     Q_UNUSED(row)
     disconnectCommand(command);
-    emit commandsChanged();
 }
 
 void TimelineCommandModel::prepareCommand(TimelineCommand *command)

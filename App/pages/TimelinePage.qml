@@ -20,6 +20,7 @@ Item {
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var timelineCommandModel: appRuntime && appRuntime.timelineCommandModel ? appRuntime.timelineCommandModel : null
     property var timelineController: appRuntime && appRuntime.timelineController ? appRuntime.timelineController : null
+    property var timelinePlanController: appRuntime && appRuntime.timelinePlanController ? appRuntime.timelinePlanController : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     property var pcPreviewGenerator: typeof pcTimelinePreviewGenerator !== "undefined"
@@ -31,9 +32,11 @@ Item {
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
+    readonly property var timelinePlans: timelinePlanController && timelinePlanController.plans ? timelinePlanController.plans : []
     readonly property var visibleTimelineCommands: buildVisibleTimelineCommands()
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
     readonly property bool timelineRunning: timelineController && timelineController.state === 1
+    readonly property bool timelineStopped: !timelineController || timelineController.state === 0
     readonly property var selectedCommand: selectedCommandIndex >= 0
         && selectedCommandIndex < deviceCommands.length
         ? deviceCommands[selectedCommandIndex]
@@ -59,6 +62,16 @@ Item {
     Component.onCompleted: {
         ensureSelectedTimelineDevice()
         ensureSelectedCommand()
+    }
+
+    Connections {
+        target: root.timelinePlanController
+        function onCurrentPlanChanged() {
+            timelinePlanSelector.value = root.timelinePlanController
+                ? root.timelinePlanController.currentPlanIndex
+                : -1
+            root.executionStatusText = ""
+        }
     }
 
     function deviceForId(deviceId) {
@@ -326,6 +339,45 @@ Item {
                 styleRole: "titleL"
             }
 
+            Base.AppSelect {
+                id: timelinePlanSelector
+
+                Layout.preferredWidth: 210
+                theme: root.pageTheme
+                options: root.timelinePlans
+                textRole: "name"
+                valueRole: "index"
+                value: root.timelinePlanController ? root.timelinePlanController.currentPlanIndex : -1
+                enabled: root.timelinePlanController !== null && root.timelineStopped
+                onValueSelected: {
+                    if (root.timelinePlanController)
+                        root.timelinePlanController.currentPlanIndex = Number(nextValue)
+                }
+            }
+
+            Base.AppButton {
+                text: qsTr("新建")
+                theme: root.pageTheme
+                enabled: root.timelinePlanController !== null && root.timelineStopped
+                onClicked: timelinePlanNamePopup.openForCreate()
+            }
+
+            Base.AppButton {
+                text: qsTr("复制")
+                theme: root.pageTheme
+                enabled: root.timelinePlanController !== null && root.timelineStopped
+                onClicked: timelinePlanNamePopup.openForDuplicate()
+            }
+
+            Base.AppButton {
+                text: qsTr("删除")
+                theme: root.pageTheme
+                enabled: root.timelinePlanController !== null
+                    && root.timelineStopped
+                    && root.timelinePlans.length > 1
+                onClicked: removeTimelinePlanPopup.openForPlan()
+            }
+
             Item {
                 Layout.fillWidth: true
             }
@@ -381,9 +433,10 @@ Item {
                         durationMs: root.timelineDurationMs
                         currentTimeMs: root.timelineCurrentTimeMs
                         scrollX: root.timelineScrollX
-                        startTimeX: root.timelineTrackLabelWidth + Math.max(0, width - root.timelineTrackLabelWidth) / 2
+                        trackLeftX: root.timelineTrackLabelWidth
+                        startTimeX: root.timelineTrackLabelWidth + 20
                         timeScale: root.timelineTimeScale
-                        dragEnabled: !root.timelineRunning
+                        currentTimeDragEnabled: !root.timelineController || root.timelineController.state === 0
                         onScrollXChangeRequested: function(nextScrollX) {
                             root.timelineScrollX = nextScrollX
                         }
@@ -405,6 +458,9 @@ Item {
                         ruler: timelineRuler
                         devices: root.devices
                         commandModel: root.timelineCommandModel
+                        childTracksByParentId: root.timelineCommandModel
+                            ? root.timelineCommandModel.childTracksByParentId
+                            : ({})
                         labelWidth: root.timelineTrackLabelWidth
                         selectedDeviceId: root.selectedTimelineDeviceId
                         onTrackSelected: function(targetDeviceId) {
@@ -818,6 +874,169 @@ Item {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    Base.AppPopup {
+        id: timelinePlanNamePopup
+
+        property bool duplicateMode: false
+        property string planName: ""
+
+        function openForCreate() {
+            duplicateMode = false
+            planName = qsTr("时间轴 %1").arg(root.timelinePlans.length + 1)
+            open()
+            Qt.callLater(function() {
+                timelinePlanNameField.forceActiveFocus()
+                timelinePlanNameField.selectAll()
+            })
+        }
+
+        function openForDuplicate() {
+            duplicateMode = true
+            planName = qsTr("%1 副本").arg(root.timelinePlanController
+                ? root.timelinePlanController.currentPlanName
+                : qsTr("时间轴"))
+            open()
+            Qt.callLater(function() {
+                timelinePlanNameField.forceActiveFocus()
+                timelinePlanNameField.selectAll()
+            })
+        }
+
+        function commit() {
+            if (!root.timelinePlanController || planName.trim().length === 0)
+                return
+
+            var index = duplicateMode
+                ? root.timelinePlanController.duplicateCurrentPlan(planName)
+                : root.timelinePlanController.createPlan(planName)
+            if (index >= 0) {
+                timelinePlanSelector.value = index
+                close()
+            }
+        }
+
+        modal: true
+        focus: true
+        width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        padding: 18
+        spacing: 14
+        theme: root.pageTheme
+        surfaceTone: "section"
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        Base.AppText {
+            Layout.fillWidth: true
+            text: timelinePlanNamePopup.duplicateMode ? qsTr("复制时间轴") : qsTr("新建时间轴")
+            theme: root.pageTheme
+            styleRole: "titleM"
+            elide: Text.ElideRight
+        }
+
+        Base.AppTextField {
+            id: timelinePlanNameField
+
+            Layout.fillWidth: true
+            theme: root.pageTheme
+            text: timelinePlanNamePopup.planName
+            placeholderText: qsTr("时间轴名称")
+            onTextChanged: timelinePlanNamePopup.planName = text
+            onAccepted: timelinePlanNamePopup.commit()
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Base.AppButton {
+                text: qsTr("取消")
+                theme: root.pageTheme
+                onClicked: timelinePlanNamePopup.close()
+            }
+
+            Base.AppButton {
+                text: timelinePlanNamePopup.duplicateMode ? qsTr("复制") : qsTr("创建")
+                theme: root.pageTheme
+                enabled: timelinePlanNamePopup.planName.trim().length > 0
+                onClicked: timelinePlanNamePopup.commit()
+            }
+        }
+    }
+
+    Base.AppPopup {
+        id: removeTimelinePlanPopup
+
+        property string planName: ""
+
+        function openForPlan() {
+            planName = root.timelinePlanController ? root.timelinePlanController.currentPlanName : ""
+            open()
+        }
+
+        function commit() {
+            if (!root.timelinePlanController)
+                return
+
+            root.timelinePlanController.removeCurrentPlan()
+            timelinePlanSelector.value = root.timelinePlanController.currentPlanIndex
+            close()
+        }
+
+        modal: true
+        focus: true
+        width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        padding: 18
+        spacing: 14
+        theme: root.pageTheme
+        surfaceTone: "section"
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        Base.AppText {
+            Layout.fillWidth: true
+            text: qsTr("删除时间轴")
+            theme: root.pageTheme
+            styleRole: "titleM"
+            elide: Text.ElideRight
+        }
+
+        Base.AppText {
+            Layout.fillWidth: true
+            text: qsTr("确定删除“%1”？其中的时间轴指令也会被删除。").arg(removeTimelinePlanPopup.planName)
+            theme: root.pageTheme
+            styleRole: "bodyM"
+            textTone: "secondary"
+            wrapMode: Text.WordWrap
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Base.AppButton {
+                text: qsTr("取消")
+                theme: root.pageTheme
+                onClicked: removeTimelinePlanPopup.close()
+            }
+
+            Base.AppButton {
+                text: qsTr("删除")
+                theme: root.pageTheme
+                onClicked: removeTimelinePlanPopup.commit()
             }
         }
     }

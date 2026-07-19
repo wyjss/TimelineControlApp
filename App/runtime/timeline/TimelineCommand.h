@@ -94,6 +94,8 @@ class TimelineCommandModel final : public TypedListModel<TimelineCommand *>
 {
     Q_OBJECT
     Q_PROPERTY(QVariantList commands READ commandVariants NOTIFY commandsChanged FINAL)
+    //! 父轨 ID 到只读子轨投影列表的映射。
+    Q_PROPERTY(QVariantMap childTracksByParentId READ childTracksByParentId NOTIFY commandsChanged FINAL)
     Q_PROPERTY(QString selectedCommandId READ selectedCommandId WRITE setSelectedCommandId NOTIFY selectedCommandIdChanged FINAL)
 
 public:
@@ -102,6 +104,7 @@ public:
 
     QList<TimelineCommand *> commands() const;
     QVariantList commandVariants() const;
+    QVariantMap childTracksByParentId() const;
     TimelineCommand *commandAt(int row) const;
     TimelineCommand *commandById(const QString &id) const;
     int indexOfCommand(TimelineCommand *command) const;

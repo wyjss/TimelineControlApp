@@ -15,6 +15,7 @@
 #include "projection/VideoProjectionPlanController.h"
 #include "timeline/TimelineController.h"
 #include "timeline/TimelineCommand.h"
+#include "timeline/TimelinePlanController.h"
 #include "runtime/task/TaskManager.h"
 #include "runtime/form/AppForm.h"
 
@@ -41,6 +42,9 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     , m_videoProjectionPlanController(new VideoProjectionPlanController(this))
     , m_timelineController(new TimelineController(this))
     , m_timelineCommandModel(new TimelineCommandModel(this))
+    , m_timelinePlanController(new TimelinePlanController(m_timelineCommandModel,
+                                                          m_timelineController,
+                                                          this))
 {
     qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
     qRegisterMetaType<Device *>("Device*");
@@ -55,9 +59,10 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<TimelineController *>("TimelineController*");
     qRegisterMetaType<TimelineCommand *>("TimelineCommand*");
     qRegisterMetaType<TimelineCommandModel *>("TimelineCommandModel*");
+    qRegisterMetaType<TimelinePlanController *>("TimelinePlanController*");
 
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
-            m_timelineCommandModel, &TimelineCommandModel::removeCommandsForDevice);
+            m_timelinePlanController, &TimelinePlanController::removeCommandsForDevice);
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_videoProjectionPlanController, &VideoProjectionPlanController::removeMappingsForPc);
     connect(m_timelineController, &TimelineController::stateChanged, this, [this]() {
@@ -199,6 +204,11 @@ TimelineCommandModel *TimelineRuntime::timelineCommandModel() const
     return m_timelineCommandModel;
 }
 
+TimelinePlanController *TimelineRuntime::timelinePlanController() const
+{
+    return m_timelinePlanController;
+}
+
 QString TimelineRuntime::currentPlanFilePath() const
 {
     return m_currentPlanFilePath;
@@ -238,6 +248,7 @@ void TimelineRuntime::writePlanToStream(QDataStream &stream) const
     m_deviceModel->writeToStream(stream);
     m_timelineCommandModel->writeToStream(stream);
     m_videoProjectionPlanController->writeToStream(stream);
+    m_timelinePlanController->writeToStream(stream);
 }
 
 void TimelineRuntime::readPlanFromStream(QDataStream &stream)
@@ -249,10 +260,20 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
     m_timelineCommandModel->readFromStream(stream);
     if (stream.status() != QDataStream::Ok)
         return;
-    if (stream.device() && stream.device()->atEnd())
+    if (stream.device() && stream.device()->atEnd()) {
+        m_timelinePlanController->resetFromCurrentModel();
         return;
+    }
 
     m_videoProjectionPlanController->readFromStream(stream);
+    if (stream.status() != QDataStream::Ok)
+        return;
+    if (stream.device() && stream.device()->atEnd()) {
+        m_timelinePlanController->resetFromCurrentModel();
+        return;
+    }
+    if (!m_timelinePlanController->readFromStream(stream))
+        stream.setStatus(QDataStream::ReadCorruptData);
 }
 
 bool TimelineRuntime::savePlanToFile(const QString &filePath)

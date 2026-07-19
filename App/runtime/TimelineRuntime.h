@@ -15,6 +15,7 @@ class DeviceInspectorFormProvider;
 class VideoProjectionPlanController;
 class TimelineController;
 class TimelineCommandModel;
+class TimelinePlanController;
 
 
 class TaskManager;
@@ -32,6 +33,7 @@ class TimelineRuntime final : public EarthUI::BaseRuntime
     Q_PROPERTY(VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
     Q_PROPERTY(TimelineController *timelineController READ timelineController CONSTANT FINAL)
     Q_PROPERTY(TimelineCommandModel *timelineCommandModel READ timelineCommandModel CONSTANT FINAL)
+    Q_PROPERTY(TimelinePlanController *timelinePlanController READ timelinePlanController CONSTANT FINAL)
     Q_PROPERTY(QString currentPlanFilePath READ currentPlanFilePath NOTIFY currentPlanFilePathChanged FINAL)
     Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanFilePathChanged FINAL)
 
@@ -57,6 +59,7 @@ public:
     VideoProjectionPlanController *videoProjectionPlanController() const;
     TimelineController *timelineController() const;
     TimelineCommandModel *timelineCommandModel() const;
+    TimelinePlanController *timelinePlanController() const;
     QString currentPlanFilePath() const;
     QString currentPlanName() const;
 
@@ -82,6 +85,7 @@ private:
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
     TimelineController *m_timelineController = nullptr;
     TimelineCommandModel *m_timelineCommandModel = nullptr;
+    TimelinePlanController *m_timelinePlanController = nullptr;
     QString m_currentPlanFilePath;
     int m_runId = 0;
 };

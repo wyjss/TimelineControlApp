@@ -375,8 +375,7 @@ void PcTimelinePreviewGenerator::completeFrame(bool success, const QString &erro
 
 void PcTimelinePreviewGenerator::finishPreview()
 {
-    const bool current = isActive() && m_generationRevision == m_revision;
-    if (current) {
+    if (isActive()) {
         m_previewImage = m_canvas;
         const QString previewPath = m_temporaryDir.filePath(
             QStringLiteral("preview-%1.jpg").arg(m_generationRevision));
@@ -397,7 +396,7 @@ void PcTimelinePreviewGenerator::finishPreview()
     }
 
     setBusy(false);
-    if (!current && isActive() && !m_refreshTimer.isActive())
+    if (isActive() && m_generationRevision != m_revision && !m_refreshTimer.isActive())
         m_refreshTimer.start();
 }
 
