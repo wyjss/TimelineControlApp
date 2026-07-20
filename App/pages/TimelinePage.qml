@@ -315,6 +315,22 @@ Item {
             .filter(function(part) { return String(part || "").length > 0 }).join(" / ")
     }
 
+    function timelineCommandExecutionSummary(command) {
+        var values = command && command.commandParams
+            ? command.commandParams.executionInputFields || {}
+            : {}
+        var parts = []
+        Object.keys(values).forEach(function(key) {
+            var value = values[key]
+            if (value === undefined || value === null || String(value).length === 0)
+                return
+            if (typeof value === "boolean")
+                value = value ? qsTr("是") : qsTr("否")
+            parts.push(String(value))
+        })
+        return parts.join(" / ")
+    }
+
     function executeTimeline() {
         if (appRuntime)
             appRuntime.startTimeline()
@@ -718,9 +734,10 @@ Item {
 
                                 readonly property var commandData: modelData
                                 readonly property bool selected: String(commandData.id || "") === root.selectedTimelineCommandId
+                                readonly property string executionSummary: root.timelineCommandExecutionSummary(commandData)
 
                                 width: timelineCommandList.width
-                                height: 56
+                                height: executionSummary.length > 0 ? 74 : 56
 
                                 Base.AppSurface {
                                     anchors.fill: parent
@@ -789,6 +806,16 @@ Item {
                                             theme: root.pageTheme
                                             styleRole: "bodyS"
                                             textTone: "secondary"
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            visible: timelineCommandRow.executionSummary.length > 0
+                                            text: timelineCommandRow.executionSummary
+                                            theme: root.pageTheme
+                                            styleRole: "bodyS"
+                                            textTone: "accent"
                                             elide: Text.ElideRight
                                         }
                                     }

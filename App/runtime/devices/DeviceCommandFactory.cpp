@@ -2,6 +2,7 @@
 
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
+#include "LogMacros.h"
 
 #include <QList>
 #include <QUrl>
@@ -134,11 +135,15 @@ public:
             url = url.replace("$", DeviceConstants::LocalVideoPrefix);
         }
 
+       
+        int w = params[DeviceKey::VirtualScreenWidth].toInt();
+        int h = params[DeviceKey::VirtualScreenHeight].toInt();
         QUrlQuery query;
         query.addQueryItem("mode", "virtual");
         query.addQueryItem("url", url);
         query.addQueryItem("play", executionInputValues.value("play", true).toString());
         query.addQueryItem("rect", executionInputValues[DeviceKey::Rect].toString());
+        query.addQueryItem("canvasSize", QString("%1x%2").arg(w).arg(h));
 
         QString api = QString("/video/open?") + query.toString();
         params[DeviceKey::Name] = this->name() + "-" + url;
