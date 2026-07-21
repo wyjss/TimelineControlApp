@@ -3,6 +3,7 @@
 #include <QByteArray>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QVariantList>
 #include <QVector>
 
@@ -18,6 +19,7 @@ class TimelinePlanController final : public QObject
     Q_PROPERTY(QVariantList plans READ plans NOTIFY plansChanged FINAL)
     Q_PROPERTY(int currentPlanIndex READ currentPlanIndex WRITE setCurrentPlanIndex NOTIFY currentPlanChanged FINAL)
     Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanChanged FINAL)
+    Q_PROPERTY(QStringList selectedPlanIds READ selectedPlanIds NOTIFY selectedPlansChanged FINAL)
 
 public:
     explicit TimelinePlanController(TimelineCommandModel *commandModel,
@@ -27,11 +29,13 @@ public:
     QVariantList plans() const;
     int currentPlanIndex() const;
     QString currentPlanName() const;
+    QStringList selectedPlanIds() const;
     void setCurrentPlanIndex(int index);
 
     Q_INVOKABLE int createPlan(const QString &name);
     Q_INVOKABLE int duplicateCurrentPlan(const QString &name);
     Q_INVOKABLE bool removeCurrentPlan();
+    Q_INVOKABLE void togglePlanSelected(const QString &planId);
 
     void resetFromCurrentModel();
     void removeCommandsForDevice(const QString &deviceId);
@@ -41,6 +45,7 @@ public:
 signals:
     void plansChanged();
     void currentPlanChanged();
+    void selectedPlansChanged();
 
 private:
     struct Plan
@@ -59,6 +64,7 @@ private:
     TimelineCommandModel *m_commandModel = nullptr;
     TimelineController *m_timelineController = nullptr;
     QVector<Plan> m_plans;
+    QStringList m_selectedPlanIds;
     int m_currentPlanIndex = -1;
 };
 

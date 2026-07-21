@@ -10,6 +10,7 @@ ApplicationWindow {
     property var shellController: appRuntime && appRuntime.shell
         ? appRuntime.shell
         : (typeof timelineShellController !== "undefined" ? timelineShellController : null)
+    property bool timelineEditing: false
     readonly property bool showDrawerPane: false
     readonly property string defaultCanvasDelegateSource: appRuntime && appRuntime.settings
         ? String(appRuntime.settings.value("canvasDelegateSource", ""))

@@ -3,12 +3,12 @@ import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UiCore/qml/components/base" as Base
 import "qrc:/UiCore/qml/theme" as Theme
-import "timeline" as Timeline
 
 Item {
     id: root
 
     focus: true
+
     Theme.AppTheme {
         id: fallbackTheme
     }
@@ -16,934 +16,340 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
-    property var timelineCommandModel: appRuntime && appRuntime.timelineCommandModel ? appRuntime.timelineCommandModel : null
-    property var timelineController: appRuntime && appRuntime.timelineController ? appRuntime.timelineController : null
-    property var timelinePlanController: appRuntime && appRuntime.timelinePlanController ? appRuntime.timelinePlanController : null
-    property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
-    property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
-    property var pcPreviewGenerator: typeof pcTimelinePreviewGenerator !== "undefined"
-        ? pcTimelinePreviewGenerator
+    property var timelinePlanController: appRuntime && appRuntime.timelinePlanController
+        ? appRuntime.timelinePlanController
         : null
-    readonly property int preStartTimelineDurationMs: 24 * 60 * 60 * 1000
-    readonly property int timelineDurationMs: timelineController ? timelineController.durationMs : preStartTimelineDurationMs
-    readonly property int timelineTrackLabelWidth: 224
-    readonly property var devices: deviceModel ? deviceModel.devices : []
-    readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
-    readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
-    readonly property var timelinePlans: timelinePlanController && timelinePlanController.plans ? timelinePlanController.plans : []
-    readonly property var visibleTimelineCommands: buildVisibleTimelineCommands()
-    readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
-    readonly property bool timelineRunning: timelineController && timelineController.state === 1
+    property var timelineController: appRuntime && appRuntime.timelineController
+        ? appRuntime.timelineController
+        : null
+    readonly property var timelinePlans: timelinePlanController && timelinePlanController.plans
+        ? timelinePlanController.plans
+        : []
     readonly property bool timelineStopped: !timelineController || timelineController.state === 0
-    readonly property var selectedCommand: selectedCommandIndex >= 0
-        && selectedCommandIndex < deviceCommands.length
-        ? deviceCommands[selectedCommandIndex]
-        : null
-    readonly property int timelineCurrentTimeMs: timelineController ? timelineController.currentTimeMs : fallbackTimelineCurrentTimeMs
-    property int fallbackTimelineCurrentTimeMs: 0
-    property real timelineScrollX: 0
-    property real timelineTimeScale: 1.0
-    property string selectedTimelineDeviceId: ""
-    property var selectedTimelineDevice: null
-    property int selectedCommandIndex: -1
-    property string timelineCommandListMode: "all"
-    property string executionStatusText: ""
+    readonly property var selectedPlanIds: timelinePlanController
+        ? timelinePlanController.selectedPlanIds
+        : []
+    readonly property int checkedPlanCount: selectedPlanIds.length
+    readonly property bool editing: ApplicationWindow.window
+        ? ApplicationWindow.window.timelineEditing
+        : false
 
-    onDevicesChanged: ensureSelectedTimelineDevice()
-    onSelectedTimelineDeviceIdChanged: {
-        updateSelectedTimelineDevice()
-        selectedCommandIndex = -1
-        ensureSelectedCommand()
-    }
-    onDeviceCommandsChanged: ensureSelectedCommand()
-
-    Component.onCompleted: {
-        ensureSelectedTimelineDevice()
-        ensureSelectedCommand()
-    }
 
     Connections {
         target: root.timelinePlanController
         function onCurrentPlanChanged() {
-            timelinePlanSelector.value = root.timelinePlanController
+            editorTimelinePlanSelector.value = root.timelinePlanController
                 ? root.timelinePlanController.currentPlanIndex
                 : -1
-            root.executionStatusText = ""
         }
     }
 
-    function deviceForId(deviceId) {
-        var normalizedDeviceId = String(deviceId || "")
-        for (var index = 0; index < devices.length; ++index) {
-            if (String(devices[index].id || "") === normalizedDeviceId)
-                return devices[index]
-        }
-
-        return null
+    function isPlanChecked(planId) {
+        return checkedPlanNumber(planId) > 0
     }
 
-    function ensureSelectedTimelineDevice() {
-        if (devices.length === 0) {
-            selectedTimelineDeviceId = ""
-            selectedTimelineDevice = null
-            return
-        }
-
-        if (!deviceForId(selectedTimelineDeviceId)) {
-            selectTimelineDevice(String(devices[0].id || ""))
-            return
-        }
-
-        updateSelectedTimelineDevice()
+    function checkedPlanNumber(planId) {
+        return selectedPlanIds.indexOf(String(planId || "")) + 1
     }
 
-    function updateSelectedTimelineDevice() {
-        selectedTimelineDevice = deviceForId(selectedTimelineDeviceId)
+    function togglePlanChecked(planId) {
+        if (timelinePlanController)
+            timelinePlanController.togglePlanSelected(String(planId || ""))
     }
 
-    function selectTimelineDevice(deviceId) {
-        selectedTimelineDeviceId = String(deviceId || "")
-        if (deviceModel && selectedTimelineDeviceId.length > 0)
-            deviceModel.selectDevice(selectedTimelineDeviceId)
+    function createPlan(name) {
+        if (!timelinePlanController || !timelineStopped || String(name || "").trim().length === 0)
+            return -1
+        return timelinePlanController.createPlan(String(name).trim())
     }
 
-    function ensureSelectedCommand() {
-        if (deviceCommands.length === 0) {
-            selectedCommandIndex = -1
-            return
-        }
-
-        if (selectedCommandIndex < 0 || selectedCommandIndex >= deviceCommands.length)
-            selectedCommandIndex = 0
-    }
-
-    function selectCommandIndex(commandIndex) {
-        selectedCommandIndex = commandIndex >= 0 && commandIndex < deviceCommands.length
-            ? commandIndex
-            : -1
-    }
-
-    function addSelectedCommandAtCurrentTime() {
-        if (!timelineCommandModel || !selectedTimelineDevice || !selectedCommand) {
-            executionStatusText = qsTr("请先选择设备指令")
-            return
-        }
-
-        var startTimeMs = Math.max(0, Math.round(timelineCurrentTimeMs))
-        var executionFields = selectedCommand.executionInputFields || []
-        if (executionFields.length > 0) {
-            addTimelineCommandPopup.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
-            return
-        }
-
-        addTimelineCommand(selectedTimelineDevice, selectedCommand, startTimeMs, {})
-    }
-
-    function addTimelineCommand(targetDevice, targetCommand, startTimeMs, executionValues) {
-        var extraParams = {
-            "targetDeviceName": deviceName(targetDevice),
-            "targetDeviceAddress": deviceAddress(targetDevice)
-        }
-        if (executionValues && Object.keys(executionValues).length > 0)
-            extraParams.executionInputFields = executionValues
-
-        timelineCommandModel.addDeviceCommand(startTimeMs,
-                                              String(targetDevice.id || ""),
-                                              targetCommand,
-                                              extraParams)
-        executionStatusText = qsTr("已在 %2 ms 添加 %1").arg(commandName(targetCommand)).arg(startTimeMs)
-    }
-
-    function buildVisibleTimelineCommands() {
-        var result = []
-        for (var index = 0; index < timelineCommands.length; ++index) {
-            var command = timelineCommands[index]
-            if (timelineCommandListMode === "device"
-                && String(command.targetDeviceId || "") !== selectedTimelineDeviceId)
-                continue
-
-            result.push(command)
-        }
-        return result
-    }
-
-    function selectTimelineCommand(command) {
-        if (!command)
+    function removePlan(plan) {
+        if (!timelinePlanController || !timelineStopped || timelinePlans.length <= 1 || !plan)
             return
 
-        if (timelineCommandModel)
-            timelineCommandModel.selectedCommandId = String(command.id || "")
-        if (String(command.targetDeviceId || "").length > 0)
-            selectTimelineDevice(String(command.targetDeviceId || ""))
-        setTimelineCurrentTimeMs(command.startTimeMs)
-    }
-
-    function setTimelineCurrentTimeMs(currentTimeMs) {
-        if (timelineRunning)
+        var planIndex = Number(plan.index)
+        timelinePlanController.currentPlanIndex = planIndex
+        if (timelinePlanController.currentPlanIndex !== planIndex)
             return
 
-        var normalizedTimeMs = Math.max(0, Math.round(Number(currentTimeMs || 0)))
-        if (timelineController)
-            timelineController.seek(normalizedTimeMs)
-        else
-            fallbackTimelineCurrentTimeMs = normalizedTimeMs
+        timelinePlanController.removeCurrentPlan()
     }
 
-    function deviceName(device) {
-        if (!device)
-            return qsTr("未分配")
+    function editPlan(plan) {
+        if (!timelinePlanController || !timelineStopped || !plan)
+            return
 
-        var name = String(device.name || "").trim()
-        return name.length > 0 ? name : String(device.id || qsTr("设备"))
+        var planIndex = Number(plan.index)
+        timelinePlanController.currentPlanIndex = planIndex
+        if (timelinePlanController.currentPlanIndex !== planIndex)
+            return
+
+        if (ApplicationWindow.window)
+            ApplicationWindow.window.timelineEditing = true
     }
 
-    function deviceAddress(device) {
-        if (!device)
-            return qsTr("无地址")
-
-        var values = device.configValues || {}
-        var ip = String(values.ip || "").trim()
-        var port = String(values.port || "").trim()
-        var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
-        if (address.length === 0)
-            address = String(values.serialPort || "").trim()
-        return address.length > 0 ? address : qsTr("未分配")
-    }
-
-    function deviceMeta(device) {
-        if (!device)
-            return ""
-
-        var parts = []
-        var protocolText = String((device.supportedProtocols || []).join(", ")).trim()
-        var typeText = (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))
-            ? "PC"
-            : String(device.deviceType || "").trim()
-        var statusText = String(device.status || "").trim()
-        if (typeText.length > 0)
-            parts.push(typeText)
-        if (protocolText.length > 0)
-            parts.push(protocolText)
-        if (statusText.length > 0)
-            parts.push(statusText)
-        return parts.join(" / ")
-    }
-
-    function commandName(command) {
-        if (!command)
-            return qsTr("指令")
-
-        var name = String(command.name || "").trim()
-        return name.length > 0 ? name : qsTr("指令")
-    }
-
-    function commandProtocol(command) {
-        return command && command.protocol !== undefined && command.protocol !== null
-            ? String(command.protocol)
-            : ""
-    }
-
-    function executionParameterNames(command) {
-        var fields = command ? command.executionInputFields || [] : []
-        var names = []
-        for (var index = 0; index < fields.length; ++index) {
-            var name = String(fields[index].label || fields[index].key || "").trim()
-            if (name.length > 0)
-                names.push(name)
-        }
-        return names.join("、")
-    }
-
-    function commandFieldValue(command, key, fallback) {
-        var fields = command ? command.creationInputFields || [] : []
-        for (var index = 0; index < fields.length; ++index) {
-            if (String(fields[index].key || "") === key)
-                return fields[index].value
-        }
-        return fallback
-    }
-
-    function commandSummary(command) {
-        var protocol = commandProtocol(command).toLowerCase()
-        if (protocol === "http" || protocol === "pc") {
-            var address = String(commandFieldValue(command, "ip", "") || "").trim()
-            var port = String(commandFieldValue(command, "port", "") || "").trim()
-            var path = String(commandFieldValue(command, "apiPath", "") || "").trim()
-            var method = String(commandFieldValue(command, "httpMethod", "") || "").trim()
-            if (address.length > 0 && port.length > 0)
-                address += ":" + port
-            var httpSummary = [method, address, path].filter(function(part) { return part.length > 0 }).join(" / ")
-            return httpSummary.length > 0 ? httpSummary : commandProtocol(command)
-        }
-
-        if (protocol === "serial") {
-            var serialPort = String(commandFieldValue(command, "serialPort", "") || "").trim()
-            var baudRate = String(commandFieldValue(command, "baudRate", "") || "").trim()
-            var serialPayload = String(commandFieldValue(command, "serialPayload", "") || "").trim()
-            var serialSummary = [serialPort, baudRate, serialPayload].filter(function(part) { return part.length > 0 }).join(" / ")
-            return serialSummary.length > 0 ? serialSummary : commandProtocol(command)
-        }
-
-        if (protocol === "dmx512") {
-            var channel = String(commandFieldValue(command, "channel", "") || "").trim()
-            var value = String(commandFieldValue(command, "value", "") || "").trim()
-            var dmxSummary = [channel.length > 0 ? qsTr("通道 %1").arg(channel) : "",
-                              value.length > 0 ? qsTr("值 %1").arg(value) : ""]
-                .filter(function(part) { return part.length > 0 }).join(" / ")
-            return dmxSummary.length > 0 ? dmxSummary : commandProtocol(command)
-        }
-
-        return commandProtocol(command)
-    }
-
-    function formatTimelineMs(ms) {
-        var totalMs = Math.max(0, Math.round(Number(ms || 0)))
-        var totalSeconds = Math.floor(totalMs / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
-        var seconds = totalSeconds % 60
-        return qsTr("%1:%2").arg(minutes).arg(seconds < 10 ? "0" + seconds : seconds)
-    }
-
-    function timelineCommandMeta(command) {
-        if (!command)
-            return ""
-
-        var device = deviceForId(String(command.targetDeviceId || ""))
-        return [formatTimelineMs(command.startTimeMs), deviceName(device)]
-            .filter(function(part) { return String(part || "").length > 0 }).join(" / ")
-    }
-
-    function timelineCommandExecutionSummary(command) {
-        var values = command && command.commandParams
-            ? command.commandParams.executionInputFields || {}
-            : {}
-        var parts = []
-        Object.keys(values).forEach(function(key) {
-            var value = values[key]
-            if (value === undefined || value === null || String(value).length === 0)
-                return
-            if (typeof value === "boolean")
-                value = value ? qsTr("是") : qsTr("否")
-            parts.push(String(value))
-        })
-        return parts.join(" / ")
-    }
-
-    function executeTimeline() {
-        if (appRuntime)
-            appRuntime.startTimeline()
-        executionStatusText = qsTr("时间线已开始执行")
-    }
-
-    ColumnLayout {
+    StackLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.pageMargin
-        anchors.rightMargin: root.pageMargin
-        anchors.topMargin: root.pageMargin
-        anchors.bottomMargin: root.pageMargin
-        spacing: 14
+        currentIndex: root.editing ? 1 : 0
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
+        Item {
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 24
+                spacing: 18
 
-            Base.AppText {
-                text: qsTr("时间线")
-                theme: root.pageTheme
-                styleRole: "titleL"
-            }
+                RowLayout {
+                    Layout.fillWidth: true
 
-            Base.AppSelect {
-                id: timelinePlanSelector
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
 
-                Layout.preferredWidth: 210
-                theme: root.pageTheme
-                options: root.timelinePlans
-                textRole: "name"
-                valueRole: "index"
-                value: root.timelinePlanController ? root.timelinePlanController.currentPlanIndex : -1
-                enabled: root.timelinePlanController !== null && root.timelineStopped
-                onValueSelected: {
-                    if (root.timelinePlanController)
-                        root.timelinePlanController.currentPlanIndex = Number(nextValue)
+                        Base.AppText {
+                            text: qsTr("时间轴")
+                            theme: root.pageTheme
+                            styleRole: "titleL"
+                        }
+
+                        Base.AppText {
+                            text: qsTr("选择时间轴进入编辑，或创建新的时间轴")
+                            theme: root.pageTheme
+                            styleRole: "bodyS"
+                            textTone: "secondary"
+                        }
+                    }
+
+                    Base.AppText {
+                        visible: root.checkedPlanCount > 0
+                        text: qsTr("已选 %1 项").arg(root.checkedPlanCount)
+                        theme: root.pageTheme
+                        styleRole: "bodyM"
+                        textTone: "accent"
+                    }
                 }
-            }
 
-            Base.AppButton {
-                text: qsTr("新建")
-                theme: root.pageTheme
-                enabled: root.timelinePlanController !== null && root.timelineStopped
-                onClicked: timelinePlanNamePopup.openForCreate()
-            }
+                GridView {
+                    id: planGrid
 
-            Base.AppButton {
-                text: qsTr("复制")
-                theme: root.pageTheme
-                enabled: root.timelinePlanController !== null && root.timelineStopped
-                onClicked: timelinePlanNamePopup.openForDuplicate()
-            }
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    cellWidth: 190
+                    cellHeight: 190
+                    model: root.timelinePlans.length + 1
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
 
-            Base.AppButton {
-                text: qsTr("删除")
-                theme: root.pageTheme
-                enabled: root.timelinePlanController !== null
-                    && root.timelineStopped
-                    && root.timelinePlans.length > 1
-                onClicked: removeTimelinePlanPopup.openForPlan()
-            }
+                    delegate: Item {
+                        id: planCell
 
-            Item {
-                Layout.fillWidth: true
-            }
+                        readonly property bool addItem: index === root.timelinePlans.length
+                        readonly property var planData: addItem ? null : root.timelinePlans[index]
+                        readonly property string planId: planData ? String(planData.id || "") : ""
+                        readonly property bool checked: !addItem && root.isPlanChecked(planId)
+                        readonly property int checkedNumber: root.checkedPlanNumber(planId)
+                        readonly property bool current: !addItem
+                            && root.timelinePlanController
+                            && Number(planData.index) === root.timelinePlanController.currentPlanIndex
 
-            Base.AppButton {
-                text: qsTr("预览移动")
-                theme: root.pageTheme
-                iconName: "resources"
-                enabled: root.devices.length > 1
-                onClicked: deviceTrackArea.previewMoveAnimation()
-            }
+                        width: planGrid.cellWidth
+                        height: planGrid.cellHeight
 
-            Base.AppButton {
-                text: qsTr("执行")
-                theme: root.pageTheme
-                iconName: "background-task"
-                onClicked: root.executeTimeline()
+                        Base.AppSurface {
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            sizeToContent: false
+                            theme: root.pageTheme
+                            surfaceTone: planCell.checked ? "highlight" : "section"
+                            active: planCell.checked || planCell.current
+                            hoveredState: planMouse.containsMouse
+                            interactive: true
+                            strokeWidth: planCell.checked || planCell.current || planMouse.containsMouse ? 1 : 0
+                            borderOverride: planCell.checked
+                                ? "#60a5fa"
+                                : (planCell.current ? "#3b82f6" : "#334155")
+                            hoverOverlayOpacity: 0.08
+                        }
+
+                        MouseArea {
+                            id: planMouse
+
+                            anchors.fill: parent
+                            anchors.margins: 8
+                            hoverEnabled: true
+                            enabled: root.timelineStopped
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                if (planCell.addItem)
+                                    createPlanPopup.openForCreate()
+                                else
+                                    root.editPlan(planCell.planData)
+                            }
+                        }
+
+                        Base.AppText {
+                            anchors.centerIn: parent
+                            width: parent.width - 42
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.Wrap
+                            text: planCell.addItem ? "+" : String(planCell.planData.name || qsTr("未命名时间轴"))
+                            theme: root.pageTheme
+                            styleRole: planCell.addItem ? "titleL" : "titleM"
+                            textTone: planCell.addItem ? "accent" : "primary"
+                        }
+
+                        Item {
+                            z: 2
+                            anchors.top: parent.top
+                            anchors.right: parent.right
+                            anchors.topMargin: 14
+                            anchors.rightMargin: 14
+                            width: 26
+                            height: 26
+                            visible: !planCell.addItem && planMouse.containsMouse
+                            opacity: root.timelinePlans.length > 1 ? 1 : 0.35
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: width / 2
+                                color: "#991b1b"
+                            }
+
+                            Base.AppText {
+                                anchors.centerIn: parent
+                                text: "×"
+                                theme: root.pageTheme
+                                styleRole: "bodyM"
+                                colorOverride: "#ffffff"
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                enabled: root.timelinePlans.length > 1
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: removePlanPopup.openForPlan(planCell.planData)
+                            }
+                        }
+
+                        Item {
+                            z: 2
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.rightMargin: 16
+                            anchors.bottomMargin: 16
+                            width: 22
+                            height: 22
+                            visible: !planCell.addItem && (planMouse.containsMouse || planCell.checked)
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: 4
+                                color: planCell.checked ? "#2563eb" : "#111827"
+                                border.width: 1
+                                border.color: planCell.checked ? "#60a5fa" : "#64748b"
+                            }
+
+                            Base.AppText {
+                                anchors.centerIn: parent
+                                visible: planCell.checked
+                                text: String(planCell.checkedNumber)
+                                theme: root.pageTheme
+                                styleRole: "bodyS"
+                                colorOverride: "#ffffff"
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.togglePlanChecked(planCell.planId)
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        GridLayout {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            columns: 3
-            columnSpacing: 14
-            rowSpacing: 14
+        Item {
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
 
-            Base.AppSurface {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.minimumWidth: 520
-                sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 48
 
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 12
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 20
+                        anchors.rightMargin: 20
+                        spacing: 12
 
-                    Base.AppText {
-                        text: qsTr("控制轨")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
-                    }
-
-                    Timeline.TimelineRuler {
-                        id: timelineRuler
-
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 44
-                        theme: root.pageTheme
-                        durationMs: root.timelineDurationMs
-                        currentTimeMs: root.timelineCurrentTimeMs
-                        scrollX: root.timelineScrollX
-                        trackLeftX: root.timelineTrackLabelWidth
-                        startTimeX: root.timelineTrackLabelWidth + 20
-                        timeScale: root.timelineTimeScale
-                        currentTimeDragEnabled: !root.timelineController || root.timelineController.state === 0
-                        onScrollXChangeRequested: function(nextScrollX) {
-                            root.timelineScrollX = nextScrollX
+                        Base.AppButton {
+                            Layout.preferredWidth: 36
+                            iconSymbol: "←"
+                            theme: root.pageTheme
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("返回")
+                            onClicked: {
+                                if (ApplicationWindow.window)
+                                    ApplicationWindow.window.timelineEditing = false
+                            }
                         }
-                        onCurrentTimeMsChangeRequested: function(nextCurrentTimeMs) {
-                            root.setTimelineCurrentTimeMs(nextCurrentTimeMs)
-                        }
-                        onTimeScaleChangeRequested: function(nextTimeScale) {
-                            root.timelineTimeScale = nextTimeScale
-                        }
-                    }
 
-                    Timeline.TimelineDeviceTrackArea {
-                        id: deviceTrackArea
+                        Base.AppSelect {
+                            id: editorTimelinePlanSelector
 
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumHeight: 220
-                        theme: root.pageTheme
-                        ruler: timelineRuler
-                        devices: root.devices
-                        commandModel: root.timelineCommandModel
-                        childTracksByParentId: root.timelineCommandModel
-                            ? root.timelineCommandModel.childTracksByParentId
-                            : ({})
-                        labelWidth: root.timelineTrackLabelWidth
-                        selectedDeviceId: root.selectedTimelineDeviceId
-                        onTrackSelected: function(targetDeviceId) {
-                            root.selectTimelineDevice(targetDeviceId)
+                            Layout.preferredWidth: 210
+                            options: root.timelinePlans
+                            textRole: "name"
+                            valueRole: "index"
+                            value: root.timelinePlanController
+                                ? root.timelinePlanController.currentPlanIndex
+                                : -1
+                            enabled: root.timelinePlanController !== null && root.timelineStopped
+                            theme: root.pageTheme
+                            onValueSelected: {
+                                if (root.timelinePlanController)
+                                    root.timelinePlanController.currentPlanIndex = Number(nextValue)
+                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
                         }
                     }
                 }
-            }
 
-            Base.AppSurface {
-                Layout.preferredWidth: 340
-                Layout.fillHeight: true
-                sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 14
-
-                    Base.AppText {
-                        text: qsTr("执行")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("指令")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
-                            textTone: "primary"
-                            elide: Text.ElideRight
-                        }
-
-                        Base.AppText {
-                            text: qsTr("%1").arg(root.deviceCommands.length)
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-                    }
-
-                    Base.AppSurface {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumHeight: 176
-                        Layout.preferredHeight: 260
-                        sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
-
-                        ListView {
-                            id: commandList
-
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            spacing: 6
-                            model: root.deviceCommands
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
-                            }
-
-                            delegate: Item {
-                                id: commandRow
-
-                                readonly property var commandData: modelData
-                                readonly property bool selected: index === root.selectedCommandIndex
-
-                                width: commandList.width
-                                height: 56
-
-                                Base.AppSurface {
-                                    anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: commandRow.selected ? "highlight" : "ghost"
-                                    active: commandRow.selected
-                                    hoveredState: commandMouse.containsMouse
-                                    interactive: true
-                                    strokeWidth: commandRow.selected || commandMouse.containsMouse ? 1 : 0
-                                    borderOverride: commandRow.selected ? "#60a5fa" : "#334155"
-                                    hoverOverlayOpacity: 0.08
-                                }
-
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 3
-                                    height: parent.height - 18
-                                    radius: 2
-                                    color: commandRow.selected ? "#60a5fa" : "#334155"
-                                    opacity: commandRow.selected ? 1 : (commandMouse.containsMouse ? 0.44 : 0.18)
-                                }
-
-                                MouseArea {
-                                    id: commandMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectCommandIndex(index)
-                                }
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 18
-                                    anchors.rightMargin: 12
-                                    anchors.topMargin: 7
-                                    anchors.bottomMargin: 7
-                                    spacing: 2
-
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 8
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: root.commandName(commandRow.commandData)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
-                                            colorOverride: commandRow.selected ? "#f8fafc" : undefined
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            Layout.maximumWidth: 120
-                                            text: root.executionParameterNames(commandRow.commandData)
-                                            visible: text.length > 0
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            colorOverride: "#ef4444"
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.commandSummary(commandRow.commandData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
-                                        elide: Text.ElideRight
-                                    }
-                                }
-                            }
-                        }
-
-                        Base.AppText {
-                            anchors.centerIn: parent
-                            visible: root.deviceCommands.length === 0
-                            text: qsTr("暂无指令")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-                    }
-
-                    Base.AppButton {
-                        Layout.fillWidth: true
-                        text: qsTr("添加所选")
-                        theme: root.pageTheme
-                        iconName: "workflow"
-                        enabled: root.timelineCommandModel && root.selectedTimelineDevice && root.selectedCommand
-                        onClicked: root.addSelectedCommandAtCurrentTime()
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: root.executionStatusText
-                        visible: root.executionStatusText.length > 0
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "accent"
-                        elide: Text.ElideRight
-                    }
-                }
-            }
-
-            Base.AppSurface {
-                Layout.preferredWidth: 304
-                Layout.fillHeight: true
-                sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 14
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("时间线指令")
-                            theme: root.pageTheme
-                            styleRole: "sectionTitle"
-                            elide: Text.ElideRight
-                        }
-
-                        Base.AppText {
-                            text: qsTr("%1").arg(root.visibleTimelineCommands.length)
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-                    }
-
-                    Base.AppSegmentedControl {
-                        Layout.fillWidth: true
-                        theme: root.pageTheme
-                        options: [
-                            { "label": qsTr("全部"), "value": "all" },
-                            { "label": qsTr("设备"), "value": "device" }
-                        ]
-                        value: root.timelineCommandListMode
-                        onValueSelected: function(nextValue) {
-                            root.timelineCommandListMode = String(nextValue || "all")
-                        }
-                    }
-
-                    Base.AppSurface {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumHeight: 220
-                        sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
-
-                        ListView {
-                            id: timelineCommandList
-
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            spacing: 6
-                            model: root.visibleTimelineCommands
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
-                            }
-
-                            delegate: Item {
-                                id: timelineCommandRow
-
-                                readonly property var commandData: modelData
-                                readonly property bool selected: String(commandData.id || "") === root.selectedTimelineCommandId
-                                readonly property string executionSummary: root.timelineCommandExecutionSummary(commandData)
-
-                                width: timelineCommandList.width
-                                height: executionSummary.length > 0 ? 74 : 56
-
-                                Base.AppSurface {
-                                    anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: timelineCommandRow.selected ? "highlight" : "ghost"
-                                    active: timelineCommandRow.selected
-                                    hoveredState: timelineCommandMouse.containsMouse
-                                    interactive: true
-                                    strokeWidth: timelineCommandRow.selected || timelineCommandMouse.containsMouse ? 1 : 0
-                                    borderOverride: timelineCommandRow.selected ? "#60a5fa" : "#334155"
-                                    hoverOverlayOpacity: 0.08
-                                }
-
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 3
-                                    height: parent.height - 18
-                                    radius: 2
-                                    color: timelineCommandRow.selected
-                                        ? "#60a5fa"
-                                        : String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateColor
-                                            ? timelineCommandRow.commandData.stateColor
-                                            : "#334155")
-                                    opacity: timelineCommandRow.selected ? 1 : (timelineCommandMouse.containsMouse ? 0.44 : 0.18)
-                                }
-
-                                MouseArea {
-                                    id: timelineCommandMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectTimelineCommand(timelineCommandRow.commandData)
-                                }
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 18
-                                    anchors.rightMargin: 12
-                                    anchors.topMargin: 7
-                                    anchors.bottomMargin: 7
-                                    spacing: 8
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
-                                            colorOverride: timelineCommandRow.selected ? "#f8fafc" : undefined
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: root.timelineCommandMeta(timelineCommandRow.commandData)
-                                                + " / "
-                                                + String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateText
-                                                    ? timelineCommandRow.commandData.stateText
-                                                    : qsTr("待执行"))
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "secondary"
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            visible: timelineCommandRow.executionSummary.length > 0
-                                            text: timelineCommandRow.executionSummary
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "accent"
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-
-                                    Base.AppButton {
-                                        visible: timelineCommandRow.selected
-                                        text: qsTr("删除")
-                                        theme: root.pageTheme
-                                        enabled: !root.timelineRunning
-                                        onClicked: {
-                                            if (root.timelineCommandModel)
-                                                root.timelineCommandModel.removeCommand(timelineCommandRow.commandData)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Base.AppText {
-                            anchors.centerIn: parent
-                            visible: root.visibleTimelineCommands.length === 0
-                            text: qsTr("暂无时间线指令")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
-                        }
-                    }
-
-                    Base.AppSurface {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 188
-                        visible: root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
-                        sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-
-                            RowLayout {
-                                Layout.fillWidth: true
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: qsTr("PC 预览")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
-                                }
-
-                                Base.AppText {
-                                    text: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
-                                        ? qsTr("生成中…")
-                                        : qsTr("%1 ms").arg(root.pcPreviewGenerator
-                                            ? root.pcPreviewGenerator.previewTimeMs
-                                            : 0)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
-                                }
-                            }
-
-                            Item {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-
-                                Image {
-                                    anchors.fill: parent
-                                    source: root.pcPreviewGenerator
-                                        ? root.pcPreviewGenerator.previewUrl
-                                        : ""
-                                    fillMode: Image.PreserveAspectFit
-                                    cache: false
-                                }
-
-                                BusyIndicator {
-                                    anchors.centerIn: parent
-                                    running: visible
-                                    visible: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
-                                }
-                            }
-                        }
-                    }
+                Loader {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    active: root.editing
+                    source: "TimelineEditorPage.qml"
                 }
             }
         }
     }
 
     Base.AppPopup {
-        id: timelinePlanNamePopup
+        id: createPlanPopup
 
-        property bool duplicateMode: false
         property string planName: ""
 
         function openForCreate() {
-            duplicateMode = false
             planName = qsTr("时间轴 %1").arg(root.timelinePlans.length + 1)
             open()
             Qt.callLater(function() {
-                timelinePlanNameField.forceActiveFocus()
-                timelinePlanNameField.selectAll()
-            })
-        }
-
-        function openForDuplicate() {
-            duplicateMode = true
-            planName = qsTr("%1 副本").arg(root.timelinePlanController
-                ? root.timelinePlanController.currentPlanName
-                : qsTr("时间轴"))
-            open()
-            Qt.callLater(function() {
-                timelinePlanNameField.forceActiveFocus()
-                timelinePlanNameField.selectAll()
+                createPlanNameField.forceActiveFocus()
+                createPlanNameField.selectAll()
             })
         }
 
         function commit() {
-            if (!root.timelinePlanController || planName.trim().length === 0)
-                return
-
-            var index = duplicateMode
-                ? root.timelinePlanController.duplicateCurrentPlan(planName)
-                : root.timelinePlanController.createPlan(planName)
-            if (index >= 0) {
-                timelinePlanSelector.value = index
+            if (root.createPlan(planName) >= 0)
                 close()
-            }
         }
 
         modal: true
@@ -959,21 +365,20 @@ Item {
 
         Base.AppText {
             Layout.fillWidth: true
-            text: timelinePlanNamePopup.duplicateMode ? qsTr("复制时间轴") : qsTr("新建时间轴")
+            text: qsTr("新建时间轴")
             theme: root.pageTheme
             styleRole: "titleM"
-            elide: Text.ElideRight
         }
 
         Base.AppTextField {
-            id: timelinePlanNameField
+            id: createPlanNameField
 
             Layout.fillWidth: true
-            theme: root.pageTheme
-            text: timelinePlanNamePopup.planName
+            text: createPlanPopup.planName
             placeholderText: qsTr("时间轴名称")
-            onTextChanged: timelinePlanNamePopup.planName = text
-            onAccepted: timelinePlanNamePopup.commit()
+            theme: root.pageTheme
+            onTextChanged: createPlanPopup.planName = text
+            onAccepted: createPlanPopup.commit()
         }
 
         RowLayout {
@@ -987,34 +392,30 @@ Item {
             Base.AppButton {
                 text: qsTr("取消")
                 theme: root.pageTheme
-                onClicked: timelinePlanNamePopup.close()
+                onClicked: createPlanPopup.close()
             }
 
             Base.AppButton {
-                text: timelinePlanNamePopup.duplicateMode ? qsTr("复制") : qsTr("创建")
+                text: qsTr("创建")
                 theme: root.pageTheme
-                enabled: timelinePlanNamePopup.planName.trim().length > 0
-                onClicked: timelinePlanNamePopup.commit()
+                enabled: createPlanPopup.planName.trim().length > 0
+                onClicked: createPlanPopup.commit()
             }
         }
     }
 
     Base.AppPopup {
-        id: removeTimelinePlanPopup
+        id: removePlanPopup
 
-        property string planName: ""
+        property var planData: null
 
-        function openForPlan() {
-            planName = root.timelinePlanController ? root.timelinePlanController.currentPlanName : ""
+        function openForPlan(plan) {
+            planData = plan
             open()
         }
 
         function commit() {
-            if (!root.timelinePlanController)
-                return
-
-            root.timelinePlanController.removeCurrentPlan()
-            timelinePlanSelector.value = root.timelinePlanController.currentPlanIndex
+            root.removePlan(planData)
             close()
         }
 
@@ -1034,12 +435,12 @@ Item {
             text: qsTr("删除时间轴")
             theme: root.pageTheme
             styleRole: "titleM"
-            elide: Text.ElideRight
         }
 
         Base.AppText {
             Layout.fillWidth: true
-            text: qsTr("确定删除“%1”？其中的时间轴指令也会被删除。").arg(removeTimelinePlanPopup.planName)
+            text: qsTr("确定删除“%1”？其中的时间轴指令也会被删除。")
+                .arg(removePlanPopup.planData ? removePlanPopup.planData.name : "")
             theme: root.pageTheme
             styleRole: "bodyM"
             textTone: "secondary"
@@ -1057,131 +458,14 @@ Item {
             Base.AppButton {
                 text: qsTr("取消")
                 theme: root.pageTheme
-                onClicked: removeTimelinePlanPopup.close()
+                onClicked: removePlanPopup.close()
             }
 
             Base.AppButton {
                 text: qsTr("删除")
                 theme: root.pageTheme
-                onClicked: removeTimelinePlanPopup.commit()
+                onClicked: removePlanPopup.commit()
             }
         }
     }
-
-    Base.AppPopup {
-        id: addTimelineCommandPopup
-
-        property var targetDevice: null
-        property var targetCommand: null
-        property int targetStartTimeMs: 0
-        property bool validationVisible: false
-        readonly property var executionFields: targetCommand ? targetCommand.executionInputFields || [] : []
-        readonly property bool formValid: executionFieldForm.valid
-
-        function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
-            targetDevice = nextDevice
-            targetCommand = nextCommand
-            targetStartTimeMs = nextStartTimeMs
-            validationVisible = false
-            executionFieldForm.values = {}
-            executionFieldForm.resetValues()
-            open()
-        }
-
-        function commit() {
-            validationVisible = true
-            if (!formValid || !targetDevice || !targetCommand)
-                return
-
-            root.addTimelineCommand(targetDevice,
-                                    targetCommand,
-                                    targetStartTimeMs,
-                                    executionFieldForm.valueMap())
-            close()
-        }
-
-        modal: true
-        focus: true
-        width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
-        height: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
-        x: parent ? Math.round((parent.width - width) / 2) : 0
-        y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-
-                Base.AppText {
-                    Layout.fillWidth: true
-                    text: qsTr("执行参数")
-                    theme: root.pageTheme
-                    styleRole: "titleM"
-                    elide: Text.ElideRight
-                }
-
-                Base.AppText {
-                    Layout.fillWidth: true
-                    text: addTimelineCommandPopup.targetCommand
-                        ? root.commandName(addTimelineCommandPopup.targetCommand)
-                        : ""
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
-                    elide: Text.ElideRight
-                }
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                theme: root.pageTheme
-                onClicked: addTimelineCommandPopup.close()
-            }
-
-            Base.AppButton {
-                text: qsTr("添加")
-                theme: root.pageTheme
-                iconName: "workflow"
-                onClicked: addTimelineCommandPopup.commit()
-            }
-        }
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: executionFieldForm.firstInvalidReason()
-            visible: addTimelineCommandPopup.validationVisible && text.length > 0
-            theme: root.pageTheme
-            styleRole: "bodyS"
-            colorOverride: "#ef4444"
-            elide: Text.ElideRight
-        }
-
-        Base.AppScrollPane {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            theme: root.pageTheme
-            contentSpacing: 12
-            fillContentWidth: true
-
-            DeviceFieldForm {
-                id: executionFieldForm
-
-                Layout.fillWidth: true
-                fields: addTimelineCommandPopup.executionFields
-                writeBack: false
-                showErrors: addTimelineCommandPopup.validationVisible
-                theme: root.pageTheme
-                emptyText: qsTr("无执行参数")
-            }
-        }
-    }
-
 }

@@ -42,6 +42,11 @@ inline const QString SerialPort = QStringLiteral("serialPort");
 inline const QString Videos = QStringLiteral("videos");
 inline const QString VideoFile = QStringLiteral("videoFile");
 inline const QString Rect = QStringLiteral("rect");
+
+// 特殊指令
+inline const QString PowerOn = QStringLiteral("powerOn");
+inline const QString PowerOff = QStringLiteral("powerOff");
+inline const QString Pause = QStringLiteral("pause");
 } // namespace DeviceKey
 
 namespace DeviceConstants {

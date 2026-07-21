@@ -57,6 +57,11 @@ QString TimelinePlanController::currentPlanName() const
         : QString();
 }
 
+QStringList TimelinePlanController::selectedPlanIds() const
+{
+    return m_selectedPlanIds;
+}
+
 void TimelinePlanController::setCurrentPlanIndex(int index)
 {
     if (!canChangePlan()
@@ -121,12 +126,36 @@ bool TimelinePlanController::removeCurrentPlan()
     const int nextIndex = m_currentPlanIndex == m_plans.size() - 1
         ? m_currentPlanIndex - 1
         : m_currentPlanIndex;
+    const QString removedPlanId = m_plans.at(m_currentPlanIndex).id;
     m_plans.removeAt(m_currentPlanIndex);
+    const bool selectionChanged = m_selectedPlanIds.removeAll(removedPlanId) > 0;
     m_currentPlanIndex = nextIndex;
     restoreCurrentPlan();
     emit plansChanged();
     emit currentPlanChanged();
+    if (selectionChanged)
+        emit selectedPlansChanged();
     return true;
+}
+
+void TimelinePlanController::togglePlanSelected(const QString &planId)
+{
+    const int selectedIndex = m_selectedPlanIds.indexOf(planId);
+    if (selectedIndex >= 0) {
+        m_selectedPlanIds.removeAt(selectedIndex);
+    } else {
+        bool planExists = false;
+        for (const Plan &plan : m_plans) {
+            if (plan.id == planId) {
+                planExists = true;
+                break;
+            }
+        }
+        if (!planExists)
+            return;
+        m_selectedPlanIds.append(planId);
+    }
+    emit selectedPlansChanged();
 }
 
 void TimelinePlanController::resetFromCurrentModel()
@@ -135,8 +164,10 @@ void TimelinePlanController::resetFromCurrentModel()
         Plan{createPlanId(), tr("主时间轴"), commandData(m_commandModel)}
     };
     m_currentPlanIndex = 0;
+    m_selectedPlanIds.clear();
     emit plansChanged();
     emit currentPlanChanged();
+    emit selectedPlansChanged();
 }
 
 void TimelinePlanController::removeCommandsForDevice(const QString &deviceId)
@@ -214,8 +245,10 @@ bool TimelinePlanController::readFromStream(QDataStream &stream)
         : 0;
     if (!restoreCurrentPlan())
         return false;
+    m_selectedPlanIds.clear();
     emit plansChanged();
     emit currentPlanChanged();
+    emit selectedPlansChanged();
     return true;
 }
 
