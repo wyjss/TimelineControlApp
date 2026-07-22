@@ -26,6 +26,7 @@ Item {
     property var inspectorData: ({})
     property var selectionData: ({})
     property int timelineState: 0
+    property bool timelineStartEnabled: true
     property string planFilePath: ""
     property string planName: ""
     property real leftPanelContentOpacity: 1
@@ -61,6 +62,7 @@ Item {
     readonly property int rightPanelWidth: shellTheme ? shellTheme.inspectorWidth : 304
     readonly property bool timelineStopped: timelineState === 0
     readonly property bool timelinePaused: timelineState === 2
+    readonly property bool timelineCompleted: timelineState === 3
     readonly property int leftPanelSwapDuration: theme && theme.motion ? theme.motion.contentSwapDuration : 140
     readonly property bool canControlWindow: showWindowControls && !!hostWindow
     readonly property bool windowIsMaximized: canControlWindow && hostWindow.visibility === Window.Maximized
@@ -573,7 +575,17 @@ Item {
                                 Layout.preferredWidth: 8
                                 Layout.preferredHeight: 8
                                 radius: 4
-                                color: root.timelineStopped ? "#ef4444" : "#22c55e"
+                                color: root.timelineCompleted
+                                    ? "#3b82f6"
+                                    : (root.timelineStopped ? "#ef4444" : "#22c55e")
+                            }
+
+                            Base.AppText {
+                                visible: root.timelineCompleted
+                                text: qsTr("已完成")
+                                theme: root.theme
+                                styleRole: "bodyS"
+                                textTone: "accent"
                             }
 
                             Rectangle {
@@ -591,6 +603,7 @@ Item {
                                     ? AppUiEnums.ButtonVariant.Tonal
                                     : AppUiEnums.ButtonVariant.Secondary
                                 iconName: root.timelineStopped ? "play" : "stop"
+                                enabled: !root.timelineStopped || root.timelineStartEnabled
                                 onClicked: root.uiActionRequested(root.timelineStopped ? "timeline.start" : "timeline.stop", {})
                             }
 
@@ -600,7 +613,7 @@ Item {
                                 size: AppUiEnums.ButtonSize.Small
                                 variant: AppUiEnums.ButtonVariant.Secondary
                                 iconName: root.timelinePaused ? "play" : "pause"
-                                enabled: !root.timelineStopped
+                                enabled: !root.timelineStopped && !root.timelineCompleted
                                 onClicked: root.uiActionRequested(root.timelinePaused ? "timeline.start" : "timeline.pause", {})
                             }
 

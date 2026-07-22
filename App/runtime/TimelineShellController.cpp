@@ -94,7 +94,7 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
         }
 
         if (actionId == QStringLiteral("timeline.stop")) {
-            runtime->timelineController()->stop();
+            runtime->stopTimeline();
             return;
         }
     }

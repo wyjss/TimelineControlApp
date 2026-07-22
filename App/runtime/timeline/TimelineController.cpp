@@ -95,7 +95,7 @@ void TimelineController::setTickIntervalMs(int tickIntervalMs)
 
 void TimelineController::start()
 {
-    if (m_state == Stopped)
+    if (m_state == Stopped || m_state == Completed)
         setCurrentTimeMs(0);
 
     setState(Running);
@@ -127,6 +127,7 @@ void TimelineController::updateCurrentTime()
         m_tickTimer.stop();
         m_state = Stopped;
         emit stateChanged();
+        emit finished();
         return;
     }
 

@@ -66,7 +66,10 @@ ApplicationWindow {
         inspectorObject: shellController ? shellController.inspectorObject : null
         inspectorData: shellController ? shellController.inspectorData : ({})
         selectionData: shellController ? shellController.selectionData : ({})
-        timelineState: appRuntime && appRuntime.timelineController ? appRuntime.timelineController.state : 0
+        timelineState: appRuntime ? appRuntime.state : 0
+        timelineStartEnabled: appRuntime && appRuntime.timelinePlanController
+            ? appRuntime.timelinePlanController.selectedPlanIds.length > 0
+            : false
         planFilePath: appRuntime ? appRuntime.currentPlanFilePath : ""
         planName: appRuntime ? appRuntime.currentPlanName : ""
 

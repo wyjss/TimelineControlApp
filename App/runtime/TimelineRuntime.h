@@ -3,6 +3,7 @@
 #include "runtime/app/BaseRuntime.h"
 
 #include <QString>
+#include <QStringList>
 
 class QDataStream;
 
@@ -42,7 +43,8 @@ public:
     {
         Stopped,
         Running,
-        Paused
+        Paused,
+        Completed
     };
     Q_ENUM(State)
 
@@ -64,6 +66,7 @@ public:
     QString currentPlanName() const;
 
     Q_INVOKABLE void startTimeline();
+    Q_INVOKABLE void stopTimeline();
 
     void writePlanToStream(QDataStream &stream) const;
     void readPlanFromStream(QDataStream &stream);
@@ -75,6 +78,8 @@ signals:
     void currentPlanFilePathChanged();
 
 private:
+    void startCurrentTimeline();
+
     State m_state = Stopped;
     TaskManager *m_taskManager = nullptr;
     DeviceModel *m_deviceModel = nullptr;
@@ -87,5 +92,7 @@ private:
     TimelineCommandModel *m_timelineCommandModel = nullptr;
     TimelinePlanController *m_timelinePlanController = nullptr;
     QString m_currentPlanFilePath;
+    QStringList m_playQueue;
+    int m_playQueueIndex = -1;
     int m_runId = 0;
 };

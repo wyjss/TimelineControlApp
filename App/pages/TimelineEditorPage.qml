@@ -33,7 +33,7 @@ Item {
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
     readonly property var visibleTimelineCommands: buildVisibleTimelineCommands()
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
-    readonly property bool timelineRunning: timelineController && timelineController.state === 1
+    readonly property bool timelineStopped: !timelineController || timelineController.state === 0
     readonly property var selectedCommand: selectedCommandIndex >= 0
         && selectedCommandIndex < deviceCommands.length
         ? deviceCommands[selectedCommandIndex]
@@ -168,7 +168,7 @@ Item {
     }
 
     function setTimelineCurrentTimeMs(currentTimeMs) {
-        if (timelineRunning)
+        if (!timelineStopped)
             return
 
         var normalizedTimeMs = Math.max(0, Math.round(Number(currentTimeMs || 0)))
@@ -364,7 +364,7 @@ Item {
                         trackLeftX: root.timelineTrackLabelWidth
                         startTimeX: root.timelineTrackLabelWidth + 20
                         timeScale: root.timelineTimeScale
-                        currentTimeDragEnabled: !root.timelineController || root.timelineController.state === 0
+                        currentTimeDragEnabled: root.timelineStopped
                         onScrollXChangeRequested: function(nextScrollX) {
                             root.timelineScrollX = nextScrollX
                         }
@@ -736,7 +736,7 @@ Item {
                                         visible: timelineCommandRow.selected
                                         text: qsTr("删除")
                                         theme: root.pageTheme
-                                        enabled: !root.timelineRunning
+                                        enabled: root.timelineStopped
                                         onClicked: {
                                             if (root.timelineCommandModel)
                                                 root.timelineCommandModel.removeCommand(timelineCommandRow.commandData)

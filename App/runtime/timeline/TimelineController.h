@@ -18,7 +18,8 @@ public:
     {
         Stopped,
         Running,
-        Paused
+        Paused,
+        Completed
     };
     Q_ENUM(State)
 
@@ -43,6 +44,7 @@ public:
 
 signals:
     void stateChanged();
+    void finished();
     void currentTimeMsChanged();
     void durationMsChanged();
     void tickIntervalMsChanged();

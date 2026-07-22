@@ -66,9 +66,21 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_videoProjectionPlanController, &VideoProjectionPlanController::removeMappingsForPc);
     connect(m_timelineController, &TimelineController::stateChanged, this, [this]() {
-        const State nextState = m_timelineController->state() == TimelineController::Running
+        const TimelineController::State controllerState = m_timelineController->state();
+        const State nextState = controllerState == TimelineController::Running
             ? Running
-            : (m_timelineController->state() == TimelineController::Paused ? Paused : Stopped);
+            : (controllerState == TimelineController::Paused
+                   ? Paused
+                   : (controllerState == TimelineController::Completed ? Completed : Stopped));
+        if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size()) {
+            if (nextState == Running) {
+                m_timelinePlanController->setPlanPlaybackState(
+                    m_playQueue.at(m_playQueueIndex), TimelinePlanController::Playing);
+            } else if (nextState == Paused) {
+                m_timelinePlanController->setPlanPlaybackState(
+                    m_playQueue.at(m_playQueueIndex), TimelinePlanController::Paused);
+            }
+        }
         if (nextState == Stopped) {
             ++m_runId;
             for (TimelineCommand *command : m_timelineCommandModel->commands()) {
@@ -78,6 +90,8 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
                 }
             }
             m_timelineController->setDurationMs(24 * 60 * 60 * 1000);
+            if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size())
+                return;
         }
 
         if (m_state == nextState)
@@ -85,6 +99,25 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
 
         m_state = nextState;
         emit stateChanged();
+    });
+    connect(m_timelineController, &TimelineController::finished, this, [this]() {
+        if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size()) {
+            m_timelinePlanController->setPlanPlaybackState(
+                m_playQueue.at(m_playQueueIndex), TimelinePlanController::Completed);
+        }
+        ++m_playQueueIndex;
+        if (m_playQueueIndex >= m_playQueue.size()) {
+            m_playQueue.clear();
+            m_playQueueIndex = -1;
+            m_timelineController->setState(TimelineController::Completed);
+            return;
+        }
+        if (!m_timelinePlanController->setCurrentPlanId(m_playQueue.at(m_playQueueIndex))) {
+            m_playQueue.clear();
+            m_playQueueIndex = -1;
+            return;
+        }
+        startCurrentTimeline();
     });
     connect(m_timelineController, &TimelineController::currentTimeMsChanged, this, [this]() {
         if (m_timelineController->state() != TimelineController::Running)
@@ -155,13 +188,17 @@ void TimelineRuntime::setState(State state)
         return;
     }
 
-    if (m_timelineController) {
-        const TimelineController::State controllerState = state == Paused
-            ? TimelineController::Paused
-            : TimelineController::Stopped;
-        if (m_timelineController->state() != controllerState)
-            m_timelineController->setState(controllerState);
+    if (state == Stopped) {
+        stopTimeline();
+        return;
     }
+
+    if (state == Completed)
+        return;
+
+    if (m_timelineController
+        && m_timelineController->state() != TimelineController::Paused)
+        m_timelineController->setState(TimelineController::Paused);
 }
 
 TaskManager *TimelineRuntime::taskManager() const
@@ -220,6 +257,48 @@ QString TimelineRuntime::currentPlanName() const
 }
 
 void TimelineRuntime::startTimeline()
+{
+    if (!m_timelineController || !m_timelinePlanController)
+        return;
+
+    if (m_timelineController->state() == TimelineController::Paused) {
+        m_timelineController->start();
+        return;
+    }
+
+    if (m_timelineController->state() != TimelineController::Stopped)
+        return;
+
+    const QStringList selectedPlanIds = m_timelinePlanController->selectedPlanIds();
+    if (selectedPlanIds.isEmpty())
+        return;
+
+    m_timelinePlanController->resetPlaybackStates();
+    m_playQueue = selectedPlanIds;
+    m_playQueueIndex = 0;
+    if (!m_timelinePlanController->setCurrentPlanId(m_playQueue.constFirst())) {
+        m_playQueue.clear();
+        m_playQueueIndex = -1;
+        return;
+    }
+
+    startCurrentTimeline();
+}
+
+void TimelineRuntime::stopTimeline()
+{
+    if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size()) {
+        m_timelinePlanController->setPlanPlaybackState(
+            m_playQueue.at(m_playQueueIndex), TimelinePlanController::Idle);
+    }
+    m_playQueue.clear();
+    m_playQueueIndex = -1;
+    if (m_timelineController
+        && m_timelineController->state() != TimelineController::Stopped)
+        m_timelineController->stop();
+}
+
+void TimelineRuntime::startCurrentTimeline()
 {
     if (!m_timelineController)
         return;

@@ -22,6 +22,15 @@ class TimelinePlanController final : public QObject
     Q_PROPERTY(QStringList selectedPlanIds READ selectedPlanIds NOTIFY selectedPlansChanged FINAL)
 
 public:
+    enum PlaybackState
+    {
+        Idle,
+        Playing,
+        Paused,
+        Completed
+    };
+    Q_ENUM(PlaybackState)
+
     explicit TimelinePlanController(TimelineCommandModel *commandModel,
                                     TimelineController *timelineController,
                                     QObject *parent = nullptr);
@@ -31,6 +40,9 @@ public:
     QString currentPlanName() const;
     QStringList selectedPlanIds() const;
     void setCurrentPlanIndex(int index);
+    bool setCurrentPlanId(const QString &planId);
+    void resetPlaybackStates();
+    void setPlanPlaybackState(const QString &planId, PlaybackState state);
 
     Q_INVOKABLE int createPlan(const QString &name);
     Q_INVOKABLE int duplicateCurrentPlan(const QString &name);
@@ -53,6 +65,7 @@ private:
         QString id;
         QString name;
         QByteArray commandData;
+        PlaybackState playbackState = Idle;
     };
 
     QByteArray commandData(TimelineCommandModel *model) const;

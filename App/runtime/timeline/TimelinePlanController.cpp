@@ -39,7 +39,10 @@ QVariantList TimelinePlanController::plans() const
         result.append(QVariantMap{
             {QStringLiteral("id"), plan.id},
             {QStringLiteral("name"), plan.name},
-            {QStringLiteral("index"), index}
+            {QStringLiteral("index"), index},
+            {QStringLiteral("playbackState"), static_cast<int>(plan.playbackState)},
+            {QStringLiteral("playbackActive"), plan.playbackState == Playing || plan.playbackState == Paused},
+            {QStringLiteral("playbackCompleted"), plan.playbackState == Completed}
         });
     }
     return result;
@@ -76,6 +79,41 @@ void TimelinePlanController::setCurrentPlanIndex(int index)
     emit currentPlanChanged();
 }
 
+bool TimelinePlanController::setCurrentPlanId(const QString &planId)
+{
+    for (int index = 0; index < m_plans.size(); ++index) {
+        if (m_plans.at(index).id == planId) {
+            setCurrentPlanIndex(index);
+            return m_currentPlanIndex == index;
+        }
+    }
+    return false;
+}
+
+void TimelinePlanController::resetPlaybackStates()
+{
+    bool changed = false;
+    for (Plan &plan : m_plans) {
+        if (plan.playbackState != Idle) {
+            plan.playbackState = Idle;
+            changed = true;
+        }
+    }
+    if (changed)
+        emit plansChanged();
+}
+
+void TimelinePlanController::setPlanPlaybackState(const QString &planId, PlaybackState state)
+{
+    for (Plan &plan : m_plans) {
+        if (plan.id == planId && plan.playbackState != state) {
+            plan.playbackState = state;
+            emit plansChanged();
+            return;
+        }
+    }
+}
+
 int TimelinePlanController::createPlan(const QString &name)
 {
     const QString normalizedName = name.trimmed();
@@ -107,6 +145,7 @@ int TimelinePlanController::duplicateCurrentPlan(const QString &name)
     Plan plan = m_plans.at(m_currentPlanIndex);
     plan.id = createPlanId();
     plan.name = normalizedName;
+    plan.playbackState = Idle;
     m_plans.append(plan);
     m_currentPlanIndex = m_plans.size() - 1;
     restoreCurrentPlan();

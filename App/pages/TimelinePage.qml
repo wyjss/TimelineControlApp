@@ -154,6 +154,14 @@ Item {
                         readonly property bool current: !addItem
                             && root.timelinePlanController
                             && Number(planData.index) === root.timelinePlanController.currentPlanIndex
+                        readonly property bool playing: !addItem && Boolean(planData.playbackActive)
+                        readonly property bool completed: !addItem && Boolean(planData.playbackCompleted)
+                        readonly property real playProgress: completed
+                            ? 1
+                            : (playing && root.timelineController.durationMs > 0
+                               ? Math.max(0, Math.min(1, root.timelineController.currentTimeMs
+                                                     / root.timelineController.durationMs))
+                               : 0)
 
                         width: planGrid.cellWidth
                         height: planGrid.cellHeight
@@ -199,6 +207,31 @@ Item {
                             theme: root.pageTheme
                             styleRole: planCell.addItem ? "titleL" : "titleM"
                             textTone: planCell.addItem ? "accent" : "primary"
+                        }
+
+                        Item {
+                            z: 2
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.leftMargin: 16
+                            anchors.rightMargin: 16
+                            anchors.bottomMargin: 10
+                            height: 4
+                            visible: planCell.playing || planCell.completed
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: height / 2
+                                color: root.pageTheme.colors.windowAccent
+                            }
+
+                            Rectangle {
+                                width: parent.width * planCell.playProgress
+                                height: parent.height
+                                radius: height / 2
+                                color: root.pageTheme.colors.highlightFill
+                            }
                         }
 
                         Item {
@@ -263,6 +296,7 @@ Item {
 
                             MouseArea {
                                 anchors.fill: parent
+                                enabled: root.timelineStopped
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.togglePlanChecked(planCell.planId)
                             }
