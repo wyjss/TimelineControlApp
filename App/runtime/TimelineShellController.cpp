@@ -125,6 +125,15 @@ void TimelineShellController::buildDrawers()
                                            })));
 
     registerDrawer(makeDrawer(this,
+                              QStringLiteral("device-control"),
+                              tr("设备控制"),
+                              QStringLiteral("background-task"),
+                              tr("设备控制"),
+                              makeLeftPane(tr("设备控制"),
+                                           tr("筛选"),
+                                           QVariantList{})));
+
+    registerDrawer(makeDrawer(this,
                               QStringLiteral("timeline"),
                               tr("时间线"),
                               QStringLiteral("workflow"),

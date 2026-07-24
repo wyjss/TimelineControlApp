@@ -2,6 +2,7 @@
     <qresource prefix="/TimelineControlApp">
         <file alias="App/main.qml">main.qml</file>
         <file alias="App/pages/DevicesPage.qml">pages/DevicesPage.qml</file>
+        <file alias="App/pages/DeviceControlPage.qml">pages/DeviceControlPage.qml</file>
         <file alias="App/pages/DeviceCommandDialog.qml">pages/DeviceCommandDialog.qml</file>
         <file alias="App/pages/DeviceFieldForm.qml">pages/DeviceFieldForm.qml</file>
         <file alias="App/pages/DeviceProfilePairField.qml">pages/DeviceProfilePairField.qml</file>

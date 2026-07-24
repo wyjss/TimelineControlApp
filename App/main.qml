@@ -22,6 +22,8 @@ ApplicationWindow {
 
     function canvasSourceForDrawer(key) {
         switch (String(key)) {
+        case "device-control":
+            return "qrc:/TimelineControlApp/App/pages/DeviceControlPage.qml"
         case "timeline":
             return "qrc:/TimelineControlApp/App/pages/TimelinePage.qml"
         case "virtual-playback":
