@@ -54,6 +54,22 @@ Item {
         && (deviceDisplayMode === "type"
             ? (selectedDevice.deviceType !== undefined && String(selectedDevice.deviceType) === selectedDeviceType)
             : (selectedDevice.templateName !== undefined && String(selectedDevice.templateName) === selectedTemplateName))
+
+    ButtonGroup {
+        id: groupCardButtonGroup
+        exclusive: true
+    }
+
+    ButtonGroup {
+        id: deviceCardButtonGroup
+        exclusive: true
+    }
+
+    ButtonGroup {
+        id: commandCardButtonGroup
+        exclusive: true
+    }
+
     onDeviceTypesChanged: {
         if (selectedDeviceType.length === 0 && deviceTypes.length > 0)
             selectedDeviceType = String(deviceTypes[0])
@@ -427,6 +443,7 @@ Item {
                 Layout.preferredHeight: 28
                 sizeToContent: true
                 surfaceTone: UiStyle.SurfaceTone.Section
+                borderOverride: root.pageTheme.colors.borderOverlay
                 padding: 10
 
                 Base.AppText {
@@ -441,6 +458,7 @@ Item {
                 Layout.preferredHeight: 28
                 sizeToContent: true
                 surfaceTone: UiStyle.SurfaceTone.Section
+                borderOverride: root.pageTheme.colors.borderOverlay
                 padding: 10
 
                 Base.AppText {
@@ -453,13 +471,6 @@ Item {
 
             Item {
                 Layout.fillWidth: true
-            }
-
-            Base.AppButton {
-                visible: root.deviceDisplayMode === "template"
-                text: qsTr("创建设备")
-                iconName: "resources"
-                onClicked: root.createDeviceFromSelectedTemplate()
             }
         }
 
@@ -475,6 +486,7 @@ Item {
                 Layout.fillHeight: true
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
+                borderOverride: root.pageTheme.colors.borderOverlay
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -488,6 +500,7 @@ Item {
 
                     Base.AppSegmentedControl {
                         Layout.fillWidth: true
+                        surfaceTone: UiStyle.SurfaceTone.Section
                         options: [
                             { "label": qsTr("模板"), "value": "template" },
                             { "label": qsTr("类型"), "value": "type" }
@@ -505,60 +518,40 @@ Item {
                         Repeater {
                             model: root.groupItems
 
-                            delegate: Base.AppSurface {
+                            delegate: Base.AppCard {
                                 id: groupRow
 
                                 readonly property bool selected: root.groupSelected(modelData)
 
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 92
-                                sizeToContent: false
-                                surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
-                                active: selected
-                                hoveredState: groupMouse.containsMouse
-                                interactive: true
-                                strokeWidth: 1
-                                borderOverride: selected ? "transparent" : undefined
+                                text: root.groupName(modelData)
+                                ButtonGroup.group: groupCardButtonGroup
+                                checkable: true
+                                checked: selected
+                                emphasizedSelection: true
+                                onClicked: root.selectGroup(modelData)
 
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 12
-                                    anchors.topMargin: 10
-                                    anchors.bottomMargin: 10
-                                    spacing: 4
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.groupName(modelData)
-                                        styleRole: UiStyle.TypographyRole.BodyM
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.groupDescription(modelData)
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: UiStyle.TextTone.Secondary
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.groupFootnote(modelData)
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
-                                        elide: Text.ElideRight
-                                    }
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: root.groupName(modelData)
+                                    styleRole: UiStyle.TypographyRole.BodyM
+                                    elide: Text.ElideRight
                                 }
 
-                                MouseArea {
-                                    id: groupMouse
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: root.groupDescription(modelData)
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
+                                    elide: Text.ElideRight
+                                }
 
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectGroup(modelData)
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: root.groupFootnote(modelData)
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
+                                    elide: Text.ElideRight
                                 }
                             }
                         }
@@ -572,6 +565,7 @@ Item {
                 Layout.minimumWidth: 420
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
+                borderOverride: root.pageTheme.colors.borderOverlay
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -613,25 +607,22 @@ Item {
                         Repeater {
                             model: root.filteredDevices
 
-                            delegate: Base.AppSurface {
+                            delegate: Base.AppCard {
                                 id: deviceRow
 
                                 readonly property bool selected: modelData.id === root.deviceValue("id", "")
 
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 66
-                                sizeToContent: false
-                                surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
-                                active: selected
-                                hoveredState: rowMouse.containsMouse
-                                interactive: true
-                                strokeWidth: 1
-                                borderOverride: selected ? "transparent" : undefined
+                                text: modelData.name
+                                ButtonGroup.group: deviceCardButtonGroup
+                                checkable: true
+                                checked: selected
+                                emphasizedSelection: true
+                                onClicked: root.selectDevice(modelData.id)
 
                                 RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 14
-                                    anchors.rightMargin: 14
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
                                     spacing: 12
 
                                     ColumnLayout {
@@ -671,15 +662,6 @@ Item {
                                         elide: Text.ElideRight
                                     }
                                 }
-
-                                MouseArea {
-                                    id: rowMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectDevice(modelData.id)
-                                }
                             }
                         }
                     }
@@ -691,6 +673,7 @@ Item {
                 Layout.fillHeight: true
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
+                borderOverride: root.pageTheme.colors.borderOverlay
 
                 Base.AppScrollPane {
                     anchors.fill: parent
@@ -698,22 +681,24 @@ Item {
                     contentSpacing: 10
                     fillContentWidth: true
 
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: root.deviceDisplayMode === "type" ? qsTr("类型详情") : qsTr("模板详情")
-                        styleRole: UiStyle.TypographyRole.SectionTitle
-                    }
-
                     Base.AppSurface {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 96
-                        sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.Surface
+                        sizeToContent: true
+                        surfaceTone: UiStyle.SurfaceTone.Section
+                        strokeWidth: 1
+                        borderOverride: root.pageTheme.colors.borderOverlay
+                        padding: 14
 
                         ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 4
+                            width: parent ? parent.width : 0
+                            spacing: 8
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: root.deviceDisplayMode === "type" ? qsTr("类型详情") : qsTr("模板详情")
+                                styleRole: UiStyle.TypographyRole.SectionTitle
+                                elide: Text.ElideRight
+                            }
 
                             Base.AppText {
                                 Layout.fillWidth: true
@@ -739,169 +724,178 @@ Item {
                                 visible: root.deviceDisplayMode === "template"
                                 text: qsTr("从模板创建设备")
                                 iconName: "resources"
+                                variant: UiStyle.ButtonVariant.Primary
                                 onClicked: root.createDeviceFromSelectedTemplate()
                             }
                         }
                     }
 
-                    RowLayout {
+                    Base.AppSurface {
                         Layout.fillWidth: true
-                        spacing: 8
+                        sizeToContent: true
+                        surfaceTone: UiStyle.SurfaceTone.Section
+                        strokeWidth: 1
+                        borderOverride: root.pageTheme.colors.borderOverlay
+                        padding: 14
 
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("设备档案")
-                            styleRole: UiStyle.TypographyRole.SectionTitle
-                            elide: Text.ElideRight
-                        }
+                        ColumnLayout {
+                            width: parent ? parent.width : 0
+                            spacing: 10
 
-                        Base.AppButton {
-                            text: qsTr("删除")
-                            enabled: root.selectedDeviceInCurrentView
-                            onClicked: root.requestRemoveSelectedDevice()
-                        }
-                    }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
 
-                    Form.AppFormContent {
-                        Layout.fillWidth: true
-                        formData: root.deviceInspectorFormProvider
-                            ? root.deviceInspectorFormProvider.deviceForm
-                            : ({})
-                    }
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("设备档案")
+                                    styleRole: UiStyle.TypographyRole.SectionTitle
+                                    elide: Text.ElideRight
+                                }
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 12
+                                Button {
+                                    id: removeDeviceButton
 
-                        Rectangle {
-                            Layout.preferredWidth: 4
-                            Layout.preferredHeight: 30
-                            radius: 2
-                            color: "#60a5fa"
-                            visible: root.selectedDeviceInCurrentView
-                        }
+                                    text: qsTr("删除")
+                                    enabled: root.selectedDeviceInCurrentView
+                                    flat: true
+                                    padding: 0
+                                    hoverEnabled: true
+                                    focusPolicy: Qt.StrongFocus
+                                    implicitWidth: removeDeviceButtonText.implicitWidth
+                                        + root.pageTheme.density.controlPaddingXMd * 2
+                                    implicitHeight: root.pageTheme.density.controlHeightMd
+                                    onClicked: root.requestRemoveSelectedDevice()
 
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("设备指令")
-                            styleRole: UiStyle.TypographyRole.TitleM
-                            elide: Text.ElideRight
-                        }
+                                    background: Base.AppSurface {
+                                        surfaceTone: UiStyle.SurfaceTone.Danger
+                                        shapeRole: UiStyle.ShapeRole.Control
+                                        active: removeDeviceButton.down
+                                        hoveredState: removeDeviceButton.hovered
+                                        strokeWidth: 1
+                                        opacity: removeDeviceButton.enabled ? 1 : 0.48
+                                    }
 
-                        Rectangle {
-                            visible: root.selectedDeviceInCurrentView
-                            Layout.preferredWidth: Math.max(82, commandCountText.implicitWidth + 18)
-                            Layout.preferredHeight: 28
-                            radius: 4
-                            color: "#111827"
-                            border.width: 1
-                            border.color: "#334155"
+                                    contentItem: Base.AppText {
+                                        id: removeDeviceButtonText
 
-                            Base.AppText {
-                                id: commandCountText
+                                        text: removeDeviceButton.text
+                                        styleRole: UiStyle.TypographyRole.Label
+                                        colorOverride: removeDeviceButton.enabled
+                                            ? root.pageTheme.colors.dangerText
+                                            : root.pageTheme.colors.disabledText
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                }
+                            }
 
-                                anchors.centerIn: parent
-                                text: qsTr("%1 条指令").arg(root.selectedDeviceCommands.length)
-                                styleRole: UiStyle.TypographyRole.BodyS
-                                colorOverride: "#bfdbfe"
-                                elide: Text.ElideRight
+                            Form.AppFormContent {
+                                Layout.fillWidth: true
+                                formData: root.deviceInspectorFormProvider
+                                    ? root.deviceInspectorFormProvider.deviceForm
+                                    : ({})
                             }
                         }
-
-                        Base.AppButton {
-                            text: qsTr("添加")
-                            iconName: "workflow"
-                            enabled: root.selectedDeviceInCurrentView
-                                && root.selectedDevice
-                                && root.selectedDevice.createCommandDraft !== undefined
-                                && root.selectedDevice.createCommand !== undefined
-                            onClicked: root.addCommandForSelectedDevice()
-                        }
                     }
 
-                    Base.AppText {
+                    Base.AppSurface {
                         Layout.fillWidth: true
-                        visible: root.selectedDeviceInCurrentView && root.selectedDeviceCommands.length === 0
-                        text: qsTr("暂无指令")
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: UiStyle.TextTone.Secondary
-                        elide: Text.ElideRight
-                    }
+                        sizeToContent: true
+                        surfaceTone: UiStyle.SurfaceTone.Section
+                        strokeWidth: 1
+                        borderOverride: root.pageTheme.colors.borderOverlay
+                        padding: 14
 
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        visible: root.selectedDeviceCommands.length > 0
-                        spacing: 8
+                        ColumnLayout {
+                            width: parent ? parent.width : 0
+                            spacing: 10
 
-                        Repeater {
-                            model: root.selectedDeviceCommands
-
-                            delegate: Item {
-                                id: commandRow
-
-                                readonly property var commandData: modelData
-                                readonly property bool selected: index === root.selectedCommandIndex
-                                readonly property bool expanded: index === root.expandedCommandIndex
-                                readonly property string summaryText: root.commandSummary(modelData)
-                                readonly property int inputCount: root.commandInputCount(modelData)
-
+                            RowLayout {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: commandRow.expanded
-                                    ? commandRowContent.implicitHeight + 16
-                                    : 58
+                                spacing: 8
+
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("设备指令")
+                                    styleRole: UiStyle.TypographyRole.SectionTitle
+                                    elide: Text.ElideRight
+                                }
 
                                 Base.AppSurface {
-                                    anchors.fill: parent
-                                    surfaceTone: commandRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
-                                    active: commandRow.selected
-                                    hoveredState: commandMouse.containsMouse
-                                    interactive: true
-                                    strokeWidth: commandRow.selected || commandMouse.containsMouse ? 1 : 0
-                                    borderOverride: commandRow.selected ? "#60a5fa" : "#334155"
-                                    hoverOverlayOpacity: 0.08
-                                }
+                                    visible: root.selectedDeviceInCurrentView
+                                    Layout.preferredHeight: 28
+                                    sizeToContent: true
+                                    surfaceTone: UiStyle.SurfaceTone.Ghost
+                                    shapeRole: UiStyle.ShapeRole.Pill
+                                    strokeWidth: 1
+                                    borderOverride: root.pageTheme.colors.borderOverlay
+                                    padding: 10
 
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 3
-                                    height: parent.height - 18
-                                    radius: 2
-                                    color: commandRow.expanded || commandRow.selected ? "#60a5fa" : "#334155"
-                                    opacity: commandRow.expanded || commandRow.selected ? 1 : (commandMouse.containsMouse ? 0.44 : 0.18)
-                                }
-
-                                MouseArea {
-                                    id: commandMouse
-
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    height: 58
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectCommandIndex(index)
-                                    onDoubleClicked: {
-                                        root.selectCommandIndex(index)
-                                        root.expandedCommandIndex = commandRow.expanded ? -1 : index
+                                    Base.AppText {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: qsTr("%1 条指令").arg(root.selectedDeviceCommands.length)
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Accent
+                                        elide: Text.ElideRight
                                     }
                                 }
 
-                                ColumnLayout {
-                                    id: commandRowContent
+                                Base.AppButton {
+                                    text: qsTr("添加")
+                                    iconName: "workflow"
+                                    enabled: root.selectedDeviceInCurrentView
+                                        && root.selectedDevice
+                                        && root.selectedDevice.createCommandDraft !== undefined
+                                        && root.selectedDevice.createCommand !== undefined
+                                    onClicked: root.addCommandForSelectedDevice()
+                                }
+                            }
 
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.top: parent.top
-                                    anchors.leftMargin: 18
-                                    anchors.rightMargin: 12
-                                    spacing: commandRow.expanded ? 10 : 0
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                visible: root.selectedDeviceInCurrentView && root.selectedDeviceCommands.length === 0
+                                text: qsTr("暂无指令")
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                                elide: Text.ElideRight
+                            }
 
-                                    RowLayout {
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                visible: root.selectedDeviceCommands.length > 0
+                                spacing: 8
+
+                                Repeater {
+                                    model: root.selectedDeviceCommands
+
+                                    delegate: Base.AppCard {
+                                        id: commandRow
+
+                                        readonly property var commandData: modelData
+                                        readonly property bool selected: index === root.selectedCommandIndex
+                                        readonly property bool expanded: index === root.expandedCommandIndex
+                                        readonly property string summaryText: root.commandSummary(modelData)
+                                        readonly property int inputCount: root.commandInputCount(modelData)
+
                                         Layout.fillWidth: true
-                                        Layout.preferredHeight: 58
-                                        spacing: 8
+                                        text: root.commandName(commandData)
+                                        ButtonGroup.group: commandCardButtonGroup
+                                        checkable: true
+                                        checked: selected
+                                        emphasizedSelection: true
+                                        onClicked: root.selectCommandIndex(index)
+
+                                        ColumnLayout {
+                                            id: commandRowContent
+
+                                            Layout.fillWidth: true
+                                            spacing: commandRow.expanded ? 10 : 0
+
+                                            RowLayout {
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 50
+                                                spacing: 8
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
@@ -1021,6 +1015,8 @@ Item {
                                 }
                             }
                         }
+                    }
+                    }
                     }
                 }
             }

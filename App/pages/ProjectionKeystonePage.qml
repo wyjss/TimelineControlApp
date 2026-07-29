@@ -323,7 +323,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: root.colorValue("window", "#0f172a")
+        color: root.colorValue("backgroundWindow", "#0f172a")
     }
 
     ColumnLayout {
@@ -549,7 +549,7 @@ Item {
                             height: width / aspect
                             anchors.centerIn: parent
                             radius: 6
-                            color: root.colorValue("canvas", "#0b1020")
+                            color: root.colorValue("backgroundCanvas", "#0b1020")
                             border.color: root.colorValue("border", "#334155")
                             border.width: 1
                             visible: !!root.selectedPc
@@ -659,7 +659,7 @@ Item {
                                             x: corner.x * tile.width - width / 2
                                             y: corner.y * tile.height - height / 2
                                             visible: tile.selected
-                                            color: root.colorValue("window", "#0f172a")
+                                            color: root.colorValue("backgroundWindow", "#0f172a")
                                             border.color: root.colorValue("highlightText", "#7cb4ff")
                                             border.width: 2
                                             z: 10

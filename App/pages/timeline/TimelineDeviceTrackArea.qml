@@ -502,7 +502,7 @@ Item {
 
                     Rectangle {
                         anchors.fill: parent
-                        color: root.colorValue("surfaceElevated", "#172033")
+                        color: root.colorValue("backgroundSection", "#172033")
                         opacity: 0.28
                     }
 

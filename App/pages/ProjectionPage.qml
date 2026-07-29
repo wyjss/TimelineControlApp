@@ -859,7 +859,7 @@ Item {
                     background: Rectangle {
                         color: highlighted
                             ? root.colorValue("highlightSoft", "#182b45")
-                            : root.colorValue("surface", "#101827")
+                            : root.colorValue("backgroundSurface", "#101827")
                     }
                 }
 
@@ -887,7 +887,7 @@ Item {
 
                 background: Rectangle {
                     radius: 6
-                    color: root.colorValue("surface", "#101827")
+                    color: root.colorValue("backgroundSurface", "#101827")
                     border.color: planSelector.activeFocus
                         ? root.colorValue("highlightText", "#7cb4ff")
                         : root.colorValue("border", "#334155")
@@ -909,7 +909,7 @@ Item {
 
                     background: Rectangle {
                         radius: 6
-                        color: root.colorValue("surface", "#101827")
+                        color: root.colorValue("backgroundSurface", "#101827")
                         border.color: root.colorValue("border", "#334155")
                         border.width: 1
                     }
@@ -1078,7 +1078,7 @@ Item {
                                             anchors.verticalCenter: parent.verticalCenter
                                             color: captureRow.mapped
                                                 ? root.colorValue("highlightText", "#7cb4ff")
-                                                : root.colorValue("textMuted", "#64748b")
+                                                : root.colorValue("subtleText", "#64748b")
                                         }
 
                                         Base.AppText {
@@ -1264,7 +1264,7 @@ Item {
                                 width: Math.min(parent.width, parent.height * root.videoAspect()) * root.videoZoom
                                 height: width / root.videoAspect()
                                 radius: 6
-                                color: root.colorValue("canvas", "#0b1020")
+                                color: root.colorValue("backgroundCanvas", "#0b1020")
                                 border.color: root.colorValue("border", "#334155")
                                 border.width: 1
                                 clip: true
@@ -1299,7 +1299,7 @@ Item {
                                     onPaint: {
                                         var ctx = getContext("2d")
                                         ctx.clearRect(0, 0, width, height)
-                                        ctx.fillStyle = root.colorValue("surface", "#101827")
+                                        ctx.fillStyle = root.colorValue("backgroundSurface", "#101827")
                                         ctx.fillRect(0, 0, width, height)
                                         ctx.strokeStyle = softLineColor
                                         ctx.lineWidth = 1
@@ -1401,7 +1401,7 @@ Item {
                                     rightDragEnabled: true
                                     minRectW: root.minCaptureWidth()
                                     minRectH: root.minCaptureHeight()
-                                    handleFill: root.colorValue("window", "#0f172a")
+                                    handleFill: root.colorValue("backgroundWindow", "#0f172a")
 
                                     onSelectionRequested: root.selectedCaptureIndex = captureIndex
                                     onPointerMoved: root.updateVideoPointerFromItem(item, itemX, itemY)
@@ -1527,7 +1527,7 @@ Item {
                                 width: Math.min(parent.width, parent.height * canvasAspect) * root.screenZoom
                                 height: width / canvasAspect
                                 radius: 6
-                                color: root.colorValue("surface", "#101827")
+                                color: root.colorValue("backgroundSurface", "#101827")
                                 border.color: root.colorValue("border", "#334155")
                                 border.width: 1
                                 clip: true
@@ -1610,7 +1610,7 @@ Item {
                                     titleLeftMargin: 10
                                     titleTopMargin: 8
                                     titleRightMargin: 10
-                                    handleFill: root.colorValue("window", "#0f172a")
+                                    handleFill: root.colorValue("backgroundWindow", "#0f172a")
 
                                     onPointerMoved: root.updateScreenPointerFromItem(item, itemX, itemY)
                                     onWheelZoom: root.zoomScreenFromItem(item, wheel)
@@ -1797,7 +1797,7 @@ Item {
                                             anchors.verticalCenter: parent.verticalCenter
                                             color: pcRow.mapped
                                                 ? root.colorValue("highlightText", "#7cb4ff")
-                                                : root.colorValue("textMuted", "#64748b")
+                                                : root.colorValue("subtleText", "#64748b")
                                         }
 
                                         Base.AppText {
@@ -1835,7 +1835,7 @@ Item {
         radius: 6
         visible: root.mappingDragActive
         z: 1000
-        color: root.colorValue("surface", "#101827")
+        color: root.colorValue("backgroundSurface", "#101827")
         border.color: root.mappingDragColor
         border.width: 2
         opacity: 0.94

@@ -52,7 +52,7 @@ ApplicationWindow {
     title: appRuntime && appRuntime.settings && appRuntime.settings.applicationName
         ? String(appRuntime.settings.applicationName)
         : qsTr("时间线控制应用")
-    color: appTheme.colors.window
+    color: appTheme.colors.backgroundWindow
 
     Ui.AppShell {
         id: shell

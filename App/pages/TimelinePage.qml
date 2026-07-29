@@ -164,45 +164,36 @@ Item {
                         width: planGrid.cellWidth
                         height: planGrid.cellHeight
 
-                        Base.AppSurface {
-                            anchors.fill: parent
-                            anchors.margins: 8
-                            sizeToContent: false
-                            surfaceTone: planCell.checked ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Section
-                            active: planCell.checked || planCell.current
-                            hoveredState: planMouse.containsMouse
-                            interactive: true
-                            strokeWidth: planCell.checked || planCell.current || planMouse.containsMouse ? 1 : 0
-                            borderOverride: planCell.checked
-                                ? "#60a5fa"
-                                : (planCell.current ? "#3b82f6" : "#334155")
-                            hoverOverlayOpacity: 0.08
-                        }
-
-                        MouseArea {
-                            id: planMouse
+                        Base.AppCard {
+                            id: planCard
 
                             anchors.fill: parent
                             anchors.margins: 8
-                            hoverEnabled: true
-                            enabled: root.timelineStopped
-                            cursorShape: Qt.PointingHandCursor
+                            text: planCell.addItem
+                                ? qsTr("新建时间轴")
+                                : String(planCell.planData.name || qsTr("未命名时间轴"))
+                            checked: planCell.checked
+                            emphasizedSelection: true
                             onClicked: {
+                                if (!root.timelineStopped)
+                                    return
+
                                 if (planCell.addItem)
                                     createPlanPopupLoader.openForCreate()
                                 else
                                     root.editPlan(planCell.planData)
                             }
-                        }
 
-                        Base.AppText {
-                            anchors.centerIn: parent
-                            width: parent.width - 42
-                            horizontalAlignment: Text.AlignHCenter
-                            wrapMode: Text.Wrap
-                            text: planCell.addItem ? "+" : String(planCell.planData.name || qsTr("未命名时间轴"))
-                            styleRole: planCell.addItem ? UiStyle.TypographyRole.TitleL : UiStyle.TypographyRole.TitleM
-                            textTone: planCell.addItem ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                wrapMode: Text.Wrap
+                                text: planCell.addItem ? "+" : String(planCell.planData.name || qsTr("未命名时间轴"))
+                                styleRole: planCell.addItem ? UiStyle.TypographyRole.TitleL : UiStyle.TypographyRole.TitleM
+                                textTone: planCell.addItem ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
+                            }
                         }
 
                         Item {
@@ -219,7 +210,7 @@ Item {
                             Rectangle {
                                 anchors.fill: parent
                                 radius: height / 2
-                                color: root.pageTheme.colors.windowAccent
+                                color: root.pageTheme.colors.backgroundWindowVariant
                             }
 
                             Rectangle {
@@ -238,7 +229,7 @@ Item {
                             anchors.rightMargin: 14
                             width: 26
                             height: 26
-                            visible: !planCell.addItem && planMouse.containsMouse
+                            visible: !planCell.addItem && (planCard.hovered || removePlanMouse.containsMouse)
                             opacity: root.timelinePlans.length > 1 ? 1 : 0.35
 
                             Rectangle {
@@ -255,6 +246,8 @@ Item {
                             }
 
                             MouseArea {
+                                id: removePlanMouse
+
                                 anchors.fill: parent
                                 enabled: root.timelinePlans.length > 1
                                 cursorShape: Qt.PointingHandCursor
@@ -270,7 +263,8 @@ Item {
                             anchors.bottomMargin: 16
                             width: 22
                             height: 22
-                            visible: !planCell.addItem && (planMouse.containsMouse || planCell.checked)
+                            visible: !planCell.addItem
+                                && (planCard.hovered || checkPlanMouse.containsMouse || planCell.checked)
 
                             Rectangle {
                                 anchors.fill: parent
@@ -289,6 +283,8 @@ Item {
                             }
 
                             MouseArea {
+                                id: checkPlanMouse
+
                                 anchors.fill: parent
                                 enabled: root.timelineStopped
                                 cursorShape: Qt.PointingHandCursor
