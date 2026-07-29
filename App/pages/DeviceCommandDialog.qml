@@ -1,12 +1,12 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
+import "qrc:/UICore/qml/components/base" as Base
 
 Base.AppPopup {
     id: root
 
-    property QtObject theme
     property var device: null
     property var draftCommand: null
     property string selectedProtocol: "serial"
@@ -132,8 +132,7 @@ Base.AppPopup {
     y: parent ? Math.round((parent.height - height) / 2) : 0
     padding: 18
     spacing: 14
-    theme: root.theme
-    surfaceTone: "section"
+    surfaceTone: UiStyle.SurfaceTone.Section
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
     onSelectedProtocolChanged: {
@@ -155,30 +154,26 @@ Base.AppPopup {
             Base.AppText {
                 Layout.fillWidth: true
                 text: qsTr("添加指令")
-                theme: root.theme
-                styleRole: "titleM"
+                styleRole: UiStyle.TypographyRole.TitleM
                 elide: Text.ElideRight
             }
 
             Base.AppText {
                 Layout.fillWidth: true
                 text: root.device ? String(root.device.name || "") : ""
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 elide: Text.ElideRight
             }
         }
 
         Base.AppButton {
             text: qsTr("取消")
-            theme: root.theme
             onClicked: root.close()
         }
 
         Base.AppButton {
             text: qsTr("添加")
-            theme: root.theme
             enabled: root.draftCommand !== null
             iconName: "workflow"
             onClicked: root.commit()
@@ -191,14 +186,12 @@ Base.AppPopup {
 
         Base.AppText {
             text: qsTr("协议")
-            theme: root.theme
-            styleRole: "bodyS"
-            textTone: "secondary"
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Secondary
         }
 
         Base.AppSegmentedControl {
             Layout.fillWidth: true
-            theme: root.theme
             options: root.availableProtocolOptions
             value: root.selectedProtocol
             onValueSelected: root.selectedProtocol = String(nextValue)
@@ -208,8 +201,7 @@ Base.AppPopup {
             Layout.fillWidth: true
             text: root.firstInvalidReason()
             visible: root.validationVisible && text.length > 0
-            theme: root.theme
-            styleRole: "bodyS"
+            styleRole: UiStyle.TypographyRole.BodyS
             colorOverride: "#ef4444"
             elide: Text.ElideRight
         }
@@ -218,7 +210,6 @@ Base.AppPopup {
     Base.AppScrollPane {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        theme: root.theme
         contentSpacing: 12
         fillContentWidth: true
 
@@ -229,9 +220,8 @@ Base.AppPopup {
             Base.AppText {
                 Layout.fillWidth: true
                 text: qsTr("创建参数")
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 elide: Text.ElideRight
             }
 
@@ -244,7 +234,6 @@ Base.AppPopup {
                     : []
                 writeBack: true
                 showErrors: root.validationVisible
-                theme: root.theme
                 emptyText: qsTr("无创建参数")
             }
         }
@@ -254,8 +243,7 @@ Base.AppPopup {
         Layout.fillWidth: true
         Layout.preferredHeight: 70
         sizeToContent: false
-        theme: root.theme
-        surfaceTone: "surface"
+        surfaceTone: UiStyle.SurfaceTone.Surface
 
         ColumnLayout {
             anchors.fill: parent
@@ -264,9 +252,8 @@ Base.AppPopup {
 
             Base.AppText {
                 text: qsTr("预览")
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
             }
 
             Base.AppText {
@@ -274,8 +261,7 @@ Base.AppPopup {
                 text: root.protocolLabel(root.selectedProtocol)
                     + " / "
                     + String(creationFieldForm.valueMap().name || "")
-                theme: root.theme
-                styleRole: "bodyM"
+                styleRole: UiStyle.TypographyRole.BodyM
                 elide: Text.ElideRight
             }
         }

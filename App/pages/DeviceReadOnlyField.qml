@@ -1,11 +1,15 @@
 import QtQuick 2.14
+import UICore.Style 1.0
+import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
+import "qrc:/UICore/qml/components/base" as Base
 
 Item {
     id: root
 
-    property QtObject theme
+    property QtObject theme: ApplicationWindow.window && ApplicationWindow.window.appTheme
+        ? ApplicationWindow.window.appTheme
+        : null
     property var fieldData: ({})
     readonly property string labelText: fieldData && fieldData.label !== undefined ? String(fieldData.label) : ""
     readonly property string subtitleText: fieldData && fieldData.subtitle !== undefined ? String(fieldData.subtitle) : ""
@@ -32,9 +36,8 @@ Item {
             Base.AppText {
                 Layout.fillWidth: true
                 text: root.labelText
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 elide: Text.ElideRight
             }
 
@@ -42,9 +45,8 @@ Item {
                 Layout.fillWidth: true
                 visible: root.subtitleText.length > 0
                 text: root.subtitleText
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 opacity: 0.72
                 elide: Text.ElideRight
             }
@@ -54,9 +56,8 @@ Item {
             Layout.alignment: Qt.AlignVCenter
             Layout.maximumWidth: Math.max(104, root.width * 0.52)
             text: root.valueText
-            theme: root.theme
-            styleRole: "bodyM"
-            textTone: "primary"
+            styleRole: UiStyle.TypographyRole.BodyM
+            textTone: UiStyle.TextTone.Primary
             horizontalAlignment: Text.AlignRight
             elide: Text.ElideRight
         }

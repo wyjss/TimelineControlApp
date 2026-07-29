@@ -1,8 +1,9 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/theme" as Theme
+import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/theme" as Theme
 
 Item {
     id: root
@@ -108,24 +109,21 @@ Item {
 
                         Base.AppText {
                             text: qsTr("时间轴")
-                            theme: root.pageTheme
-                            styleRole: "titleL"
+                            styleRole: UiStyle.TypographyRole.TitleL
                         }
 
                         Base.AppText {
                             text: qsTr("选择时间轴进入编辑，或创建新的时间轴")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
                     Base.AppText {
                         visible: root.checkedPlanCount > 0
                         text: qsTr("已选 %1 项").arg(root.checkedPlanCount)
-                        theme: root.pageTheme
-                        styleRole: "bodyM"
-                        textTone: "accent"
+                        styleRole: UiStyle.TypographyRole.BodyM
+                        textTone: UiStyle.TextTone.Accent
                     }
                 }
 
@@ -170,8 +168,7 @@ Item {
                             anchors.fill: parent
                             anchors.margins: 8
                             sizeToContent: false
-                            theme: root.pageTheme
-                            surfaceTone: planCell.checked ? "highlight" : "section"
+                            surfaceTone: planCell.checked ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Section
                             active: planCell.checked || planCell.current
                             hoveredState: planMouse.containsMouse
                             interactive: true
@@ -192,7 +189,7 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 if (planCell.addItem)
-                                    createPlanPopup.openForCreate()
+                                    createPlanPopupLoader.openForCreate()
                                 else
                                     root.editPlan(planCell.planData)
                             }
@@ -204,9 +201,8 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.Wrap
                             text: planCell.addItem ? "+" : String(planCell.planData.name || qsTr("未命名时间轴"))
-                            theme: root.pageTheme
-                            styleRole: planCell.addItem ? "titleL" : "titleM"
-                            textTone: planCell.addItem ? "accent" : "primary"
+                            styleRole: planCell.addItem ? UiStyle.TypographyRole.TitleL : UiStyle.TypographyRole.TitleM
+                            textTone: planCell.addItem ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
                         }
 
                         Item {
@@ -254,8 +250,7 @@ Item {
                             Base.AppText {
                                 anchors.centerIn: parent
                                 text: "×"
-                                theme: root.pageTheme
-                                styleRole: "bodyM"
+                                styleRole: UiStyle.TypographyRole.BodyM
                                 colorOverride: "#ffffff"
                             }
 
@@ -263,7 +258,7 @@ Item {
                                 anchors.fill: parent
                                 enabled: root.timelinePlans.length > 1
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: removePlanPopup.openForPlan(planCell.planData)
+                                onClicked: removePlanPopupLoader.openForPlan(planCell.planData)
                             }
                         }
 
@@ -289,8 +284,7 @@ Item {
                                 anchors.centerIn: parent
                                 visible: planCell.checked
                                 text: String(planCell.checkedNumber)
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
+                                styleRole: UiStyle.TypographyRole.BodyS
                                 colorOverride: "#ffffff"
                             }
 
@@ -324,7 +318,6 @@ Item {
                         Base.AppButton {
                             Layout.preferredWidth: 36
                             iconSymbol: "←"
-                            theme: root.pageTheme
                             ToolTip.visible: hovered
                             ToolTip.text: qsTr("返回")
                             onClicked: {
@@ -344,7 +337,6 @@ Item {
                                 ? root.timelinePlanController.currentPlanIndex
                                 : -1
                             enabled: root.timelinePlanController !== null && root.timelineStopped
-                            theme: root.pageTheme
                             onValueSelected: {
                                 if (root.timelinePlanController)
                                     root.timelinePlanController.currentPlanIndex = Number(nextValue)
@@ -367,8 +359,21 @@ Item {
         }
     }
 
-    Base.AppPopup {
-        id: createPlanPopup
+    Loader {
+        id: createPlanPopupLoader
+
+        active: false
+
+        function openForCreate() {
+            active = true
+            item.openForCreate()
+        }
+
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: createPlanPopup
+                parent: root
+                onClosed: createPlanPopupLoader.active = false
 
         property string planName: ""
 
@@ -393,15 +398,13 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         padding: 18
         spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
+        surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         Base.AppText {
             Layout.fillWidth: true
             text: qsTr("新建时间轴")
-            theme: root.pageTheme
-            styleRole: "titleM"
+            styleRole: UiStyle.TypographyRole.TitleM
         }
 
         Base.AppTextField {
@@ -410,7 +413,6 @@ Item {
             Layout.fillWidth: true
             text: createPlanPopup.planName
             placeholderText: qsTr("时间轴名称")
-            theme: root.pageTheme
             onTextChanged: createPlanPopup.planName = text
             onAccepted: createPlanPopup.commit()
         }
@@ -425,21 +427,34 @@ Item {
 
             Base.AppButton {
                 text: qsTr("取消")
-                theme: root.pageTheme
                 onClicked: createPlanPopup.close()
             }
 
             Base.AppButton {
                 text: qsTr("创建")
-                theme: root.pageTheme
                 enabled: createPlanPopup.planName.trim().length > 0
                 onClicked: createPlanPopup.commit()
             }
         }
+            }
+        }
     }
 
-    Base.AppPopup {
-        id: removePlanPopup
+    Loader {
+        id: removePlanPopupLoader
+
+        active: false
+
+        function openForPlan(plan) {
+            active = true
+            item.openForPlan(plan)
+        }
+
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: removePlanPopup
+                parent: root
+                onClosed: removePlanPopupLoader.active = false
 
         property var planData: null
 
@@ -460,24 +475,21 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         padding: 18
         spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
+        surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         Base.AppText {
             Layout.fillWidth: true
             text: qsTr("删除时间轴")
-            theme: root.pageTheme
-            styleRole: "titleM"
+            styleRole: UiStyle.TypographyRole.TitleM
         }
 
         Base.AppText {
             Layout.fillWidth: true
             text: qsTr("确定删除“%1”？其中的时间轴指令也会被删除。")
                 .arg(removePlanPopup.planData ? removePlanPopup.planData.name : "")
-            theme: root.pageTheme
-            styleRole: "bodyM"
-            textTone: "secondary"
+            styleRole: UiStyle.TypographyRole.BodyM
+            textTone: UiStyle.TextTone.Secondary
             wrapMode: Text.WordWrap
         }
 
@@ -491,14 +503,14 @@ Item {
 
             Base.AppButton {
                 text: qsTr("取消")
-                theme: root.pageTheme
                 onClicked: removePlanPopup.close()
             }
 
             Base.AppButton {
                 text: qsTr("删除")
-                theme: root.pageTheme
                 onClicked: removePlanPopup.commit()
+            }
+        }
             }
         }
     }

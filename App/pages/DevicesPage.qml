@@ -1,10 +1,10 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/components/base/internal" as Internal
-import "qrc:/UiCore/qml/components/form" as Form
-import "qrc:/UiCore/qml/theme" as Theme
+import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/components/form" as Form
+import "qrc:/UICore/qml/theme" as Theme
 
 Item {
     id: root
@@ -204,7 +204,7 @@ Item {
             return
         }
 
-        addCommandPopup.openForDevice(selectedDevice)
+        addCommandPopupLoader.openForDevice(selectedDevice)
     }
 
     function removeSelectedCommand() {
@@ -226,7 +226,7 @@ Item {
         if (!deviceModel || !selectedDeviceInCurrentView || !selectedDevice)
             return
 
-        removeDevicePopup.openForDevice(selectedDevice)
+        removeDevicePopupLoader.openForDevice(selectedDevice)
     }
 
     function commandName(command) {
@@ -391,7 +391,7 @@ Item {
         if (!deviceManager || !selectedTemplate)
             return
 
-        createDevicePopup.openForTemplate(selectedTemplate, initialInputSpecs(selectedTemplate))
+        createDevicePopupLoader.openForTemplate(selectedTemplate, initialInputSpecs(selectedTemplate))
     }
 
     function updateField(field, value) {
@@ -420,39 +420,34 @@ Item {
 
             Base.AppText {
                 text: qsTr("设备")
-                theme: root.pageTheme
-                styleRole: "titleL"
+                styleRole: UiStyle.TypographyRole.TitleL
             }
 
             Base.AppSurface {
                 Layout.preferredHeight: 28
                 sizeToContent: true
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
                 padding: 10
 
                 Base.AppText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("%1 个模板").arg(root.deviceTemplates.length)
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
             Base.AppSurface {
                 Layout.preferredHeight: 28
                 sizeToContent: true
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
                 padding: 10
 
                 Base.AppText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("%1 台设备").arg(root.filteredDevices.length)
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
@@ -463,7 +458,6 @@ Item {
             Base.AppButton {
                 visible: root.deviceDisplayMode === "template"
                 text: qsTr("创建设备")
-                theme: root.pageTheme
                 iconName: "resources"
                 onClicked: root.createDeviceFromSelectedTemplate()
             }
@@ -480,8 +474,7 @@ Item {
                 Layout.preferredWidth: 300
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -490,35 +483,22 @@ Item {
 
                     Base.AppText {
                         text: root.deviceDisplayMode === "type" ? qsTr("设备类型") : qsTr("设备模板")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
-                    RowLayout {
+                    Base.AppSegmentedControl {
                         Layout.fillWidth: true
-                        spacing: 8
-
-                        Base.AppButton {
-                            Layout.fillWidth: true
-                            text: qsTr("模板")
-                            theme: root.pageTheme
-                            highlighted: root.deviceDisplayMode === "template"
-                            onClicked: root.setDeviceDisplayMode("template")
-                        }
-
-                        Base.AppButton {
-                            Layout.fillWidth: true
-                            text: qsTr("类型")
-                            theme: root.pageTheme
-                            highlighted: root.deviceDisplayMode === "type"
-                            onClicked: root.setDeviceDisplayMode("type")
-                        }
+                        options: [
+                            { "label": qsTr("模板"), "value": "template" },
+                            { "label": qsTr("类型"), "value": "type" }
+                        ]
+                        value: root.deviceDisplayMode
+                        onValueSelected: root.setDeviceDisplayMode(String(nextValue))
                     }
 
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        theme: root.pageTheme
                         contentSpacing: 8
                         fillContentWidth: true
 
@@ -533,8 +513,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 92
                                 sizeToContent: false
-                                theme: root.pageTheme
-                                surfaceTone: selected ? "highlight" : "surface"
+                                surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
                                 active: selected
                                 hoveredState: groupMouse.containsMouse
                                 interactive: true
@@ -552,26 +531,23 @@ Item {
                                     Base.AppText {
                                         Layout.fillWidth: true
                                         text: root.groupName(modelData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
+                                        styleRole: UiStyle.TypographyRole.BodyM
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         Layout.fillWidth: true
                                         text: root.groupDescription(modelData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         Layout.fillWidth: true
                                         text: root.groupFootnote(modelData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: selected ? "accent" : "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -595,8 +571,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.minimumWidth: 420
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -610,24 +585,21 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("设备实例")
-                            theme: root.pageTheme
-                            styleRole: "sectionTitle"
+                            styleRole: UiStyle.TypographyRole.SectionTitle
                         }
 
                         Base.AppText {
                             Layout.preferredWidth: 90
                             text: qsTr("协议")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
 
                         Base.AppText {
                             Layout.preferredWidth: 88
                             text: qsTr("状态")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                             horizontalAlignment: Text.AlignRight
                         }
                     }
@@ -635,7 +607,6 @@ Item {
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        theme: root.pageTheme
                         contentSpacing: 8
                         fillContentWidth: true
 
@@ -650,8 +621,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 66
                                 sizeToContent: false
-                                theme: root.pageTheme
-                                surfaceTone: selected ? "highlight" : "surface"
+                                surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
                                 active: selected
                                 hoveredState: rowMouse.containsMouse
                                 interactive: true
@@ -671,17 +641,15 @@ Item {
                                         Base.AppText {
                                             Layout.fillWidth: true
                                             text: modelData.name
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
+                                            styleRole: UiStyle.TypographyRole.BodyM
                                             elide: Text.ElideRight
                                         }
 
                                         Base.AppText {
                                             Layout.fillWidth: true
                                             text: root.deviceAddress(modelData)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -689,18 +657,16 @@ Item {
                                     Base.AppText {
                                         Layout.preferredWidth: 90
                                         text: root.deviceProtocols(modelData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         Layout.preferredWidth: 88
                                         text: modelData.status
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: modelData.status === qsTr("在线") ? "accent" : "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: modelData.status === qsTr("在线") ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
                                         horizontalAlignment: Text.AlignRight
                                         elide: Text.ElideRight
                                     }
@@ -724,29 +690,25 @@ Item {
                 Layout.preferredWidth: 380
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 Base.AppScrollPane {
                     anchors.fill: parent
                     anchors.margins: 18
-                    theme: root.pageTheme
                     contentSpacing: 10
                     fillContentWidth: true
 
                     Base.AppText {
                         Layout.fillWidth: true
                         text: root.deviceDisplayMode === "type" ? qsTr("类型详情") : qsTr("模板详情")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
                     Base.AppSurface {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 96
                         sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
+                        surfaceTone: UiStyle.SurfaceTone.Surface
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -758,8 +720,7 @@ Item {
                                 text: root.deviceDisplayMode === "type"
                                     ? (root.selectedDeviceType.length > 0 ? root.selectedDeviceType : qsTr("无类型"))
                                     : root.templateValue("name", qsTr("无模板"))
-                                theme: root.pageTheme
-                                styleRole: "bodyM"
+                                styleRole: UiStyle.TypographyRole.BodyM
                                 elide: Text.ElideRight
                             }
 
@@ -768,9 +729,8 @@ Item {
                                 text: root.deviceDisplayMode === "type"
                                     ? qsTr("%1 台设备").arg(root.filteredDevices.length)
                                     : String((root.selectedTemplate && root.selectedTemplate.supportedProtocols ? root.selectedTemplate.supportedProtocols : []).join(", ")) + " - " + root.templateValue("description", "")
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
                                 elide: Text.ElideRight
                             }
 
@@ -778,7 +738,6 @@ Item {
                                 Layout.fillWidth: true
                                 visible: root.deviceDisplayMode === "template"
                                 text: qsTr("从模板创建设备")
-                                theme: root.pageTheme
                                 iconName: "resources"
                                 onClicked: root.createDeviceFromSelectedTemplate()
                             }
@@ -792,14 +751,12 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("设备档案")
-                            theme: root.pageTheme
-                            styleRole: "sectionTitle"
+                            styleRole: UiStyle.TypographyRole.SectionTitle
                             elide: Text.ElideRight
                         }
 
                         Base.AppButton {
                             text: qsTr("删除")
-                            theme: root.pageTheme
                             enabled: root.selectedDeviceInCurrentView
                             onClicked: root.requestRemoveSelectedDevice()
                         }
@@ -807,7 +764,6 @@ Item {
 
                     Form.AppFormContent {
                         Layout.fillWidth: true
-                        theme: root.pageTheme
                         formData: root.deviceInspectorFormProvider
                             ? root.deviceInspectorFormProvider.deviceForm
                             : ({})
@@ -828,8 +784,7 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("设备指令")
-                            theme: root.pageTheme
-                            styleRole: "titleM"
+                            styleRole: UiStyle.TypographyRole.TitleM
                             elide: Text.ElideRight
                         }
 
@@ -847,8 +802,7 @@ Item {
 
                                 anchors.centerIn: parent
                                 text: qsTr("%1 条指令").arg(root.selectedDeviceCommands.length)
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
+                                styleRole: UiStyle.TypographyRole.BodyS
                                 colorOverride: "#bfdbfe"
                                 elide: Text.ElideRight
                             }
@@ -856,7 +810,6 @@ Item {
 
                         Base.AppButton {
                             text: qsTr("添加")
-                            theme: root.pageTheme
                             iconName: "workflow"
                             enabled: root.selectedDeviceInCurrentView
                                 && root.selectedDevice
@@ -870,9 +823,8 @@ Item {
                         Layout.fillWidth: true
                         visible: root.selectedDeviceInCurrentView && root.selectedDeviceCommands.length === 0
                         text: qsTr("暂无指令")
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight
                     }
 
@@ -900,8 +852,7 @@ Item {
 
                                 Base.AppSurface {
                                     anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: commandRow.selected ? "highlight" : "ghost"
+                                    surfaceTone: commandRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
                                     active: commandRow.selected
                                     hoveredState: commandMouse.containsMouse
                                     interactive: true
@@ -963,8 +914,7 @@ Item {
                                                 Base.AppText {
                                                     Layout.fillWidth: true
                                                     text: root.commandName(commandRow.commandData)
-                                                    theme: root.pageTheme
-                                                    styleRole: "bodyM"
+                                                    styleRole: UiStyle.TypographyRole.BodyM
                                                     colorOverride: commandRow.selected ? "#f8fafc" : undefined
                                                     elide: Text.ElideRight
                                                 }
@@ -973,8 +923,7 @@ Item {
                                                     Layout.maximumWidth: 120
                                                     text: root.executionParameterNames(commandRow.commandData)
                                                     visible: text.length > 0
-                                                    theme: root.pageTheme
-                                                    styleRole: "bodyS"
+                                                    styleRole: UiStyle.TypographyRole.BodyS
                                                     colorOverride: "#ef4444"
                                                     elide: Text.ElideRight
                                                 }
@@ -985,19 +934,19 @@ Item {
                                                 text: commandRow.summaryText.length > 0
                                                     ? commandRow.summaryText
                                                     : qsTr("%1 个字段").arg(commandRow.inputCount)
-                                                theme: root.pageTheme
-                                                styleRole: "bodyS"
-                                                textTone: "secondary"
+                                                styleRole: UiStyle.TypographyRole.BodyS
+                                                textTone: UiStyle.TextTone.Secondary
                                                 elide: Text.ElideRight
                                             }
                                         }
 
-                                        Internal.AppPaneDisclosure {
-                                            expanded: commandRow.expanded
-                                            control: commandRow
-                                            onToggleRequested: {
+                                        Base.AppButton {
+                                            size: UiStyle.ButtonSize.Small
+                                            variant: UiStyle.ButtonVariant.Ghost
+                                            text: commandRow.expanded ? "▾" : "›"
+                                            onClicked: {
                                                 root.selectCommandIndex(index)
-                                                root.expandedCommandIndex = nextExpanded ? index : -1
+                                                root.expandedCommandIndex = commandRow.expanded ? -1 : index
                                             }
                                         }
                                     }
@@ -1022,8 +971,7 @@ Item {
                                             Base.AppText {
                                                 Layout.fillWidth: true
                                                 text: root.commandName(commandRow.commandData)
-                                                theme: root.pageTheme
-                                                styleRole: "bodyM"
+                                                styleRole: UiStyle.TypographyRole.BodyM
                                                 elide: Text.ElideRight
                                             }
 
@@ -1032,16 +980,14 @@ Item {
                                                 text: root.commandProtocol(commandRow.commandData).toUpperCase()
                                                     + " / "
                                                     + root.commandSummary(commandRow.commandData)
-                                                theme: root.pageTheme
-                                                styleRole: "bodyS"
-                                                textTone: "secondary"
+                                                styleRole: UiStyle.TypographyRole.BodyS
+                                                textTone: UiStyle.TextTone.Secondary
                                                 elide: Text.ElideRight
                                             }
                                         }
 
                                         Base.AppButton {
                                             text: qsTr("移除")
-                                            theme: root.pageTheme
                                             onClicked: root.removeSelectedCommand()
                                         }
                                     }
@@ -1058,9 +1004,8 @@ Item {
                                         visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         text: qsTr("创建参数")
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
 
@@ -1070,7 +1015,6 @@ Item {
                                         fields: commandRow.commandData ? commandRow.commandData.creationInputFields : []
                                         readOnly: true
                                         writeBack: true
-                                        theme: root.pageTheme
                                         emptyText: qsTr("无创建参数")
                                     }
 
@@ -1083,8 +1027,21 @@ Item {
         }
     }
 
-    Base.AppPopup {
-        id: createDevicePopup
+    Loader {
+        id: createDevicePopupLoader
+
+        active: false
+
+        function openForTemplate(deviceTemplate, fieldSpecs) {
+            active = true
+            item.openForTemplate(deviceTemplate, fieldSpecs)
+        }
+
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: createDevicePopup
+                parent: root
+                onClosed: createDevicePopupLoader.active = false
 
         property var deviceTemplate: null
         property var fieldSpecs: []
@@ -1190,8 +1147,7 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         padding: 18
         spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
+        surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         RowLayout {
@@ -1205,8 +1161,7 @@ Item {
                 Base.AppText {
                     Layout.fillWidth: true
                     text: qsTr("创建设备")
-                    theme: root.pageTheme
-                    styleRole: "titleM"
+                    styleRole: UiStyle.TypographyRole.TitleM
                     elide: Text.ElideRight
                 }
 
@@ -1215,22 +1170,19 @@ Item {
                     text: createDevicePopup.deviceTemplate
                         ? String(createDevicePopup.deviceTemplate.name) + " / " + String((createDevicePopup.deviceTemplate.supportedProtocols || []).join(", "))
                         : ""
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                     elide: Text.ElideRight
                 }
             }
 
             Base.AppButton {
                 text: qsTr("取消")
-                theme: root.pageTheme
                 onClicked: createDevicePopup.close()
             }
 
             Base.AppButton {
                 text: qsTr("创建")
-                theme: root.pageTheme
                 enabled: createDevicePopup.formValid
                 iconName: "resources"
                 onClicked: createDevicePopup.commit()
@@ -1243,14 +1195,12 @@ Item {
 
             Base.AppText {
                 text: qsTr("名称") + " *"
-                theme: root.pageTheme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
             }
 
             Base.AppTextField {
                 Layout.fillWidth: true
-                theme: root.pageTheme
                 text: createDevicePopup.deviceName
                 placeholderText: qsTr("设备名称")
                 onTextChanged: createDevicePopup.deviceName = text
@@ -1263,16 +1213,14 @@ Item {
 
             Base.AppText {
                 text: qsTr("设备类型") + " *"
-                theme: root.pageTheme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
             }
 
             Base.AppTextField {
                 visible: createDevicePopup.templateHasDeviceType
                 Layout.fillWidth: true
                 enabled: false
-                theme: root.pageTheme
                 text: createDevicePopup.deviceType
             }
 
@@ -1283,7 +1231,6 @@ Item {
 
                 Base.AppSelect {
                     Layout.fillWidth: true
-                    theme: root.pageTheme
                     placeholderText: qsTr("现有类型")
                     options: createDevicePopup.deviceTypeOptions
                     value: createDevicePopup.selectedDeviceTypeOption
@@ -1293,7 +1240,6 @@ Item {
                 Base.AppTextField {
                     visible: createDevicePopup.customDeviceTypeSelected
                     Layout.fillWidth: true
-                    theme: root.pageTheme
                     text: createDevicePopup.customDeviceType
                     placeholderText: qsTr("设备类型")
                     onTextChanged: createDevicePopup.customDeviceType = text
@@ -1305,8 +1251,7 @@ Item {
             Layout.fillWidth: true
             visible: text.length > 0
             text: createDevicePopup.firstInvalidReason()
-            theme: root.pageTheme
-            styleRole: "bodyS"
+            styleRole: UiStyle.TypographyRole.BodyS
             colorOverride: "#ef4444"
             elide: Text.ElideRight
         }
@@ -1314,7 +1259,6 @@ Item {
         Base.AppScrollPane {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            theme: root.pageTheme
             contentSpacing: 12
             fillContentWidth: true
 
@@ -1324,14 +1268,28 @@ Item {
                 Layout.fillWidth: true
                 fields: createDevicePopup.fieldSpecs
                 writeBack: false
-                theme: root.pageTheme
                 emptyText: qsTr("无初始参数")
+            }
+        }
             }
         }
     }
 
-    Base.AppPopup {
-        id: removeDevicePopup
+    Loader {
+        id: removeDevicePopupLoader
+
+        active: false
+
+        function openForDevice(device) {
+            active = true
+            item.openForDevice(device)
+        }
+
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: removeDevicePopup
+                parent: root
+                onClosed: removeDevicePopupLoader.active = false
 
         property string deviceId: ""
         property string deviceName: ""
@@ -1355,24 +1313,21 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         padding: 18
         spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
+        surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         Base.AppText {
             Layout.fillWidth: true
             text: qsTr("删除设备")
-            theme: root.pageTheme
-            styleRole: "titleM"
+            styleRole: UiStyle.TypographyRole.TitleM
             elide: Text.ElideRight
         }
 
         Base.AppText {
             Layout.fillWidth: true
             text: qsTr("确定删除 %1？关联的时间线指令和投影映射也会被移除。").arg(removeDevicePopup.deviceName)
-            theme: root.pageTheme
-            styleRole: "bodyM"
-            textTone: "secondary"
+            styleRole: UiStyle.TypographyRole.BodyM
+            textTone: UiStyle.TextTone.Secondary
             wrapMode: Text.WordWrap
         }
 
@@ -1386,26 +1341,40 @@ Item {
 
             Base.AppButton {
                 text: qsTr("取消")
-                theme: root.pageTheme
                 onClicked: removeDevicePopup.close()
             }
 
             Base.AppButton {
                 text: qsTr("删除")
-                theme: root.pageTheme
                 onClicked: removeDevicePopup.commit()
+            }
+        }
             }
         }
     }
 
-    DeviceCommandDialog {
-        id: addCommandPopup
+    Loader {
+        id: addCommandPopupLoader
 
-        theme: root.pageTheme
-        onCommandAccepted: {
-            Qt.callLater(function() {
-                root.selectedCommandIndex = root.selectedDeviceCommands.length - 1
-            })
+        active: false
+
+        function openForDevice(device) {
+            active = true
+            item.openForDevice(device)
+        }
+
+        sourceComponent: Component {
+            DeviceCommandDialog {
+                id: addCommandPopup
+                parent: root
+                onClosed: addCommandPopupLoader.active = false
+
+                onCommandAccepted: {
+                    Qt.callLater(function() {
+                        root.selectedCommandIndex = root.selectedDeviceCommands.length - 1
+                    })
+                }
+            }
         }
     }
 }

@@ -36,7 +36,7 @@ find_package(Qt5 5.14 REQUIRED COMPONENTS
     SerialPort
 )
 
-add_subdirectory(UiCore)
+add_subdirectory(UICore_new)
 
 qt5_add_resources(TIMELINE_APP_RESOURCES
     App/App.qrc
@@ -69,7 +69,7 @@ target_include_directories(TimelineControlApp PRIVATE
 )
 
 target_link_libraries(TimelineControlApp PRIVATE
-    UiCore
+    UICore
     ${AVRB_LIBRARY}
     Qt5::Core
     Qt5::Gui

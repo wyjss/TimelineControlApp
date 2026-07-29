@@ -8,7 +8,7 @@
 #include "devices/Device.h"
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceModel.h"
-#include "runtime/shell/AppShellController.h"
+#include <UICore/Shell/AppShellController.h>
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineController.h"
 
@@ -50,7 +50,7 @@ QRect videoRect(const QVariant &value, const QSize &canvasSize)
 PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineController *timelineController,
                                                        TimelineCommandModel *timelineCommandModel,
                                                        DeviceModel *deviceModel,
-                                                       EarthUI::AppShellController *shellController,
+                                                       UICore::AppShellController *shellController,
                                                        QObject *parent)
     : QObject(parent)
     , m_timelineController(timelineController)
@@ -75,7 +75,7 @@ PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineController *timel
         connect(m_deviceModel, &DeviceModel::currentDeviceChanged,
                 this, &PcTimelinePreviewGenerator::updatePcDevice);
     if (m_shellController)
-        connect(m_shellController, &EarthUI::AppShellController::activeDrawerKeyChanged,
+        connect(m_shellController, &UICore::AppShellController::activeNavigationKeyChanged,
                 this, &PcTimelinePreviewGenerator::updateActiveState);
 
     connect(&m_process,
@@ -188,7 +188,7 @@ bool PcTimelinePreviewGenerator::isActive() const
     return m_timelineController
         && m_timelineController->state() == TimelineController::Stopped
         && m_shellController
-        && m_shellController->activeDrawerKey() == kTimelineDrawerKey;
+        && m_shellController->activeNavigationKey() == kTimelineDrawerKey;
 }
 
 void PcTimelinePreviewGenerator::updateActiveState()

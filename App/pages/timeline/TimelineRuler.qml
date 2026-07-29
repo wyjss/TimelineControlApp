@@ -1,12 +1,14 @@
 import QtQuick 2.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/components/base/internal/AppThemeUtils.js" as ThemeUtils
+import UICore.Style 1.0
+import QtQuick.Controls 2.14
+import "qrc:/UICore/qml/components/base" as Base
 
 Item {
     id: root
 
-    // 宿主页面传入的主题对象。
-    property QtObject theme
+    property QtObject theme: ApplicationWindow.window && ApplicationWindow.window.appTheme
+        ? ApplicationWindow.window.appTheme
+        : null
     // 时间轴总时长，单位毫秒。
     property int durationMs: 1800000
     // 当前时间，单位毫秒；用于绘制当前时刻标记。
@@ -73,7 +75,9 @@ Item {
     readonly property var _bestMajorIntervals: [1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 60.0]
 
     function colorValue(name, fallback) {
-        return ThemeUtils.colorValue(theme, name, fallback)
+        return theme && theme.colors && theme.colors[name] !== undefined
+            ? theme.colors[name]
+            : fallback
     }
 
     function safeTimeScale() {
@@ -316,9 +320,8 @@ Item {
             y: 6
             width: root.labelWidth
             text: modelData.label
-            theme: root.theme
-            styleRole: "bodyS"
-            textTone: "secondary"
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Secondary
             horizontalAlignment: Text.AlignHCenter
             elide: Text.ElideRight
         }
@@ -337,8 +340,7 @@ Item {
         Base.AppText {
             anchors.fill: parent
             text: root.formatTime(root.resolvedCurrentTimeMs)
-            theme: root.theme
-            styleRole: "bodyS"
+            styleRole: UiStyle.TypographyRole.BodyS
             colorOverride: "#ffffff"
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

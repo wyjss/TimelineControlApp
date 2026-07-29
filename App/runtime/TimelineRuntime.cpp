@@ -16,8 +16,7 @@
 #include "timeline/TimelineController.h"
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelinePlanController.h"
-#include "runtime/task/TaskManager.h"
-#include "runtime/form/AppForm.h"
+#include <UICore/Forms/AppForm.h>
 
 #include <QDataStream>
 #include <QDir>
@@ -31,7 +30,7 @@
 
 TimelineRuntime::TimelineRuntime(QObject *parent)
     : BaseRuntime(parent)
-    , m_taskManager(new TaskManager(this))
+    , m_taskManager(new UICore::TaskManager(this))
     , m_deviceModel(new DeviceModel(this))
     , m_deviceTemplateModel(new DeviceTemplateModel(this))
     , m_deviceExecutorManager(new DeviceExecutorManager(this))
@@ -50,8 +49,8 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<Device *>("Device*");
     qRegisterMetaType<DeviceTemplate *>("DeviceTemplate*");
     qRegisterMetaType<DeviceInspectorFormProvider *>("DeviceInspectorFormProvider*");
-    qRegisterMetaType<EarthUI::AppForm *>("EarthUI::AppForm*");
-    qRegisterMetaType<TaskManager *>("TaskManager*");
+    qRegisterMetaType<UICore::AppForm *>("UICore::AppForm*");
+    qRegisterMetaType<UICore::TaskManager *>("UICore::TaskManager*");
     qRegisterMetaType<DeviceManager *>("DeviceManager*");
     qRegisterMetaType<DeviceModel *>("DeviceModel*");
     qRegisterMetaType<DeviceTemplateModel *>("DeviceTemplateModel*");
@@ -201,7 +200,7 @@ void TimelineRuntime::setState(State state)
         m_timelineController->setState(TimelineController::Paused);
 }
 
-TaskManager *TimelineRuntime::taskManager() const
+UICore::TaskManager *TimelineRuntime::taskManager() const
 {
     return m_taskManager;
 }

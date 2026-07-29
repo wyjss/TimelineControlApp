@@ -2,10 +2,10 @@
 
 #include <QVariant>
 
-#include "runtime/fields/BaseField.h"
+#include <UICore/Fields/BaseField.h>
 
 
-class DeviceParamSpec final : public EarthUI::BaseField
+class DeviceParamSpec final : public UICore::BaseField
 {
     Q_OBJECT
 
@@ -13,27 +13,27 @@ class DeviceParamSpec final : public EarthUI::BaseField
     Q_PROPERTY(QString type READ typeName CONSTANT FINAL)
 
 public:
-    using ValueType = EarthUI::BaseField::ValueType;
-    using EditorHint = EarthUI::BaseField::EditorHint;
+    using ValueType = UICore::BaseField::ValueType;
+    using EditorHint = UICore::BaseField::EditorHint;
 
-    static constexpr ValueType InvalidType = EarthUI::BaseField::InvalidType;
-    static constexpr ValueType BoolType = EarthUI::BaseField::BoolType;
-    static constexpr ValueType IntType = EarthUI::BaseField::IntType;
-    static constexpr ValueType DoubleType = EarthUI::BaseField::DoubleType;
-    static constexpr ValueType StringType = EarthUI::BaseField::StringType;
-    static constexpr ValueType SelectType = EarthUI::BaseField::EnumType;
-    static constexpr ValueType ColorType = EarthUI::BaseField::ColorType;
-    static constexpr ValueType VariantType = EarthUI::BaseField::VariantType;
+    static constexpr ValueType InvalidType = UICore::BaseField::InvalidType;
+    static constexpr ValueType BoolType = UICore::BaseField::BoolType;
+    static constexpr ValueType IntType = UICore::BaseField::IntType;
+    static constexpr ValueType DoubleType = UICore::BaseField::DoubleType;
+    static constexpr ValueType StringType = UICore::BaseField::StringType;
+    static constexpr ValueType SelectType = UICore::BaseField::EnumType;
+    static constexpr ValueType ColorType = UICore::BaseField::ColorType;
+    static constexpr ValueType VariantType = UICore::BaseField::VariantType;
 
-    static constexpr EditorHint AutoEditor = EarthUI::BaseField::AutoEditor;
-    static constexpr EditorHint TextEditor = EarthUI::BaseField::TextEditor;
-    static constexpr EditorHint SliderEditor = EarthUI::BaseField::SliderEditor;
-    static constexpr EditorHint ToggleEditor = EarthUI::BaseField::ToggleEditor;
-    static constexpr EditorHint SelectEditor = EarthUI::BaseField::SelectEditor;
-    static constexpr EditorHint ChoiceEditor = EarthUI::BaseField::ChoiceEditor;
-    static constexpr EditorHint SegmentedEditor = EarthUI::BaseField::SegmentedEditor;
-    static constexpr EditorHint ColorEditor = EarthUI::BaseField::ColorEditor;
-    static constexpr EditorHint CustomEditor = EarthUI::BaseField::CustomEditor;
+    static constexpr EditorHint AutoEditor = UICore::BaseField::AutoEditor;
+    static constexpr EditorHint TextEditor = UICore::BaseField::TextEditor;
+    static constexpr EditorHint SliderEditor = UICore::BaseField::SliderEditor;
+    static constexpr EditorHint ToggleEditor = UICore::BaseField::ToggleEditor;
+    static constexpr EditorHint SelectEditor = UICore::BaseField::SelectEditor;
+    static constexpr EditorHint ChoiceEditor = UICore::BaseField::ChoiceEditor;
+    static constexpr EditorHint SegmentedEditor = UICore::BaseField::SegmentedEditor;
+    static constexpr EditorHint ColorEditor = UICore::BaseField::ColorEditor;
+    static constexpr EditorHint CustomEditor = UICore::BaseField::CustomEditor;
 
     explicit DeviceParamSpec(QObject *parent = nullptr);
     DeviceParamSpec(const QString &key,

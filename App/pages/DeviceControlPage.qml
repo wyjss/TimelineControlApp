@@ -1,8 +1,9 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/theme" as Theme
+import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/theme" as Theme
 
 Item {
     id: root
@@ -185,39 +186,34 @@ Item {
 
             Base.AppText {
                 text: qsTr("设备控制")
-                theme: root.pageTheme
-                styleRole: "titleL"
+                styleRole: UiStyle.TypographyRole.TitleL
             }
 
             Base.AppSurface {
                 Layout.preferredHeight: 28
                 sizeToContent: true
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
                 padding: 10
 
                 Base.AppText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("%1 台设备").arg(root.devices.length)
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
             Base.AppSurface {
                 Layout.preferredHeight: 28
                 sizeToContent: true
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
                 padding: 10
 
                 Base.AppText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("%1 个组").arg(root.groups.length)
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
@@ -225,9 +221,8 @@ Item {
                 visible: root.feedbackText.length > 0
                 Layout.fillWidth: true
                 text: root.feedbackText
-                theme: root.pageTheme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight
             }
@@ -239,16 +234,14 @@ Item {
 
             Base.AppButton {
                 text: qsTr("组开机")
-                theme: root.pageTheme
                 enabled: root.groups.length > 0
-                onClicked: groupActionPopup.openForAction("on")
+                onClicked: groupActionPopupLoader.openForAction("on")
             }
 
             Base.AppButton {
                 text: qsTr("组关机")
-                theme: root.pageTheme
                 enabled: root.groups.length > 0
-                onClicked: groupActionPopup.openForAction("off")
+                onClicked: groupActionPopupLoader.openForAction("off")
             }
         }
 
@@ -261,8 +254,7 @@ Item {
                 Layout.preferredWidth: 280
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -276,21 +268,18 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("设备组")
-                            theme: root.pageTheme
-                            styleRole: "sectionTitle"
+                            styleRole: UiStyle.TypographyRole.SectionTitle
                         }
 
                         Base.AppButton {
                             text: qsTr("新建")
-                            theme: root.pageTheme
-                            onClicked: groupEditorPopup.openForCreate()
+                            onClicked: groupEditorPopupLoader.openForCreate()
                         }
                     }
 
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        theme: root.pageTheme
                         contentSpacing: 8
                         fillContentWidth: true
 
@@ -305,8 +294,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 64
                                 sizeToContent: false
-                                theme: root.pageTheme
-                                surfaceTone: selected ? "highlight" : "canvas"
+                                surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Canvas
                                 active: selected
                                 interactive: true
 
@@ -321,17 +309,15 @@ Item {
                                     Base.AppText {
                                         width: parent.width
                                         text: String(modelData.name)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
+                                        styleRole: UiStyle.TypographyRole.BodyM
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         width: parent.width
                                         text: qsTr("%1 台设备").arg(root.deviceCountInGroup(modelData.id))
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                     }
                                 }
 
@@ -350,9 +336,8 @@ Item {
                             visible: root.groups.length === 0
                             Layout.fillWidth: true
                             text: qsTr("暂无设备组，请先新建组")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyM
+                            textTone: UiStyle.TextTone.Secondary
                             horizontalAlignment: Text.AlignHCenter
                             wrapMode: Text.WordWrap
                         }
@@ -365,17 +350,15 @@ Item {
                         Base.AppButton {
                             Layout.fillWidth: true
                             text: qsTr("重命名")
-                            theme: root.pageTheme
                             enabled: root.selectedGroupId.length > 0
-                            onClicked: groupEditorPopup.openForRename()
+                            onClicked: groupEditorPopupLoader.openForRename()
                         }
 
                         Base.AppButton {
                             Layout.fillWidth: true
                             text: qsTr("删除")
-                            theme: root.pageTheme
                             enabled: root.selectedGroupId.length > 0
-                            onClicked: removeGroupPopup.open()
+                            onClicked: removeGroupPopupLoader.open()
                         }
                     }
                 }
@@ -385,8 +368,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -404,8 +386,7 @@ Item {
                             Base.AppText {
                                 Layout.fillWidth: true
                                 text: qsTr("所有设备")
-                                theme: root.pageTheme
-                                styleRole: "sectionTitle"
+                                styleRole: UiStyle.TypographyRole.SectionTitle
                             }
 
                             Base.AppText {
@@ -415,16 +396,14 @@ Item {
                                     : (root.editingMembers
                                         ? qsTr("点击设备方块，将设备加入或移出“%1”").arg(root.groupById(root.selectedGroupId).name)
                                         : qsTr("选择“管理成员”后点击设备；同一设备可加入多个组"))
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
                                 elide: Text.ElideRight
                             }
                         }
 
                         Base.AppButton {
                             text: root.editingMembers ? qsTr("完成") : qsTr("管理成员")
-                            theme: root.pageTheme
                             enabled: root.selectedGroupId.length > 0
                             highlighted: root.editingMembers
                             onClicked: root.editingMembers = !root.editingMembers
@@ -457,8 +436,7 @@ Item {
                                     anchors.rightMargin: 10
                                     anchors.bottomMargin: 10
                                     sizeToContent: false
-                                    theme: root.pageTheme
-                                    surfaceTone: inSelectedGroup ? "highlight" : "canvas"
+                                    surfaceTone: inSelectedGroup ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Canvas
                                     active: inSelectedGroup
                                     interactive: root.editingMembers
                                     strokeWidth: inSelectedGroup ? 2 : 1
@@ -471,26 +449,23 @@ Item {
                                         Base.AppText {
                                             width: parent.width - 28
                                             text: String(deviceData.name || deviceData.id || qsTr("未命名设备"))
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
+                                            styleRole: UiStyle.TypographyRole.BodyM
                                             elide: Text.ElideRight
                                         }
 
                                         Base.AppText {
                                             width: parent.width
                                             text: String(deviceData.deviceType || qsTr("未设置类型"))
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
 
                                         Base.AppText {
                                             width: parent.width
                                             text: root.deviceAddress(deviceData)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
 
@@ -499,9 +474,8 @@ Item {
                                             text: root.groupsForDevice(deviceData.id).length > 0
                                                 ? root.groupsForDevice(deviceData.id).join("、")
                                                 : qsTr("未分组")
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: inSelectedGroup ? "accent" : "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: inSelectedGroup ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -540,9 +514,8 @@ Item {
                             visible: root.devices.length === 0
                             anchors.centerIn: parent
                             text: qsTr("暂无设备")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyM
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
                 }
@@ -550,8 +523,26 @@ Item {
         }
     }
 
-    Base.AppPopup {
-        id: groupEditorPopup
+    Loader {
+        id: groupEditorPopupLoader
+
+        active: false
+
+        function openForCreate() {
+            active = true
+            item.openForCreate()
+        }
+
+        function openForRename() {
+            active = true
+            item.openForRename()
+        }
+
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: groupEditorPopup
+                parent: root
+                onClosed: groupEditorPopupLoader.active = false
 
         property bool renaming: false
         property string groupName: ""
@@ -592,15 +583,13 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         padding: 18
         spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
+        surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         Base.AppText {
             Layout.fillWidth: true
             text: groupEditorPopup.renaming ? qsTr("重命名设备组") : qsTr("新建设备组")
-            theme: root.pageTheme
-            styleRole: "titleM"
+            styleRole: UiStyle.TypographyRole.TitleM
         }
 
         Base.AppTextField {
@@ -609,7 +598,6 @@ Item {
             Layout.fillWidth: true
             text: groupEditorPopup.groupName
             placeholderText: qsTr("组名称")
-            theme: root.pageTheme
             onTextChanged: groupEditorPopup.groupName = text
             onAccepted: groupEditorPopup.commit()
         }
@@ -624,21 +612,34 @@ Item {
 
             Base.AppButton {
                 text: qsTr("取消")
-                theme: root.pageTheme
                 onClicked: groupEditorPopup.close()
             }
 
             Base.AppButton {
                 text: groupEditorPopup.renaming ? qsTr("保存") : qsTr("创建")
-                theme: root.pageTheme
                 enabled: groupEditorPopup.groupName.trim().length > 0
                 onClicked: groupEditorPopup.commit()
             }
         }
+            }
+        }
     }
 
-    Base.AppPopup {
-        id: removeGroupPopup
+    Loader {
+        id: removeGroupPopupLoader
+
+        active: false
+
+        function open() {
+            active = true
+            item.open()
+        }
+
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: removeGroupPopup
+                parent: root
+                onClosed: removeGroupPopupLoader.active = false
 
         modal: true
         focus: true
@@ -647,15 +648,13 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         padding: 18
         spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
+        surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         Base.AppText {
             Layout.fillWidth: true
             text: qsTr("删除设备组")
-            theme: root.pageTheme
-            styleRole: "titleM"
+            styleRole: UiStyle.TypographyRole.TitleM
         }
 
         Base.AppText {
@@ -664,9 +663,8 @@ Item {
                 .arg(root.groupById(root.selectedGroupId)
                     ? root.groupById(root.selectedGroupId).name
                     : "")
-            theme: root.pageTheme
-            styleRole: "bodyM"
-            textTone: "secondary"
+            styleRole: UiStyle.TypographyRole.BodyM
+            textTone: UiStyle.TextTone.Secondary
             wrapMode: Text.WordWrap
         }
 
@@ -680,23 +678,36 @@ Item {
 
             Base.AppButton {
                 text: qsTr("取消")
-                theme: root.pageTheme
                 onClicked: removeGroupPopup.close()
             }
 
             Base.AppButton {
                 text: qsTr("删除")
-                theme: root.pageTheme
                 onClicked: {
                     root.removeSelectedGroup()
                     removeGroupPopup.close()
                 }
             }
         }
+            }
+        }
     }
 
-    Base.AppPopup {
-        id: groupActionPopup
+    Loader {
+        id: groupActionPopupLoader
+
+        active: false
+
+        function openForAction(actionType) {
+            active = true
+            item.openForAction(actionType)
+        }
+
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: groupActionPopup
+                parent: root
+                onClosed: groupActionPopupLoader.active = false
 
         property string actionType: "on"
         property var selectedGroupIds: []
@@ -734,29 +745,25 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         padding: 18
         spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
+        surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         Base.AppText {
             Layout.fillWidth: true
             text: groupActionPopup.actionType === "on" ? qsTr("组开机") : qsTr("组关机")
-            theme: root.pageTheme
-            styleRole: "titleM"
+            styleRole: UiStyle.TypographyRole.TitleM
         }
 
         Base.AppText {
             Layout.fillWidth: true
             text: qsTr("请选择一个或多个设备组")
-            theme: root.pageTheme
-            styleRole: "bodyS"
-            textTone: "secondary"
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Secondary
         }
 
         Base.AppScrollPane {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            theme: root.pageTheme
             contentSpacing: 8
             fillContentWidth: true
 
@@ -771,8 +778,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 54
                     sizeToContent: false
-                    theme: root.pageTheme
-                    surfaceTone: selected ? "highlight" : "canvas"
+                    surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Canvas
                     active: selected
                     interactive: true
 
@@ -807,8 +813,7 @@ Item {
                             text: qsTr("%1（%2 台设备）")
                                 .arg(String(modelData.name))
                                 .arg(root.deviceCountInGroup(modelData.id))
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
+                            styleRole: UiStyle.TypographyRole.BodyM
                             elide: Text.ElideRight
                         }
                     }
@@ -829,22 +834,21 @@ Item {
             Base.AppText {
                 Layout.fillWidth: true
                 text: qsTr("暂不执行实际设备指令")
-                theme: root.pageTheme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
             }
 
             Base.AppButton {
                 text: qsTr("取消")
-                theme: root.pageTheme
                 onClicked: groupActionPopup.close()
             }
 
             Base.AppButton {
                 text: qsTr("确认")
-                theme: root.pageTheme
                 enabled: groupActionPopup.selectedGroupIds.length > 0
                 onClicked: groupActionPopup.confirmSelection()
+            }
+        }
             }
         }
     }

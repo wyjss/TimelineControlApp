@@ -1,10 +1,11 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Dialogs 1.3
 import QtQuick.Layouts 1.14
 import TimelineControl.Media 1.0 as Media
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/theme" as Theme
+import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/theme" as Theme
 
 Item {
     id: root
@@ -823,8 +824,7 @@ Item {
 
             Base.AppText {
                 text: qsTr("视频投影方案")
-                theme: root.pageTheme
-                styleRole: "titleL"
+                styleRole: UiStyle.TypographyRole.TitleL
             }
 
             ComboBox {
@@ -850,9 +850,8 @@ Item {
 
                     contentItem: Base.AppText {
                         text: planName
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: highlighted ? "accent" : "primary"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: highlighted ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }
@@ -868,9 +867,8 @@ Item {
                     x: planSelector.width - width - 10
                     anchors.verticalCenter: parent.verticalCenter
                     text: "v"
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
 
                 contentItem: Item {
@@ -881,9 +879,8 @@ Item {
                         anchors.rightMargin: 28
                         anchors.verticalCenter: parent.verticalCenter
                         text: root.planNameAt(planSelector.currentIndex)
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "primary"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Primary
                         elide: Text.ElideRight
                     }
                 }
@@ -921,7 +918,6 @@ Item {
 
             Base.AppButton {
                 text: qsTr("新建")
-                theme: root.pageTheme
                 iconName: "scene"
                 onClicked: root.createPlan()
             }
@@ -929,24 +925,21 @@ Item {
             Base.AppSurface {
                 Layout.preferredHeight: 28
                 sizeToContent: true
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
                 padding: 10
 
                 Base.AppText {
                     anchors.verticalCenter: parent.verticalCenter
                     text: qsTr("%1 个取景").arg(root.captureCount)
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
             Base.AppSurface {
                 Layout.preferredHeight: 28
                 sizeToContent: true
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
                 padding: 10
 
                 Base.AppText {
@@ -954,9 +947,8 @@ Item {
                     text: selectedPc
                         ? qsTr("%1 屏 / %2").arg(root.screenColumns * root.screenRows).arg(root.sizeText(Qt.size(root.totalScreenWidth, root.totalScreenHeight)))
                         : qsTr("未选择 PC")
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
@@ -975,8 +967,7 @@ Item {
                 Layout.minimumWidth: 196
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -990,13 +981,11 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("取景列表")
-                            theme: root.pageTheme
-                            styleRole: "sectionTitle"
+                            styleRole: UiStyle.TypographyRole.SectionTitle
                         }
 
                         Base.AppButton {
                             text: qsTr("添加")
-                            theme: root.pageTheme
                             iconName: "scene"
                             onClicked: root.addCapture()
                         }
@@ -1005,7 +994,6 @@ Item {
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        theme: root.pageTheme
                         contentSpacing: 8
 
                         Repeater {
@@ -1034,8 +1022,7 @@ Item {
 
                                 Base.AppSurface {
                                     anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: captureRow.selected ? "highlight" : "surface"
+                                    surfaceTone: captureRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
                                     active: captureRow.selected
                                     hoveredState: rowTap.containsMouse
                                     interactive: true
@@ -1067,18 +1054,16 @@ Item {
                                     Base.AppText {
                                         width: parent.width
                                         text: captureName
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        textTone: captureRow.selected ? "accent" : "primary"
+                                        styleRole: UiStyle.TypographyRole.BodyM
+                                        textTone: captureRow.selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         width: parent.width
                                         text: root.capturePixelText(rectX, rectY, rectW, rectH)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
 
@@ -1099,9 +1084,8 @@ Item {
                                         Base.AppText {
                                             width: parent.width - 13
                                             text: root.captureMappingText(captureData, index)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: captureRow.mapped ? "accent" : "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: captureRow.mapped ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -1121,7 +1105,6 @@ Item {
                     Base.AppButton {
                         Layout.fillWidth: true
                         text: qsTr("删除选中")
-                        theme: root.pageTheme
                         iconName: "layer-config"
                         enabled: root.selectedCaptureIndex >= 0
                         onClicked: root.removeSelectedCapture()
@@ -1140,8 +1123,7 @@ Item {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 300
                     sizeToContent: false
-                    theme: root.pageTheme
-                    surfaceTone: "section"
+                    surfaceTone: UiStyle.SurfaceTone.Section
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -1155,15 +1137,13 @@ Item {
                             Base.AppText {
                                 Layout.fillWidth: true
                                 text: qsTr("视频窗口")
-                                theme: root.pageTheme
-                                styleRole: "sectionTitle"
+                                styleRole: UiStyle.TypographyRole.SectionTitle
                             }
 
                             Base.AppText {
                                 text: qsTr("%1x%2 / %3").arg(root.videoPixelWidth).arg(root.videoPixelHeight).arg(root.zoomText(root.videoZoom))
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
                             }
                         }
 
@@ -1173,14 +1153,12 @@ Item {
 
                             Base.AppButton {
                                 text: qsTr("打开视频")
-                                theme: root.pageTheme
                                 iconName: "resources"
                                 onClicked: videoFileDialog.open()
                             }
 
                             Base.AppButton {
                                 text: root.videoPlaying ? qsTr("暂停") : qsTr("播放")
-                                theme: root.pageTheme
                                 iconSymbol: root.videoPlaying ? "||" : ">"
                                 enabled: root.hasVideoSource
                                 onClicked: root.toggleVideoPlayback()
@@ -1188,7 +1166,6 @@ Item {
 
                             Base.AppButton {
                                 text: qsTr("停止")
-                                theme: root.pageTheme
                                 iconSymbol: "[]"
                                 enabled: root.hasVideoSource
                                 onClicked: root.stopVideoPlayback()
@@ -1211,9 +1188,8 @@ Item {
                                 Layout.preferredWidth: 108
                                 horizontalAlignment: Text.AlignRight
                                 text: root.videoTimeText(videoFrameItem.position, videoFrameItem.duration)
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
                                 elide: Text.ElideRight
                             }
                         }
@@ -1350,9 +1326,8 @@ Item {
                                     anchors.top: parent.top
                                     anchors.topMargin: 12
                                     text: root.hasVideoSource ? root.videoSourceLabel() : qsTr("真实视频窗口")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                     elide: Text.ElideRight
                                 }
 
@@ -1373,9 +1348,8 @@ Item {
                                         width: Math.max(0, parent.width - 20)
                                         horizontalAlignment: Text.AlignHCenter
                                         text: root.videoPlaceholderText()
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "primary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Primary
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -1399,9 +1373,8 @@ Item {
 
                                     anchors.centerIn: parent
                                     text: qsTr("x:%1 y:%2").arg(root.videoPointerPixelX).arg(root.videoPointerPixelY)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "primary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Primary
                                 }
                             }
 
@@ -1420,7 +1393,6 @@ Item {
                                     rectW: root.pixelToRatio(captureData.w, root.videoPixelWidth)
                                     rectH: root.pixelToRatio(captureData.h, root.videoPixelHeight)
                                     title: captureName
-                                    theme: root.pageTheme
                                     strokeColor: captureStrokeColor
                                     selected: index === root.selectedCaptureIndex
                                     dashedBorder: true
@@ -1459,8 +1431,7 @@ Item {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 260
                     sizeToContent: false
-                    theme: root.pageTheme
-                    surfaceTone: "section"
+                    surfaceTone: UiStyle.SurfaceTone.Section
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -1474,15 +1445,13 @@ Item {
                             Base.AppText {
                                 Layout.fillWidth: true
                                 text: qsTr("屏幕画布")
-                                theme: root.pageTheme
-                                styleRole: "sectionTitle"
+                                styleRole: UiStyle.TypographyRole.SectionTitle
                             }
 
                             Base.AppText {
                                 text: qsTr("%1x%2 / %3").arg(root.screenColumns).arg(root.screenRows).arg(root.zoomText(root.screenZoom))
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
                             }
                         }
 
@@ -1591,9 +1560,8 @@ Item {
                                             width: parent.width
                                             horizontalAlignment: Text.AlignHCenter
                                             text: qsTr("屏幕 %1").arg(index + 1)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
-                                            textTone: "primary"
+                                            styleRole: UiStyle.TypographyRole.BodyM
+                                            textTone: UiStyle.TextTone.Primary
                                             elide: Text.ElideRight
                                         }
 
@@ -1601,9 +1569,8 @@ Item {
                                             width: parent.width
                                             horizontalAlignment: Text.AlignHCenter
                                             text: root.sizeText(Qt.size(root.selectedScreenWidth, root.selectedScreenHeight))
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -1633,7 +1600,6 @@ Item {
                                     rectW: root.pixelToRatio(mappingData.w, root.totalScreenWidth)
                                     rectH: root.pixelToRatio(mappingData.h, root.totalScreenHeight)
                                     title: captureName
-                                    theme: root.pageTheme
                                     strokeColor: mappingStrokeColor
                                     fillOpacity: 0.20
                                     borderWidth: 2
@@ -1672,9 +1638,8 @@ Item {
                                     text: root.selectedPc
                                         ? root.pcName(root.selectedPc) + " / " + root.sizeText(Qt.size(root.totalScreenWidth, root.totalScreenHeight))
                                         : qsTr("未选择 PC")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                     elide: Text.ElideRight
                                 }
                             }
@@ -1698,9 +1663,8 @@ Item {
 
                                     anchors.centerIn: parent
                                     text: qsTr("x:%1 y:%2").arg(root.screenPointerPixelX).arg(root.screenPointerPixelY)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "primary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Primary
                                 }
                             }
                         }
@@ -1716,8 +1680,7 @@ Item {
                 Layout.minimumWidth: 210
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -1727,23 +1690,20 @@ Item {
                     Base.AppText {
                         Layout.fillWidth: true
                         text: qsTr("PC 设备")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
                     Base.AppText {
                         Layout.fillWidth: true
                         text: qsTr("%1 台可用").arg(root.pcDevices.length)
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight
                     }
 
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        theme: root.pageTheme
                         contentSpacing: 8
 
                         Item {
@@ -1756,9 +1716,8 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: qsTr("暂无 PC 设备")
-                                theme: root.pageTheme
-                                styleRole: "bodyM"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyM
+                                textTone: UiStyle.TextTone.Secondary
                                 horizontalAlignment: Text.AlignHCenter
                                 wrapMode: Text.WordWrap
                             }
@@ -1784,8 +1743,7 @@ Item {
 
                                 Base.AppSurface {
                                     anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: pcRow.selected ? "highlight" : "surface"
+                                    surfaceTone: pcRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
                                     active: pcRow.selected
                                     hoveredState: pcTap.containsMouse
                                     interactive: true
@@ -1807,27 +1765,24 @@ Item {
                                     Base.AppText {
                                         width: parent.width
                                         text: root.pcName(pcDevice)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        textTone: pcRow.selected ? "accent" : "primary"
+                                        styleRole: UiStyle.TypographyRole.BodyM
+                                        textTone: pcRow.selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         width: parent.width
                                         text: root.pcAddress(pcDevice)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         width: parent.width
                                         text: root.sizeText(Qt.size(pcRow.screenWidth, pcRow.screenHeight)) + " / " + pcRow.screenColumns + "x" + pcRow.screenRows
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
 
@@ -1848,9 +1803,8 @@ Item {
                                         Base.AppText {
                                             width: parent.width - 13
                                             text: root.pcMappingText(pcDevice)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: pcRow.mapped ? "accent" : "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: pcRow.mapped ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -1907,17 +1861,15 @@ Item {
             Base.AppText {
                 width: parent.width
                 text: qsTr("投放到屏幕")
-                theme: root.pageTheme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 elide: Text.ElideRight
             }
 
             Base.AppText {
                 width: parent.width
                 text: root.mappingDragCaptureName
-                theme: root.pageTheme
-                styleRole: "bodyS"
+                styleRole: UiStyle.TypographyRole.BodyS
                 colorOverride: root.mappingDragColor
                 elide: Text.ElideRight
             }

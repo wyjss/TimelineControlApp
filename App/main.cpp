@@ -11,7 +11,8 @@
 //#include <QScreen>
 
 #include <iostream>
-#include "runtime/app/AppSettings.h"
+#include <UICore/Shell/AppSettings.h>
+#include <UICore/UICore.h>
 #include "runtime/TimelineRuntime.h"
 #include "runtime/TimelineShellController.h"
 #include "runtime/video/FfmpegVideoFrameItem.h"
@@ -49,6 +50,7 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QApplication application(argc, argv);
+    UICore::initialize();
     application.setOrganizationName(QStringLiteral("TimelineControlApp"));
     application.setOrganizationDomain(QStringLiteral("timeline-control.local"));
     application.setApplicationName(QStringLiteral("时间线控制应用"));

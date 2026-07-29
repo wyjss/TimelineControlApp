@@ -1,11 +1,15 @@
 import QtQuick 2.14
+import UICore.Style 1.0
+import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
+import "qrc:/UICore/qml/components/base" as Base
 
 Item {
     id: root
 
-    property QtObject theme
+    property QtObject theme: ApplicationWindow.window && ApplicationWindow.window.appTheme
+        ? ApplicationWindow.window.appTheme
+        : null
     property var fieldData: ({})
     readonly property var customData: fieldData && fieldData.customData ? fieldData.customData : ({})
 
@@ -32,18 +36,16 @@ Item {
             Base.AppText {
                 Layout.fillWidth: true
                 text: root.textValue("leftLabel")
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 elide: Text.ElideRight
             }
 
             Base.AppText {
                 Layout.maximumWidth: Math.max(104, root.width * 0.52)
                 text: root.textValue("leftValue")
-                theme: root.theme
-                styleRole: "bodyM"
-                textTone: "primary"
+                styleRole: UiStyle.TypographyRole.BodyM
+                textTone: UiStyle.TextTone.Primary
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight
             }
@@ -56,18 +58,16 @@ Item {
             Base.AppText {
                 Layout.fillWidth: true
                 text: root.textValue("rightLabel")
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 elide: Text.ElideRight
             }
 
             Base.AppText {
                 Layout.maximumWidth: Math.max(104, root.width * 0.52)
                 text: root.textValue("rightValue")
-                theme: root.theme
-                styleRole: "bodyM"
-                textTone: "primary"
+                styleRole: UiStyle.TypographyRole.BodyM
+                textTone: UiStyle.TextTone.Primary
                 horizontalAlignment: Text.AlignRight
                 elide: Text.ElideRight
             }

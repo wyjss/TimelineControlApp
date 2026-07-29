@@ -1,8 +1,9 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/theme" as Theme
+import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/theme" as Theme
 
 Item {
     id: root
@@ -28,7 +29,7 @@ Item {
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var pcDevices: buildPcDevices()
-    readonly property var selectedPc: selectedPcForId(selectedPcId)
+    property var selectedPc: null
     readonly property int selectedScreenWidth: Math.max(1, Math.round(Number(configValue(selectedPc, "screenWidth", 1920))))
     readonly property int selectedScreenHeight: Math.max(1, Math.round(Number(configValue(selectedPc, "screenHeight", 1080))))
     readonly property int screenColumns: Math.max(1, Math.round(Number(configValue(selectedPc, "screenColumns", 1))))
@@ -41,7 +42,10 @@ Item {
 
     onPcDevicesChanged: ensureSelectedPc()
     onInitialPcIdChanged: ensureSelectedPc()
-    onSelectedPcIdChanged: keystoneRevision += 1
+    onSelectedPcIdChanged: {
+        selectedPc = selectedPcForId(selectedPcId)
+        keystoneRevision += 1
+    }
     onScreenCountChanged: selectedScreenIndex = Math.max(0, Math.min(selectedScreenIndex, screenCount - 1))
 
     Component.onCompleted: ensureSelectedPc()
@@ -61,7 +65,7 @@ Item {
 
     function leavePage() {
         if (root.appRuntime && root.appRuntime.shell) {
-            root.appRuntime.shell.selectDrawer("projection")
+            root.appRuntime.shell.activeNavigationKey = "projection"
             return
         }
 
@@ -101,17 +105,24 @@ Item {
     function ensureSelectedPc() {
         if (pcDevices.length === 0) {
             selectedPcId = ""
+            selectedPc = null
             selectedScreenIndex = 0
             return
         }
 
         var preferred = initialPcId.length > 0 ? initialPcId : selectedPcId
-        selectedPcId = String(selectedPcForId(preferred).id || "")
-        selectedScreenIndex = Math.max(0, Math.min(selectedScreenIndex, screenCount - 1))
+        var selected = selectedPcForId(preferred)
+        selectedPcId = String(selected.id || "")
+        selectedPc = selected
+        var count = Math.max(1,
+                             Math.round(Number(configValue(selected, "screenColumns", 1)))
+                             * Math.round(Number(configValue(selected, "screenRows", 1))))
+        selectedScreenIndex = Math.max(0, Math.min(selectedScreenIndex, count - 1))
     }
 
     function selectPc(deviceId) {
         selectedPcId = String(deviceId || "")
+        selectedPc = selectedPcForId(selectedPcId)
         selectedScreenIndex = 0
         statusText = ""
     }
@@ -329,23 +340,20 @@ Item {
 
             Base.AppButton {
                 text: qsTr("返回")
-                theme: root.pageTheme
-                iconName: "undo"
+                iconSymbol: "↶"
                 onClicked: root.leavePage()
             }
 
             Base.AppText {
                 Layout.fillWidth: true
                 text: qsTr("PC 梯形校正")
-                theme: root.pageTheme
-                styleRole: "titleL"
+                styleRole: UiStyle.TypographyRole.TitleL
             }
 
             Base.AppSurface {
                 Layout.preferredHeight: 28
                 sizeToContent: true
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
                 padding: 10
 
                 Base.AppText {
@@ -353,15 +361,13 @@ Item {
                     text: root.selectedPc
                         ? root.sizeText(Qt.size(root.totalScreenWidth, root.totalScreenHeight)) + " / " + root.screenColumns + "x" + root.screenRows
                         : qsTr("未选择 PC")
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
             Base.AppButton {
                 text: qsTr("保存")
-                theme: root.pageTheme
                 iconName: "resources"
                 enabled: !!root.selectedPc
                 onClicked: root.simulatedSave()
@@ -378,8 +384,7 @@ Item {
                 Layout.minimumWidth: 220
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -389,23 +394,20 @@ Item {
                     Base.AppText {
                         Layout.fillWidth: true
                         text: qsTr("PC 设备")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
                     Base.AppText {
                         Layout.fillWidth: true
                         text: qsTr("%1 台可用").arg(root.pcDevices.length)
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight
                     }
 
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        theme: root.pageTheme
                         contentSpacing: 8
 
                         Item {
@@ -418,9 +420,8 @@ Item {
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: qsTr("暂无 PC 设备")
-                                theme: root.pageTheme
-                                styleRole: "bodyM"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyM
+                                textTone: UiStyle.TextTone.Secondary
                                 horizontalAlignment: Text.AlignHCenter
                                 wrapMode: Text.WordWrap
                             }
@@ -444,8 +445,7 @@ Item {
 
                                 Base.AppSurface {
                                     anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: pcRow.selected ? "highlight" : "surface"
+                                    surfaceTone: pcRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
                                     active: pcRow.selected
                                     hoveredState: pcTap.containsMouse
                                     interactive: true
@@ -467,27 +467,24 @@ Item {
                                     Base.AppText {
                                         width: parent.width
                                         text: root.pcName(pcDevice)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        textTone: pcRow.selected ? "accent" : "primary"
+                                        styleRole: UiStyle.TypographyRole.BodyM
+                                        textTone: pcRow.selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         width: parent.width
                                         text: root.pcAddress(pcDevice)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         width: parent.width
                                         text: root.sizeText(Qt.size(pcRow.screenWidth, pcRow.screenHeight)) + " / " + pcRow.screenColumns + "x" + pcRow.screenRows
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -510,8 +507,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.minimumWidth: 520
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -525,15 +521,13 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: root.selectedPc ? root.pcName(root.selectedPc) : qsTr("校正画布")
-                            theme: root.pageTheme
-                            styleRole: "sectionTitle"
+                            styleRole: UiStyle.TypographyRole.SectionTitle
                         }
 
                         Base.AppText {
                             text: root.screenTitle(root.selectedScreenIndex)
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                             visible: !!root.selectedPc
                         }
                     }
@@ -640,9 +634,8 @@ Item {
                                     Base.AppText {
                                         anchors.centerIn: parent
                                         text: String(index + 1)
-                                        theme: root.pageTheme
-                                        styleRole: "titleL"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.TitleL
+                                        textTone: UiStyle.TextTone.Secondary
                                         opacity: tile.selected ? 0.82 : 0.42
                                     }
 
@@ -698,9 +691,8 @@ Item {
                             anchors.centerIn: parent
                             width: Math.min(parent.width - 40, 360)
                             text: qsTr("暂无 PC 设备")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyM
+                            textTone: UiStyle.TextTone.Secondary
                             horizontalAlignment: Text.AlignHCenter
                             visible: !root.selectedPc
                         }
@@ -713,8 +705,7 @@ Item {
                 Layout.minimumWidth: 252
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -724,8 +715,7 @@ Item {
                     Base.AppText {
                         Layout.fillWidth: true
                         text: qsTr("校正参数")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
                     Base.AppText {
@@ -733,16 +723,14 @@ Item {
                         text: root.selectedPc
                             ? root.screenTitle(root.selectedScreenIndex)
                             : qsTr("未选择屏幕")
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight
                     }
 
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        theme: root.pageTheme
                         contentSpacing: 8
 
                         Repeater {
@@ -755,8 +743,7 @@ Item {
 
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 64
-                                theme: root.pageTheme
-                                surfaceTone: "surface"
+                                surfaceTone: UiStyle.SurfaceTone.Surface
                                 sizeToContent: false
 
                                 Column {
@@ -770,18 +757,16 @@ Item {
                                     Base.AppText {
                                         width: parent.width
                                         text: root.cornerLabel(modelData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
-                                        textTone: "primary"
+                                        styleRole: UiStyle.TypographyRole.BodyM
+                                        textTone: UiStyle.TextTone.Primary
                                         elide: Text.ElideRight
                                     }
 
                                     Base.AppText {
                                         width: parent.width
                                         text: "x:" + Number(corner.x).toFixed(1) + " y:" + Number(corner.y).toFixed(1)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -792,8 +777,7 @@ Item {
                     Base.AppButton {
                         Layout.fillWidth: true
                         text: qsTr("重置当前屏幕")
-                        theme: root.pageTheme
-                        iconName: "undo"
+                        iconSymbol: "↶"
                         enabled: !!root.selectedPc
                         onClicked: root.resetScreen(root.selectedScreenIndex)
                     }
@@ -801,7 +785,6 @@ Item {
                     Base.AppButton {
                         Layout.fillWidth: true
                         text: qsTr("重置当前 PC")
-                        theme: root.pageTheme
                         iconName: "layer-config"
                         enabled: !!root.selectedPc
                         onClicked: root.resetPc()
@@ -810,9 +793,8 @@ Item {
                     Base.AppText {
                         Layout.fillWidth: true
                         text: root.statusText
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "accent"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Accent
                         elide: Text.ElideRight
                         visible: root.statusText.length > 0
                     }

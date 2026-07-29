@@ -1,11 +1,14 @@
 import QtQuick 2.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/components/base/internal/AppThemeUtils.js" as ThemeUtils
+import UICore.Style 1.0
+import QtQuick.Controls 2.14
+import "qrc:/UICore/qml/components/base" as Base
 
 Item {
     id: root
 
-    property QtObject theme
+    property QtObject theme: ApplicationWindow.window && ApplicationWindow.window.appTheme
+        ? ApplicationWindow.window.appTheme
+        : null
     property var ruler
     property var devices: []
     property var commandModel: null
@@ -26,7 +29,9 @@ Item {
     clip: true
 
     function colorValue(name, fallback) {
-        return ThemeUtils.colorValue(theme, name, fallback)
+        return theme && theme.colors && theme.colors[name] !== undefined
+            ? theme.colors[name]
+            : fallback
     }
 
     function timeToX(ms) {
@@ -322,9 +327,8 @@ Item {
                 y: Math.round((root.rowHeight - height) / 2)
                 visible: trackRow.childTracks.length > 0
                 text: trackRow.expanded ? "▾" : "›"
-                theme: root.theme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
                 z: 2
             }
 
@@ -338,9 +342,8 @@ Item {
                 Base.AppText {
                     width: parent.width
                     text: root.deviceName(trackRow.trackData)
-                    theme: root.theme
-                    styleRole: "bodyM"
-                    textTone: "primary"
+                    styleRole: UiStyle.TypographyRole.BodyM
+                    textTone: UiStyle.TextTone.Primary
                     elide: Text.ElideRight
                 }
 
@@ -349,9 +352,8 @@ Item {
                     text: root.deviceMeta(trackRow.trackData).length > 0
                         ? root.deviceMeta(trackRow.trackData)
                         : trackRow.targetDeviceId
-                    theme: root.theme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                     elide: Text.ElideRight
                 }
             }
@@ -476,9 +478,8 @@ Item {
                             anchors.leftMargin: 10
                             anchors.rightMargin: 8
                             text: commandBlock.commandText
-                            theme: root.theme
-                            styleRole: "bodyS"
-                            textTone: "inverse"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Inverse
                             verticalAlignment: Text.AlignVCenter
                             elide: Text.ElideRight
                         }
@@ -536,9 +537,8 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Math.max(40, root.labelWidth - x - 12)
                         text: String(childTrackRow.childTrackData.title || qsTr("子轨"))
-                        theme: root.theme
-                        styleRole: "bodyS"
-                        textTone: "secondary"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideMiddle
                     }
 

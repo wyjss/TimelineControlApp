@@ -1,8 +1,9 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/theme" as Theme
+import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/theme" as Theme
 
 Item {
     id: root
@@ -237,16 +238,14 @@ Item {
             Base.AppText {
                 Layout.fillWidth: true
                 text: qsTr("虚拟播放指令")
-                theme: root.pageTheme
-                styleRole: "titleL"
+                styleRole: UiStyle.TypographyRole.TitleL
                 elide: Text.ElideRight
             }
 
             Base.AppText {
                 text: qsTr("1920 × 1080")
-                theme: root.pageTheme
-                styleRole: "bodyS"
-                textTone: "secondary"
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
             }
         }
 
@@ -259,8 +258,7 @@ Item {
                 Layout.preferredWidth: 260
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -273,16 +271,14 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("PC设备")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
+                            styleRole: UiStyle.TypographyRole.BodyM
                             elide: Text.ElideRight
                         }
 
                         Base.AppText {
                             text: String(root.pcDevices.length)
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
@@ -300,8 +296,7 @@ Item {
                             width: ListView.view.width
                             height: 54
                             sizeToContent: false
-                            theme: root.pageTheme
-                            surfaceTone: String(modelData.id || "") === root.selectedPcId ? "highlight" : "ghost"
+                            surfaceTone: String(modelData.id || "") === root.selectedPcId ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
                             active: String(modelData.id || "") === root.selectedPcId
                             interactive: true
 
@@ -315,17 +310,15 @@ Item {
                                 Base.AppText {
                                     width: parent.width
                                     text: root.pcName(modelData)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
+                                    styleRole: UiStyle.TypographyRole.BodyM
                                     elide: Text.ElideRight
                                 }
 
                                 Base.AppText {
                                     width: parent.width
                                     text: root.pcAddress(modelData)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                     elide: Text.ElideRight
                                 }
                             }
@@ -340,9 +333,8 @@ Item {
                             anchors.centerIn: parent
                             visible: root.pcDevices.length === 0
                             text: qsTr("暂无PC设备")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
@@ -359,14 +351,12 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("播放指令")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
+                            styleRole: UiStyle.TypographyRole.BodyM
                             elide: Text.ElideRight
                         }
 
                         Base.AppButton {
                             text: qsTr("新增")
-                            theme: root.pageTheme
                             iconName: "workflow"
                             enabled: root.selectedPcId.length > 0
                             onClicked: root.addCommand()
@@ -384,8 +374,7 @@ Item {
                             width: ListView.view.width
                             height: 58
                             sizeToContent: false
-                            theme: root.pageTheme
-                            surfaceTone: modelData === root.selectedCommand ? "highlight" : "ghost"
+                            surfaceTone: modelData === root.selectedCommand ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
                             active: modelData === root.selectedCommand
                             interactive: true
 
@@ -399,17 +388,15 @@ Item {
                                 Base.AppText {
                                     width: parent.width
                                     text: String(modelData.name || "")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
+                                    styleRole: UiStyle.TypographyRole.BodyM
                                     elide: Text.ElideRight
                                 }
 
                                 Base.AppText {
                                     width: parent.width
                                     text: qsTr("%1 个视频").arg(root.commandVideos(modelData).length)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                     elide: Text.ElideRight
                                 }
                             }
@@ -426,9 +413,8 @@ Item {
                             anchors.centerIn: parent
                             visible: root.selectedCommands.length === 0
                             text: root.selectedPcId.length > 0 ? qsTr("暂无播放指令") : qsTr("请选择PC设备")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
                 }
@@ -443,8 +429,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 64
                     sizeToContent: false
-                    theme: root.pageTheme
-                    surfaceTone: "section"
+                    surfaceTone: UiStyle.SurfaceTone.Section
 
                     RowLayout {
                         anchors.fill: parent
@@ -458,24 +443,21 @@ Item {
                             Base.AppText {
                                 Layout.fillWidth: true
                                 text: root.selectedCommand ? String(root.selectedCommand.name || "") : qsTr("未选择指令")
-                                theme: root.pageTheme
-                                styleRole: "sectionTitle"
+                                styleRole: UiStyle.TypographyRole.SectionTitle
                                 elide: Text.ElideRight
                             }
 
                             Base.AppText {
                                 Layout.fillWidth: true
                                 text: qsTr("%1 个视频").arg(root.selectedVideos.length)
-                                theme: root.pageTheme
-                                styleRole: "bodyS"
-                                textTone: "secondary"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
                                 elide: Text.ElideRight
                             }
                         }
 
                         Base.AppButton {
                             text: qsTr("删除指令")
-                            theme: root.pageTheme
                             enabled: root.selectedCommand !== null
                             onClicked: root.removeSelectedCommand()
                         }
@@ -493,8 +475,7 @@ Item {
                         Layout.minimumWidth: 360
                         Layout.minimumHeight: 300
                         sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "canvas"
+                        surfaceTone: UiStyle.SurfaceTone.Canvas
 
                         Item {
                             id: stageWrap
@@ -572,8 +553,7 @@ Item {
                                                 anchors.leftMargin: 8
                                                 anchors.rightMargin: 8
                                                 text: String(videoBox.videoData.name || "")
-                                                theme: root.pageTheme
-                                                styleRole: "bodyS"
+                                                styleRole: UiStyle.TypographyRole.BodyS
                                                 colorOverride: "#f8fafc"
                                                 verticalAlignment: Text.AlignVCenter
                                                 elide: Text.ElideRight
@@ -640,9 +620,8 @@ Item {
                                     anchors.centerIn: parent
                                     visible: root.selectedVideos.length === 0
                                     text: root.selectedCommand ? qsTr("暂无视频") : qsTr("暂无可编辑内容")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyM
+                                    textTone: UiStyle.TextTone.Secondary
                                 }
                             }
                         }
@@ -652,8 +631,7 @@ Item {
                         Layout.preferredWidth: 292
                         Layout.fillHeight: true
                         sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "section"
+                        surfaceTone: UiStyle.SurfaceTone.Section
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -667,15 +645,13 @@ Item {
                                 Base.AppText {
                                     Layout.fillWidth: true
                                     text: qsTr("视频")
-                                    theme: root.pageTheme
-                                    styleRole: "sectionTitle"
+                                    styleRole: UiStyle.TypographyRole.SectionTitle
                                     elide: Text.ElideRight
                                 }
 
                                 Base.AppButton {
                                     text: qsTr("添加")
                                     iconName: "scene"
-                                    theme: root.pageTheme
                                     enabled: root.selectedCommand !== null
                                     onClicked: root.addVideo()
                                 }
@@ -698,8 +674,7 @@ Item {
                                     width: ListView.view.width
                                     height: 58
                                     sizeToContent: false
-                                    theme: root.pageTheme
-                                    surfaceTone: videoId === root.selectedVideoId ? "highlight" : "ghost"
+                                    surfaceTone: videoId === root.selectedVideoId ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
                                     active: videoId === root.selectedVideoId
                                     interactive: true
 
@@ -721,17 +696,15 @@ Item {
                                             Base.AppText {
                                                 Layout.fillWidth: true
                                                 text: String(modelData.name || "")
-                                                theme: root.pageTheme
-                                                styleRole: "bodyM"
+                                                styleRole: UiStyle.TypographyRole.BodyM
                                                 elide: Text.ElideRight
                                             }
 
                                             Base.AppText {
                                                 Layout.fillWidth: true
                                                 text: videoListItem.videoUrl.length > 0 ? videoListItem.videoUrl : qsTr("URL未填写")
-                                                theme: root.pageTheme
-                                                styleRole: "bodyS"
-                                                textTone: videoListItem.videoUrl.length > 0 ? "secondary" : "primary"
+                                                styleRole: UiStyle.TypographyRole.BodyS
+                                                textTone: videoListItem.videoUrl.length > 0 ? UiStyle.TextTone.Secondary : UiStyle.TextTone.Primary
                                                 colorOverride: videoListItem.videoUrl.length > 0 ? undefined : "#ff9eb2"
                                                 elide: Text.ElideRight
                                             }
@@ -748,9 +721,8 @@ Item {
                                     anchors.centerIn: parent
                                     visible: root.selectedVideos.length === 0
                                     text: root.selectedCommand ? qsTr("暂无视频") : qsTr("未选择指令")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                 }
                             }
 
@@ -779,8 +751,7 @@ Item {
                                     Base.AppText {
                                         Layout.fillWidth: true
                                         text: root.selectedVideo ? String(root.selectedVideo.name || "") : ""
-                                        theme: root.pageTheme
-                                        styleRole: "bodyM"
+                                        styleRole: UiStyle.TypographyRole.BodyM
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -788,9 +759,8 @@ Item {
                                 Base.AppText {
                                     Layout.fillWidth: true
                                     text: qsTr("视频URL")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                 }
 
                                 Base.AppTextField {
@@ -799,7 +769,6 @@ Item {
                                         : ""
 
                                     Layout.fillWidth: true
-                                    theme: root.pageTheme
                                     text: root.selectedVideo ? String(root.selectedVideo.url || "") : ""
                                     placeholderText: qsTr("请输入视频URL")
                                     onEditingFinished: {
@@ -812,15 +781,13 @@ Item {
                                     Layout.fillWidth: true
                                     visible: root.selectedVideo && String(root.selectedVideo.url || "").trim().length === 0
                                     text: qsTr("URL必填")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
+                                    styleRole: UiStyle.TypographyRole.BodyS
                                     colorOverride: "#ff9eb2"
                                 }
 
                                 Base.AppButton {
                                     Layout.fillWidth: true
                                     text: qsTr("删除视频")
-                                    theme: root.pageTheme
                                     enabled: root.selectedVideo !== null
                                     onClicked: root.removeSelectedVideo()
                                 }

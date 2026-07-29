@@ -1,8 +1,9 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
-import "qrc:/UiCore/qml/theme" as Theme
+import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/theme" as Theme
 import "timeline" as Timeline
 
 Item {
@@ -121,7 +122,7 @@ Item {
         var startTimeMs = Math.max(0, Math.round(timelineCurrentTimeMs))
         var executionFields = selectedCommand.executionInputFields || []
         if (executionFields.length > 0) {
-            addTimelineCommandPopup.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
+            addTimelineCommandPopupLoader.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
             return
         }
 
@@ -338,8 +339,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.minimumWidth: 520
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -348,8 +348,7 @@ Item {
 
                     Base.AppText {
                         text: qsTr("控制轨")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
                     Timeline.TimelineRuler {
@@ -357,7 +356,6 @@ Item {
 
                         Layout.fillWidth: true
                         Layout.preferredHeight: 44
-                        theme: root.pageTheme
                         durationMs: root.timelineDurationMs
                         currentTimeMs: root.timelineCurrentTimeMs
                         scrollX: root.timelineScrollX
@@ -382,7 +380,6 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         Layout.minimumHeight: 220
-                        theme: root.pageTheme
                         ruler: timelineRuler
                         devices: root.devices
                         commandModel: root.timelineCommandModel
@@ -402,8 +399,7 @@ Item {
                 Layout.preferredWidth: 340
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -412,8 +408,7 @@ Item {
 
                     Base.AppText {
                         text: qsTr("执行")
-                        theme: root.pageTheme
-                        styleRole: "sectionTitle"
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
                     RowLayout {
@@ -423,17 +418,15 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("指令")
-                            theme: root.pageTheme
-                            styleRole: "bodyM"
-                            textTone: "primary"
+                            styleRole: UiStyle.TypographyRole.BodyM
+                            textTone: UiStyle.TextTone.Primary
                             elide: Text.ElideRight
                         }
 
                         Base.AppText {
                             text: qsTr("%1").arg(root.deviceCommands.length)
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
@@ -443,8 +436,7 @@ Item {
                         Layout.minimumHeight: 176
                         Layout.preferredHeight: 260
                         sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
+                        surfaceTone: UiStyle.SurfaceTone.Surface
 
                         ListView {
                             id: commandList
@@ -470,8 +462,7 @@ Item {
 
                                 Base.AppSurface {
                                     anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: commandRow.selected ? "highlight" : "ghost"
+                                    surfaceTone: commandRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
                                     active: commandRow.selected
                                     hoveredState: commandMouse.containsMouse
                                     interactive: true
@@ -515,8 +506,7 @@ Item {
                                         Base.AppText {
                                             Layout.fillWidth: true
                                             text: root.commandName(commandRow.commandData)
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
+                                            styleRole: UiStyle.TypographyRole.BodyM
                                             colorOverride: commandRow.selected ? "#f8fafc" : undefined
                                             elide: Text.ElideRight
                                         }
@@ -525,8 +515,7 @@ Item {
                                             Layout.maximumWidth: 120
                                             text: root.executionParameterNames(commandRow.commandData)
                                             visible: text.length > 0
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
+                                            styleRole: UiStyle.TypographyRole.BodyS
                                             colorOverride: "#ef4444"
                                             elide: Text.ElideRight
                                         }
@@ -535,9 +524,8 @@ Item {
                                     Base.AppText {
                                         Layout.fillWidth: true
                                         text: root.commandSummary(commandRow.commandData)
-                                        theme: root.pageTheme
-                                        styleRole: "bodyS"
-                                        textTone: "secondary"
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -548,16 +536,14 @@ Item {
                             anchors.centerIn: parent
                             visible: root.deviceCommands.length === 0
                             text: qsTr("暂无指令")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
                     Base.AppButton {
                         Layout.fillWidth: true
                         text: qsTr("添加所选")
-                        theme: root.pageTheme
                         iconName: "workflow"
                         enabled: root.timelineCommandModel && root.selectedTimelineDevice && root.selectedCommand
                         onClicked: root.addSelectedCommandAtCurrentTime()
@@ -567,9 +553,8 @@ Item {
                         Layout.fillWidth: true
                         text: root.executionStatusText
                         visible: root.executionStatusText.length > 0
-                        theme: root.pageTheme
-                        styleRole: "bodyS"
-                        textTone: "accent"
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Accent
                         elide: Text.ElideRight
                     }
                 }
@@ -579,8 +564,7 @@ Item {
                 Layout.preferredWidth: 304
                 Layout.fillHeight: true
                 sizeToContent: false
-                theme: root.pageTheme
-                surfaceTone: "section"
+                surfaceTone: UiStyle.SurfaceTone.Section
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -594,22 +578,19 @@ Item {
                         Base.AppText {
                             Layout.fillWidth: true
                             text: qsTr("时间线指令")
-                            theme: root.pageTheme
-                            styleRole: "sectionTitle"
+                            styleRole: UiStyle.TypographyRole.SectionTitle
                             elide: Text.ElideRight
                         }
 
                         Base.AppText {
                             text: qsTr("%1").arg(root.visibleTimelineCommands.length)
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
                     Base.AppSegmentedControl {
                         Layout.fillWidth: true
-                        theme: root.pageTheme
                         options: [
                             { "label": qsTr("全部"), "value": "all" },
                             { "label": qsTr("设备"), "value": "device" }
@@ -625,8 +606,7 @@ Item {
                         Layout.fillHeight: true
                         Layout.minimumHeight: 220
                         sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
+                        surfaceTone: UiStyle.SurfaceTone.Surface
 
                         ListView {
                             id: timelineCommandList
@@ -653,8 +633,7 @@ Item {
 
                                 Base.AppSurface {
                                     anchors.fill: parent
-                                    theme: root.pageTheme
-                                    surfaceTone: timelineCommandRow.selected ? "highlight" : "ghost"
+                                    surfaceTone: timelineCommandRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
                                     active: timelineCommandRow.selected
                                     hoveredState: timelineCommandMouse.containsMouse
                                     interactive: true
@@ -702,8 +681,7 @@ Item {
                                         Base.AppText {
                                             Layout.fillWidth: true
                                             text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
-                                            theme: root.pageTheme
-                                            styleRole: "bodyM"
+                                            styleRole: UiStyle.TypographyRole.BodyM
                                             colorOverride: timelineCommandRow.selected ? "#f8fafc" : undefined
                                             elide: Text.ElideRight
                                         }
@@ -715,9 +693,8 @@ Item {
                                                 + String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateText
                                                     ? timelineCommandRow.commandData.stateText
                                                     : qsTr("待执行"))
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "secondary"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Secondary
                                             elide: Text.ElideRight
                                         }
 
@@ -725,9 +702,8 @@ Item {
                                             Layout.fillWidth: true
                                             visible: timelineCommandRow.executionSummary.length > 0
                                             text: timelineCommandRow.executionSummary
-                                            theme: root.pageTheme
-                                            styleRole: "bodyS"
-                                            textTone: "accent"
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Accent
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -735,7 +711,6 @@ Item {
                                     Base.AppButton {
                                         visible: timelineCommandRow.selected
                                         text: qsTr("删除")
-                                        theme: root.pageTheme
                                         enabled: root.timelineStopped
                                         onClicked: {
                                             if (root.timelineCommandModel)
@@ -750,9 +725,8 @@ Item {
                             anchors.centerIn: parent
                             visible: root.visibleTimelineCommands.length === 0
                             text: qsTr("暂无时间线指令")
-                            theme: root.pageTheme
-                            styleRole: "bodyS"
-                            textTone: "secondary"
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
@@ -761,8 +735,7 @@ Item {
                         Layout.preferredHeight: 188
                         visible: root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
                         sizeToContent: false
-                        theme: root.pageTheme
-                        surfaceTone: "surface"
+                        surfaceTone: UiStyle.SurfaceTone.Surface
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -775,8 +748,7 @@ Item {
                                 Base.AppText {
                                     Layout.fillWidth: true
                                     text: qsTr("PC 预览")
-                                    theme: root.pageTheme
-                                    styleRole: "bodyM"
+                                    styleRole: UiStyle.TypographyRole.BodyM
                                 }
 
                                 Base.AppText {
@@ -785,9 +757,8 @@ Item {
                                         : qsTr("%1 ms").arg(root.pcPreviewGenerator
                                             ? root.pcPreviewGenerator.previewTimeMs
                                             : 0)
-                                    theme: root.pageTheme
-                                    styleRole: "bodyS"
-                                    textTone: "secondary"
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                 }
                             }
 
@@ -817,120 +788,129 @@ Item {
         }
     }
 
-    Base.AppPopup {
-        id: addTimelineCommandPopup
+    Loader {
+        id: addTimelineCommandPopupLoader
 
-        property var targetDevice: null
-        property var targetCommand: null
-        property int targetStartTimeMs: 0
-        property bool validationVisible: false
-        readonly property var executionFields: targetCommand ? targetCommand.executionInputFields || [] : []
-        readonly property bool formValid: executionFieldForm.valid
+        active: false
 
-        function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
-            targetDevice = nextDevice
-            targetCommand = nextCommand
-            targetStartTimeMs = nextStartTimeMs
-            validationVisible = false
-            executionFieldForm.values = {}
-            executionFieldForm.resetValues()
-            open()
+        function openForCommand(device, nextCommand, startTimeMs) {
+            active = true
+            item.openForCommand(device, nextCommand, startTimeMs)
         }
 
-        function commit() {
-            validationVisible = true
-            if (!formValid || !targetDevice || !targetCommand)
-                return
+        sourceComponent: Component {
+            Base.AppPopup {
+                id: addTimelineCommandPopup
 
-            root.addTimelineCommand(targetDevice,
-                                    targetCommand,
-                                    targetStartTimeMs,
-                                    executionFieldForm.valueMap())
-            close()
-        }
+                parent: root
+                onClosed: addTimelineCommandPopupLoader.active = false
 
-        modal: true
-        focus: true
-        width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
-        height: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
-        x: parent ? Math.round((parent.width - width) / 2) : 0
-        y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        theme: root.pageTheme
-        surfaceTone: "section"
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+                property var targetDevice: null
+                property var targetCommand: null
+                property int targetStartTimeMs: 0
+                property bool validationVisible: false
+                readonly property var executionFields: targetCommand
+                    ? targetCommand.executionInputFields || []
+                    : []
+                readonly property bool formValid: executionFieldForm.valid
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
+                function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
+                    targetDevice = nextDevice
+                    targetCommand = nextCommand
+                    targetStartTimeMs = nextStartTimeMs
+                    validationVisible = false
+                    executionFieldForm.values = {}
+                    executionFieldForm.resetValues()
+                    open()
+                }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
+                function commit() {
+                    validationVisible = true
+                    if (!formValid || !targetDevice || !targetCommand)
+                        return
 
-                Base.AppText {
+                    root.addTimelineCommand(targetDevice,
+                                            targetCommand,
+                                            targetStartTimeMs,
+                                            executionFieldForm.valueMap())
+                    close()
+                }
+
+                modal: true
+                focus: true
+                width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
+                height: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
+                x: parent ? Math.round((parent.width - width) / 2) : 0
+                y: parent ? Math.round((parent.height - height) / 2) : 0
+                padding: 18
+                spacing: 14
+                surfaceTone: UiStyle.SurfaceTone.Section
+                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+                RowLayout {
                     Layout.fillWidth: true
-                    text: qsTr("执行参数")
-                    theme: root.pageTheme
-                    styleRole: "titleM"
-                    elide: Text.ElideRight
+                    spacing: 12
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: qsTr("执行参数")
+                            styleRole: UiStyle.TypographyRole.TitleM
+                            elide: Text.ElideRight
+                        }
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: addTimelineCommandPopup.targetCommand
+                                ? root.commandName(addTimelineCommandPopup.targetCommand)
+                                : ""
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                            elide: Text.ElideRight
+                        }
+                    }
+
+                    Base.AppButton {
+                        text: qsTr("取消")
+                        onClicked: addTimelineCommandPopup.close()
+                    }
+
+                    Base.AppButton {
+                        text: qsTr("添加")
+                        iconName: "workflow"
+                        onClicked: addTimelineCommandPopup.commit()
+                    }
                 }
 
                 Base.AppText {
                     Layout.fillWidth: true
-                    text: addTimelineCommandPopup.targetCommand
-                        ? root.commandName(addTimelineCommandPopup.targetCommand)
-                        : ""
-                    theme: root.pageTheme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    text: executionFieldForm.firstInvalidReason()
+                    visible: addTimelineCommandPopup.validationVisible && text.length > 0
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    colorOverride: "#ef4444"
                     elide: Text.ElideRight
                 }
-            }
 
-            Base.AppButton {
-                text: qsTr("取消")
-                theme: root.pageTheme
-                onClicked: addTimelineCommandPopup.close()
-            }
+                Base.AppScrollPane {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    contentSpacing: 12
+                    fillContentWidth: true
 
-            Base.AppButton {
-                text: qsTr("添加")
-                theme: root.pageTheme
-                iconName: "workflow"
-                onClicked: addTimelineCommandPopup.commit()
-            }
-        }
+                    DeviceFieldForm {
+                        id: executionFieldForm
 
-        Base.AppText {
-            Layout.fillWidth: true
-            text: executionFieldForm.firstInvalidReason()
-            visible: addTimelineCommandPopup.validationVisible && text.length > 0
-            theme: root.pageTheme
-            styleRole: "bodyS"
-            colorOverride: "#ef4444"
-            elide: Text.ElideRight
-        }
-
-        Base.AppScrollPane {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            theme: root.pageTheme
-            contentSpacing: 12
-            fillContentWidth: true
-
-            DeviceFieldForm {
-                id: executionFieldForm
-
-                Layout.fillWidth: true
-                fields: addTimelineCommandPopup.executionFields
-                writeBack: false
-                showErrors: addTimelineCommandPopup.validationVisible
-                theme: root.pageTheme
-                emptyText: qsTr("无执行参数")
+                        Layout.fillWidth: true
+                        fields: addTimelineCommandPopup.executionFields
+                        writeBack: false
+                        showErrors: addTimelineCommandPopup.validationVisible
+                        emptyText: qsTr("无执行参数")
+                    }
+                }
             }
         }
     }
-
 }

@@ -15,7 +15,7 @@ class Device;
 class DeviceModel;
 class TimelineCommandModel;
 class TimelineController;
-namespace EarthUI {
+namespace UICore {
 class AppShellController;
 }
 
@@ -34,7 +34,7 @@ public:
     PcTimelinePreviewGenerator(TimelineController *timelineController,
                                TimelineCommandModel *timelineCommandModel,
                                DeviceModel *deviceModel,
-                               EarthUI::AppShellController *shellController,
+                               UICore::AppShellController *shellController,
                                QObject *parent = nullptr);
 
     Device *pcDevice() const;
@@ -85,7 +85,7 @@ private:
     QPointer<TimelineController> m_timelineController;
     QPointer<TimelineCommandModel> m_timelineCommandModel;
     QPointer<DeviceModel> m_deviceModel;
-    QPointer<EarthUI::AppShellController> m_shellController;
+    QPointer<UICore::AppShellController> m_shellController;
     QPointer<Device> m_pcDevice;
     QImage m_previewImage;
     QUrl m_previewUrl;

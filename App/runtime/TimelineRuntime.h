@@ -1,6 +1,7 @@
 #pragma once
 
-#include "runtime/app/BaseRuntime.h"
+#include <UICore/Shell/BaseRuntime.h>
+#include <UICore/Task/TaskManager.h>
 
 #include <QString>
 #include <QStringList>
@@ -19,14 +20,11 @@ class TimelineCommandModel;
 class TimelinePlanController;
 
 
-class TaskManager;
-
-
-class TimelineRuntime final : public EarthUI::BaseRuntime
+class TimelineRuntime final : public UICore::BaseRuntime
 {
     Q_OBJECT
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
-    Q_PROPERTY(TaskManager *taskManager READ taskManager CONSTANT FINAL)
+    Q_PROPERTY(UICore::TaskManager *taskManager READ taskManager CONSTANT FINAL)
     Q_PROPERTY(DeviceManager *deviceManager READ deviceManager CONSTANT FINAL)
     Q_PROPERTY(DeviceModel *deviceModel READ deviceModel CONSTANT FINAL)
     Q_PROPERTY(DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
@@ -53,7 +51,7 @@ public:
     State state() const;
     void setState(State state);
 
-    TaskManager *taskManager() const;
+    UICore::TaskManager *taskManager() const;
     DeviceManager *deviceManager() const;
     DeviceModel *deviceModel() const;
     DeviceTemplateModel *deviceTemplateModel() const;
@@ -81,7 +79,7 @@ private:
     void startCurrentTimeline();
 
     State m_state = Stopped;
-    TaskManager *m_taskManager = nullptr;
+    UICore::TaskManager *m_taskManager = nullptr;
     DeviceModel *m_deviceModel = nullptr;
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;
     DeviceExecutorManager *m_deviceExecutorManager = nullptr;

@@ -15,9 +15,9 @@
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceTemplate.h"
 #include "devices/DeviceTemplateModel.h"
-#include "runtime/form/AppForm.h"
-#include "runtime/form/AppFormField.h"
-#include "runtime/form/AppFormSection.h"
+#include <UICore/Fields/AppField.h>
+#include <UICore/Forms/AppForm.h>
+#include <UICore/Forms/AppFormSection.h>
 
 namespace {
 
@@ -109,9 +109,9 @@ QString optionsText(const QVariantList &options)
     return labels.join(QStringLiteral(", "));
 }
 
-void replaceForm(EarthUI::AppForm *&target, EarthUI::AppForm *next)
+void replaceForm(UICore::AppForm *&target, UICore::AppForm *next)
 {
-    EarthUI::AppForm *old = target;
+    UICore::AppForm *old = target;
     target = next;
     if (old)
         old->deleteLater();
@@ -197,22 +197,22 @@ void DeviceInspectorFormProvider::setDeviceId(const QString &deviceId)
     rebuildDeviceForm();
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::templateForm() const
+UICore::AppForm *DeviceInspectorFormProvider::templateForm() const
 {
     return m_templateForm;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::templateConfigForm() const
+UICore::AppForm *DeviceInspectorFormProvider::templateConfigForm() const
 {
     return m_templateConfigForm;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::deviceForm() const
+UICore::AppForm *DeviceInspectorFormProvider::deviceForm() const
 {
     return m_deviceForm;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::commandForm() const
+UICore::AppForm *DeviceInspectorFormProvider::commandForm() const
 {
     return m_commandForm;
 }
@@ -288,7 +288,7 @@ void DeviceInspectorFormProvider::rebuildDeviceForm()
 
 void DeviceInspectorFormProvider::rebuildCommandForm()
 {
-    EarthUI::AppForm *nextForm = nullptr;
+    UICore::AppForm *nextForm = nullptr;
     if (m_command)
         nextForm = buildCommandForm(m_command);
     else
@@ -298,7 +298,7 @@ void DeviceInspectorFormProvider::rebuildCommandForm()
     emit commandFormChanged();
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::buildTemplateForm(const DeviceTemplate *deviceTemplate)
+UICore::AppForm *DeviceInspectorFormProvider::buildTemplateForm(const DeviceTemplate *deviceTemplate)
 {
     auto *form = makeForm(tr("模板"));
     auto *summarySection = makeSection(form, tr("模板"));
@@ -327,16 +327,16 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildTemplateForm(const DeviceTem
     return form;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::buildTemplateConfigForm(const DeviceTemplate *deviceTemplate)
+UICore::AppForm *DeviceInspectorFormProvider::buildTemplateConfigForm(const DeviceTemplate *deviceTemplate)
 {
     auto *form = makeForm();
-    form->setLayoutMode(EarthUI::AppForm::Vertical);
+    form->setLayoutMode(UICore::UiStyle::LayoutMode::Vertical);
     form->setLabelWidth(112);
     form->setFieldSpacing(6);
     form->setShowFieldDividers(false);
 
     auto *configSection = makeSection(form, QString());
-    configSection->setLayoutMode(EarthUI::AppFormSection::Vertical);
+    configSection->setLayoutMode(UICore::UiStyle::LayoutMode::Vertical);
     configSection->setLabelWidth(112);
     configSection->setFieldSpacing(6);
     configSection->setShowFieldDividers(false);
@@ -349,7 +349,7 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildTemplateConfigForm(const Dev
     return form;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *device)
+UICore::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *device)
 {
     auto *form = makeForm();
     auto *profileSection = makeSection(form, QString());
@@ -363,8 +363,8 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *dev
                                                   tr("名称"),
                                                   device ? device->name() : QVariant()));
 
-    auto *protocolStatusField = new EarthUI::AppFormField(profileSection);
-    protocolStatusField->setKind(EarthUI::AppFormField::Custom);
+    auto *protocolStatusField = new UICore::AppField(profileSection);
+    protocolStatusField->setKind(UICore::AppField::Kind::Custom);
     protocolStatusField->setKey(QStringLiteral("protocolStatus"));
     protocolStatusField->setDelegateSource(QUrl(QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceProfilePairField.qml")));
     protocolStatusField->setCustomData(QVariantMap{
@@ -382,7 +382,7 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *dev
     return form;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandForm(const DeviceCommand *command)
+UICore::AppForm *DeviceInspectorFormProvider::buildCommandForm(const DeviceCommand *command)
 {
     auto *form = makeForm(tr("指令"));
     auto *summarySection = makeSection(form, tr("指令"));
@@ -402,7 +402,7 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandForm(const DeviceComm
     return form;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandMapForm(const QVariantMap &command)
+UICore::AppForm *DeviceInspectorFormProvider::buildCommandMapForm(const QVariantMap &command)
 {
     auto *form = makeForm(tr("指令"));
     auto *summarySection = makeSection(form, tr("指令"));
@@ -447,13 +447,13 @@ EarthUI::AppForm *DeviceInspectorFormProvider::buildCommandMapForm(const QVarian
     return form;
 }
 
-EarthUI::AppForm *DeviceInspectorFormProvider::makeForm(const QString &title, const QString &subtitle) const
+UICore::AppForm *DeviceInspectorFormProvider::makeForm(const QString &title, const QString &subtitle) const
 {
-    auto *form = new EarthUI::AppForm(const_cast<DeviceInspectorFormProvider *>(this));
+    auto *form = new UICore::AppForm(const_cast<DeviceInspectorFormProvider *>(this));
     form->setTitle(title);
     form->setSubtitle(subtitle);
-    form->setSurfaceMode(EarthUI::AppForm::Bare);
-    form->setLayoutMode(EarthUI::AppForm::Vertical);
+    form->setSurfaceMode(UICore::UiForm::SurfaceMode::Bare);
+    form->setLayoutMode(UICore::UiStyle::LayoutMode::Vertical);
     form->setShowFieldDividers(false);
     form->setShowHeaderDivider(false);
     form->setLabelWidth(124);
@@ -462,42 +462,42 @@ EarthUI::AppForm *DeviceInspectorFormProvider::makeForm(const QString &title, co
     return form;
 }
 
-EarthUI::AppFormSection *DeviceInspectorFormProvider::makeSection(EarthUI::AppForm *form, const QString &title) const
+UICore::AppFormSection *DeviceInspectorFormProvider::makeSection(UICore::AppForm *form, const QString &title) const
 {
     if (!form)
         return nullptr;
 
-    auto *section = new EarthUI::AppFormSection(form);
+    auto *section = new UICore::AppFormSection(form);
     section->setTitle(title);
-    section->setLayoutMode(EarthUI::AppFormSection::Vertical);
+    section->setLayoutMode(UICore::UiStyle::LayoutMode::Vertical);
     section->setShowFieldDividers(false);
     form->appendSection(section);
     return section;
 }
 
-EarthUI::AppFormField *DeviceInspectorFormProvider::makeSummaryField(const QString &key,
+UICore::AppField *DeviceInspectorFormProvider::makeSummaryField(const QString &key,
                                                                      const QString &label,
                                                                      const QVariant &value,
                                                                      const QString &subtitle) const
 {
-    auto *field = new EarthUI::AppFormField;
-    field->setKind(EarthUI::AppFormField::Summary);
+    auto *field = new UICore::AppField;
+    field->setKind(UICore::AppField::Kind::Summary);
     field->setKey(key);
     field->setLabel(label);
     field->setSubtitle(subtitle);
     field->setValue(displayValue(value));
     field->setReadOnly(true);
-    field->setSurfaceTone(QStringLiteral("surface"));
+    field->setSurfaceTone(UICore::UiStyle::SurfaceTone::Surface);
     return field;
 }
 
-EarthUI::AppFormField *DeviceInspectorFormProvider::makeReadOnlyField(const QString &key,
+UICore::AppField *DeviceInspectorFormProvider::makeReadOnlyField(const QString &key,
                                                                       const QString &label,
                                                                       const QVariant &value,
                                                                       const QString &subtitle) const
 {
-    auto *field = new EarthUI::AppFormField;
-    field->setKind(EarthUI::AppFormField::Custom);
+    auto *field = new UICore::AppField;
+    field->setKind(UICore::AppField::Kind::Custom);
     field->setKey(key);
     field->setLabel(label);
     field->setSubtitle(subtitle);
@@ -507,7 +507,7 @@ EarthUI::AppFormField *DeviceInspectorFormProvider::makeReadOnlyField(const QStr
     return field;
 }
 
-void DeviceInspectorFormProvider::appendParamSpecField(EarthUI::AppFormSection *section,
+void DeviceInspectorFormProvider::appendParamSpecField(UICore::AppFormSection *section,
                                                        const DeviceParamSpec *spec,
                                                        const QVariant &value,
                                                        bool useReadOnlyField) const

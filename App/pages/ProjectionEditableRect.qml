@@ -1,10 +1,10 @@
 import QtQuick 2.14
-import "qrc:/UiCore/qml/components/base" as Base
+import UICore.Style 1.0
+import "qrc:/UICore/qml/components/base" as Base
 
 Item {
     id: control
 
-    property var theme
     property real rectX: 0
     property real rectY: 0
     property real rectW: 0.1
@@ -250,9 +250,8 @@ Item {
         anchors.top: parent.top
         anchors.topMargin: control.titleTopMargin
         text: control.title
-        theme: control.theme
-        styleRole: "bodyS"
-        textTone: control.selected ? "accent" : "primary"
+        styleRole: UiStyle.TypographyRole.BodyS
+        textTone: control.selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
         colorOverride: control.strokeColor
         elide: Text.ElideRight
         z: 2

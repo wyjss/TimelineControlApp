@@ -1,7 +1,8 @@
 import QtQuick 2.14
+import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
-import "qrc:/UiCore/qml/components/base" as Base
+import "qrc:/UICore/qml/components/base" as Base
 
 ColumnLayout {
     id: root
@@ -11,7 +12,9 @@ ColumnLayout {
     property bool writeBack: true
     property bool readOnly: false
     property bool showErrors: true
-    property QtObject theme
+    property QtObject theme: ApplicationWindow.window && ApplicationWindow.window.appTheme
+        ? ApplicationWindow.window.appTheme
+        : null
     property string emptyText: qsTr("无字段")
     readonly property bool valid: firstInvalidReason().length === 0
 
@@ -123,9 +126,8 @@ ColumnLayout {
         Layout.fillWidth: true
         visible: root.fields.length === 0
         text: root.emptyText
-        theme: root.theme
-        styleRole: "bodyS"
-        textTone: "secondary"
+        styleRole: UiStyle.TypographyRole.BodyS
+        textTone: UiStyle.TextTone.Secondary
         elide: Text.ElideRight
     }
 
@@ -149,17 +151,15 @@ ColumnLayout {
                 Base.AppText {
                     Layout.fillWidth: true
                     text: String(fieldRow.fieldSpec.label || fieldRow.fieldSpec.key || "") + (fieldRow.fieldSpec.required ? " *" : "")
-                    theme: root.theme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                     elide: Text.ElideRight
                 }
 
                 Base.AppText {
                     text: String(fieldRow.fieldSpec.type || "")
-                    theme: root.theme
-                    styleRole: "bodyS"
-                    textTone: fieldRow.invalidReason.length > 0 ? "primary" : "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: fieldRow.invalidReason.length > 0 ? UiStyle.TextTone.Primary : UiStyle.TextTone.Secondary
                     colorOverride: fieldRow.invalidReason.length > 0 ? "#ef4444" : undefined
                 }
             }
@@ -167,7 +167,6 @@ ColumnLayout {
             Base.AppTextField {
                 visible: fieldRow.editor === "text"
                 Layout.fillWidth: true
-                theme: root.theme
                 text: String(root.displayValue(fieldRow.fieldSpec, root.fieldValue(fieldRow.fieldSpec)))
                 placeholderText: String(fieldRow.fieldSpec.placeholderText || fieldRow.fieldSpec.placeholder || "")
                 enabled: !root.readOnly
@@ -180,7 +179,6 @@ ColumnLayout {
             Base.AppSelect {
                 visible: fieldRow.editor === "select"
                 Layout.fillWidth: true
-                theme: root.theme
                 enabled: !root.readOnly
                 options: fieldRow.fieldSpec.options || []
                 value: root.fieldValue(fieldRow.fieldSpec)
@@ -190,7 +188,6 @@ ColumnLayout {
             Base.AppSliderControl {
                 visible: fieldRow.editor === "slider"
                 Layout.fillWidth: true
-                theme: root.theme
                 enabled: !root.readOnly
                 from: Number(fieldRow.fieldSpec.minimum !== undefined ? fieldRow.fieldSpec.minimum : 0)
                 to: Number(fieldRow.fieldSpec.maximum !== undefined ? fieldRow.fieldSpec.maximum : 100)
@@ -205,8 +202,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 104
                 sizeToContent: false
-                theme: root.theme
-                surfaceTone: "surface"
+                surfaceTone: UiStyle.SurfaceTone.Surface
                 strokeWidth: fieldRow.invalidReason.length > 0 ? 2 : 1
                 borderOverride: fieldRow.invalidReason.length > 0 ? "#ef4444" : undefined
 
@@ -234,10 +230,9 @@ ColumnLayout {
                 spacing: 10
 
                 Base.AppToggleControl {
-                    theme: root.theme
                     enabled: !root.readOnly
                     checked: !!root.fieldValue(fieldRow.fieldSpec)
-                    onToggled: root.setFieldValue(fieldRow.fieldSpec, nextChecked)
+                    onToggled: root.setFieldValue(fieldRow.fieldSpec, checked)
                 }
 
                 Base.AppText {
@@ -245,9 +240,8 @@ ColumnLayout {
                     text: root.fieldValue(fieldRow.fieldSpec)
                         ? String(fieldRow.fieldSpec.trueLabel || qsTr("已启用"))
                         : String(fieldRow.fieldSpec.falseLabel || qsTr("已禁用"))
-                    theme: root.theme
-                    styleRole: "bodyS"
-                    textTone: "secondary"
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
 
@@ -255,8 +249,7 @@ ColumnLayout {
                 visible: fieldRow.invalidReason.length > 0
                 Layout.fillWidth: true
                 text: fieldRow.invalidReason
-                theme: root.theme
-                styleRole: "bodyS"
+                styleRole: UiStyle.TypographyRole.BodyS
                 colorOverride: "#ef4444"
                 elide: Text.ElideRight
             }
