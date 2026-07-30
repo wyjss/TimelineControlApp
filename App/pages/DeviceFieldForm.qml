@@ -159,8 +159,9 @@ ColumnLayout {
                 Base.AppText {
                     text: String(fieldRow.fieldSpec.type || "")
                     styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: fieldRow.invalidReason.length > 0 ? UiStyle.TextTone.Primary : UiStyle.TextTone.Secondary
-                    colorOverride: fieldRow.invalidReason.length > 0 ? "#ef4444" : undefined
+                    textTone: fieldRow.invalidReason.length > 0
+                        ? UiStyle.TextTone.Danger
+                        : UiStyle.TextTone.Secondary
                 }
             }
 
@@ -204,7 +205,10 @@ ColumnLayout {
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
                 strokeWidth: fieldRow.invalidReason.length > 0 ? 2 : 1
-                borderOverride: fieldRow.invalidReason.length > 0 ? "#ef4444" : undefined
+                borderOverride: fieldRow.invalidReason.length > 0
+                    && root.theme && root.theme.colors
+                    ? root.theme.colors.dangerBorder
+                    : undefined
 
                 TextArea {
                     anchors.fill: parent
@@ -250,7 +254,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 text: fieldRow.invalidReason
                 styleRole: UiStyle.TypographyRole.BodyS
-                colorOverride: "#ef4444"
+                textTone: UiStyle.TextTone.Danger
                 elide: Text.ElideRight
             }
         }

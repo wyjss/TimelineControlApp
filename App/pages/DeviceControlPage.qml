@@ -15,7 +15,6 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     readonly property var devices: deviceModel ? deviceModel.devices : []
@@ -177,73 +176,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageMargin
-        spacing: 14
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-
-            Base.AppText {
-                text: qsTr("设备控制")
-                styleRole: UiStyle.TypographyRole.TitleL
-            }
-
-            Base.AppSurface {
-                Layout.preferredHeight: 28
-                sizeToContent: true
-                surfaceTone: UiStyle.SurfaceTone.Section
-                padding: 10
-
-                Base.AppText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("%1 台设备").arg(root.devices.length)
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                }
-            }
-
-            Base.AppSurface {
-                Layout.preferredHeight: 28
-                sizeToContent: true
-                surfaceTone: UiStyle.SurfaceTone.Section
-                padding: 10
-
-                Base.AppText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("%1 个组").arg(root.groups.length)
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                }
-            }
-
-            Base.AppText {
-                visible: root.feedbackText.length > 0
-                Layout.fillWidth: true
-                text: root.feedbackText
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-                horizontalAlignment: Text.AlignRight
-                elide: Text.ElideRight
-            }
-
-            Item {
-                visible: root.feedbackText.length === 0
-                Layout.fillWidth: true
-            }
-
-            Base.AppButton {
-                text: qsTr("组开机")
-                enabled: root.groups.length > 0
-                onClicked: groupActionPopupLoader.openForAction("on")
-            }
-
-            Base.AppButton {
-                text: qsTr("组关机")
-                enabled: root.groups.length > 0
-                onClicked: groupActionPopupLoader.openForAction("off")
-            }
-        }
+        anchors.margins: root.pageTheme.density.panePadding
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
@@ -251,10 +185,10 @@ Item {
             spacing: 14
 
             Base.AppSurface {
-                Layout.preferredWidth: 280
+                Layout.preferredWidth: 300
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -271,10 +205,46 @@ Item {
                             styleRole: UiStyle.TypographyRole.SectionTitle
                         }
 
+                        Base.AppText {
+                            text: qsTr("%1 个").arg(root.groups.length)
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
+
                         Base.AppButton {
+                            size: UiStyle.ButtonSize.Small
                             text: qsTr("新建")
                             onClicked: groupEditorPopupLoader.openForCreate()
                         }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Base.AppButton {
+                            Layout.fillWidth: true
+                            text: qsTr("组开机")
+                            variant: UiStyle.ButtonVariant.Primary
+                            enabled: root.groups.length > 0
+                            onClicked: groupActionPopupLoader.openForAction("on")
+                        }
+
+                        DangerButton {
+                            Layout.fillWidth: true
+                            text: qsTr("组关机")
+                            enabled: root.groups.length > 0
+                            onClicked: groupActionPopupLoader.openForAction("off")
+                        }
+                    }
+
+                    Base.AppText {
+                        visible: root.feedbackText.length > 0
+                        Layout.fillWidth: true
+                        text: root.feedbackText
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
+                        elide: Text.ElideRight
                     }
 
                     Base.AppScrollPane {
@@ -286,48 +256,37 @@ Item {
                         Repeater {
                             model: root.groups
 
-                            delegate: Base.AppSurface {
+                            delegate: Base.AppCard {
                                 id: groupCard
 
                                 readonly property bool selected: String(modelData.id) === root.selectedGroupId
 
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 64
-                                sizeToContent: false
-                                surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Canvas
-                                active: selected
-                                interactive: true
-
-                                Column {
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 12
-                                    spacing: 3
-
-                                    Base.AppText {
-                                        width: parent.width
-                                        text: String(modelData.name)
-                                        styleRole: UiStyle.TypographyRole.BodyM
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Base.AppText {
-                                        width: parent.width
-                                        text: qsTr("%1 台设备").arg(root.deviceCountInGroup(modelData.id))
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: UiStyle.TextTone.Secondary
-                                    }
+                                text: String(modelData.name)
+                                padding: 12
+                                contentSpacing: 3
+                                checkable: true
+                                autoExclusive: true
+                                checked: selected
+                                emphasizedSelection: true
+                                onClicked: {
+                                    root.selectedGroupId = String(modelData.id)
+                                    root.editingMembers = false
                                 }
 
-                                MouseArea {
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: {
-                                        root.selectedGroupId = String(modelData.id)
-                                        root.editingMembers = false
-                                    }
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: String(modelData.name)
+                                    styleRole: UiStyle.TypographyRole.BodyM
+                                    elide: Text.ElideRight
+                                }
+
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("%1 台设备").arg(root.deviceCountInGroup(modelData.id))
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                 }
                             }
                         }
@@ -354,7 +313,7 @@ Item {
                             onClicked: groupEditorPopupLoader.openForRename()
                         }
 
-                        Base.AppButton {
+                        DangerButton {
                             Layout.fillWidth: true
                             text: qsTr("删除")
                             enabled: root.selectedGroupId.length > 0
@@ -368,7 +327,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -383,10 +342,21 @@ Item {
                             Layout.fillWidth: true
                             spacing: 2
 
-                            Base.AppText {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: qsTr("所有设备")
-                                styleRole: UiStyle.TypographyRole.SectionTitle
+                                spacing: 8
+
+                                Base.AppText {
+                                    Layout.fillWidth: true
+                                    text: qsTr("所有设备")
+                                    styleRole: UiStyle.TypographyRole.SectionTitle
+                                }
+
+                                Base.AppText {
+                                    text: qsTr("%1 台").arg(root.devices.length)
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
+                                }
                             }
 
                             Base.AppText {
@@ -431,80 +401,54 @@ Item {
                                 readonly property bool inSelectedGroup: root.selectedGroupId.length > 0
                                     && root.deviceInGroup(deviceData.id, root.selectedGroupId)
 
-                                Base.AppSurface {
+                                Base.AppCard {
                                     anchors.fill: parent
                                     anchors.rightMargin: 10
                                     anchors.bottomMargin: 10
-                                    sizeToContent: false
-                                    surfaceTone: inSelectedGroup ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Canvas
-                                    active: inSelectedGroup
-                                    interactive: root.editingMembers
-                                    strokeWidth: inSelectedGroup ? 2 : 1
-
-                                    Column {
-                                        anchors.fill: parent
-                                        anchors.margins: 14
-                                        spacing: 5
-
-                                        Base.AppText {
-                                            width: parent.width - 28
-                                            text: String(deviceData.name || deviceData.id || qsTr("未命名设备"))
-                                            styleRole: UiStyle.TypographyRole.BodyM
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            width: parent.width
-                                            text: String(deviceData.deviceType || qsTr("未设置类型"))
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Secondary
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            width: parent.width
-                                            text: root.deviceAddress(deviceData)
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Secondary
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            width: parent.width
-                                            text: root.groupsForDevice(deviceData.id).length > 0
-                                                ? root.groupsForDevice(deviceData.id).join("、")
-                                                : qsTr("未分组")
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: inSelectedGroup ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
-                                            elide: Text.ElideRight
-                                        }
+                                    text: String(deviceData.name || deviceData.id || qsTr("未命名设备"))
+                                    padding: 14
+                                    contentSpacing: 5
+                                    checkable: root.editingMembers
+                                    checked: inSelectedGroup
+                                    emphasizedSelection: root.editingMembers
+                                    animateScale: root.editingMembers
+                                    hoverEnabled: root.editingMembers
+                                    onClicked: {
+                                        if (root.editingMembers)
+                                            root.toggleDevice(deviceData.id)
                                     }
 
-                                    Rectangle {
-                                        visible: root.editingMembers
-                                        anchors.top: parent.top
-                                        anchors.right: parent.right
-                                        anchors.margins: 12
-                                        width: 22
-                                        height: 22
-                                        radius: 5
-                                        color: inSelectedGroup ? "#3b82f6" : "transparent"
-                                        border.width: 1
-                                        border.color: inSelectedGroup ? "#60a5fa" : "#64748b"
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: inSelectedGroup ? "✓" : ""
-                                            color: "#ffffff"
-                                            font.pixelSize: 14
-                                        }
+                                    Base.AppText {
+                                        Layout.fillWidth: true
+                                        text: String(deviceData.name || deviceData.id || qsTr("未命名设备"))
+                                        styleRole: UiStyle.TypographyRole.BodyM
+                                        elide: Text.ElideRight
                                     }
 
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        enabled: root.editingMembers
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: root.toggleDevice(deviceData.id)
+                                    Base.AppText {
+                                        Layout.fillWidth: true
+                                        text: String(deviceData.deviceType || qsTr("未设置类型"))
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Base.AppText {
+                                        Layout.fillWidth: true
+                                        text: root.deviceAddress(deviceData)
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Base.AppText {
+                                        Layout.fillWidth: true
+                                        text: root.groupsForDevice(deviceData.id).length > 0
+                                            ? root.groupsForDevice(deviceData.id).join("、")
+                                            : qsTr("未分组")
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: inSelectedGroup ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
+                                        elide: Text.ElideRight
                                     }
                                 }
                             }
@@ -681,7 +625,7 @@ Item {
                 onClicked: removeGroupPopup.close()
             }
 
-            Base.AppButton {
+            DangerButton {
                 text: qsTr("删除")
                 onClicked: {
                     root.removeSelectedGroup()
@@ -770,58 +714,27 @@ Item {
             Repeater {
                 model: root.groups
 
-                delegate: Base.AppSurface {
+                delegate: Base.AppCard {
                     id: actionGroupRow
 
                     readonly property bool selected: groupActionPopup.groupSelected(modelData.id)
 
                     Layout.fillWidth: true
                     Layout.preferredHeight: 54
-                    sizeToContent: false
-                    surfaceTone: selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Canvas
-                    active: selected
-                    interactive: true
+                    text: String(modelData.name)
+                    padding: 12
+                    checkable: true
+                    checked: selected
+                    emphasizedSelection: true
+                    onClicked: groupActionPopup.toggleGroup(modelData.id)
 
-                    Row {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        spacing: 10
-
-                        Rectangle {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: 20
-                            height: 20
-                            radius: 5
-                            color: actionGroupRow.selected ? "#3b82f6" : "transparent"
-                            border.width: 1
-                            border.color: actionGroupRow.selected ? "#60a5fa" : "#64748b"
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: actionGroupRow.selected ? "✓" : ""
-                                color: "#ffffff"
-                                font.pixelSize: 13
-                            }
-                        }
-
-                        Base.AppText {
-                            width: parent.width - 30
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: qsTr("%1（%2 台设备）")
-                                .arg(String(modelData.name))
-                                .arg(root.deviceCountInGroup(modelData.id))
-                            styleRole: UiStyle.TypographyRole.BodyM
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: groupActionPopup.toggleGroup(modelData.id)
+                    Base.AppText {
+                        Layout.fillWidth: true
+                        text: qsTr("%1（%2 台设备）")
+                            .arg(String(modelData.name))
+                            .arg(root.deviceCountInGroup(modelData.id))
+                        styleRole: UiStyle.TypographyRole.BodyM
+                        elide: Text.ElideRight
                     }
                 }
             }

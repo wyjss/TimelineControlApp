@@ -230,7 +230,7 @@ Item {
             var trackRight = width
             var axisColor = root.colorValue("border", "#334155")
             var tickColor = root.colorValue("neutralText", "#cbd5e1")
-            var markerColor = "#ef4444"
+            var markerColor = root.colorValue("dangerFill", "#f85149")
             var minorSpacing = Math.max(1, root.effectiveMinorTickPixelSpacing)
             var minorTicksPerMajor = root.safeMinorTicksPerMajor()
 
@@ -335,13 +335,13 @@ Item {
         height: 20
         radius: 4
         visible: root.currentTimeX >= root.resolvedTrackLeftX && root.currentTimeX <= root.width
-        color: "#ef4444"
+        color: root.colorValue("dangerFill", "#f85149")
 
         Base.AppText {
             anchors.fill: parent
             text: root.formatTime(root.resolvedCurrentTimeMs)
             styleRole: UiStyle.TypographyRole.BodyS
-            colorOverride: "#ffffff"
+            colorOverride: root.colorValue("inverseText", "#f8fafc")
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }

@@ -23,7 +23,6 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
@@ -321,18 +320,10 @@ Item {
         return qsTr("屏幕 %1 (%2,%3)").arg(screenIndex + 1).arg(column + 1).arg(row + 1)
     }
 
-    Rectangle {
-        anchors.fill: parent
-        color: root.colorValue("backgroundWindow", "#0f172a")
-    }
-
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.pageMargin
-        anchors.rightMargin: root.pageMargin
-        anchors.topMargin: root.pageMargin
-        anchors.bottomMargin: root.pageMargin
-        spacing: 14
+        anchors.margins: root.pageTheme.density.panePadding
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
@@ -347,7 +338,7 @@ Item {
             Base.AppText {
                 Layout.fillWidth: true
                 text: qsTr("PC 梯形校正")
-                styleRole: UiStyle.TypographyRole.TitleL
+                styleRole: UiStyle.TypographyRole.TitleM
             }
 
             Base.AppSurface {
@@ -384,7 +375,7 @@ Item {
                 Layout.minimumWidth: 220
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -443,17 +434,18 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 86
 
-                                Base.AppSurface {
+                                Base.AppCard {
+                                    id: pcCard
+
                                     anchors.fill: parent
-                                    surfaceTone: pcRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
-                                    active: pcRow.selected
-                                    hoveredState: pcTap.containsMouse
-                                    interactive: true
-                                    strokeWidth: pcRow.selected || pcTap.containsMouse ? 1 : 0
-                                    borderOverride: pcRow.selected
-                                        ? root.colorValue("highlightText", "#7cb4ff")
-                                        : root.colorValue("border", "#334155")
-                                    hoverOverlayOpacity: 0.08
+                                    text: root.pcName(pcDevice)
+                                    surfaceTone: UiStyle.SurfaceTone.Section
+                                    checkable: true
+                                    autoExclusive: true
+                                    checked: pcRow.selected
+                                    emphasizedSelection: true
+                                    animateScale: false
+                                    onClicked: root.selectPc(pcDevice.id)
                                 }
 
                                 Column {
@@ -489,13 +481,6 @@ Item {
                                     }
                                 }
 
-                                MouseArea {
-                                    id: pcTap
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: root.selectPc(pcDevice.id)
-                                }
                             }
                         }
                     }
@@ -507,7 +492,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.minimumWidth: 520
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -597,11 +582,21 @@ Item {
                                             ctx.lineTo(c[2].x * width, c[2].y * height)
                                             ctx.lineTo(c[3].x * width, c[3].y * height)
                                             ctx.closePath()
-                                            ctx.fillStyle = tile.selected ? "rgba(124,180,255,0.20)" : "rgba(22,34,52,0.76)"
+                                            var fillColor = tile.selected
+                                                ? root.pageTheme.colors.highlightText
+                                                : root.pageTheme.colors.backgroundSection
+                                            ctx.fillStyle = Qt.rgba(fillColor.r,
+                                                                    fillColor.g,
+                                                                    fillColor.b,
+                                                                    tile.selected ? 0.20 : 0.76)
                                             ctx.fill()
                                             ctx.clip()
 
-                                            ctx.strokeStyle = Qt.rgba(1, 1, 1, 0.24)
+                                            var gridColor = root.pageTheme.colors.inverseText
+                                            ctx.strokeStyle = Qt.rgba(gridColor.r,
+                                                                      gridColor.g,
+                                                                      gridColor.b,
+                                                                      0.24)
                                             ctx.lineWidth = 1
                                             var stepX = Math.max(18, width / 8)
                                             var stepY = Math.max(18, height / 6)
@@ -705,7 +700,7 @@ Item {
                 Layout.minimumWidth: 252
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -743,7 +738,7 @@ Item {
 
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 64
-                                surfaceTone: UiStyle.SurfaceTone.Surface
+                                surfaceTone: UiStyle.SurfaceTone.Section
                                 sizeToContent: false
 
                                 Column {

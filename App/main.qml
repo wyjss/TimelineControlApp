@@ -155,17 +155,14 @@ ApplicationWindow {
                     modal: false
                     showModalOverlay: false
                     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-                    x: {
+                    onAboutToShow: {
                         var origin = plansButton.mapToItem(
                             parent,
                             plansButton.width - width,
                             plansButton.height + 8
                         )
-                        return origin.x
-                    }
-                    y: {
-                        var origin = plansButton.mapToItem(parent, 0, plansButton.height + 8)
-                        return origin.y
+                        x = origin.x
+                        y = origin.y
                     }
 
                     Base.AppButton {

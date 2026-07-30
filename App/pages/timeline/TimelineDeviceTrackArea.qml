@@ -274,10 +274,12 @@ Item {
                 height: root.rowHeight
                 radius: 6
                 color: trackRow.selected
-                    ? Qt.rgba(96 / 255, 165 / 255, 250 / 255, 0.10)
-                    : (trackMouse.containsMouse ? Qt.rgba(148 / 255, 163 / 255, 184 / 255, 0.06) : "transparent")
+                    ? root.colorValue("highlightSoft", "#162d4a")
+                    : (trackMouse.containsMouse
+                        ? root.colorValue("backgroundWindowVariant", "#131d28")
+                        : "transparent")
                 border.width: trackRow.selected ? 1 : 0
-                border.color: "#60a5fa"
+                border.color: root.colorValue("highlightText", "#78afff")
             }
 
             Rectangle {
@@ -305,7 +307,9 @@ Item {
                 width: 3
                 height: root.rowHeight - 18
                 radius: 2
-                color: trackRow.selected ? "#60a5fa" : root.colorValue("border", "#334155")
+                color: trackRow.selected
+                    ? root.colorValue("highlightText", "#78afff")
+                    : root.colorValue("border", "#334155")
                 opacity: trackRow.selected ? 1 : (trackMouse.containsMouse ? 0.45 : 0.16)
             }
 
@@ -389,7 +393,7 @@ Item {
                         readonly property color commandColor: root.commandColor(commandData)
                         readonly property color stateColor: commandData && commandData.stateColor
                             ? commandData.stateColor
-                            : "#dbeafe"
+                            : root.colorValue("neutralText", "#cbd5e1")
                         readonly property string commandText: String(commandData && commandData.commandName
                             ? commandData.commandName
                             : qsTr("指令"))
@@ -465,7 +469,7 @@ Item {
                             width: 2
                             height: 28
                             radius: 1
-                            color: "#f8fafc"
+                            color: root.colorValue("inverseText", "#f8fafc")
                             opacity: 0.62
                         }
 
@@ -594,7 +598,7 @@ Item {
         y: 0
         width: 1
         height: parent.height
-        color: "#ef4444"
+        color: root.colorValue("dangerFill", "#f85149")
         opacity: 0.58
         visible: ruler && x >= root.labelWidth && x <= parent.width
         z: 10

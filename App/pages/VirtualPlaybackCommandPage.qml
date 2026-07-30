@@ -17,7 +17,6 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     readonly property var devices: deviceModel ? deviceModel.devices : []
@@ -228,26 +227,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageMargin
+        anchors.margins: root.pageTheme.density.panePadding
         spacing: 12
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            Base.AppText {
-                Layout.fillWidth: true
-                text: qsTr("虚拟播放指令")
-                styleRole: UiStyle.TypographyRole.TitleL
-                elide: Text.ElideRight
-            }
-
-            Base.AppText {
-                text: qsTr("1920 × 1080")
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-            }
-        }
 
         RowLayout {
             Layout.fillWidth: true
@@ -258,7 +239,7 @@ Item {
                 Layout.preferredWidth: 260
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -292,40 +273,32 @@ Item {
                         spacing: 6
                         model: root.pcDevices
 
-                        delegate: Base.AppSurface {
+                        delegate: Base.AppCard {
                             width: ListView.view.width
                             height: 54
-                            sizeToContent: false
-                            surfaceTone: String(modelData.id || "") === root.selectedPcId ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
-                            active: String(modelData.id || "") === root.selectedPcId
-                            interactive: true
+                            text: root.pcName(modelData)
+                            surfaceTone: UiStyle.SurfaceTone.Section
+                            padding: 10
+                            contentSpacing: 2
+                            checkable: true
+                            autoExclusive: true
+                            checked: String(modelData.id || "") === root.selectedPcId
+                            emphasizedSelection: true
+                            onClicked: root.selectedPcId = String(modelData.id || "")
 
-                            Column {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.margins: 10
-                                spacing: 2
-
-                                Base.AppText {
-                                    width: parent.width
-                                    text: root.pcName(modelData)
-                                    styleRole: UiStyle.TypographyRole.BodyM
-                                    elide: Text.ElideRight
-                                }
-
-                                Base.AppText {
-                                    width: parent.width
-                                    text: root.pcAddress(modelData)
-                                    styleRole: UiStyle.TypographyRole.BodyS
-                                    textTone: UiStyle.TextTone.Secondary
-                                    elide: Text.ElideRight
-                                }
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: root.pcName(modelData)
+                                styleRole: UiStyle.TypographyRole.BodyM
+                                elide: Text.ElideRight
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: root.selectedPcId = String(modelData.id || "")
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: root.pcAddress(modelData)
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                                elide: Text.ElideRight
                             }
                         }
 
@@ -341,7 +314,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 1
-                        color: "#334155"
+                        color: root.pageTheme.colors.borderOverlay
                     }
 
                     RowLayout {
@@ -370,42 +343,32 @@ Item {
                         spacing: 6
                         model: root.selectedCommands
 
-                        delegate: Base.AppSurface {
+                        delegate: Base.AppCard {
                             width: ListView.view.width
                             height: 58
-                            sizeToContent: false
-                            surfaceTone: modelData === root.selectedCommand ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
-                            active: modelData === root.selectedCommand
-                            interactive: true
+                            text: String(modelData.name || "")
+                            surfaceTone: UiStyle.SurfaceTone.Section
+                            padding: 10
+                            contentSpacing: 3
+                            checkable: true
+                            autoExclusive: true
+                            checked: modelData === root.selectedCommand
+                            emphasizedSelection: true
+                            onClicked: root.selectedCommand = modelData
 
-                            Column {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.margins: 10
-                                spacing: 3
-
-                                Base.AppText {
-                                    width: parent.width
-                                    text: String(modelData.name || "")
-                                    styleRole: UiStyle.TypographyRole.BodyM
-                                    elide: Text.ElideRight
-                                }
-
-                                Base.AppText {
-                                    width: parent.width
-                                    text: qsTr("%1 个视频").arg(root.commandVideos(modelData).length)
-                                    styleRole: UiStyle.TypographyRole.BodyS
-                                    textTone: UiStyle.TextTone.Secondary
-                                    elide: Text.ElideRight
-                                }
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: String(modelData.name || "")
+                                styleRole: UiStyle.TypographyRole.BodyM
+                                elide: Text.ElideRight
                             }
 
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    root.selectedCommand = modelData
-                                }
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: qsTr("%1 个视频").arg(root.commandVideos(modelData).length)
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                                elide: Text.ElideRight
                             }
                         }
 
@@ -456,7 +419,13 @@ Item {
                             }
                         }
 
-                        Base.AppButton {
+                        Base.AppText {
+                            text: qsTr("1920 × 1080")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
+
+                        DangerButton {
                             text: qsTr("删除指令")
                             enabled: root.selectedCommand !== null
                             onClicked: root.removeSelectedCommand()
@@ -495,23 +464,23 @@ Item {
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    color: "#0b1118"
+                                    color: root.pageTheme.colors.backgroundCanvas
                                     border.width: 1
-                                    border.color: "#475569"
+                                    border.color: root.pageTheme.colors.controlBorder
                                 }
 
                                 Rectangle {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     width: 1
                                     height: parent.height
-                                    color: "#1e293b"
+                                    color: root.pageTheme.colors.backgroundSection
                                 }
 
                                 Rectangle {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: parent.width
                                     height: 1
-                                    color: "#1e293b"
+                                    color: root.pageTheme.colors.backgroundSection
                                 }
 
                                 Repeater {
@@ -544,7 +513,7 @@ Item {
                                             anchors.top: parent.top
                                             width: Math.min(parent.width, videoName.implicitWidth + 16)
                                             height: Math.min(26, parent.height)
-                                            color: "#b30b1118"
+                                            color: root.pageTheme.colors.backgroundSectionOverlay
 
                                             Base.AppText {
                                                 id: videoName
@@ -554,7 +523,7 @@ Item {
                                                 anchors.rightMargin: 8
                                                 text: String(videoBox.videoData.name || "")
                                                 styleRole: UiStyle.TypographyRole.BodyS
-                                                colorOverride: "#f8fafc"
+                                                colorOverride: root.pageTheme.colors.inverseText
                                                 verticalAlignment: Text.AlignVCenter
                                                 elide: Text.ElideRight
                                             }
@@ -583,7 +552,7 @@ Item {
                                             visible: videoBox.selected
                                             color: videoBox.frameColor
                                             border.width: 1
-                                            border.color: "#f8fafc"
+                                            border.color: root.pageTheme.colors.inverseText
 
                                             MouseArea {
                                                 anchors.fill: parent
@@ -631,7 +600,7 @@ Item {
                         Layout.preferredWidth: 292
                         Layout.fillHeight: true
                         sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.Section
+                        surfaceTone: UiStyle.SurfaceTone.Surface
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -665,7 +634,7 @@ Item {
                                 spacing: 6
                                 model: root.selectedVideos
 
-                                delegate: Base.AppSurface {
+                                delegate: Base.AppCard {
                                     id: videoListItem
 
                                     readonly property string videoId: String(modelData.id || "")
@@ -673,14 +642,18 @@ Item {
 
                                     width: ListView.view.width
                                     height: 58
-                                    sizeToContent: false
-                                    surfaceTone: videoId === root.selectedVideoId ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
-                                    active: videoId === root.selectedVideoId
-                                    interactive: true
+                                    text: String(modelData.name || "")
+                                    surfaceTone: UiStyle.SurfaceTone.Section
+                                    padding: 10
+                                    checkable: true
+                                    autoExclusive: true
+                                    checked: videoId === root.selectedVideoId
+                                    emphasizedSelection: true
+                                    onClicked: root.selectedVideoId = videoListItem.videoId
 
                                     RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
+                                        Layout.fillWidth: true
+                                        Layout.fillHeight: true
                                         spacing: 9
 
                                         Rectangle {
@@ -704,16 +677,12 @@ Item {
                                                 Layout.fillWidth: true
                                                 text: videoListItem.videoUrl.length > 0 ? videoListItem.videoUrl : qsTr("URL未填写")
                                                 styleRole: UiStyle.TypographyRole.BodyS
-                                                textTone: videoListItem.videoUrl.length > 0 ? UiStyle.TextTone.Secondary : UiStyle.TextTone.Primary
-                                                colorOverride: videoListItem.videoUrl.length > 0 ? undefined : "#ff9eb2"
+                                                textTone: videoListItem.videoUrl.length > 0
+                                                    ? UiStyle.TextTone.Secondary
+                                                    : UiStyle.TextTone.Danger
                                                 elide: Text.ElideRight
                                             }
                                         }
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        onClicked: root.selectedVideoId = videoListItem.videoId
                                     }
                                 }
 
@@ -730,7 +699,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 1
                                 visible: root.selectedVideo !== null
-                                color: "#334155"
+                                color: root.pageTheme.colors.borderOverlay
                             }
 
                             ColumnLayout {
@@ -782,10 +751,10 @@ Item {
                                     visible: root.selectedVideo && String(root.selectedVideo.url || "").trim().length === 0
                                     text: qsTr("URL必填")
                                     styleRole: UiStyle.TypographyRole.BodyS
-                                    colorOverride: "#ff9eb2"
+                                    textTone: UiStyle.TextTone.Danger
                                 }
 
-                                Base.AppButton {
+                                DangerButton {
                                     Layout.fillWidth: true
                                     text: qsTr("删除视频")
                                     enabled: root.selectedVideo !== null

@@ -19,7 +19,6 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
@@ -28,6 +27,7 @@ Item {
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var pcDevices: buildPcDevices()
     readonly property var planModel: projectionController ? projectionController.planModel : null
+    readonly property var planOptions: buildPlanOptions()
     readonly property var captureModel: projectionController ? projectionController.captureModel : null
     readonly property var mappingModel: projectionController ? projectionController.mappingModel : null
     property int captureCount: 0
@@ -63,7 +63,7 @@ Item {
     property bool mappingDragActive: false
     property int mappingDragCaptureIndex: -1
     property string mappingDragCaptureName: ""
-    property color mappingDragColor: "#7cb4ff"
+    property color mappingDragColor: pageTheme.colors.highlightText
     property real mappingDragX: 0
     property real mappingDragY: 0
     property bool videoPointerActive: false
@@ -532,6 +532,18 @@ Item {
         return String((plan && plan.name) || "")
     }
 
+    function buildPlanOptions() {
+        var revision = planRevision
+        var options = []
+        if (!projectionController || !planModel)
+            return options
+
+        for (var index = 0; index < planModel.rowCount(); ++index)
+            options.push({ "label": planNameAt(index), "value": index })
+
+        return options
+    }
+
     function captureNameAt(index) {
         var revision = captureRevision
         if (!projectionController || index < 0)
@@ -812,11 +824,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.pageMargin
-        anchors.rightMargin: root.pageMargin
-        anchors.topMargin: root.pageMargin
-        anchors.bottomMargin: root.pageMargin
-        spacing: 14
+        anchors.margins: root.pageTheme.density.panePadding
+        spacing: 10
 
         RowLayout {
             Layout.fillWidth: true
@@ -824,95 +833,19 @@ Item {
 
             Base.AppText {
                 text: qsTr("视频投影方案")
-                styleRole: UiStyle.TypographyRole.TitleL
+                styleRole: UiStyle.TypographyRole.TitleM
             }
 
-            ComboBox {
+            Base.AppSelect {
                 id: planSelector
 
                 Layout.preferredWidth: 220
-                Layout.preferredHeight: 38
-                model: root.planModel
-                currentIndex: root.projectionController ? root.projectionController.currentPlanIndex : -1
+                options: root.planOptions
+                value: root.projectionController ? root.projectionController.currentPlanIndex : -1
                 enabled: root.projectionController !== null
-                onActivated: {
+                onValueSelected: {
                     if (root.projectionController)
-                        root.projectionController.currentPlanIndex = index
-                }
-
-                delegate: ItemDelegate {
-                    width: planSelector.width
-                    height: 36
-                    hoverEnabled: true
-
-                    readonly property var planData: value || ({})
-                    readonly property string planName: String(planData.name || "")
-
-                    contentItem: Base.AppText {
-                        text: planName
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: highlighted ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
-                        elide: Text.ElideRight
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    background: Rectangle {
-                        color: highlighted
-                            ? root.colorValue("highlightSoft", "#182b45")
-                            : root.colorValue("backgroundSurface", "#101827")
-                    }
-                }
-
-                indicator: Base.AppText {
-                    x: planSelector.width - width - 10
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "v"
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                }
-
-                contentItem: Item {
-                    Base.AppText {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
-                        anchors.right: parent.right
-                        anchors.rightMargin: 28
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: root.planNameAt(planSelector.currentIndex)
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: UiStyle.TextTone.Primary
-                        elide: Text.ElideRight
-                    }
-                }
-
-                background: Rectangle {
-                    radius: 6
-                    color: root.colorValue("backgroundSurface", "#101827")
-                    border.color: planSelector.activeFocus
-                        ? root.colorValue("highlightText", "#7cb4ff")
-                        : root.colorValue("border", "#334155")
-                    border.width: 1
-                }
-
-                popup: Popup {
-                    y: planSelector.height + 4
-                    width: planSelector.width
-                    implicitHeight: Math.min(240, contentItem.implicitHeight + 2)
-                    padding: 1
-
-                    contentItem: ListView {
-                        clip: true
-                        implicitHeight: contentHeight
-                        model: planSelector.popup.visible ? planSelector.delegateModel : null
-                        currentIndex: planSelector.highlightedIndex
-                    }
-
-                    background: Rectangle {
-                        radius: 6
-                        color: root.colorValue("backgroundSurface", "#101827")
-                        border.color: root.colorValue("border", "#334155")
-                        border.width: 1
-                    }
+                        root.projectionController.currentPlanIndex = Number(nextValue)
                 }
             }
 
@@ -920,36 +853,6 @@ Item {
                 text: qsTr("新建")
                 iconName: "scene"
                 onClicked: root.createPlan()
-            }
-
-            Base.AppSurface {
-                Layout.preferredHeight: 28
-                sizeToContent: true
-                surfaceTone: UiStyle.SurfaceTone.Section
-                padding: 10
-
-                Base.AppText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("%1 个取景").arg(root.captureCount)
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                }
-            }
-
-            Base.AppSurface {
-                Layout.preferredHeight: 28
-                sizeToContent: true
-                surfaceTone: UiStyle.SurfaceTone.Section
-                padding: 10
-
-                Base.AppText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: selectedPc
-                        ? qsTr("%1 屏 / %2").arg(root.screenColumns * root.screenRows).arg(root.sizeText(Qt.size(root.totalScreenWidth, root.totalScreenHeight)))
-                        : qsTr("未选择 PC")
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                }
             }
 
             Item {
@@ -967,7 +870,7 @@ Item {
                 Layout.minimumWidth: 196
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -982,6 +885,12 @@ Item {
                             Layout.fillWidth: true
                             text: qsTr("取景列表")
                             styleRole: UiStyle.TypographyRole.SectionTitle
+                        }
+
+                        Base.AppText {
+                            text: qsTr("%1 个").arg(root.captureCount)
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
 
                         Base.AppButton {
@@ -1020,17 +929,18 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 86
 
-                                Base.AppSurface {
+                                Base.AppCard {
+                                    id: captureCard
+
                                     anchors.fill: parent
-                                    surfaceTone: captureRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
-                                    active: captureRow.selected
-                                    hoveredState: rowTap.containsMouse
-                                    interactive: true
-                                    strokeWidth: captureRow.selected || rowTap.containsMouse ? 1 : 0
-                                    borderOverride: captureRow.selected
-                                        ? root.colorValue("highlightText", "#7cb4ff")
-                                        : root.colorValue("border", "#334155")
-                                    hoverOverlayOpacity: 0.08
+                                    text: captureName
+                                    surfaceTone: UiStyle.SurfaceTone.Section
+                                    checkable: true
+                                    autoExclusive: true
+                                    checked: captureRow.selected
+                                    emphasizedSelection: true
+                                    animateScale: false
+                                    onClicked: root.selectedCaptureIndex = index
                                 }
 
                                 Rectangle {
@@ -1091,18 +1001,11 @@ Item {
                                     }
                                 }
 
-                                MouseArea {
-                                    id: rowTap
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: root.selectedCaptureIndex = index
-                                }
                             }
                         }
                     }
 
-                    Base.AppButton {
+                    DangerButton {
                         Layout.fillWidth: true
                         text: qsTr("删除选中")
                         iconName: "layer-config"
@@ -1123,7 +1026,7 @@ Item {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 300
                     sizeToContent: false
-                    surfaceTone: UiStyle.SurfaceTone.Section
+                    surfaceTone: UiStyle.SurfaceTone.Surface
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -1336,7 +1239,10 @@ Item {
                                     width: Math.max(0, Math.min(Math.max(0, parent.width - 32), placeholderText.implicitWidth + 28))
                                     height: 38
                                     radius: 6
-                                    color: Qt.rgba(0, 0, 0, 0.44)
+                                    color: Qt.rgba(root.pageTheme.colors.scrim.r,
+                                                   root.pageTheme.colors.scrim.g,
+                                                   root.pageTheme.colors.scrim.b,
+                                                   0.44)
                                     border.color: root.colorValue("border", "#334155")
                                     border.width: 1
                                     visible: root.videoOverlayVisible()
@@ -1362,7 +1268,10 @@ Item {
                                 width: videoPixelText.implicitWidth + 18
                                 height: 28
                                 radius: 5
-                                color: Qt.rgba(0, 0, 0, 0.42)
+                                color: Qt.rgba(root.pageTheme.colors.scrim.r,
+                                               root.pageTheme.colors.scrim.g,
+                                               root.pageTheme.colors.scrim.b,
+                                               0.42)
                                 border.color: root.colorValue("border", "#334155")
                                 border.width: 1
                                 visible: root.videoPointerActive
@@ -1431,7 +1340,7 @@ Item {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 260
                     sizeToContent: false
-                    surfaceTone: UiStyle.SurfaceTone.Section
+                    surfaceTone: UiStyle.SurfaceTone.Surface
 
                     ColumnLayout {
                         anchors.fill: parent
@@ -1546,8 +1455,8 @@ Item {
                                     width: screenCanvas.width / root.screenColumns
                                     height: screenCanvas.height / root.screenRows
                                     color: index % 2 === 0
-                                        ? Qt.rgba(0.15, 0.24, 0.34, 0.92)
-                                        : Qt.rgba(0.11, 0.19, 0.29, 0.92)
+                                        ? root.pageTheme.colors.backgroundSection
+                                        : root.pageTheme.colors.backgroundWindowVariant
                                     border.color: root.colorValue("highlightText", "#7cb4ff")
                                     border.width: 1
 
@@ -1627,7 +1536,10 @@ Item {
                                 anchors.right: parent.right
                                 anchors.bottom: parent.bottom
                                 height: 34
-                                color: Qt.rgba(0, 0, 0, 0.28)
+                                color: Qt.rgba(root.pageTheme.colors.scrim.r,
+                                               root.pageTheme.colors.scrim.g,
+                                               root.pageTheme.colors.scrim.b,
+                                               0.28)
 
                                 Base.AppText {
                                     anchors.left: parent.left
@@ -1652,7 +1564,10 @@ Item {
                                 width: screenPixelText.implicitWidth + 18
                                 height: 28
                                 radius: 5
-                                color: Qt.rgba(0, 0, 0, 0.42)
+                                color: Qt.rgba(root.pageTheme.colors.scrim.r,
+                                               root.pageTheme.colors.scrim.g,
+                                               root.pageTheme.colors.scrim.b,
+                                               0.42)
                                 border.color: root.colorValue("border", "#334155")
                                 border.width: 1
                                 visible: root.screenPointerActive
@@ -1680,7 +1595,7 @@ Item {
                 Layout.minimumWidth: 210
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -1696,6 +1611,9 @@ Item {
                     Base.AppText {
                         Layout.fillWidth: true
                         text: qsTr("%1 台可用").arg(root.pcDevices.length)
+                            + (root.selectedPc
+                                ? qsTr(" / %1 屏").arg(root.screenColumns * root.screenRows)
+                                : "")
                         styleRole: UiStyle.TypographyRole.BodyS
                         textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight
@@ -1741,17 +1659,18 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 106
 
-                                Base.AppSurface {
+                                Base.AppCard {
+                                    id: pcCard
+
                                     anchors.fill: parent
-                                    surfaceTone: pcRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Surface
-                                    active: pcRow.selected
-                                    hoveredState: pcTap.containsMouse
-                                    interactive: true
-                                    strokeWidth: pcRow.selected || pcTap.containsMouse ? 1 : 0
-                                    borderOverride: pcRow.selected
-                                        ? root.colorValue("highlightText", "#7cb4ff")
-                                        : root.colorValue("border", "#334155")
-                                    hoverOverlayOpacity: 0.08
+                                    text: root.pcName(pcDevice)
+                                    surfaceTone: UiStyle.SurfaceTone.Section
+                                    checkable: true
+                                    autoExclusive: true
+                                    checked: pcRow.selected
+                                    emphasizedSelection: true
+                                    animateScale: false
+                                    onClicked: root.selectPc(pcDevice.id)
                                 }
 
                                 Column {
@@ -1810,13 +1729,6 @@ Item {
                                     }
                                 }
 
-                                MouseArea {
-                                    id: pcTap
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: root.selectPc(pcDevice.id)
-                                }
                             }
                         }
                     }

@@ -18,7 +18,6 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
@@ -54,21 +53,6 @@ Item {
         && (deviceDisplayMode === "type"
             ? (selectedDevice.deviceType !== undefined && String(selectedDevice.deviceType) === selectedDeviceType)
             : (selectedDevice.templateName !== undefined && String(selectedDevice.templateName) === selectedTemplateName))
-
-    ButtonGroup {
-        id: groupCardButtonGroup
-        exclusive: true
-    }
-
-    ButtonGroup {
-        id: deviceCardButtonGroup
-        exclusive: true
-    }
-
-    ButtonGroup {
-        id: commandCardButtonGroup
-        exclusive: true
-    }
 
     onDeviceTypesChanged: {
         if (selectedDeviceType.length === 0 && deviceTypes.length > 0)
@@ -424,62 +408,15 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.pageMargin
-        anchors.rightMargin: root.pageMargin
-        anchors.topMargin: root.pageMargin
-        anchors.bottomMargin: root.pageMargin
-        spacing: 14
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 10
-
-            Base.AppText {
-                text: qsTr("设备")
-                styleRole: UiStyle.TypographyRole.TitleL
-            }
-
-            Base.AppSurface {
-                Layout.preferredHeight: 28
-                sizeToContent: true
-                surfaceTone: UiStyle.SurfaceTone.Section
-                borderOverride: root.pageTheme.colors.borderOverlay
-                padding: 10
-
-                Base.AppText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("%1 个模板").arg(root.deviceTemplates.length)
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                }
-            }
-
-            Base.AppSurface {
-                Layout.preferredHeight: 28
-                sizeToContent: true
-                surfaceTone: UiStyle.SurfaceTone.Section
-                borderOverride: root.pageTheme.colors.borderOverlay
-                padding: 10
-
-                Base.AppText {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: qsTr("%1 台设备").arg(root.filteredDevices.length)
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                }
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-        }
+        anchors.margins: root.pageTheme.density.panePadding
+        spacing: root.pageTheme.density.layoutSpacing
 
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             columns: 3
-            columnSpacing: 14
-            rowSpacing: 14
+            columnSpacing: root.pageTheme.density.layoutSpacing
+            rowSpacing: root.pageTheme.density.layoutSpacing
 
             Base.AppSurface {
                 Layout.preferredWidth: 300
@@ -490,12 +427,26 @@ Item {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 12
+                    anchors.margins: root.pageTheme.density.panePadding
+                    spacing: root.pageTheme.density.paneSpacing
 
-                    Base.AppText {
-                        text: root.deviceDisplayMode === "type" ? qsTr("设备类型") : qsTr("设备模板")
-                        styleRole: UiStyle.TypographyRole.SectionTitle
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: root.pageTheme.density.controlGap
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: root.deviceDisplayMode === "type" ? qsTr("设备类型") : qsTr("设备模板")
+                            styleRole: UiStyle.TypographyRole.SectionTitle
+                        }
+
+                        Base.AppText {
+                            text: root.deviceDisplayMode === "type"
+                                ? qsTr("%1 个类型").arg(root.groupItems.length)
+                                : qsTr("%1 个模板").arg(root.deviceTemplates.length)
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
                     }
 
                     Base.AppSegmentedControl {
@@ -512,47 +463,67 @@ Item {
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        contentSpacing: 8
                         fillContentWidth: true
 
-                        Repeater {
-                            model: root.groupItems
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: groupCardLayout.implicitHeight
 
-                            delegate: Base.AppCard {
-                                id: groupRow
+                            ColumnLayout {
+                                id: groupCardLayout
 
-                                readonly property bool selected: root.groupSelected(modelData)
+                                anchors.fill: parent
+                                spacing: root.pageTheme.density.controlGap
 
-                                Layout.fillWidth: true
-                                text: root.groupName(modelData)
-                                ButtonGroup.group: groupCardButtonGroup
-                                checkable: true
-                                checked: selected
-                                emphasizedSelection: true
-                                onClicked: root.selectGroup(modelData)
+                                Repeater {
+                                    model: root.groupItems
 
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: root.groupName(modelData)
-                                    styleRole: UiStyle.TypographyRole.BodyM
-                                    elide: Text.ElideRight
+                                    delegate: Base.AppCard {
+                                        id: groupRow
+
+                                        readonly property bool selected: root.groupSelected(modelData)
+
+                                        Layout.fillWidth: true
+                                        text: root.groupName(modelData)
+                                        compact: true
+                                        contentSpacing: root.pageTheme.density.controlGap
+                                        checkable: true
+                                        checked: selected
+                                        emphasizedSelection: true
+                                        selectionTransition: groupCardSelectionTransition
+                                        animateScale: false
+                                        onClicked: root.selectGroup(modelData)
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: root.groupName(modelData)
+                                            styleRole: UiStyle.TypographyRole.BodyM
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: root.groupDescription(modelData)
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Secondary
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Base.AppText {
+                                            Layout.fillWidth: true
+                                            text: root.groupFootnote(modelData)
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
+                                            elide: Text.ElideRight
+                                        }
+                                    }
                                 }
+                            }
 
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: root.groupDescription(modelData)
-                                    styleRole: UiStyle.TypographyRole.BodyS
-                                    textTone: UiStyle.TextTone.Secondary
-                                    elide: Text.ElideRight
-                                }
+                            Base.AppCardSelectionTransition {
+                                id: groupCardSelectionTransition
 
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: root.groupFootnote(modelData)
-                                    styleRole: UiStyle.TypographyRole.BodyS
-                                    textTone: selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
-                                    elide: Text.ElideRight
-                                }
+                                anchors.fill: parent
                             }
                         }
                     }
@@ -569,17 +540,26 @@ Item {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 12
+                    anchors.margins: root.pageTheme.density.panePadding
+                    spacing: root.pageTheme.density.paneSpacing
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 12
+                        spacing: root.pageTheme.density.paneSpacing
 
                         Base.AppText {
-                            Layout.fillWidth: true
                             text: qsTr("设备实例")
                             styleRole: UiStyle.TypographyRole.SectionTitle
+                        }
+
+                        Base.AppText {
+                            text: qsTr("%1 台").arg(root.filteredDevices.length)
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
                         }
 
                         Base.AppText {
@@ -601,67 +581,86 @@ Item {
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        contentSpacing: 8
                         fillContentWidth: true
 
-                        Repeater {
-                            model: root.filteredDevices
+                        Item {
+                            Layout.fillWidth: true
+                            implicitHeight: deviceCardLayout.implicitHeight
 
-                            delegate: Base.AppCard {
-                                id: deviceRow
+                            ColumnLayout {
+                                id: deviceCardLayout
 
-                                readonly property bool selected: modelData.id === root.deviceValue("id", "")
+                                anchors.fill: parent
+                                spacing: root.pageTheme.density.controlGap
 
-                                Layout.fillWidth: true
-                                text: modelData.name
-                                ButtonGroup.group: deviceCardButtonGroup
-                                checkable: true
-                                checked: selected
-                                emphasizedSelection: true
-                                onClicked: root.selectDevice(modelData.id)
+                                Repeater {
+                                    model: root.filteredDevices
 
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    spacing: 12
+                                    delegate: Base.AppCard {
+                                        id: deviceRow
 
-                                    ColumnLayout {
+                                        readonly property bool selected: modelData.id === root.deviceValue("id", "")
+
                                         Layout.fillWidth: true
-                                        spacing: 2
+                                        text: modelData.name
+                                        compact: true
+                                        checkable: true
+                                        checked: selected
+                                        emphasizedSelection: true
+                                        selectionTransition: deviceCardSelectionTransition
+                                        animateScale: false
+                                        onClicked: root.selectDevice(modelData.id)
 
-                                        Base.AppText {
+                                        RowLayout {
                                             Layout.fillWidth: true
-                                            text: modelData.name
-                                            styleRole: UiStyle.TypographyRole.BodyM
-                                            elide: Text.ElideRight
+                                            Layout.fillHeight: true
+                                            spacing: root.pageTheme.density.paneSpacing
+
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+
+                                                Base.AppText {
+                                                    Layout.fillWidth: true
+                                                    text: modelData.name
+                                                    styleRole: UiStyle.TypographyRole.BodyM
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                Base.AppText {
+                                                    Layout.fillWidth: true
+                                                    text: root.deviceAddress(modelData)
+                                                    styleRole: UiStyle.TypographyRole.BodyS
+                                                    textTone: UiStyle.TextTone.Secondary
+                                                    elide: Text.ElideRight
+                                                }
+                                            }
+
+                                            Base.AppText {
+                                                Layout.preferredWidth: 90
+                                                text: root.deviceProtocols(modelData)
+                                                styleRole: UiStyle.TypographyRole.BodyS
+                                                textTone: UiStyle.TextTone.Secondary
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Base.AppText {
+                                                Layout.preferredWidth: 88
+                                                text: modelData.status
+                                                styleRole: UiStyle.TypographyRole.BodyS
+                                                textTone: modelData.status === qsTr("在线") ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
+                                                horizontalAlignment: Text.AlignRight
+                                                elide: Text.ElideRight
+                                            }
                                         }
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: root.deviceAddress(modelData)
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Secondary
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-
-                                    Base.AppText {
-                                        Layout.preferredWidth: 90
-                                        text: root.deviceProtocols(modelData)
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: UiStyle.TextTone.Secondary
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Base.AppText {
-                                        Layout.preferredWidth: 88
-                                        text: modelData.status
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: modelData.status === qsTr("在线") ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
-                                        horizontalAlignment: Text.AlignRight
-                                        elide: Text.ElideRight
                                     }
                                 }
+                            }
+
+                            Base.AppCardSelectionTransition {
+                                id: deviceCardSelectionTransition
+
+                                anchors.fill: parent
                             }
                         }
                     }
@@ -677,8 +676,8 @@ Item {
 
                 Base.AppScrollPane {
                     anchors.fill: parent
-                    anchors.margins: 18
-                    contentSpacing: 10
+                    anchors.margins: root.pageTheme.density.panePadding
+                    contentSpacing: root.pageTheme.density.paneSpacing
                     fillContentWidth: true
 
                     Base.AppSurface {
@@ -687,11 +686,11 @@ Item {
                         surfaceTone: UiStyle.SurfaceTone.Section
                         strokeWidth: 1
                         borderOverride: root.pageTheme.colors.borderOverlay
-                        padding: 14
+                        padding: root.pageTheme.density.panePaddingCompact
 
                         ColumnLayout {
                             width: parent ? parent.width : 0
-                            spacing: 8
+                            spacing: root.pageTheme.density.controlGap
 
                             Base.AppText {
                                 Layout.fillWidth: true
@@ -736,15 +735,15 @@ Item {
                         surfaceTone: UiStyle.SurfaceTone.Section
                         strokeWidth: 1
                         borderOverride: root.pageTheme.colors.borderOverlay
-                        padding: 14
+                        padding: root.pageTheme.density.panePaddingCompact
 
                         ColumnLayout {
                             width: parent ? parent.width : 0
-                            spacing: 10
+                            spacing: root.pageTheme.density.paneSpacing
 
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: root.pageTheme.density.controlGap
 
                                 Base.AppText {
                                     Layout.fillWidth: true
@@ -753,40 +752,10 @@ Item {
                                     elide: Text.ElideRight
                                 }
 
-                                Button {
-                                    id: removeDeviceButton
-
+                                DangerButton {
                                     text: qsTr("删除")
                                     enabled: root.selectedDeviceInCurrentView
-                                    flat: true
-                                    padding: 0
-                                    hoverEnabled: true
-                                    focusPolicy: Qt.StrongFocus
-                                    implicitWidth: removeDeviceButtonText.implicitWidth
-                                        + root.pageTheme.density.controlPaddingXMd * 2
-                                    implicitHeight: root.pageTheme.density.controlHeightMd
                                     onClicked: root.requestRemoveSelectedDevice()
-
-                                    background: Base.AppSurface {
-                                        surfaceTone: UiStyle.SurfaceTone.Danger
-                                        shapeRole: UiStyle.ShapeRole.Control
-                                        active: removeDeviceButton.down
-                                        hoveredState: removeDeviceButton.hovered
-                                        strokeWidth: 1
-                                        opacity: removeDeviceButton.enabled ? 1 : 0.48
-                                    }
-
-                                    contentItem: Base.AppText {
-                                        id: removeDeviceButtonText
-
-                                        text: removeDeviceButton.text
-                                        styleRole: UiStyle.TypographyRole.Label
-                                        colorOverride: removeDeviceButton.enabled
-                                            ? root.pageTheme.colors.dangerText
-                                            : root.pageTheme.colors.disabledText
-                                        horizontalAlignment: Text.AlignHCenter
-                                        verticalAlignment: Text.AlignVCenter
-                                    }
                                 }
                             }
 
@@ -805,15 +774,15 @@ Item {
                         surfaceTone: UiStyle.SurfaceTone.Section
                         strokeWidth: 1
                         borderOverride: root.pageTheme.colors.borderOverlay
-                        padding: 14
+                        padding: root.pageTheme.density.panePaddingCompact
 
                         ColumnLayout {
                             width: parent ? parent.width : 0
-                            spacing: 10
+                            spacing: root.pageTheme.density.paneSpacing
 
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: root.pageTheme.density.controlGap
 
                                 Base.AppText {
                                     Layout.fillWidth: true
@@ -861,15 +830,21 @@ Item {
                                 elide: Text.ElideRight
                             }
 
-                            ColumnLayout {
+                            Item {
                                 Layout.fillWidth: true
                                 visible: root.selectedDeviceCommands.length > 0
-                                spacing: 8
+                                implicitHeight: commandCardLayout.implicitHeight
 
-                                Repeater {
-                                    model: root.selectedDeviceCommands
+                                ColumnLayout {
+                                    id: commandCardLayout
 
-                                    delegate: Base.AppCard {
+                                    anchors.fill: parent
+                                    spacing: root.pageTheme.density.controlGap
+
+                                    Repeater {
+                                        model: root.selectedDeviceCommands
+
+                                        delegate: Base.AppCard {
                                         id: commandRow
 
                                         readonly property var commandData: modelData
@@ -880,22 +855,26 @@ Item {
 
                                         Layout.fillWidth: true
                                         text: root.commandName(commandData)
-                                        ButtonGroup.group: commandCardButtonGroup
+                                        compact: true
                                         checkable: true
                                         checked: selected
                                         emphasizedSelection: true
+                                        selectionTransition: commandCardSelectionTransition
+                                        animateScale: false
                                         onClicked: root.selectCommandIndex(index)
 
                                         ColumnLayout {
                                             id: commandRowContent
 
                                             Layout.fillWidth: true
-                                            spacing: commandRow.expanded ? 10 : 0
+                                            spacing: commandRow.expanded
+                                                ? root.pageTheme.density.paneSpacing
+                                                : 0
 
                                             RowLayout {
                                                 Layout.fillWidth: true
                                                 Layout.preferredHeight: 50
-                                                spacing: 8
+                                                spacing: root.pageTheme.density.controlGap
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
@@ -903,13 +882,15 @@ Item {
 
                                             RowLayout {
                                                 Layout.fillWidth: true
-                                                spacing: 8
+                                                spacing: root.pageTheme.density.controlGap
 
                                                 Base.AppText {
                                                     Layout.fillWidth: true
                                                     text: root.commandName(commandRow.commandData)
                                                     styleRole: UiStyle.TypographyRole.BodyM
-                                                    colorOverride: commandRow.selected ? "#f8fafc" : undefined
+                                                    colorOverride: commandRow.selected
+                                                        ? root.pageTheme.colors.inverseText
+                                                        : undefined
                                                     elide: Text.ElideRight
                                                 }
 
@@ -918,7 +899,7 @@ Item {
                                                     text: root.executionParameterNames(commandRow.commandData)
                                                     visible: text.length > 0
                                                     styleRole: UiStyle.TypographyRole.BodyS
-                                                    colorOverride: "#ef4444"
+                                                    textTone: UiStyle.TextTone.Info
                                                     elide: Text.ElideRight
                                                 }
                                             }
@@ -949,14 +930,14 @@ Item {
                                         visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 1
-                                        color: "#60a5fa"
+                                        color: root.pageTheme.colors.highlightText
                                         opacity: 0.34
                                     }
 
                                     RowLayout {
                                         visible: commandRow.expanded
                                         Layout.fillWidth: true
-                                        spacing: 8
+                                        spacing: root.pageTheme.density.controlGap
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
@@ -990,7 +971,7 @@ Item {
                                         visible: commandRow.expanded
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 1
-                                        color: "#334155"
+                                        color: root.pageTheme.colors.borderOverlay
                                         opacity: 0.48
                                     }
 
@@ -1013,9 +994,16 @@ Item {
                                     }
 
                                 }
+                                    }
+                                }
+                            }
+
+                            Base.AppCardSelectionTransition {
+                                id: commandCardSelectionTransition
+
+                                anchors.fill: parent
                             }
                         }
-                    }
                     }
                     }
                 }
@@ -1054,13 +1042,16 @@ Item {
         readonly property bool formValid: firstInvalidReason().length === 0
 
         function openForTemplate(nextTemplate, nextFieldSpecs) {
-            deviceTemplate = nextTemplate
-            fieldSpecs = nextFieldSpecs || []
-            deviceName = defaultDeviceName(nextTemplate)
-            selectedDeviceTypeOption = defaultDeviceType(nextTemplate)
-            customDeviceType = ""
-            createDeviceFieldForm.resetValues()
             open()
+
+            Qt.callLater(function() {
+                deviceTemplate = nextTemplate
+                fieldSpecs = nextFieldSpecs || []
+                deviceName = defaultDeviceName(nextTemplate)
+                selectedDeviceTypeOption = defaultDeviceType(nextTemplate)
+                customDeviceType = ""
+                createDeviceFieldForm.resetValues()
+            })
         }
 
         function defaultDeviceName(nextTemplate) {
@@ -1141,14 +1132,12 @@ Item {
         height: Math.min(620, Math.max(360, parent ? parent.height - 96 : 480))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
         surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 12
+            spacing: root.pageTheme.density.paneSpacing
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -1187,7 +1176,7 @@ Item {
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: root.pageTheme.density.paneHeaderSpacing
 
             Base.AppText {
                 text: qsTr("名称") + " *"
@@ -1205,7 +1194,7 @@ Item {
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: root.pageTheme.density.paneHeaderSpacing
 
             Base.AppText {
                 text: qsTr("设备类型") + " *"
@@ -1223,7 +1212,7 @@ Item {
             RowLayout {
                 visible: !createDevicePopup.templateHasDeviceType
                 Layout.fillWidth: true
-                spacing: 8
+                spacing: root.pageTheme.density.controlGap
 
                 Base.AppSelect {
                     Layout.fillWidth: true
@@ -1248,14 +1237,14 @@ Item {
             visible: text.length > 0
             text: createDevicePopup.firstInvalidReason()
             styleRole: UiStyle.TypographyRole.BodyS
-            colorOverride: "#ef4444"
+            textTone: UiStyle.TextTone.Danger
             elide: Text.ElideRight
         }
 
         Base.AppScrollPane {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            contentSpacing: 12
+            contentSpacing: root.pageTheme.density.paneContentSpacing
             fillContentWidth: true
 
             DeviceFieldForm {
@@ -1307,8 +1296,6 @@ Item {
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
         surfaceTone: UiStyle.SurfaceTone.Section
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
@@ -1329,7 +1316,7 @@ Item {
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 8
+            spacing: root.pageTheme.density.controlGap
 
             Item {
                 Layout.fillWidth: true
@@ -1340,7 +1327,7 @@ Item {
                 onClicked: removeDevicePopup.close()
             }
 
-            Base.AppButton {
+            DangerButton {
                 text: qsTr("删除")
                 onClicked: removeDevicePopup.commit()
             }

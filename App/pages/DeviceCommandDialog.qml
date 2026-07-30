@@ -202,7 +202,7 @@ Base.AppPopup {
             text: root.firstInvalidReason()
             visible: root.validationVisible && text.length > 0
             styleRole: UiStyle.TypographyRole.BodyS
-            colorOverride: "#ef4444"
+            textTone: UiStyle.TextTone.Danger
             elide: Text.ElideRight
         }
     }

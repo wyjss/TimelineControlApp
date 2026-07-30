@@ -17,7 +17,6 @@ Item {
     property QtObject pageTheme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
-    readonly property int pageMargin: pageTheme && pageTheme.density ? pageTheme.density.pageMargin : 20
     property var appRuntime: typeof app !== "undefined" ? app : null
     property var timelineCommandModel: appRuntime && appRuntime.timelineCommandModel ? appRuntime.timelineCommandModel : null
     property var timelineController: appRuntime && appRuntime.timelineController ? appRuntime.timelineController : null
@@ -122,7 +121,7 @@ Item {
         var startTimeMs = Math.max(0, Math.round(timelineCurrentTimeMs))
         var executionFields = selectedCommand.executionInputFields || []
         if (executionFields.length > 0) {
-            addTimelineCommandPopupLoader.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
+            addTimelineCommandPopup.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
             return
         }
 
@@ -321,10 +320,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: root.pageMargin
-        anchors.rightMargin: root.pageMargin
-        anchors.topMargin: 8
-        anchors.bottomMargin: root.pageMargin
+        anchors.margins: root.pageTheme.density.panePadding
         spacing: 14
 
         GridLayout {
@@ -339,7 +335,7 @@ Item {
                 Layout.fillHeight: true
                 Layout.minimumWidth: 520
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -399,7 +395,7 @@ Item {
                 Layout.preferredWidth: 340
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -436,7 +432,7 @@ Item {
                         Layout.minimumHeight: 176
                         Layout.preferredHeight: 260
                         sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.Surface
+                        surfaceTone: UiStyle.SurfaceTone.Section
 
                         ListView {
                             id: commandList
@@ -451,7 +447,7 @@ Item {
                                 policy: ScrollBar.AsNeeded
                             }
 
-                            delegate: Item {
+                            delegate: Base.AppCard {
                                 id: commandRow
 
                                 readonly property var commandData: modelData
@@ -459,44 +455,22 @@ Item {
 
                                 width: commandList.width
                                 height: 56
-
-                                Base.AppSurface {
-                                    anchors.fill: parent
-                                    surfaceTone: commandRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
-                                    active: commandRow.selected
-                                    hoveredState: commandMouse.containsMouse
-                                    interactive: true
-                                    strokeWidth: commandRow.selected || commandMouse.containsMouse ? 1 : 0
-                                    borderOverride: commandRow.selected ? "#60a5fa" : "#334155"
-                                    hoverOverlayOpacity: 0.08
-                                }
-
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 3
-                                    height: parent.height - 18
-                                    radius: 2
-                                    color: commandRow.selected ? "#60a5fa" : "#334155"
-                                    opacity: commandRow.selected ? 1 : (commandMouse.containsMouse ? 0.44 : 0.18)
-                                }
-
-                                MouseArea {
-                                    id: commandMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectCommandIndex(index)
-                                }
+                                text: root.commandName(commandRow.commandData)
+                                surfaceTone: UiStyle.SurfaceTone.Ghost
+                                leftPadding: 18
+                                rightPadding: 12
+                                topPadding: 7
+                                bottomPadding: 7
+                                checkable: true
+                                checked: selected
+                                emphasizedSelection: true
+                                selectionTransition: commandCardSelectionTransition
+                                animateScale: false
+                                onClicked: root.selectCommandIndex(index)
 
                                 ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 18
-                                    anchors.rightMargin: 12
-                                    anchors.topMargin: 7
-                                    anchors.bottomMargin: 7
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
                                     spacing: 2
 
                                     RowLayout {
@@ -507,7 +481,9 @@ Item {
                                             Layout.fillWidth: true
                                             text: root.commandName(commandRow.commandData)
                                             styleRole: UiStyle.TypographyRole.BodyM
-                                            colorOverride: commandRow.selected ? "#f8fafc" : undefined
+                                            colorOverride: commandRow.selected
+                                                ? root.pageTheme.colors.inverseText
+                                                : undefined
                                             elide: Text.ElideRight
                                         }
 
@@ -516,7 +492,7 @@ Item {
                                             text: root.executionParameterNames(commandRow.commandData)
                                             visible: text.length > 0
                                             styleRole: UiStyle.TypographyRole.BodyS
-                                            colorOverride: "#ef4444"
+                                            textTone: UiStyle.TextTone.Info
                                             elide: Text.ElideRight
                                         }
                                     }
@@ -530,6 +506,13 @@ Item {
                                     }
                                 }
                             }
+                        }
+
+                        Base.AppCardSelectionTransition {
+                            id: commandCardSelectionTransition
+
+                            anchors.fill: commandList
+                            clip: true
                         }
 
                         Base.AppText {
@@ -564,7 +547,7 @@ Item {
                 Layout.preferredWidth: 304
                 Layout.fillHeight: true
                 sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Section
+                surfaceTone: UiStyle.SurfaceTone.Surface
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -606,7 +589,7 @@ Item {
                         Layout.fillHeight: true
                         Layout.minimumHeight: 220
                         sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.Surface
+                        surfaceTone: UiStyle.SurfaceTone.Section
 
                         ListView {
                             id: timelineCommandList
@@ -621,7 +604,7 @@ Item {
                                 policy: ScrollBar.AsNeeded
                             }
 
-                            delegate: Item {
+                            delegate: Base.AppCard {
                                 id: timelineCommandRow
 
                                 readonly property var commandData: modelData
@@ -630,49 +613,34 @@ Item {
 
                                 width: timelineCommandList.width
                                 height: executionSummary.length > 0 ? 74 : 56
-
-                                Base.AppSurface {
-                                    anchors.fill: parent
-                                    surfaceTone: timelineCommandRow.selected ? UiStyle.SurfaceTone.Highlight : UiStyle.SurfaceTone.Ghost
-                                    active: timelineCommandRow.selected
-                                    hoveredState: timelineCommandMouse.containsMouse
-                                    interactive: true
-                                    strokeWidth: timelineCommandRow.selected || timelineCommandMouse.containsMouse ? 1 : 0
-                                    borderOverride: timelineCommandRow.selected ? "#60a5fa" : "#334155"
-                                    hoverOverlayOpacity: 0.08
-                                }
-
-                                Rectangle {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 8
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 3
-                                    height: parent.height - 18
-                                    radius: 2
-                                    color: timelineCommandRow.selected
-                                        ? "#60a5fa"
-                                        : String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateColor
-                                            ? timelineCommandRow.commandData.stateColor
-                                            : "#334155")
-                                    opacity: timelineCommandRow.selected ? 1 : (timelineCommandMouse.containsMouse ? 0.44 : 0.18)
-                                }
-
-                                MouseArea {
-                                    id: timelineCommandMouse
-
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    acceptedButtons: Qt.LeftButton
-                                    onClicked: root.selectTimelineCommand(timelineCommandRow.commandData)
-                                }
+                                text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
+                                surfaceTone: UiStyle.SurfaceTone.Ghost
+                                leftPadding: 12
+                                rightPadding: 12
+                                topPadding: 7
+                                bottomPadding: 7
+                                checkable: true
+                                checked: selected
+                                emphasizedSelection: true
+                                selectionTransition: timelineCommandCardSelectionTransition
+                                animateScale: false
+                                onClicked: root.selectTimelineCommand(timelineCommandRow.commandData)
 
                                 RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 18
-                                    anchors.rightMargin: 12
-                                    anchors.topMargin: 7
-                                    anchors.bottomMargin: 7
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
                                     spacing: 8
+
+                                    Rectangle {
+                                        visible: !timelineCommandRow.selected
+                                        Layout.preferredWidth: 3
+                                        Layout.fillHeight: true
+                                        radius: 2
+                                        color: String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateColor
+                                            ? timelineCommandRow.commandData.stateColor
+                                            : root.pageTheme.colors.border)
+                                        opacity: timelineCommandRow.hovered ? 0.44 : 0.18
+                                    }
 
                                     ColumnLayout {
                                         Layout.fillWidth: true
@@ -682,7 +650,9 @@ Item {
                                             Layout.fillWidth: true
                                             text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
                                             styleRole: UiStyle.TypographyRole.BodyM
-                                            colorOverride: timelineCommandRow.selected ? "#f8fafc" : undefined
+                                            colorOverride: timelineCommandRow.selected
+                                                ? root.pageTheme.colors.inverseText
+                                                : undefined
                                             elide: Text.ElideRight
                                         }
 
@@ -708,7 +678,7 @@ Item {
                                         }
                                     }
 
-                                    Base.AppButton {
+                                    DangerButton {
                                         visible: timelineCommandRow.selected
                                         text: qsTr("删除")
                                         enabled: root.timelineStopped
@@ -719,6 +689,13 @@ Item {
                                     }
                                 }
                             }
+                        }
+
+                        Base.AppCardSelectionTransition {
+                            id: timelineCommandCardSelectionTransition
+
+                            anchors.fill: timelineCommandList
+                            clip: true
                         }
 
                         Base.AppText {
@@ -735,7 +712,7 @@ Item {
                         Layout.preferredHeight: 188
                         visible: root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
                         sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.Surface
+                        surfaceTone: UiStyle.SurfaceTone.Section
 
                         ColumnLayout {
                             anchors.fill: parent
@@ -788,128 +765,115 @@ Item {
         }
     }
 
-    Loader {
-        id: addTimelineCommandPopupLoader
+    Base.AppPopup {
+        id: addTimelineCommandPopup
 
-        active: false
+        parent: root
 
-        function openForCommand(device, nextCommand, startTimeMs) {
-            active = true
-            item.openForCommand(device, nextCommand, startTimeMs)
+        property var targetDevice: null
+        property var targetCommand: null
+        property int targetStartTimeMs: 0
+        property bool validationVisible: false
+        readonly property var executionFields: targetCommand
+            ? targetCommand.executionInputFields || []
+            : []
+        readonly property bool formValid: executionFieldForm.valid
+
+        function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
+            open()
+
+            targetDevice = nextDevice
+            targetCommand = nextCommand
+            targetStartTimeMs = nextStartTimeMs
+            validationVisible = false
+            executionFieldForm.values = {}
+            executionFieldForm.resetValues()
         }
 
-        sourceComponent: Component {
-            Base.AppPopup {
-                id: addTimelineCommandPopup
+        function commit() {
+            validationVisible = true
+            if (!formValid || !targetDevice || !targetCommand)
+                return
 
-                parent: root
-                onClosed: addTimelineCommandPopupLoader.active = false
+            root.addTimelineCommand(targetDevice,
+                                    targetCommand,
+                                    targetStartTimeMs,
+                                    executionFieldForm.valueMap())
+            close()
+        }
 
-                property var targetDevice: null
-                property var targetCommand: null
-                property int targetStartTimeMs: 0
-                property bool validationVisible: false
-                readonly property var executionFields: targetCommand
-                    ? targetCommand.executionInputFields || []
-                    : []
-                readonly property bool formValid: executionFieldForm.valid
+        modal: true
+        focus: true
+        width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
+        height: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        padding: 18
+        spacing: 14
+        surfaceTone: UiStyle.SurfaceTone.Section
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-                function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
-                    targetDevice = nextDevice
-                    targetCommand = nextCommand
-                    targetStartTimeMs = nextStartTimeMs
-                    validationVisible = false
-                    executionFieldForm.values = {}
-                    executionFieldForm.resetValues()
-                    open()
-                }
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
 
-                function commit() {
-                    validationVisible = true
-                    if (!formValid || !targetDevice || !targetCommand)
-                        return
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 2
 
-                    root.addTimelineCommand(targetDevice,
-                                            targetCommand,
-                                            targetStartTimeMs,
-                                            executionFieldForm.valueMap())
-                    close()
-                }
-
-                modal: true
-                focus: true
-                width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
-                height: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
-                x: parent ? Math.round((parent.width - width) / 2) : 0
-                y: parent ? Math.round((parent.height - height) / 2) : 0
-                padding: 18
-                spacing: 14
-                surfaceTone: UiStyle.SurfaceTone.Section
-                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-                RowLayout {
+                Base.AppText {
                     Layout.fillWidth: true
-                    spacing: 12
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("执行参数")
-                            styleRole: UiStyle.TypographyRole.TitleM
-                            elide: Text.ElideRight
-                        }
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: addTimelineCommandPopup.targetCommand
-                                ? root.commandName(addTimelineCommandPopup.targetCommand)
-                                : ""
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    Base.AppButton {
-                        text: qsTr("取消")
-                        onClicked: addTimelineCommandPopup.close()
-                    }
-
-                    Base.AppButton {
-                        text: qsTr("添加")
-                        iconName: "workflow"
-                        onClicked: addTimelineCommandPopup.commit()
-                    }
+                    text: qsTr("执行参数")
+                    styleRole: UiStyle.TypographyRole.TitleM
+                    elide: Text.ElideRight
                 }
 
                 Base.AppText {
                     Layout.fillWidth: true
-                    text: executionFieldForm.firstInvalidReason()
-                    visible: addTimelineCommandPopup.validationVisible && text.length > 0
+                    text: addTimelineCommandPopup.targetCommand
+                        ? root.commandName(addTimelineCommandPopup.targetCommand)
+                        : ""
                     styleRole: UiStyle.TypographyRole.BodyS
-                    colorOverride: "#ef4444"
+                    textTone: UiStyle.TextTone.Secondary
                     elide: Text.ElideRight
                 }
+            }
 
-                Base.AppScrollPane {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    contentSpacing: 12
-                    fillContentWidth: true
+            Base.AppButton {
+                text: qsTr("取消")
+                onClicked: addTimelineCommandPopup.close()
+            }
 
-                    DeviceFieldForm {
-                        id: executionFieldForm
+            Base.AppButton {
+                text: qsTr("添加")
+                iconName: "workflow"
+                onClicked: addTimelineCommandPopup.commit()
+            }
+        }
 
-                        Layout.fillWidth: true
-                        fields: addTimelineCommandPopup.executionFields
-                        writeBack: false
-                        showErrors: addTimelineCommandPopup.validationVisible
-                        emptyText: qsTr("无执行参数")
-                    }
-                }
+        Base.AppText {
+            Layout.fillWidth: true
+            text: executionFieldForm.firstInvalidReason()
+            visible: addTimelineCommandPopup.validationVisible && text.length > 0
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Danger
+            elide: Text.ElideRight
+        }
+
+        Base.AppScrollPane {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            contentSpacing: 12
+            fillContentWidth: true
+
+            DeviceFieldForm {
+                id: executionFieldForm
+
+                Layout.fillWidth: true
+                fields: addTimelineCommandPopup.executionFields
+                writeBack: false
+                showErrors: addTimelineCommandPopup.validationVisible
+                emptyText: qsTr("无执行参数")
             }
         }
     }

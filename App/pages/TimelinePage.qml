@@ -97,34 +97,15 @@ Item {
         Item {
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 24
-                spacing: 18
+                anchors.margins: root.pageTheme.density.panePadding
+                spacing: 10
 
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        Base.AppText {
-                            text: qsTr("时间轴")
-                            styleRole: UiStyle.TypographyRole.TitleL
-                        }
-
-                        Base.AppText {
-                            text: qsTr("选择时间轴进入编辑，或创建新的时间轴")
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                        }
-                    }
-
-                    Base.AppText {
-                        visible: root.checkedPlanCount > 0
-                        text: qsTr("已选 %1 项").arg(root.checkedPlanCount)
-                        styleRole: UiStyle.TypographyRole.BodyM
-                        textTone: UiStyle.TextTone.Accent
-                    }
+                Base.AppText {
+                    visible: root.checkedPlanCount > 0
+                    Layout.alignment: Qt.AlignRight
+                    text: qsTr("已选 %1 项").arg(root.checkedPlanCount)
+                    styleRole: UiStyle.TypographyRole.BodyM
+                    textTone: UiStyle.TextTone.Accent
                 }
 
                 GridView {
@@ -221,38 +202,21 @@ Item {
                             }
                         }
 
-                        Item {
+                        DangerButton {
                             z: 2
                             anchors.top: parent.top
                             anchors.right: parent.right
                             anchors.topMargin: 14
                             anchors.rightMargin: 14
-                            width: 26
-                            height: 26
-                            visible: !planCell.addItem && (planCard.hovered || removePlanMouse.containsMouse)
+                            width: 28
+                            height: 28
+                            visible: !planCell.addItem && (planCard.hovered || hovered)
+                            text: "×"
+                            size: UiStyle.ButtonSize.Small
+                            minWidth: 28
+                            enabled: root.timelinePlans.length > 1
                             opacity: root.timelinePlans.length > 1 ? 1 : 0.35
-
-                            Rectangle {
-                                anchors.fill: parent
-                                radius: width / 2
-                                color: "#991b1b"
-                            }
-
-                            Base.AppText {
-                                anchors.centerIn: parent
-                                text: "×"
-                                styleRole: UiStyle.TypographyRole.BodyM
-                                colorOverride: "#ffffff"
-                            }
-
-                            MouseArea {
-                                id: removePlanMouse
-
-                                anchors.fill: parent
-                                enabled: root.timelinePlans.length > 1
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: removePlanPopupLoader.openForPlan(planCell.planData)
-                            }
+                            onClicked: removePlanPopupLoader.openForPlan(planCell.planData)
                         }
 
                         Item {
@@ -269,9 +233,13 @@ Item {
                             Rectangle {
                                 anchors.fill: parent
                                 radius: 4
-                                color: planCell.checked ? "#2563eb" : "#111827"
+                                color: planCell.checked
+                                    ? root.pageTheme.colors.highlightFill
+                                    : root.pageTheme.colors.disabledFill
                                 border.width: 1
-                                border.color: planCell.checked ? "#60a5fa" : "#64748b"
+                                border.color: planCell.checked
+                                    ? root.pageTheme.colors.highlightText
+                                    : root.pageTheme.colors.controlBorder
                             }
 
                             Base.AppText {
@@ -279,7 +247,7 @@ Item {
                                 visible: planCell.checked
                                 text: String(planCell.checkedNumber)
                                 styleRole: UiStyle.TypographyRole.BodyS
-                                colorOverride: "#ffffff"
+                                colorOverride: root.pageTheme.colors.inverseText
                             }
 
                             MouseArea {
@@ -502,7 +470,7 @@ Item {
                 onClicked: removePlanPopup.close()
             }
 
-            Base.AppButton {
+            DangerButton {
                 text: qsTr("删除")
                 onClicked: removePlanPopup.commit()
             }
