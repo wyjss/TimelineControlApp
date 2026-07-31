@@ -1005,7 +1005,8 @@ Item {
                         }
                     }
 
-                    DangerButton {
+                    Base.AppButton {
+                        variant: UiStyle.ButtonVariant.Danger
                         Layout.fillWidth: true
                         text: qsTr("删除选中")
                         iconName: "layer-config"

@@ -4,7 +4,7 @@ import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml/components/base" as Base
 
-Base.AppPopup {
+Base.AppDialog {
     id: root
 
     property var device: null
@@ -25,12 +25,19 @@ Base.AppPopup {
     signal commandAccepted(var command)
 
     function openForDevice(nextDevice) {
-        clearDraft()
-        device = nextDevice
-        selectedProtocol = defaultProtocol(nextDevice)
-        validationVisible = false
-        resetDraft()
         open()
+
+        Qt.callLater(function() {
+            clearDraft()
+            device = nextDevice
+            validationVisible = false
+
+            var nextProtocol = defaultProtocol(nextDevice)
+            if (selectedProtocol === nextProtocol)
+                resetDraft()
+            else
+                selectedProtocol = nextProtocol
+        })
     }
 
     function defaultProtocol(nextDevice) {
@@ -124,16 +131,18 @@ Base.AppPopup {
         close()
     }
 
-    modal: true
-    focus: true
     width: Math.min(640, Math.max(460, parent ? parent.width - 96 : 560))
-    height: Math.min(680, Math.max(420, parent ? parent.height - 96 : 560))
+    maximumDialogHeight: Math.min(680, Math.max(420, parent ? parent.height - 96 : 560))
     x: parent ? Math.round((parent.width - width) / 2) : 0
     y: parent ? Math.round((parent.height - height) / 2) : 0
-    padding: 18
-    spacing: 14
-    surfaceTone: UiStyle.SurfaceTone.Section
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+    title: qsTr("添加指令")
+    message: device ? String(device.name || "") : ""
+    rejectText: qsTr("取消")
+    acceptText: qsTr("添加")
+    acceptIconName: "workflow"
+    acceptEnabled: commandValid
+    closeOnAccepted: false
+    onAccepted: commit()
 
     onSelectedProtocolChanged: {
         if (visible) {
@@ -143,52 +152,11 @@ Base.AppPopup {
     }
     onClosed: clearDraft()
 
-    RowLayout {
+    Base.AppDialogSection {
         Layout.fillWidth: true
-        spacing: 12
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 2
-
-            Base.AppText {
-                Layout.fillWidth: true
-                text: qsTr("添加指令")
-                styleRole: UiStyle.TypographyRole.TitleM
-                elide: Text.ElideRight
-            }
-
-            Base.AppText {
-                Layout.fillWidth: true
-                text: root.device ? String(root.device.name || "") : ""
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-                elide: Text.ElideRight
-            }
-        }
-
-        Base.AppButton {
-            text: qsTr("取消")
-            onClicked: root.close()
-        }
-
-        Base.AppButton {
-            text: qsTr("添加")
-            enabled: root.draftCommand !== null
-            iconName: "workflow"
-            onClicked: root.commit()
-        }
-    }
-
-    ColumnLayout {
-        Layout.fillWidth: true
-        spacing: 8
-
-        Base.AppText {
-            text: qsTr("协议")
-            styleRole: UiStyle.TypographyRole.BodyS
-            textTone: UiStyle.TextTone.Secondary
-        }
+        title: qsTr("协议")
+        compact: true
+        bodyFillHeight: false
 
         Base.AppSegmentedControl {
             Layout.fillWidth: true
@@ -197,73 +165,49 @@ Base.AppPopup {
             onValueSelected: root.selectedProtocol = String(nextValue)
         }
 
+    }
+
+    Base.AppText {
+        Layout.fillWidth: true
+        text: root.firstInvalidReason()
+        visible: root.validationVisible && text.length > 0
+        styleRole: UiStyle.TypographyRole.BodyS
+        textTone: UiStyle.TextTone.Danger
+        elide: Text.ElideRight
+    }
+
+    Base.AppDialogSection {
+        Layout.fillWidth: true
+        title: qsTr("创建参数")
+        compact: true
+        bodyFillHeight: false
+
+        DeviceFieldForm {
+            id: creationFieldForm
+
+            Layout.fillWidth: true
+            fields: root.draftCommand && root.draftCommand.creationMinInputFields !== undefined
+                ? root.draftCommand.creationMinInputFields()
+                : []
+            writeBack: true
+            showErrors: root.validationVisible
+            emptyText: qsTr("无创建参数")
+        }
+    }
+
+    Base.AppDialogSection {
+        Layout.fillWidth: true
+        title: qsTr("预览")
+        compact: true
+        bodyFillHeight: false
+
         Base.AppText {
             Layout.fillWidth: true
-            text: root.firstInvalidReason()
-            visible: root.validationVisible && text.length > 0
-            styleRole: UiStyle.TypographyRole.BodyS
-            textTone: UiStyle.TextTone.Danger
+            text: root.protocolLabel(root.selectedProtocol)
+                + " / "
+                + String(creationFieldForm.valueMap().name || "")
+            styleRole: UiStyle.TypographyRole.BodyM
             elide: Text.ElideRight
-        }
-    }
-
-    Base.AppScrollPane {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        contentSpacing: 12
-        fillContentWidth: true
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            Base.AppText {
-                Layout.fillWidth: true
-                text: qsTr("创建参数")
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-                elide: Text.ElideRight
-            }
-
-            DeviceFieldForm {
-                id: creationFieldForm
-
-                Layout.fillWidth: true
-                fields: root.draftCommand && root.draftCommand.creationMinInputFields !== undefined
-                    ? root.draftCommand.creationMinInputFields()
-                    : []
-                writeBack: true
-                showErrors: root.validationVisible
-                emptyText: qsTr("无创建参数")
-            }
-        }
-    }
-
-    Base.AppSurface {
-        Layout.fillWidth: true
-        Layout.preferredHeight: 70
-        sizeToContent: false
-        surfaceTone: UiStyle.SurfaceTone.Surface
-
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 4
-
-            Base.AppText {
-                text: qsTr("预览")
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-            }
-
-            Base.AppText {
-                Layout.fillWidth: true
-                text: root.protocolLabel(root.selectedProtocol)
-                    + " / "
-                    + String(creationFieldForm.valueMap().name || "")
-                styleRole: UiStyle.TypographyRole.BodyM
-                elide: Text.ElideRight
-            }
         }
     }
 }

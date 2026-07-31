@@ -409,14 +409,14 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: root.pageTheme.density.panePadding
-        spacing: root.pageTheme.density.layoutSpacing
+        spacing: root.pageTheme.density.paneSpacing
 
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             columns: 3
-            columnSpacing: root.pageTheme.density.layoutSpacing
-            rowSpacing: root.pageTheme.density.layoutSpacing
+            columnSpacing: root.pageTheme.density.paneSpacing
+            rowSpacing: root.pageTheme.density.paneSpacing
 
             Base.AppSurface {
                 Layout.preferredWidth: 300
@@ -752,7 +752,8 @@ Item {
                                     elide: Text.ElideRight
                                 }
 
-                                DangerButton {
+                                Base.AppButton {
+                                    variant: UiStyle.ButtonVariant.Danger
                                     text: qsTr("删除")
                                     enabled: root.selectedDeviceInCurrentView
                                     onClicked: root.requestRemoveSelectedDevice()
@@ -1022,7 +1023,7 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppPopup {
+            Base.AppDialog {
                 id: createDevicePopup
                 parent: root
                 onClosed: createDevicePopupLoader.active = false
@@ -1126,53 +1127,20 @@ Item {
             }
         }
 
-        modal: true
-        focus: true
         width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
-        height: Math.min(620, Math.max(360, parent ? parent.height - 96 : 480))
+        maximumDialogHeight: Math.min(620, Math.max(360, parent ? parent.height - 96 : 480))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: root.pageTheme.density.paneSpacing
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-
-                Base.AppText {
-                    Layout.fillWidth: true
-                    text: qsTr("创建设备")
-                    styleRole: UiStyle.TypographyRole.TitleM
-                    elide: Text.ElideRight
-                }
-
-                Base.AppText {
-                    Layout.fillWidth: true
-                    text: createDevicePopup.deviceTemplate
-                        ? String(createDevicePopup.deviceTemplate.name) + " / " + String((createDevicePopup.deviceTemplate.supportedProtocols || []).join(", "))
-                        : ""
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                    elide: Text.ElideRight
-                }
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: createDevicePopup.close()
-            }
-
-            Base.AppButton {
-                text: qsTr("创建")
-                enabled: createDevicePopup.formValid
-                iconName: "resources"
-                onClicked: createDevicePopup.commit()
-            }
-        }
+        title: qsTr("创建设备")
+        message: deviceTemplate
+            ? String(deviceTemplate.name) + " / " + String((deviceTemplate.supportedProtocols || []).join(", "))
+            : ""
+        rejectText: qsTr("取消")
+        acceptText: qsTr("创建")
+        acceptIconName: "resources"
+        acceptEnabled: formValid
+        closeOnAccepted: false
+        onAccepted: commit()
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -1241,20 +1209,13 @@ Item {
             elide: Text.ElideRight
         }
 
-        Base.AppScrollPane {
+        DeviceFieldForm {
+            id: createDeviceFieldForm
+
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            contentSpacing: root.pageTheme.density.paneContentSpacing
-            fillContentWidth: true
-
-            DeviceFieldForm {
-                id: createDeviceFieldForm
-
-                Layout.fillWidth: true
-                fields: createDevicePopup.fieldSpecs
-                writeBack: false
-                emptyText: qsTr("无初始参数")
-            }
+            fields: createDevicePopup.fieldSpecs
+            writeBack: false
+            emptyText: qsTr("无初始参数")
         }
             }
         }
@@ -1271,7 +1232,7 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppPopup {
+            Base.AppDialog {
                 id: removeDevicePopup
                 parent: root
                 onClosed: removeDevicePopupLoader.active = false
@@ -1288,50 +1249,17 @@ Item {
         function commit() {
             if (deviceModel && deviceId.length > 0)
                 deviceModel.removeDevice(deviceId)
-            close()
         }
 
-        modal: true
-        focus: true
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("删除设备")
-            styleRole: UiStyle.TypographyRole.TitleM
-            elide: Text.ElideRight
-        }
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("确定删除 %1？关联的时间线指令和投影映射也会被移除。").arg(removeDevicePopup.deviceName)
-            styleRole: UiStyle.TypographyRole.BodyM
-            textTone: UiStyle.TextTone.Secondary
-            wrapMode: Text.WordWrap
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: root.pageTheme.density.controlGap
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: removeDevicePopup.close()
-            }
-
-            DangerButton {
-                text: qsTr("删除")
-                onClicked: removeDevicePopup.commit()
-            }
-        }
+        title: qsTr("删除设备")
+        message: qsTr("确定删除 %1？关联的时间线指令和投影映射也会被移除。").arg(deviceName)
+        rejectText: qsTr("取消")
+        acceptText: qsTr("删除")
+        acceptButtonVariant: UiStyle.ButtonVariant.Danger
+        onAccepted: commit()
             }
         }
     }

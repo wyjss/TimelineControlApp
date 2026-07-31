@@ -25,23 +25,19 @@ ApplicationWindow {
     readonly property bool timelinePaused: appRuntime && appRuntime.state === 2
     readonly property bool timelineCompleted: appRuntime && appRuntime.state === 3
 
-    function canvasSourceForNavigation(key) {
-        switch (String(key)) {
-        case "device-control":
-            return "qrc:/TimelineControlApp/App/pages/DeviceControlPage.qml"
-        case "timeline":
-            return "qrc:/TimelineControlApp/App/pages/TimelinePage.qml"
-        case "virtual-playback":
-            return "qrc:/TimelineControlApp/App/pages/VirtualPlaybackCommandPage.qml"
-        case "projection":
-            return "qrc:/TimelineControlApp/App/pages/ProjectionPage.qml"
-        case "keystone":
-            return "qrc:/TimelineControlApp/App/pages/ProjectionKeystonePage.qml"
-        case "devices":
-            return "qrc:/TimelineControlApp/App/pages/DevicesPage.qml"
-        default:
-            return defaultCanvasDelegateSource
+    function activateNavigation(key) {
+        var items = shell.navigationItems || []
+        for (var index = 0; index < items.length; ++index) {
+            var item = items[index]
+            if (String(item.key) === String(key)) {
+                shell.sidebar.itemActivated(String(key), item)
+                shell.focusCanvas()
+                return
+            }
         }
+
+        shell.activeNavigationKey = String(key)
+        shell.canvasDelegateSource = defaultCanvasDelegateSource
     }
 
     width: appTheme.metrics.windowWidth
@@ -53,23 +49,37 @@ ApplicationWindow {
         ? String(appRuntime.settings.applicationName)
         : qsTr("时间线控制应用")
     color: appTheme.colors.backgroundWindow
+    Component.onCompleted: activateNavigation(shellController
+        ? shellController.activeNavigationKey
+        : "")
 
     Ui.AppShell {
         id: shell
 
         anchors.fill: parent
         applicationTitle: window.title
-        navigationItems: window.shellController ? window.shellController.navigationItems : []
-        activeNavigationKey: window.shellController
-            ? window.shellController.activeNavigationKey
-            : ""
+        navigationItems: {
+            var items = window.shellController ? window.shellController.navigationItems : []
+            var routedItems = []
+            for (var index = 0; index < items.length; ++index) {
+                var item = items[index]
+                routedItems.push({
+                    "key": item.key,
+                    "label": item.label,
+                    "iconName": item.iconName,
+                    "source": item.source,
+                    "destination": Ui.AppShell.CanvasDestination,
+                    "activation": Ui.AppShell.Activate
+                })
+            }
+            return routedItems
+        }
+        navigationRoutingEnabled: true
         leftPaneDisplayMode: Shell.AppSidebarPane.Hidden
         canvasInteractionState: window.shellController
             ? window.shellController.canvasInteractionState
             : "idle"
-        canvasDelegateSource: window.shellController
-            ? window.canvasSourceForNavigation(window.shellController.activeNavigationKey)
-            : window.defaultCanvasDelegateSource
+        canvasDelegateSource: window.defaultCanvasDelegateSource
 
         topNavigationBar.content: Component {
             RowLayout {
@@ -154,6 +164,7 @@ ApplicationWindow {
                     width: 240
                     modal: false
                     showModalOverlay: false
+                    surfaceTone: UiStyle.SurfaceTone.SurfaceOverlay
                     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
                     onAboutToShow: {
                         var origin = plansButton.mapToItem(
@@ -252,6 +263,15 @@ ApplicationWindow {
         onNavigationRequested: function(key) {
             if (window.shellController)
                 window.shellController.activeNavigationKey = key
+        }
+    }
+
+    Connections {
+        target: window.shellController
+
+        function onActiveNavigationKeyChanged() {
+            if (shell.activeNavigationKey !== window.shellController.activeNavigationKey)
+                window.activateNavigation(window.shellController.activeNavigationKey)
         }
     }
 }

@@ -678,7 +678,8 @@ Item {
                                         }
                                     }
 
-                                    DangerButton {
+                                    Base.AppButton {
+                                        variant: UiStyle.ButtonVariant.Danger
                                         visible: timelineCommandRow.selected
                                         text: qsTr("删除")
                                         enabled: root.timelineStopped
@@ -765,7 +766,7 @@ Item {
         }
     }
 
-    Base.AppPopup {
+    Base.AppDialog {
         id: addTimelineCommandPopup
 
         parent: root
@@ -782,12 +783,14 @@ Item {
         function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
             open()
 
-            targetDevice = nextDevice
-            targetCommand = nextCommand
-            targetStartTimeMs = nextStartTimeMs
-            validationVisible = false
-            executionFieldForm.values = {}
-            executionFieldForm.resetValues()
+            Qt.callLater(function() {
+                targetDevice = nextDevice
+                targetCommand = nextCommand
+                targetStartTimeMs = nextStartTimeMs
+                validationVisible = false
+                executionFieldForm.values = {}
+                executionFieldForm.resetValues()
+            })
         }
 
         function commit() {
@@ -802,54 +805,18 @@ Item {
             close()
         }
 
-        modal: true
-        focus: true
         width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
-        height: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
+        maximumDialogHeight: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-
-                Base.AppText {
-                    Layout.fillWidth: true
-                    text: qsTr("执行参数")
-                    styleRole: UiStyle.TypographyRole.TitleM
-                    elide: Text.ElideRight
-                }
-
-                Base.AppText {
-                    Layout.fillWidth: true
-                    text: addTimelineCommandPopup.targetCommand
-                        ? root.commandName(addTimelineCommandPopup.targetCommand)
-                        : ""
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
-                    elide: Text.ElideRight
-                }
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: addTimelineCommandPopup.close()
-            }
-
-            Base.AppButton {
-                text: qsTr("添加")
-                iconName: "workflow"
-                onClicked: addTimelineCommandPopup.commit()
-            }
-        }
+        title: qsTr("执行参数")
+        message: targetCommand ? root.commandName(targetCommand) : ""
+        rejectText: qsTr("取消")
+        acceptText: qsTr("添加")
+        acceptIconName: "workflow"
+        acceptEnabled: formValid
+        closeOnAccepted: false
+        onAccepted: commit()
 
         Base.AppText {
             Layout.fillWidth: true
@@ -860,21 +827,14 @@ Item {
             elide: Text.ElideRight
         }
 
-        Base.AppScrollPane {
+        DeviceFieldForm {
+            id: executionFieldForm
+
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            contentSpacing: 12
-            fillContentWidth: true
-
-            DeviceFieldForm {
-                id: executionFieldForm
-
-                Layout.fillWidth: true
-                fields: addTimelineCommandPopup.executionFields
-                writeBack: false
-                showErrors: addTimelineCommandPopup.validationVisible
-                emptyText: qsTr("无执行参数")
-            }
+            fields: addTimelineCommandPopup.executionFields
+            writeBack: false
+            showErrors: addTimelineCommandPopup.validationVisible
+            emptyText: qsTr("无执行参数")
         }
     }
 }

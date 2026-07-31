@@ -202,7 +202,8 @@ Item {
                             }
                         }
 
-                        DangerButton {
+                        Base.AppButton {
+                            variant: UiStyle.ButtonVariant.Danger
                             z: 2
                             anchors.top: parent.top
                             anchors.right: parent.right
@@ -334,7 +335,7 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppPopup {
+            Base.AppDialog {
                 id: createPlanPopup
                 parent: root
                 onClosed: createPlanPopupLoader.active = false
@@ -355,21 +356,16 @@ Item {
                 close()
         }
 
-        modal: true
-        focus: true
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("新建时间轴")
-            styleRole: UiStyle.TypographyRole.TitleM
-        }
+        title: qsTr("新建时间轴")
+        rejectText: qsTr("取消")
+        acceptText: qsTr("创建")
+        acceptEnabled: planName.trim().length > 0
+        initialFocusItem: createPlanNameField
+        closeOnAccepted: false
+        onAccepted: commit()
 
         Base.AppTextField {
             id: createPlanNameField
@@ -378,27 +374,6 @@ Item {
             text: createPlanPopup.planName
             placeholderText: qsTr("时间轴名称")
             onTextChanged: createPlanPopup.planName = text
-            onAccepted: createPlanPopup.commit()
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: createPlanPopup.close()
-            }
-
-            Base.AppButton {
-                text: qsTr("创建")
-                enabled: createPlanPopup.planName.trim().length > 0
-                onClicked: createPlanPopup.commit()
-            }
         }
             }
         }
@@ -415,7 +390,7 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppPopup {
+            Base.AppDialog {
                 id: removePlanPopup
                 parent: root
                 onClosed: removePlanPopupLoader.active = false
@@ -429,52 +404,18 @@ Item {
 
         function commit() {
             root.removePlan(planData)
-            close()
         }
 
-        modal: true
-        focus: true
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("删除时间轴")
-            styleRole: UiStyle.TypographyRole.TitleM
-        }
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("确定删除“%1”？其中的时间轴指令也会被删除。")
-                .arg(removePlanPopup.planData ? removePlanPopup.planData.name : "")
-            styleRole: UiStyle.TypographyRole.BodyM
-            textTone: UiStyle.TextTone.Secondary
-            wrapMode: Text.WordWrap
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: removePlanPopup.close()
-            }
-
-            DangerButton {
-                text: qsTr("删除")
-                onClicked: removePlanPopup.commit()
-            }
-        }
+        title: qsTr("删除时间轴")
+        message: qsTr("确定删除“%1”？其中的时间轴指令也会被删除。")
+            .arg(removePlanPopup.planData ? removePlanPopup.planData.name : "")
+        rejectText: qsTr("取消")
+        acceptText: qsTr("删除")
+        acceptButtonVariant: UiStyle.ButtonVariant.Danger
+        onAccepted: commit()
             }
         }
     }

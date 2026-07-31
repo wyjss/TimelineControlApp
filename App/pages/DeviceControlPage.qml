@@ -230,7 +230,8 @@ Item {
                             onClicked: groupActionPopupLoader.openForAction("on")
                         }
 
-                        DangerButton {
+                        Base.AppButton {
+                            variant: UiStyle.ButtonVariant.Danger
                             Layout.fillWidth: true
                             text: qsTr("组关机")
                             enabled: root.groups.length > 0
@@ -313,7 +314,8 @@ Item {
                             onClicked: groupEditorPopupLoader.openForRename()
                         }
 
-                        DangerButton {
+                        Base.AppButton {
+                            variant: UiStyle.ButtonVariant.Danger
                             Layout.fillWidth: true
                             text: qsTr("删除")
                             enabled: root.selectedGroupId.length > 0
@@ -483,7 +485,7 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppPopup {
+            Base.AppDialog {
                 id: groupEditorPopup
                 parent: root
                 onClosed: groupEditorPopupLoader.active = false
@@ -520,21 +522,16 @@ Item {
             close()
         }
 
-        modal: true
-        focus: true
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: groupEditorPopup.renaming ? qsTr("重命名设备组") : qsTr("新建设备组")
-            styleRole: UiStyle.TypographyRole.TitleM
-        }
+        title: renaming ? qsTr("重命名设备组") : qsTr("新建设备组")
+        rejectText: qsTr("取消")
+        acceptText: renaming ? qsTr("保存") : qsTr("创建")
+        acceptEnabled: groupName.trim().length > 0
+        initialFocusItem: groupNameField
+        closeOnAccepted: false
+        onAccepted: commit()
 
         Base.AppTextField {
             id: groupNameField
@@ -543,27 +540,6 @@ Item {
             text: groupEditorPopup.groupName
             placeholderText: qsTr("组名称")
             onTextChanged: groupEditorPopup.groupName = text
-            onAccepted: groupEditorPopup.commit()
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: groupEditorPopup.close()
-            }
-
-            Base.AppButton {
-                text: groupEditorPopup.renaming ? qsTr("保存") : qsTr("创建")
-                enabled: groupEditorPopup.groupName.trim().length > 0
-                onClicked: groupEditorPopup.commit()
-            }
         }
             }
         }
@@ -580,59 +556,23 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppPopup {
+            Base.AppDialog {
                 id: removeGroupPopup
                 parent: root
                 onClosed: removeGroupPopupLoader.active = false
 
-        modal: true
-        focus: true
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("删除设备组")
-            styleRole: UiStyle.TypographyRole.TitleM
-        }
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("确定删除“%1”？设备本身不会被删除。")
-                .arg(root.groupById(root.selectedGroupId)
-                    ? root.groupById(root.selectedGroupId).name
-                    : "")
-            styleRole: UiStyle.TypographyRole.BodyM
-            textTone: UiStyle.TextTone.Secondary
-            wrapMode: Text.WordWrap
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: removeGroupPopup.close()
-            }
-
-            DangerButton {
-                text: qsTr("删除")
-                onClicked: {
-                    root.removeSelectedGroup()
-                    removeGroupPopup.close()
-                }
-            }
-        }
+        title: qsTr("删除设备组")
+        message: qsTr("确定删除“%1”？设备本身不会被删除。")
+            .arg(root.groupById(root.selectedGroupId)
+                ? root.groupById(root.selectedGroupId).name
+                : "")
+        rejectText: qsTr("取消")
+        acceptText: qsTr("删除")
+        acceptButtonVariant: UiStyle.ButtonVariant.Danger
+        onAccepted: root.removeSelectedGroup()
             }
         }
     }
@@ -648,7 +588,7 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppPopup {
+            Base.AppDialog {
                 id: groupActionPopup
                 parent: root
                 onClosed: groupActionPopupLoader.active = false
@@ -678,38 +618,27 @@ Item {
 
         function confirmSelection() {
             root.feedbackText = qsTr("已选择 %1 个组，设备指令暂未执行").arg(selectedGroupIds.length)
-            close()
         }
 
-        modal: true
-        focus: true
         width: Math.min(480, Math.max(340, parent ? parent.width - 96 : 420))
-        height: Math.min(560, Math.max(320, parent ? parent.height - 96 : 440))
+        maximumDialogHeight: Math.min(560, Math.max(320, parent ? parent.height - 96 : 440))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        padding: 18
-        spacing: 14
-        surfaceTone: UiStyle.SurfaceTone.Section
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        title: actionType === "on" ? qsTr("组开机") : qsTr("组关机")
+        message: qsTr("请选择一个或多个设备组")
+        rejectText: qsTr("取消")
+        acceptText: qsTr("确认")
+        acceptEnabled: selectedGroupIds.length > 0
+        acceptButtonVariant: actionType === "off"
+            ? UiStyle.ButtonVariant.Danger
+            : UiStyle.ButtonVariant.Primary
+        onAccepted: confirmSelection()
 
-        Base.AppText {
+        Base.AppDialogSection {
             Layout.fillWidth: true
-            text: groupActionPopup.actionType === "on" ? qsTr("组开机") : qsTr("组关机")
-            styleRole: UiStyle.TypographyRole.TitleM
-        }
-
-        Base.AppText {
-            Layout.fillWidth: true
-            text: qsTr("请选择一个或多个设备组")
-            styleRole: UiStyle.TypographyRole.BodyS
-            textTone: UiStyle.TextTone.Secondary
-        }
-
-        Base.AppScrollPane {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            contentSpacing: 8
-            fillContentWidth: true
+            title: qsTr("设备组")
+            compact: true
+            bodyFillHeight: false
 
             Repeater {
                 model: root.groups
@@ -740,27 +669,11 @@ Item {
             }
         }
 
-        RowLayout {
+        Base.AppText {
             Layout.fillWidth: true
-            spacing: 8
-
-            Base.AppText {
-                Layout.fillWidth: true
-                text: qsTr("暂不执行实际设备指令")
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-            }
-
-            Base.AppButton {
-                text: qsTr("取消")
-                onClicked: groupActionPopup.close()
-            }
-
-            Base.AppButton {
-                text: qsTr("确认")
-                enabled: groupActionPopup.selectedGroupIds.length > 0
-                onClicked: groupActionPopup.confirmSelection()
-            }
+            text: qsTr("暂不执行实际设备指令")
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Secondary
         }
             }
         }

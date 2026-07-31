@@ -10,32 +10,38 @@ TimelineShellController::TimelineShellController(QObject *parent)
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("devices")},
               {QStringLiteral("label"), tr("设备")},
-              {QStringLiteral("iconName"), QStringLiteral("resources")}
+              {QStringLiteral("iconName"), QStringLiteral("resources")},
+              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/DevicesPage.qml")}
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("device-control")},
               {QStringLiteral("label"), tr("设备控制")},
-              {QStringLiteral("iconName"), QStringLiteral("background-task")}
+              {QStringLiteral("iconName"), QStringLiteral("background-task")},
+              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceControlPage.qml")}
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("timeline")},
               {QStringLiteral("label"), tr("时间线")},
-              {QStringLiteral("iconName"), QStringLiteral("workflow")}
+              {QStringLiteral("iconName"), QStringLiteral("workflow")},
+              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/TimelinePage.qml")}
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("virtual-playback")},
               {QStringLiteral("label"), tr("虚拟播放")},
-              {QStringLiteral("iconName"), QStringLiteral("scene")}
+              {QStringLiteral("iconName"), QStringLiteral("scene")},
+              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/VirtualPlaybackCommandPage.qml")}
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("projection")},
               {QStringLiteral("label"), tr("投影")},
-              {QStringLiteral("iconName"), QStringLiteral("scene")}
+              {QStringLiteral("iconName"), QStringLiteral("scene")},
+              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/ProjectionPage.qml")}
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("keystone")},
               {QStringLiteral("label"), tr("梯形校正")},
-              {QStringLiteral("iconName"), QStringLiteral("layer-config")}
+              {QStringLiteral("iconName"), QStringLiteral("layer-config")},
+              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/ProjectionKeystonePage.qml")}
           }
       }
 {

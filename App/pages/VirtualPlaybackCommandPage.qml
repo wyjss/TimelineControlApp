@@ -425,7 +425,8 @@ Item {
                             textTone: UiStyle.TextTone.Secondary
                         }
 
-                        DangerButton {
+                        Base.AppButton {
+                            variant: UiStyle.ButtonVariant.Danger
                             text: qsTr("删除指令")
                             enabled: root.selectedCommand !== null
                             onClicked: root.removeSelectedCommand()
@@ -754,7 +755,8 @@ Item {
                                     textTone: UiStyle.TextTone.Danger
                                 }
 
-                                DangerButton {
+                                Base.AppButton {
+                                    variant: UiStyle.ButtonVariant.Danger
                                     Layout.fillWidth: true
                                     text: qsTr("删除视频")
                                     enabled: root.selectedVideo !== null
