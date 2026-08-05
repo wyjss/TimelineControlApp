@@ -78,7 +78,7 @@ Item {
     }
 
     function editPlan(plan) {
-        if (!timelinePlanController || !timelineStopped || !plan)
+        if (!timelinePlanController || !plan)
             return
 
         var planIndex = Number(plan.index)
@@ -153,12 +153,15 @@ Item {
                             text: planCell.addItem
                                 ? qsTr("新建时间轴")
                                 : String(planCell.planData.name || qsTr("未命名时间轴"))
+                            checkable: false
                             checked: planCell.checked
                             emphasizedSelection: true
+                            enabled: !planCell.addItem || root.timelineStopped
+                            onCheckedChanged: {
+                                if (checked !== planCell.checked)
+                                    checked = Qt.binding(function() { return planCell.checked })
+                            }
                             onClicked: {
-                                if (!root.timelineStopped)
-                                    return
-
                                 if (planCell.addItem)
                                     createPlanPopupLoader.openForCreate()
                                 else
@@ -215,8 +218,8 @@ Item {
                             text: "×"
                             size: UiStyle.ButtonSize.Small
                             minWidth: 28
-                            enabled: root.timelinePlans.length > 1
-                            opacity: root.timelinePlans.length > 1 ? 1 : 0.35
+                            enabled: root.timelineStopped && root.timelinePlans.length > 1
+                            opacity: enabled ? 1 : 0.35
                             onClicked: removePlanPopupLoader.openForPlan(planCell.planData)
                         }
 
@@ -282,6 +285,7 @@ Item {
 
                         Base.AppButton {
                             Layout.preferredWidth: 36
+                            variant: UiStyle.ButtonVariant.Ghost
                             iconSymbol: "←"
                             ToolTip.visible: hovered
                             ToolTip.text: qsTr("返回")

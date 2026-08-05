@@ -113,6 +113,9 @@ Item {
     }
 
     function addSelectedCommandAtCurrentTime() {
+        if (!timelineStopped)
+            return
+
         if (!timelineCommandModel || !selectedTimelineDevice || !selectedCommand) {
             executionStatusText = qsTr("请先选择设备指令")
             return
@@ -129,6 +132,9 @@ Item {
     }
 
     function addTimelineCommand(targetDevice, targetCommand, startTimeMs, executionValues) {
+        if (!timelineStopped || !timelineCommandModel)
+            return
+
         var extraParams = {
             "targetDeviceName": deviceName(targetDevice),
             "targetDeviceAddress": deviceAddress(targetDevice)
@@ -321,6 +327,7 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: root.pageTheme.density.panePadding
+        anchors.topMargin: 0
         spacing: 14
 
         GridLayout {
@@ -528,7 +535,8 @@ Item {
                         Layout.fillWidth: true
                         text: qsTr("添加所选")
                         iconName: "workflow"
-                        enabled: root.timelineCommandModel && root.selectedTimelineDevice && root.selectedCommand
+                        enabled: root.timelineStopped && root.timelineCommandModel
+                            && root.selectedTimelineDevice && root.selectedCommand
                         onClicked: root.addSelectedCommandAtCurrentTime()
                     }
 
@@ -814,7 +822,7 @@ Item {
         rejectText: qsTr("取消")
         acceptText: qsTr("添加")
         acceptIconName: "workflow"
-        acceptEnabled: formValid
+        acceptEnabled: root.timelineStopped && formValid
         closeOnAccepted: false
         onAccepted: commit()
 

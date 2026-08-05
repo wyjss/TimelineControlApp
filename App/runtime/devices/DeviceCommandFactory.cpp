@@ -90,6 +90,9 @@ public:
 		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
 		QString api = m_api;
 		QString url = executionInputValues.value("videoFile", "").toString();
+        if (!url.isEmpty() && url.startsWith("$")) {
+            url = url.replace("$", DeviceConstants::LocalVideoPrefix);
+        }
 		if (!url.isEmpty()) {
             QUrl qurl(api);
             QUrlQuery query(qurl);

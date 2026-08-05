@@ -286,10 +286,7 @@ void TimelineRuntime::startTimeline()
 
 void TimelineRuntime::stopTimeline()
 {
-    if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size()) {
-        m_timelinePlanController->setPlanPlaybackState(
-            m_playQueue.at(m_playQueueIndex), TimelinePlanController::Idle);
-    }
+    m_timelinePlanController->resetPlaybackStates();
     m_playQueue.clear();
     m_playQueueIndex = -1;
     if (m_timelineController

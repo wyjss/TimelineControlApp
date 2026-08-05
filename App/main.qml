@@ -18,6 +18,14 @@ ApplicationWindow {
         ? appRuntime.shell
         : (typeof timelineShellController !== "undefined" ? timelineShellController : null)
     property bool timelineEditing: false
+    readonly property var settingsNavigationItem: ({
+        "key": "system-settings",
+        "label": qsTr("系统设置"),
+        "iconName": "layer-config",
+        "source": "qrc:/TimelineControlApp/App/pages/SystemSettingsPane.qml",
+        "destination": Ui.AppShell.LeftPaneDestination,
+        "activation": Ui.AppShell.Toggle
+    })
     readonly property string defaultCanvasDelegateSource: appRuntime && appRuntime.settings
         ? String(appRuntime.settings.value("canvasDelegateSource", ""))
         : ""
@@ -30,6 +38,7 @@ ApplicationWindow {
         for (var index = 0; index < items.length; ++index) {
             var item = items[index]
             if (String(item.key) === String(key)) {
+                shell.hideLeftPane()
                 shell.sidebar.itemActivated(String(key), item)
                 shell.focusCanvas()
                 return
@@ -76,10 +85,30 @@ ApplicationWindow {
         }
         navigationRoutingEnabled: true
         leftPaneDisplayMode: Shell.AppSidebarPane.Hidden
+        leftPanelWidth: 320
         canvasInteractionState: window.shellController
             ? window.shellController.canvasInteractionState
             : "idle"
         canvasDelegateSource: window.defaultCanvasDelegateSource
+
+        sidebar.footerContent: Component {
+            Shell.AppRailButton {
+                text: window.settingsNavigationItem.label
+                iconName: window.settingsNavigationItem.iconName
+                showText: shell.sidebar.showItemLabels
+                active: shell.activeNavigationKey === window.settingsNavigationItem.key
+                onClicked: {
+                    var closing = active && shell.leftPaneOpen
+                    shell.sidebar.itemActivated(window.settingsNavigationItem.key,
+                                                 window.settingsNavigationItem)
+                    if (closing && window.shellController)
+                        shell.activeNavigationKey = window.shellController.activeNavigationKey
+                }
+
+                ToolTip.visible: hovered && !showText
+                ToolTip.text: text
+            }
+        }
 
         topNavigationBar.content: Component {
             RowLayout {
@@ -144,6 +173,10 @@ ApplicationWindow {
                     onClicked: planPopup.opened ? planPopup.close() : planPopup.open()
                 }
 
+                Item {
+                    Layout.fillWidth: true
+                }
+
                 Base.AppButton {
                     id: taskButton
 
@@ -169,7 +202,7 @@ ApplicationWindow {
                     onAboutToShow: {
                         var origin = plansButton.mapToItem(
                             parent,
-                            plansButton.width - width,
+                            0,
                             plansButton.height + 8
                         )
                         x = origin.x
@@ -177,7 +210,7 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
-                        width: parent.width
+                        Layout.fillWidth: true
                         text: qsTr("保存")
                         enabled: window.timelineStopped
                             && window.appRuntime
@@ -192,7 +225,7 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
-                        width: parent.width
+                        Layout.fillWidth: true
                         text: qsTr("另存为")
                         enabled: window.timelineStopped
                         onClicked: {
@@ -202,7 +235,7 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
-                        width: parent.width
+                        Layout.fillWidth: true
                         text: qsTr("加载")
                         enabled: window.timelineStopped
                         onClicked: {
@@ -261,6 +294,7 @@ ApplicationWindow {
         }
 
         onNavigationRequested: function(key) {
+            shell.hideLeftPane()
             if (window.shellController)
                 window.shellController.activeNavigationKey = key
         }
@@ -272,6 +306,17 @@ ApplicationWindow {
         function onActiveNavigationKeyChanged() {
             if (shell.activeNavigationKey !== window.shellController.activeNavigationKey)
                 window.activateNavigation(window.shellController.activeNavigationKey)
+        }
+    }
+
+    Connections {
+        target: shell.sidebarPane
+
+        function onOpenedChanged() {
+            if (!shell.leftPaneOpen
+                    && shell.activeNavigationKey === window.settingsNavigationItem.key
+                    && window.shellController)
+                shell.activeNavigationKey = window.shellController.activeNavigationKey
         }
     }
 }
