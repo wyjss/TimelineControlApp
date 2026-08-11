@@ -219,7 +219,9 @@ void PcTimelinePreviewGenerator::startPreview()
     m_generationTimeMs = m_timelineController ? m_timelineController->currentTimeMs() : 0;
     if (!m_pcDevice || !m_timelineCommandModel) {
         m_previewImage = QImage();
-        QFile::remove(m_previewUrl.toLocalFile());
+        if (m_previewUrl.toLocalFile().isEmpty() == false) {
+			QFile::remove(m_previewUrl.toLocalFile());
+        }
         m_previewUrl = QUrl();
         m_previewTimeMs = m_generationTimeMs;
         setErrorString(QString());
@@ -338,7 +340,9 @@ void PcTimelinePreviewGenerator::startNextFrame()
 
     const VideoState &state = m_videoStates.at(m_frameIndex);
     const QString outputPath = m_temporaryDir.filePath(QStringLiteral("frame.jpg"));
-    QFile::remove(outputPath);
+    if (!outputPath.isEmpty()) {
+        QFile::remove(outputPath);
+    }
     m_framePending = true;
     m_process.start(m_ffmpegProgram,
                     QStringList{QStringLiteral("-ss"),

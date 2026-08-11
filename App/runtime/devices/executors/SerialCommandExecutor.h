@@ -4,20 +4,21 @@
 
 #include <QString>
 
-class QSerialPort;
+class QNetworkAccessManager;
 
 
 class SerialCommandExecutor final : public DeviceCommandExecutor
 {
     Q_OBJECT
 public:
-    explicit SerialCommandExecutor(const QString &portName, QObject *parent = nullptr);
+    SerialCommandExecutor(const QString &ip, const QString &portName, QObject *parent = nullptr);
 
 protected:
     void executeImpl(DeviceCommand *command, const QVariantMap &params) override;
     bool checkOnlineImpl(const QVariantMap &params) override;
 
 private:
+    QString m_ip;
     QString m_portName;
-    QSerialPort *m_port = nullptr;
+    QNetworkAccessManager *m_manager = nullptr;
 };

@@ -4,20 +4,28 @@
 #include "devices/DeviceConstants.h"
 
 #include <QByteArray>
-#include <QIODevice>
-#include <QSerialPort>
-#include <QSerialPortInfo>
+#include <QNetworkAccessManager>
+#include <QNetworkProxy>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QStringList>
+#include <QTcpSocket>
+#include <QTimer>
+#include <QUrl>
+#include <QUrlQuery>
 
 
 namespace {
 
-constexpr int kWriteTimeoutMs = 3000;
+constexpr int kServerPort = 11357;
+constexpr int kSerialTimeoutMs = 3000;
+constexpr int kRequestTimeoutMs = 5000;
 
 }
 
-SerialCommandExecutor::SerialCommandExecutor(const QString &portName, QObject *parent)
+SerialCommandExecutor::SerialCommandExecutor(const QString &ip, const QString &portName, QObject *parent)
     : DeviceCommandExecutor(parent)
+    , m_ip(ip)
     , m_portName(portName)
 {
 }
@@ -36,58 +44,79 @@ void SerialCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMa
         }
         bytes.append(static_cast<char>(value));
     }
+    bytes = params.value(DeviceKey::SerialPayload).toString().simplified().remove(' ').toLatin1();
     if (bytes.isEmpty()) {
         emit executionFinished(command, false, tr("串口数据不能为空"));
         return;
     }
 
-    if (!m_port)
-        m_port = new QSerialPort(this);
     const int baudRate = params.value(DeviceKey::BaudRate).toInt();
     if (baudRate <= 0) {
         emit executionFinished(command, false, tr("串口波特率无效"));
         return;
     }
-    m_port->setBaudRate(baudRate);
-    if (!m_port->isOpen()) {
-        m_port->setPortName(m_portName);
-        m_port->setDataBits(QSerialPort::Data8);
-        m_port->setParity(QSerialPort::NoParity);
-        m_port->setStopBits(QSerialPort::OneStop);
-        m_port->setFlowControl(QSerialPort::NoFlowControl);
-        if (!m_port->open(QIODevice::WriteOnly)) {
-            const QString message = tr("无法打开串口 %1：%2").arg(m_portName, m_port->errorString());
-            markFailed(message);
-            emit executionFinished(command, false, message);
-            return;
+    if (m_ip.isEmpty() || m_portName.isEmpty()) {
+        emit executionFinished(command, false, tr("串口服务地址或串口名称为空"));
+        return;
+    }
+
+    QUrl url;
+    url.setScheme(QStringLiteral("http"));
+    url.setHost(m_ip);
+    url.setPort(kServerPort);
+    url.setPath(QStringLiteral("/serial/execute"));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("port"), m_portName);
+    query.addQueryItem(QStringLiteral("baud"), QString::number(baudRate));
+    query.addQueryItem(QStringLiteral("timeout"), QString::number(kSerialTimeoutMs));
+    query.addQueryItem("cmd", bytes);
+    url.setQuery(query);
+
+   // url = "http://127.0.0.1:11357/version";
+    if (!m_manager) {
+		m_manager = new QNetworkAccessManager(this);
+		m_manager->setProxy(QNetworkProxy::NoProxy);
+    }
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/octet-stream"));
+    QNetworkReply *reply = m_manager->get(request);
+    QTimer::singleShot(kRequestTimeoutMs, reply, [reply]() {
+        if (reply->isRunning()) {
+            reply->setProperty("timedOut", true);
+            reply->abort();
         }
-    }
+    });
 
-    if (m_port->write(bytes) != bytes.size()) {
-        const QString message = tr("串口写入失败：%1").arg(m_port->errorString());
-        markFailed(message);
-        emit executionFinished(command, false, message);
-        return;
-    }
-
-    if (!m_port->waitForBytesWritten(kWriteTimeoutMs)) {
-        const QString message = tr("串口写入超时：%1").arg(m_port->errorString());
-        markFailed(message);
-        emit executionFinished(command, false, message);
-        return;
-    }
-
-    emit executionFinished(command, true, QString());
+    connect(reply, &QNetworkReply::finished, this, [this, command, reply]() {
+        const QVariant status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
+        const int httpStatus = status.toInt();
+        const bool success = reply->error() == QNetworkReply::NoError
+            && (!status.isValid() || httpStatus < 400);
+        QString message;
+        if (!success) {
+            const QString response = QString::fromUtf8(reply->readAll()).trimmed();
+            message = reply->property("timedOut").toBool()
+                ? tr("串口 HTTP 请求超时")
+                : (!response.isEmpty() ? response
+                                       : (reply->error() == QNetworkReply::NoError
+                                              ? tr("HTTP %1").arg(httpStatus)
+                                              : reply->errorString()));
+        }
+        emit executionFinished(command, success, message);
+    });
+    connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
 }
 
 bool SerialCommandExecutor::checkOnlineImpl(const QVariantMap &params)
 {
-    const QString portName = params.value(DeviceKey::SerialPort).toString().trimmed();
-    const QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
-    for (const QSerialPortInfo &port : ports) {
-        if (port.portName() == portName)
-            return true;
-    }
+    Q_UNUSED(params)
+    if (m_ip.isEmpty())
+        return false;
 
-    return false;
+    QTcpSocket socket;
+    socket.setProxy(QNetworkProxy::NoProxy);
+    socket.connectToHost(m_ip, kServerPort);
+    const bool connected = socket.waitForConnected(1000);
+    socket.abort();
+    return connected;
 }

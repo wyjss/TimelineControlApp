@@ -174,13 +174,17 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
     QString key;
     DeviceCommandExecutor *executor = nullptr;
     if (protocolValue == DeviceProtocol::Serial) {
+        const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
         const QString portName = params.value(DeviceKey::SerialPort).toString().trimmed();
-        key = QStringLiteral("serial:%1").arg(portName);
+        if (ip.isEmpty() || portName.isEmpty())
+            return nullptr;
+
+        key = QStringLiteral("serial:%1:%2").arg(ip, portName);
         if (executorKey)
             *executorKey = key;
         executor = m_executors.value(key);
-        if (!executor && !portName.isEmpty())
-            executor = new SerialCommandExecutor(portName);
+        if (!executor)
+            executor = new SerialCommandExecutor(ip, portName);
     } else if (protocolValue == DeviceProtocol::Http || protocolValue == DeviceProtocol::Pc) {
         const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
         const int port = params.value(DeviceKey::Port).toInt();
