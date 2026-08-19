@@ -29,6 +29,34 @@ DeviceParamSpec::DeviceParamSpec(const QString &key,
     setRequired(true);
 }
 
+QVariant DeviceParamSpec::defaultValue() const
+{
+    return m_defaultValue;
+}
+
+void DeviceParamSpec::setDefaultValue(const QVariant &defaultValue)
+{
+    if (m_defaultValue == defaultValue)
+        return;
+
+    m_defaultValue = defaultValue;
+    emit defaultValueChanged();
+}
+
+QString DeviceParamSpec::pattern() const
+{
+    return m_pattern;
+}
+
+void DeviceParamSpec::setPattern(const QString &pattern)
+{
+    if (m_pattern == pattern)
+        return;
+
+    m_pattern = pattern;
+    emit patternChanged();
+}
+
 QString DeviceParamSpec::typeName() const
 {
     return typeName(valueType());

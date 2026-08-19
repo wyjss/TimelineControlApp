@@ -116,6 +116,11 @@ public:
                                                                    const QString &targetDeviceId,
                                                                    DeviceCommand *targetCommand,
                                                                    const QVariantMap &extraParams);
+    Q_INVOKABLE DeviceCommand *createEditDraft(TimelineCommand *command);
+    Q_INVOKABLE void deleteEditDraft(DeviceCommand *draft);
+    Q_INVOKABLE bool updateCommand(TimelineCommand *command,
+                                   qint64 startTimeMs,
+                                   const QVariantMap &executionInputValues);
     TimelineCommand *addCommand(qint64 startTimeMs,
                                                  const QString &targetDeviceId,
                                                  const QString &commandName,

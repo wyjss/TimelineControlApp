@@ -207,6 +207,13 @@ Item {
         addCommandPopupLoader.openForDevice(selectedDevice)
     }
 
+    function editCommand(command) {
+        if (!selectedDeviceInCurrentView || !selectedDevice || !command)
+            return
+
+        addCommandPopupLoader.openForCommand(selectedDevice, command)
+    }
+
     function removeSelectedCommand() {
         if (!selectedDeviceInCurrentView
             || !selectedDevice
@@ -227,6 +234,24 @@ Item {
             return
 
         removeDevicePopupLoader.openForDevice(selectedDevice)
+    }
+
+    function requestEditSelectedDevice() {
+        if (!selectedDeviceInCurrentView || !selectedDevice)
+            return
+
+        var deviceTemplate = null
+        var templateName = String(selectedDevice.templateName || "")
+        for (var index = 0; index < deviceTemplates.length; ++index) {
+            if (String(deviceTemplates[index].name || "") === templateName) {
+                deviceTemplate = deviceTemplates[index]
+                break
+            }
+        }
+        if (deviceTemplate)
+            createDevicePopupLoader.openForDevice(selectedDevice,
+                                                  deviceTemplate,
+                                                  initialInputSpecs(deviceTemplate))
     }
 
     function commandName(command) {
@@ -753,6 +778,12 @@ Item {
                                 }
 
                                 Base.AppButton {
+                                    text: qsTr("编辑")
+                                    enabled: root.selectedDeviceInCurrentView
+                                    onClicked: root.requestEditSelectedDevice()
+                                }
+
+                                Base.AppButton {
                                     variant: UiStyle.ButtonVariant.Danger
                                     text: qsTr("删除")
                                     enabled: root.selectedDeviceInCurrentView
@@ -963,6 +994,11 @@ Item {
                                         }
 
                                         Base.AppButton {
+                                            text: qsTr("编辑")
+                                            onClicked: root.editCommand(commandRow.commandData)
+                                        }
+
+                                        Base.AppButton {
                                             text: qsTr("移除")
                                             onClicked: root.removeSelectedCommand()
                                         }
@@ -1022,6 +1058,11 @@ Item {
             item.openForTemplate(deviceTemplate, fieldSpecs)
         }
 
+        function openForDevice(device, deviceTemplate, fieldSpecs) {
+            active = true
+            item.openForDevice(device, deviceTemplate, fieldSpecs)
+        }
+
         sourceComponent: Component {
             Base.AppDialog {
                 id: createDevicePopup
@@ -1029,16 +1070,20 @@ Item {
                 onClosed: createDevicePopupLoader.active = false
 
         property var deviceTemplate: null
+        property var editingDevice: null
         property var fieldSpecs: []
         property string deviceName: ""
         property string selectedDeviceTypeOption: ""
         property string customDeviceType: ""
         readonly property string customDeviceTypeOption: "__custom__"
+        readonly property bool editing: editingDevice !== null
         readonly property bool templateHasDeviceType: templateDeviceType(deviceTemplate).length > 0
         readonly property bool customDeviceTypeSelected: selectedDeviceTypeOption === customDeviceTypeOption
-        readonly property string deviceType: templateHasDeviceType
-            ? templateDeviceType(deviceTemplate)
-            : (customDeviceTypeSelected ? customDeviceType : selectedDeviceTypeOption)
+        readonly property string deviceType: editing
+            ? String(editingDevice.deviceType || "")
+            : (templateHasDeviceType
+                ? templateDeviceType(deviceTemplate)
+                : (customDeviceTypeSelected ? customDeviceType : selectedDeviceTypeOption))
         readonly property var deviceTypeOptions: buildDeviceTypeOptions()
         readonly property bool formValid: firstInvalidReason().length === 0
 
@@ -1046,12 +1091,30 @@ Item {
             open()
 
             Qt.callLater(function() {
+                editingDevice = null
                 deviceTemplate = nextTemplate
                 fieldSpecs = nextFieldSpecs || []
                 deviceName = defaultDeviceName(nextTemplate)
                 selectedDeviceTypeOption = defaultDeviceType(nextTemplate)
                 customDeviceType = ""
                 createDeviceFieldForm.resetValues()
+            })
+        }
+
+        function openForDevice(nextDevice, nextTemplate, nextFieldSpecs) {
+            if (!nextDevice || !nextTemplate)
+                return
+
+            open()
+
+            Qt.callLater(function() {
+                editingDevice = nextDevice
+                deviceTemplate = nextTemplate
+                fieldSpecs = nextFieldSpecs || []
+                deviceName = String(nextDevice.name || "")
+                selectedDeviceTypeOption = String(nextDevice.deviceType || "")
+                customDeviceType = ""
+                createDeviceFieldForm.values = nextDevice.configValues || ({})
             })
         }
 
@@ -1093,13 +1156,15 @@ Item {
 
         function firstInvalidReason() {
             if (deviceManager) {
-                var creationReason = deviceManager.validateDeviceCreation(
-                    deviceType,
-                    deviceName,
-                    deviceTemplate ? String(deviceTemplate.name) : ""
-                )
-                if (creationReason.length > 0)
-                    return creationReason
+                var deviceReason = editing
+                    ? deviceManager.validateDeviceUpdate(editingDevice, deviceName)
+                    : deviceManager.validateDeviceCreation(
+                        deviceType,
+                        deviceName,
+                        deviceTemplate ? String(deviceTemplate.name) : ""
+                    )
+                if (deviceReason.length > 0)
+                    return deviceReason
             } else if (isBlank(deviceName)) {
                 return qsTr("设备名称必填")
             }
@@ -1114,6 +1179,12 @@ Item {
         function commit() {
             if (!deviceManager || !deviceTemplate || !formValid)
                 return
+
+            if (editing) {
+                if (deviceManager.updateDevice(editingDevice, deviceName, buildConfigValues()))
+                    close()
+                return
+            }
 
             var created = deviceManager.createDeviceFromTemplate(
                 String(deviceTemplate.name),
@@ -1131,12 +1202,12 @@ Item {
         maximumDialogHeight: Math.min(620, Math.max(360, parent ? parent.height - 96 : 480))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        title: qsTr("创建设备")
+        title: editing ? qsTr("编辑设备") : qsTr("创建设备")
         message: deviceTemplate
             ? String(deviceTemplate.name) + " / " + String((deviceTemplate.supportedProtocols || []).join(", "))
             : ""
         rejectText: qsTr("取消")
-        acceptText: qsTr("创建")
+        acceptText: editing ? qsTr("保存") : qsTr("创建")
         acceptIconName: "resources"
         acceptEnabled: formValid
         closeOnAccepted: false
@@ -1171,14 +1242,14 @@ Item {
             }
 
             Base.AppTextField {
-                visible: createDevicePopup.templateHasDeviceType
+                visible: createDevicePopup.editing || createDevicePopup.templateHasDeviceType
                 Layout.fillWidth: true
                 enabled: false
                 text: createDevicePopup.deviceType
             }
 
             RowLayout {
-                visible: !createDevicePopup.templateHasDeviceType
+                visible: !createDevicePopup.editing && !createDevicePopup.templateHasDeviceType
                 Layout.fillWidth: true
                 spacing: root.pageTheme.density.controlGap
 
@@ -1274,6 +1345,11 @@ Item {
             item.openForDevice(device)
         }
 
+        function openForCommand(device, command) {
+            active = true
+            item.openForCommand(device, command)
+        }
+
         sourceComponent: Component {
             DeviceCommandDialog {
                 id: addCommandPopup
@@ -1281,6 +1357,9 @@ Item {
                 onClosed: addCommandPopupLoader.active = false
 
                 onCommandAccepted: {
+                    if (addCommandPopup.editing)
+                        return
+
                     Qt.callLater(function() {
                         root.selectedCommandIndex = root.selectedDeviceCommands.length - 1
                     })

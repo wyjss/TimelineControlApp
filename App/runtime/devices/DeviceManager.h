@@ -34,6 +34,10 @@ public:
                                               const QVariantMap &configValues = QVariantMap(),
                                               const QString &deviceName = QString(),
                                               const QString &deviceType = QString());
+    Q_INVOKABLE QString validateDeviceUpdate(Device *device, const QString &deviceName) const;
+    Q_INVOKABLE bool updateDevice(Device *device,
+                                  const QString &deviceName,
+                                  const QVariantMap &configValues);
 
 private:
     void refreshDmx512AdapterOptions();

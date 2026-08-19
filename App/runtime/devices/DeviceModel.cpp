@@ -103,7 +103,9 @@ bool DeviceModel::deviceMatchesDeviceType(const Device *device, const QString &d
     return device->deviceType().trimmed() == deviceType.trimmed();
 }
 
-bool DeviceModel::hasDeviceName(const QString &deviceType, const QString &deviceName) const
+bool DeviceModel::hasDeviceName(const QString &deviceType,
+                                const QString &deviceName,
+                                const QString &excludedDeviceId) const
 {
     const QString normalizedDeviceType = deviceType.trimmed();
     const QString normalizedDeviceName = deviceName.trimmed();
@@ -112,6 +114,9 @@ bool DeviceModel::hasDeviceName(const QString &deviceType, const QString &device
 
     const QList<Device *> currentItems = items();
     for (Device *device : currentItems) {
+        if (device->id() == excludedDeviceId)
+            continue;
+
         if (!deviceMatchesDeviceType(device, normalizedDeviceType))
             continue;
 

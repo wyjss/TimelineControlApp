@@ -173,6 +173,13 @@ Item {
         setTimelineCurrentTimeMs(command.startTimeMs)
     }
 
+    function editTimelineCommand(command) {
+        if (!timelineStopped || !timelineCommandModel || !command)
+            return
+
+        addTimelineCommandPopup.openForTimelineCommand(command)
+    }
+
     function setTimelineCurrentTimeMs(currentTimeMs) {
         if (!timelineStopped)
             return
@@ -687,6 +694,13 @@ Item {
                                     }
 
                                     Base.AppButton {
+                                        visible: timelineCommandRow.selected
+                                        text: qsTr("编辑")
+                                        enabled: root.timelineStopped
+                                        onClicked: root.editTimelineCommand(timelineCommandRow.commandData)
+                                    }
+
+                                    Base.AppButton {
                                         variant: UiStyle.ButtonVariant.Danger
                                         visible: timelineCommandRow.selected
                                         text: qsTr("删除")
@@ -781,8 +795,11 @@ Item {
 
         property var targetDevice: null
         property var targetCommand: null
+        property var editingTimelineCommand: null
+        property var editDraft: null
         property int targetStartTimeMs: 0
         property bool validationVisible: false
+        readonly property bool editing: editingTimelineCommand !== null
         readonly property var executionFields: targetCommand
             ? targetCommand.executionInputFields || []
             : []
@@ -792,6 +809,8 @@ Item {
             open()
 
             Qt.callLater(function() {
+                clearEditDraft()
+                editingTimelineCommand = null
                 targetDevice = nextDevice
                 targetCommand = nextCommand
                 targetStartTimeMs = nextStartTimeMs
@@ -801,10 +820,50 @@ Item {
             })
         }
 
+        function clearEditDraft() {
+            var draft = editDraft
+            editDraft = null
+            if (timelineCommandModel && draft)
+                timelineCommandModel.deleteEditDraft(draft)
+        }
+
+        function openForTimelineCommand(command) {
+            if (!timelineCommandModel || !command)
+                return
+
+            open()
+
+            Qt.callLater(function() {
+                clearEditDraft()
+                editingTimelineCommand = command
+                editDraft = timelineCommandModel.createEditDraft(command)
+                if (!editDraft) {
+                    close()
+                    return
+                }
+
+                targetDevice = root.deviceForId(String(command.targetDeviceId || ""))
+                targetCommand = editDraft
+                targetStartTimeMs = Number(command.startTimeMs || 0)
+                validationVisible = false
+                executionFieldForm.values = command.commandParams
+                    ? command.commandParams.executionInputFields || ({})
+                    : ({})
+            })
+        }
+
         function commit() {
             validationVisible = true
             if (!formValid || !targetDevice || !targetCommand)
                 return
+
+            if (editing) {
+                if (timelineCommandModel.updateCommand(editingTimelineCommand,
+                                                       targetStartTimeMs,
+                                                       executionFieldForm.valueMap()))
+                    close()
+                return
+            }
 
             root.addTimelineCommand(targetDevice,
                                     targetCommand,
@@ -814,17 +873,42 @@ Item {
         }
 
         width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
-        maximumDialogHeight: Math.min(520, Math.max(320, parent ? parent.height - 96 : 420))
+        maximumDialogHeight: Math.min(580, Math.max(360, parent ? parent.height - 96 : 460))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        title: qsTr("执行参数")
+        title: editing ? qsTr("编辑执行指令") : qsTr("执行参数")
         message: targetCommand ? root.commandName(targetCommand) : ""
         rejectText: qsTr("取消")
-        acceptText: qsTr("添加")
+        acceptText: editing ? qsTr("保存") : qsTr("添加")
         acceptIconName: "workflow"
         acceptEnabled: root.timelineStopped && formValid
         closeOnAccepted: false
         onAccepted: commit()
+        onClosed: {
+            clearEditDraft()
+            editingTimelineCommand = null
+            targetDevice = null
+            targetCommand = null
+        }
+
+        Base.AppDialogSection {
+            Layout.fillWidth: true
+            visible: addTimelineCommandPopup.editing
+            title: qsTr("开始时间")
+            compact: true
+            bodyFillHeight: false
+
+            Base.AppNumberField {
+                Layout.fillWidth: true
+                value: addTimelineCommandPopup.targetStartTimeMs
+                integerMode: true
+                minimum: 0
+                maximum: Math.max(root.timelineDurationMs,
+                                  addTimelineCommandPopup.targetStartTimeMs)
+                suffix: "ms"
+                onValueEdited: addTimelineCommandPopup.targetStartTimeMs = nextValue
+            }
+        }
 
         Base.AppText {
             Layout.fillWidth: true

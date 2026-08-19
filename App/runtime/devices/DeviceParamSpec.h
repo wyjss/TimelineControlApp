@@ -11,6 +11,8 @@ class DeviceParamSpec final : public UICore::BaseField
 
     //! 兼容旧 QML 展示用的字段类型名称。
     Q_PROPERTY(QString type READ typeName CONSTANT FINAL)
+    Q_PROPERTY(QVariant defaultValue READ defaultValue WRITE setDefaultValue NOTIFY defaultValueChanged FINAL)
+    Q_PROPERTY(QString pattern READ pattern WRITE setPattern NOTIFY patternChanged FINAL)
 
 public:
     using ValueType = UICore::BaseField::ValueType;
@@ -43,6 +45,11 @@ public:
                     EditorHint editorHint = AutoEditor,
                     QObject *parent = nullptr);
 
+    QVariant defaultValue() const;
+    void setDefaultValue(const QVariant &defaultValue);
+    QString pattern() const;
+    void setPattern(const QString &pattern);
+
     QString typeName() const;
     DeviceParamSpec *clone(QObject *parent = nullptr) const;
     Q_INVOKABLE QString invalidReason(const QVariant &value = QVariant()) const;
@@ -50,8 +57,15 @@ public:
     static QString typeName(ValueType valueType);
     static DeviceParamSpec *createForKey(const QString &deviceKey);
 
+signals:
+    void defaultValueChanged();
+    void patternChanged();
+
 private:
     static QVariant normalizedValue(ValueType valueType, const QVariant &value);
+
+    QVariant m_defaultValue;
+    QString m_pattern;
 };
 
 

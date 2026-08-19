@@ -27,7 +27,9 @@ public:
     void setCurrentDeviceId(const QString &deviceId);
     Device *currentDevice() const;
     Device *deviceById(const QString &deviceId) const;
-    bool hasDeviceName(const QString &deviceType, const QString &deviceName) const;
+    bool hasDeviceName(const QString &deviceType,
+                       const QString &deviceName,
+                       const QString &excludedDeviceId = QString()) const;
 
     QStringList deviceTypes(bool manual = false) const;
 

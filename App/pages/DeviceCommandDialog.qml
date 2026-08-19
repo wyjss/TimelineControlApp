@@ -9,8 +9,10 @@ Base.AppDialog {
 
     property var device: null
     property var draftCommand: null
+    property var editingCommand: null
     property string selectedProtocol: "serial"
     property bool validationVisible: false
+    readonly property bool editing: editingCommand !== null
     readonly property var protocolOptions: [
         { "label": qsTr("串口"), "value": "serial" },
         { "label": qsTr("HTTP"), "value": "http" },
@@ -30,9 +32,30 @@ Base.AppDialog {
         Qt.callLater(function() {
             clearDraft()
             device = nextDevice
+            editingCommand = null
             validationVisible = false
 
             var nextProtocol = defaultProtocol(nextDevice)
+            if (selectedProtocol === nextProtocol)
+                resetDraft()
+            else
+                selectedProtocol = nextProtocol
+        })
+    }
+
+    function openForCommand(nextDevice, nextCommand) {
+        if (!nextDevice || !nextCommand)
+            return
+
+        open()
+
+        Qt.callLater(function() {
+            clearDraft()
+            device = nextDevice
+            editingCommand = nextCommand
+            validationVisible = false
+
+            var nextProtocol = String(nextCommand.protocol || "")
             if (selectedProtocol === nextProtocol)
                 resetDraft()
             else
@@ -88,8 +111,11 @@ Base.AppDialog {
 
     function resetDraft() {
         clearDraft()
-        if (device && device.createCommandDraft !== undefined)
+        if (device && device.createCommandDraft !== undefined) {
             draftCommand = device.createCommandDraft(selectedProtocol)
+            if (editing && draftCommand)
+                applyFieldValues(draftCommand.creationInputFields || [], fieldValues(editingCommand.creationInputFields || []))
+        }
     }
 
     function firstInvalidReason() {
@@ -116,12 +142,29 @@ Base.AppDialog {
         }
     }
 
+    function fieldValues(fields) {
+        var values = {}
+        for (var index = 0; index < fields.length; ++index) {
+            var field = fields[index]
+            var key = field && field.key !== undefined ? String(field.key) : ""
+            if (key.length > 0)
+                values[key] = field.value
+        }
+        return values
+    }
+
     function commit() {
         validationVisible = true
         if (!commandValid || !device || device.createCommand === undefined)
             return
 
         var creationValues = creationFieldForm.valueMap()
+        if (editing) {
+            applyFieldValues(editingCommand.creationInputFields || [], creationValues)
+            commandAccepted(editingCommand)
+            close()
+            return
+        }
         var command = device.createCommand(selectedProtocol, String(creationValues.name || ""))
         if (!command)
             return
@@ -135,10 +178,10 @@ Base.AppDialog {
     maximumDialogHeight: Math.min(680, Math.max(420, parent ? parent.height - 96 : 560))
     x: parent ? Math.round((parent.width - width) / 2) : 0
     y: parent ? Math.round((parent.height - height) / 2) : 0
-    title: qsTr("添加指令")
+    title: editing ? qsTr("编辑指令") : qsTr("添加指令")
     message: device ? String(device.name || "") : ""
     rejectText: qsTr("取消")
-    acceptText: qsTr("添加")
+    acceptText: editing ? qsTr("保存") : qsTr("添加")
     acceptIconName: "workflow"
     acceptEnabled: commandValid
     closeOnAccepted: false
@@ -150,7 +193,10 @@ Base.AppDialog {
             resetDraft()
         }
     }
-    onClosed: clearDraft()
+    onClosed: {
+        clearDraft()
+        editingCommand = null
+    }
 
     Base.AppDialogSection {
         Layout.fillWidth: true
@@ -162,6 +208,7 @@ Base.AppDialog {
             Layout.fillWidth: true
             options: root.availableProtocolOptions
             value: root.selectedProtocol
+            enabled: !root.editing
             onValueSelected: root.selectedProtocol = String(nextValue)
         }
 

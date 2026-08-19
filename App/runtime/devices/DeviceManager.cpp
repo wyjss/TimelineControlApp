@@ -250,6 +250,43 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
     return true;
 }
 
+QString DeviceManager::validateDeviceUpdate(Device *device, const QString &deviceName) const
+{
+    if (!device || !m_deviceModel || m_deviceModel->deviceById(device->id()) != device)
+        return tr("设备不存在");
+
+    const QString normalizedDeviceName = deviceName.trimmed();
+    if (normalizedDeviceName.isEmpty())
+        return tr("设备名称必填");
+    for (const QChar character : deviceName) {
+        if (character.isSpace())
+            return tr("设备名称不能包含空格");
+    }
+
+    if (m_deviceModel->hasDeviceName(device->deviceType(), normalizedDeviceName, device->id()))
+        return tr("该类型中已存在同名设备");
+
+    return QString();
+}
+
+bool DeviceManager::updateDevice(Device *device,
+                                 const QString &deviceName,
+                                 const QVariantMap &configValues)
+{
+    if (!validateDeviceUpdate(device, deviceName).isEmpty())
+        return false;
+
+    QVariantMap resolvedConfigValues = device->configValues();
+    for (auto it = configValues.cbegin(); it != configValues.cend(); ++it) {
+        if (!it.key().trimmed().isEmpty())
+            resolvedConfigValues.insert(it.key(), it.value());
+    }
+
+    device->setName(deviceName.trimmed());
+    device->setConfigValues(resolvedConfigValues);
+    return true;
+}
+
 void DeviceManager::refreshDmx512AdapterOptions()
 {
     const QVariantList adapterOptions = m_deviceModel

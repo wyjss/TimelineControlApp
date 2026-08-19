@@ -149,6 +149,8 @@ void Device::setConfigValues(const QVariantMap &configValues)
         return;
 
     m_configValues = configValues;
+    for (DeviceCommand *command : m_commands)
+        command->updateConfigMap(m_configValues);
     emit configValuesChanged();
 }
 
@@ -228,6 +230,10 @@ void Device::appendCommand(DeviceCommand *command)
     if (command->parent() != this)
         command->setParent(this);
 
+    command->updateConfigMap(m_configValues);
+    connect(command, &DeviceCommand::fieldChanged, this, [this]() {
+        emit commandsChanged();
+    });
     m_commands.append(command);
 
     command->onInstall(this);

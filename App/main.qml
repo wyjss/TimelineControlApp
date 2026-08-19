@@ -22,9 +22,7 @@ ApplicationWindow {
         "key": "system-settings",
         "label": qsTr("系统设置"),
         "iconName": "layer-config",
-        "source": "qrc:/TimelineControlApp/App/pages/SystemSettingsPane.qml",
-        "destination": Ui.AppShell.LeftPaneDestination,
-        "activation": Ui.AppShell.Toggle
+        "source": "qrc:/TimelineControlApp/App/pages/SystemSettingsPane.qml"
     })
     readonly property string defaultCanvasDelegateSource: appRuntime && appRuntime.settings
         ? String(appRuntime.settings.value("canvasDelegateSource", ""))
@@ -39,7 +37,8 @@ ApplicationWindow {
             var item = items[index]
             if (String(item.key) === String(key)) {
                 shell.hideLeftPane()
-                shell.sidebar.itemActivated(String(key), item)
+                shell.activeNavigationKey = String(key)
+                shell.canvasDelegateSource = String(item.source || "")
                 shell.focusCanvas()
                 return
             }
@@ -67,23 +66,7 @@ ApplicationWindow {
 
         anchors.fill: parent
         applicationTitle: window.title
-        navigationItems: {
-            var items = window.shellController ? window.shellController.navigationItems : []
-            var routedItems = []
-            for (var index = 0; index < items.length; ++index) {
-                var item = items[index]
-                routedItems.push({
-                    "key": item.key,
-                    "label": item.label,
-                    "iconName": item.iconName,
-                    "source": item.source,
-                    "destination": Ui.AppShell.CanvasDestination,
-                    "activation": Ui.AppShell.Activate
-                })
-            }
-            return routedItems
-        }
-        navigationRoutingEnabled: true
+        navigationItems: window.shellController ? window.shellController.navigationItems : []
         leftPaneDisplayMode: Shell.AppSidebarPane.Hidden
         leftPanelWidth: 320
         canvasInteractionState: window.shellController
@@ -98,11 +81,17 @@ ApplicationWindow {
                 showText: shell.sidebar.showItemLabels
                 active: shell.activeNavigationKey === window.settingsNavigationItem.key
                 onClicked: {
-                    var closing = active && shell.leftPaneOpen
-                    shell.sidebar.itemActivated(window.settingsNavigationItem.key,
-                                                 window.settingsNavigationItem)
-                    if (closing && window.shellController)
-                        shell.activeNavigationKey = window.shellController.activeNavigationKey
+                    if (active && shell.leftPaneOpen) {
+                        shell.hideLeftPane()
+                        shell.activeNavigationKey = window.shellController
+                            ? window.shellController.activeNavigationKey
+                            : ""
+                        return
+                    }
+
+                    shell.leftPaneSource = window.settingsNavigationItem.source
+                    shell.activeNavigationKey = window.settingsNavigationItem.key
+                    shell.showLeftPane()
                 }
 
                 ToolTip.visible: hovered && !showText
@@ -297,6 +286,7 @@ ApplicationWindow {
             shell.hideLeftPane()
             if (window.shellController)
                 window.shellController.activeNavigationKey = key
+            window.activateNavigation(key)
         }
     }
 

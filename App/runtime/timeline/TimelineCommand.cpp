@@ -1,6 +1,7 @@
 #include "timeline/TimelineCommand.h"
 
 #include "devices/DeviceCommand.h"
+#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 
 #include <algorithm>
@@ -412,6 +413,41 @@ TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
     const QString commandName = targetCommand->resolvedParams(executionValues)
                                     .value(DeviceKey::Name, targetCommand->name()).toString();
     return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, targetCommand);
+}
+
+DeviceCommand *TimelineCommandModel::createEditDraft(TimelineCommand *command)
+{
+    if (indexOfCommand(command) < 0)
+        return nullptr;
+
+    return DeviceCommandFactory::createFromJson(QJsonObject::fromVariantMap(command->commandParams()), this);
+}
+
+void TimelineCommandModel::deleteEditDraft(DeviceCommand *draft)
+{
+    if (draft && draft->parent() == this)
+        draft->deleteLater();
+}
+
+bool TimelineCommandModel::updateCommand(TimelineCommand *command,
+                                         qint64 startTimeMs,
+                                         const QVariantMap &executionInputValues)
+{
+    if (indexOfCommand(command) < 0)
+        return false;
+
+    QVariantMap commandParams = command->commandParams();
+    const QString executionInputFieldsKey = QStringLiteral("executionInputFields");
+    if (executionInputValues.isEmpty())
+        commandParams.remove(executionInputFieldsKey);
+    else
+        commandParams.insert(executionInputFieldsKey, executionInputValues);
+
+    command->setStartTimeMs(startTimeMs);
+    command->setCommandParams(commandParams);
+    command->setErrorMessage(QString());
+    command->setState(TimelineCommand::Idle);
+    return true;
 }
 
 TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
