@@ -4,7 +4,6 @@
 #include <UICore/Task/TaskManager.h>
 
 #include <QString>
-#include <QStringList>
 
 class QDataStream;
 
@@ -15,41 +14,25 @@ class DeviceTemplateModel;
 class DeviceExecutorManager;
 class DeviceInspectorFormProvider;
 class VideoProjectionPlanController;
-class TimelineController;
-class TimelineCommandModel;
-class TimelinePlanController;
+class TimelineCommand;
+class TimelineManager;
 
 
 class TimelineRuntime final : public UICore::BaseRuntime
 {
     Q_OBJECT
-    Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
     Q_PROPERTY(UICore::TaskManager *taskManager READ taskManager CONSTANT FINAL)
     Q_PROPERTY(DeviceManager *deviceManager READ deviceManager CONSTANT FINAL)
     Q_PROPERTY(DeviceModel *deviceModel READ deviceModel CONSTANT FINAL)
     Q_PROPERTY(DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
     Q_PROPERTY(DeviceInspectorFormProvider *deviceInspectorFormProvider READ deviceInspectorFormProvider CONSTANT FINAL)
     Q_PROPERTY(VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
-    Q_PROPERTY(TimelineController *timelineController READ timelineController CONSTANT FINAL)
-    Q_PROPERTY(TimelineCommandModel *timelineCommandModel READ timelineCommandModel CONSTANT FINAL)
-    Q_PROPERTY(TimelinePlanController *timelinePlanController READ timelinePlanController CONSTANT FINAL)
+    Q_PROPERTY(TimelineManager *timelineManager READ timelineManager CONSTANT FINAL)
     Q_PROPERTY(QString currentPlanFilePath READ currentPlanFilePath NOTIFY currentPlanFilePathChanged FINAL)
     Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanFilePathChanged FINAL)
 
 public:
-    enum State
-    {
-        Stopped,
-        Running,
-        Paused,
-        Completed
-    };
-    Q_ENUM(State)
-
     explicit TimelineRuntime(QObject *parent = nullptr);
-
-    State state() const;
-    void setState(State state);
 
     UICore::TaskManager *taskManager() const;
     DeviceManager *deviceManager() const;
@@ -57,14 +40,9 @@ public:
     DeviceTemplateModel *deviceTemplateModel() const;
     DeviceInspectorFormProvider *deviceInspectorFormProvider() const;
     VideoProjectionPlanController *videoProjectionPlanController() const;
-    TimelineController *timelineController() const;
-    TimelineCommandModel *timelineCommandModel() const;
-    TimelinePlanController *timelinePlanController() const;
+    TimelineManager *timelineManager() const;
     QString currentPlanFilePath() const;
     QString currentPlanName() const;
-
-    Q_INVOKABLE void startTimeline();
-    Q_INVOKABLE void stopTimeline();
 
     void writePlanToStream(QDataStream &stream) const;
     void readPlanFromStream(QDataStream &stream);
@@ -72,13 +50,11 @@ public:
     Q_INVOKABLE bool loadPlanFromFile(const QString &filePath);
 
 signals:
-    void stateChanged();
     void currentPlanFilePathChanged();
 
 private:
-    void startCurrentTimeline();
+    void executeTimelineCommand(TimelineCommand *timelineCommand);
 
-    State m_state = Stopped;
     UICore::TaskManager *m_taskManager = nullptr;
     DeviceModel *m_deviceModel = nullptr;
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;
@@ -86,11 +62,7 @@ private:
     DeviceManager *m_deviceManager = nullptr;
     DeviceInspectorFormProvider *m_deviceInspectorFormProvider = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
-    TimelineController *m_timelineController = nullptr;
-    TimelineCommandModel *m_timelineCommandModel = nullptr;
-    TimelinePlanController *m_timelinePlanController = nullptr;
+    TimelineManager *m_timelineManager = nullptr;
     QString m_currentPlanFilePath;
-    QStringList m_playQueue;
-    int m_playQueueIndex = -1;
     int m_runId = 0;
 };

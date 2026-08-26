@@ -1,0 +1,84 @@
+#pragma once
+
+#include <QObject>
+#include <QString>
+#include <QStringList>
+
+
+class QDataStream;
+class Timeline;
+class TimelineCommand;
+class TimelineClock;
+class TimelineModel;
+
+// 时间线管理器
+class TimelineManager final : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(TimelineModel *timelineModel READ timelineModel CONSTANT FINAL)
+    Q_PROPERTY(Timeline *currentTimeline READ currentTimeline NOTIFY currentTimelineChanged FINAL)
+    Q_PROPERTY(PlaybackState playbackState READ playbackState NOTIFY playbackStateChanged FINAL)
+    Q_PROPERTY(qint64 currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged FINAL)
+    Q_PROPERTY(QStringList playQueue READ playQueue NOTIFY playQueueChanged FINAL)
+    Q_PROPERTY(int playQueueIndex READ playQueueIndex NOTIFY playQueueIndexChanged FINAL)
+
+public:
+    enum PlaybackState
+    {
+        Stopped,
+        Running,
+        Paused,
+        Completed
+    };
+    Q_ENUM(PlaybackState)
+
+    explicit TimelineManager(QObject *parent = nullptr);
+
+    // 查询
+    TimelineModel *timelineModel() const;
+    Timeline *currentTimeline() const;
+    PlaybackState playbackState() const;
+    qint64 currentTimeMs() const;
+    Timeline *timelineById(const QString &id) const;
+    QStringList playQueue() const;
+    int playQueueIndex() const;
+
+    // timeline 控制
+    Q_INVOKABLE Timeline *createTimeline(const QString &name);
+    Timeline *addTimeline(const QString &id, const QString &name);
+    Q_INVOKABLE bool removeTimeline(const QString &id);
+    Q_INVOKABLE bool moveTimeline(int fromIndex, int toIndex);
+    Q_INVOKABLE bool setCurrentTimelineId(const QString &id);
+
+    // 播控
+    Q_INVOKABLE bool waitForTrigger(const QString &id);
+    Q_INVOKABLE bool setPlayQueue(const QStringList &timelineIds);
+    Q_INVOKABLE bool startPlayback(const QStringList &timelineIds);
+    Q_INVOKABLE void pausePlayback();
+    Q_INVOKABLE void resumePlayback();
+    Q_INVOKABLE void stopPlayback();
+
+    void writeToStream(QDataStream &stream) const;
+    bool readFromStream(QDataStream &stream);
+signals:
+    void currentTimelineChanged(Timeline *timeline);
+    void playbackStateChanged(PlaybackState state);
+    void currentTimeMsChanged(qint64 currentTimeMs);
+    void playQueueChanged();
+    void playQueueIndexChanged(int index);
+    void commandTriggered(Timeline *timeline, TimelineCommand *command);
+
+private:
+    bool startTimeline(const QString &id);
+    void updateTimeline(Timeline *timeline, qint64 clockTimeMs);
+    void handleTimelineCompleted(Timeline *timeline);
+    bool hasRunningTimeline() const;
+
+    TimelineClock *m_clock = nullptr;
+    TimelineModel *m_timelineModel = nullptr;
+    QStringList m_playQueue;
+    int m_playQueueIndex = -1;
+};
+
+
+Q_DECLARE_METATYPE(TimelineManager *)

@@ -13,9 +13,10 @@
 #include "devices/DeviceTemplateModel.h"
 #include "devices/executors/DeviceExecutorManager.h"
 #include "projection/VideoProjectionPlanController.h"
-#include "timeline/TimelineController.h"
+#include "timeline/Timeline.h"
 #include "timeline/TimelineCommand.h"
-#include "timeline/TimelinePlanController.h"
+#include "timeline/TimelineManager.h"
+#include "timeline/TimelineModel.h"
 #include <UICore/Forms/AppForm.h>
 
 #include <QDataStream>
@@ -26,6 +27,13 @@
 #include <QJsonObject>
 #include <QPointer>
 #include <QUrl>
+
+namespace {
+
+constexpr quint32 kTimelinePlanMagic = 0x544C504E;
+constexpr qint32 kTimelinePlanVersion = 1;
+
+} // namespace
 
 
 TimelineRuntime::TimelineRuntime(QObject *parent)
@@ -39,11 +47,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
                                                                     m_deviceTemplateModel,
                                                                     this))
     , m_videoProjectionPlanController(new VideoProjectionPlanController(this))
-    , m_timelineController(new TimelineController(this))
-    , m_timelineCommandModel(new TimelineCommandModel(this))
-    , m_timelinePlanController(new TimelinePlanController(m_timelineCommandModel,
-                                                          m_timelineController,
-                                                          this))
+    , m_timelineManager(new TimelineManager(this))
 {
     qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
     qRegisterMetaType<Device *>("Device*");
@@ -55,149 +59,98 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<DeviceModel *>("DeviceModel*");
     qRegisterMetaType<DeviceTemplateModel *>("DeviceTemplateModel*");
     qRegisterMetaType<VideoProjectionPlanController *>("VideoProjectionPlanController*");
-    qRegisterMetaType<TimelineController *>("TimelineController*");
+    qRegisterMetaType<Timeline *>("Timeline*");
     qRegisterMetaType<TimelineCommand *>("TimelineCommand*");
     qRegisterMetaType<TimelineCommandModel *>("TimelineCommandModel*");
-    qRegisterMetaType<TimelinePlanController *>("TimelinePlanController*");
+    qRegisterMetaType<TimelineManager *>("TimelineManager*");
+    qRegisterMetaType<TimelineModel *>("TimelineModel*");
 
-    connect(m_deviceModel, &DeviceModel::deviceRemoved,
-            m_timelinePlanController, &TimelinePlanController::removeCommandsForDevice);
+    connect(m_deviceModel, &DeviceModel::deviceRemoved, this, [this](const QString &deviceId) {
+        for (Timeline *timeline : m_timelineManager->timelineModel()->items())
+            timeline->commandModel()->removeCommandsForDevice(deviceId);
+    });
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_videoProjectionPlanController, &VideoProjectionPlanController::removeMappingsForPc);
-    connect(m_timelineController, &TimelineController::stateChanged, this, [this]() {
-        const TimelineController::State controllerState = m_timelineController->state();
-        const State nextState = controllerState == TimelineController::Running
-            ? Running
-            : (controllerState == TimelineController::Paused
-                   ? Paused
-                   : (controllerState == TimelineController::Completed ? Completed : Stopped));
-        if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size()) {
-            if (nextState == Running) {
-                m_timelinePlanController->setPlanPlaybackState(
-                    m_playQueue.at(m_playQueueIndex), TimelinePlanController::Playing);
-            } else if (nextState == Paused) {
-                m_timelinePlanController->setPlanPlaybackState(
-                    m_playQueue.at(m_playQueueIndex), TimelinePlanController::Paused);
-            }
-        }
-        if (nextState == Stopped) {
-            ++m_runId;
-            for (TimelineCommand *command : m_timelineCommandModel->commands()) {
+    connect(m_timelineManager, &TimelineManager::commandTriggered,
+            this, [this](Timeline *, TimelineCommand *timelineCommand) {
+        executeTimelineCommand(timelineCommand);
+    });
+    connect(m_timelineManager, &TimelineManager::playbackStateChanged,
+            this, [this](TimelineManager::PlaybackState state) {
+        if (state != TimelineManager::Stopped)
+            return;
+
+        ++m_runId;
+        for (Timeline *timeline : m_timelineManager->timelineModel()->items()) {
+            for (TimelineCommand *command : timeline->commandModel()->commands()) {
                 if (command && command->state() == TimelineCommand::Running) {
                     command->setErrorMessage(tr("已停止"));
                     command->setState(TimelineCommand::Failed);
                 }
             }
-            m_timelineController->setDurationMs(24 * 60 * 60 * 1000);
-            if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size())
-                return;
-        }
-
-        if (m_state == nextState)
-            return;
-
-        m_state = nextState;
-        emit stateChanged();
-    });
-    connect(m_timelineController, &TimelineController::finished, this, [this]() {
-        if (m_playQueueIndex >= 0 && m_playQueueIndex < m_playQueue.size()) {
-            m_timelinePlanController->setPlanPlaybackState(
-                m_playQueue.at(m_playQueueIndex), TimelinePlanController::Completed);
-        }
-        ++m_playQueueIndex;
-        if (m_playQueueIndex >= m_playQueue.size()) {
-            m_playQueue.clear();
-            m_playQueueIndex = -1;
-            m_timelineController->setState(TimelineController::Completed);
-            return;
-        }
-        if (!m_timelinePlanController->setCurrentPlanId(m_playQueue.at(m_playQueueIndex))) {
-            m_playQueue.clear();
-            m_playQueueIndex = -1;
-            return;
-        }
-        startCurrentTimeline();
-    });
-    connect(m_timelineController, &TimelineController::currentTimeMsChanged, this, [this]() {
-        if (m_timelineController->state() != TimelineController::Running)
-            return;
-
-        const qint64 currentTimeMs = m_timelineController->currentTimeMs();
-        for (TimelineCommand *timelineCommand : m_timelineCommandModel->commands()) {
-            if (!timelineCommand
-                || timelineCommand->state() != TimelineCommand::Idle
-                || timelineCommand->startTimeMs() > currentTimeMs)
-                continue;
-
-            const QVariantMap commandParams = timelineCommand->commandParams();
-            const QString commandProtocol = commandParams.value(DeviceKey::Protocol).toString().trimmed();
-            Device *targetDevice = m_deviceModel ? m_deviceModel->deviceById(timelineCommand->targetDeviceId()) : nullptr;
-            if (!targetDevice) {
-                timelineCommand->setErrorMessage(tr("目标设备不存在"));
-                timelineCommand->setState(TimelineCommand::Failed);
-                continue;
-            }
-
-            if (!targetDevice->supportsProtocol(commandProtocol)) {
-                timelineCommand->setErrorMessage(tr("设备不支持该协议"));
-                timelineCommand->setState(TimelineCommand::Failed);
-                continue;
-            }
-
-            DeviceCommand *deviceCommand = DeviceCommandFactory::createFromJson(QJsonObject::fromVariantMap(commandParams), this);
-            if (!deviceCommand) {
-                timelineCommand->setErrorMessage(tr("无效指令"));
-                timelineCommand->setState(TimelineCommand::Failed);
-                continue;
-            }
-
-            timelineCommand->setState(TimelineCommand::Running);
-            const int runId = m_runId;
-            QPointer<TimelineCommand> timelineCommandGuard(timelineCommand);
-            connect(m_deviceExecutorManager, &DeviceExecutorManager::executionFinished, deviceCommand, [this, runId, timelineCommandGuard, deviceCommand](DeviceCommand *finishedCommand, bool success, const QString &errorMessage) {
-                if (finishedCommand != deviceCommand)
-                    return;
-
-                if (m_runId == runId && timelineCommandGuard) {
-                    timelineCommandGuard->setErrorMessage(errorMessage);
-                    timelineCommandGuard->setState(success ? TimelineCommand::Succeeded : TimelineCommand::Failed);
-                }
-                deviceCommand->deleteLater();
-            });
-            m_deviceExecutorManager->execute(targetDevice,
-                                             deviceCommand,
-                                             commandParams.value(QStringLiteral("executionInputFields")).toMap());
         }
     });
 
     const QString defaultPlanFilePath = QDir::current().filePath(QStringLiteral("default.tlplan"));
     if (QFile::exists(defaultPlanFilePath))
         loadPlanFromFile(defaultPlanFilePath);
+    if (m_timelineManager->timelineModel()->rowCount() == 0)
+        m_timelineManager->createTimeline(tr("主时间轴"));
 }
 
-TimelineRuntime::State TimelineRuntime::state() const
+void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
 {
-    return m_state;
-}
+    if (!timelineCommand)
+        return;
 
-void TimelineRuntime::setState(State state)
-{
-    if (state == Running) {
-        startTimeline();
+    const QVariantMap commandParams = timelineCommand->commandParams();
+    const QString commandProtocol = commandParams.value(DeviceKey::Protocol).toString().trimmed();
+    Device *targetDevice = m_deviceModel
+        ? m_deviceModel->deviceById(timelineCommand->targetDeviceId())
+        : nullptr;
+    if (!targetDevice) {
+        timelineCommand->setErrorMessage(tr("目标设备不存在"));
+        timelineCommand->setState(TimelineCommand::Failed);
+        return;
+    }
+    if (!targetDevice->supportsProtocol(commandProtocol)) {
+        timelineCommand->setErrorMessage(tr("设备不支持该协议"));
+        timelineCommand->setState(TimelineCommand::Failed);
         return;
     }
 
-    if (state == Stopped) {
-        stopTimeline();
+    DeviceCommand *deviceCommand = DeviceCommandFactory::createFromJson(
+        QJsonObject::fromVariantMap(commandParams), this);
+    if (!deviceCommand) {
+        timelineCommand->setErrorMessage(tr("无效指令"));
+        timelineCommand->setState(TimelineCommand::Failed);
         return;
     }
 
-    if (state == Completed)
-        return;
+    timelineCommand->setState(TimelineCommand::Running);
+    const int runId = m_runId;
+    QPointer<TimelineCommand> timelineCommandGuard(timelineCommand);
+    connect(m_deviceExecutorManager, &DeviceExecutorManager::executionFinished,
+            deviceCommand,
+            [this, runId, timelineCommandGuard, deviceCommand](
+                DeviceCommand *finishedCommand,
+                bool success,
+                const QString &errorMessage) {
+        if (finishedCommand != deviceCommand)
+            return;
 
-    if (m_timelineController
-        && m_timelineController->state() != TimelineController::Paused)
-        m_timelineController->setState(TimelineController::Paused);
+        if (m_runId == runId && timelineCommandGuard) {
+            timelineCommandGuard->setErrorMessage(errorMessage);
+            timelineCommandGuard->setState(success
+                                               ? TimelineCommand::Succeeded
+                                               : TimelineCommand::Failed);
+        }
+        deviceCommand->deleteLater();
+    });
+    m_deviceExecutorManager->execute(
+        targetDevice,
+        deviceCommand,
+        commandParams.value(QStringLiteral("executionInputFields")).toMap());
 }
 
 UICore::TaskManager *TimelineRuntime::taskManager() const
@@ -230,19 +183,9 @@ VideoProjectionPlanController *TimelineRuntime::videoProjectionPlanController() 
     return m_videoProjectionPlanController;
 }
 
-TimelineController *TimelineRuntime::timelineController() const
+TimelineManager *TimelineRuntime::timelineManager() const
 {
-    return m_timelineController;
-}
-
-TimelineCommandModel *TimelineRuntime::timelineCommandModel() const
-{
-    return m_timelineCommandModel;
-}
-
-TimelinePlanController *TimelineRuntime::timelinePlanController() const
-{
-    return m_timelinePlanController;
+    return m_timelineManager;
 }
 
 QString TimelineRuntime::currentPlanFilePath() const
@@ -255,100 +198,35 @@ QString TimelineRuntime::currentPlanName() const
     return QFileInfo(m_currentPlanFilePath).completeBaseName();
 }
 
-void TimelineRuntime::startTimeline()
-{
-    if (!m_timelineController || !m_timelinePlanController)
-        return;
-
-    if (m_timelineController->state() == TimelineController::Paused) {
-        m_timelineController->start();
-        return;
-    }
-
-    if (m_timelineController->state() != TimelineController::Stopped)
-        return;
-
-    const QStringList selectedPlanIds = m_timelinePlanController->selectedPlanIds();
-    if (selectedPlanIds.isEmpty())
-        return;
-
-    m_timelinePlanController->resetPlaybackStates();
-    m_playQueue = selectedPlanIds;
-    m_playQueueIndex = 0;
-    if (!m_timelinePlanController->setCurrentPlanId(m_playQueue.constFirst())) {
-        m_playQueue.clear();
-        m_playQueueIndex = -1;
-        return;
-    }
-
-    startCurrentTimeline();
-}
-
-void TimelineRuntime::stopTimeline()
-{
-    m_timelinePlanController->resetPlaybackStates();
-    m_playQueue.clear();
-    m_playQueueIndex = -1;
-    if (m_timelineController
-        && m_timelineController->state() != TimelineController::Stopped)
-        m_timelineController->stop();
-}
-
-void TimelineRuntime::startCurrentTimeline()
-{
-    if (!m_timelineController)
-        return;
-
-    if (m_timelineController->state() == TimelineController::Stopped) {
-        qint64 durationMs = 0;
-        for (TimelineCommand *command : m_timelineCommandModel->commands()) {
-            if (!command)
-                continue;
-
-            command->setState(TimelineCommand::Idle);
-            command->setErrorMessage(QString());
-
-            const qint64 endTimeMs = command->startTimeMs() + command->durationMs();
-            if (durationMs < endTimeMs)
-                durationMs = endTimeMs;
-        }
-        m_timelineController->setDurationMs(durationMs + 10 * 1000);
-    }
-
-    m_timelineController->start();
-}
-
 void TimelineRuntime::writePlanToStream(QDataStream &stream) const
 {
+    stream << kTimelinePlanMagic
+           << kTimelinePlanVersion;
     m_deviceModel->writeToStream(stream);
-    m_timelineCommandModel->writeToStream(stream);
+    m_timelineManager->writeToStream(stream);
     m_videoProjectionPlanController->writeToStream(stream);
-    m_timelinePlanController->writeToStream(stream);
 }
 
 void TimelineRuntime::readPlanFromStream(QDataStream &stream)
 {
+    quint32 magic = 0;
+    qint32 version = 0;
+    stream >> magic >> version;
+    if (stream.status() != QDataStream::Ok
+        || magic != kTimelinePlanMagic
+        || version != kTimelinePlanVersion) {
+        stream.setStatus(QDataStream::ReadCorruptData);
+        return;
+    }
+
     m_deviceModel->readFromStream(stream);
     if (stream.status() != QDataStream::Ok)
         return;
 
-    m_timelineCommandModel->readFromStream(stream);
-    if (stream.status() != QDataStream::Ok)
+    if (!m_timelineManager->readFromStream(stream))
         return;
-    if (stream.device() && stream.device()->atEnd()) {
-        m_timelinePlanController->resetFromCurrentModel();
-        return;
-    }
 
     m_videoProjectionPlanController->readFromStream(stream);
-    if (stream.status() != QDataStream::Ok)
-        return;
-    if (stream.device() && stream.device()->atEnd()) {
-        m_timelinePlanController->resetFromCurrentModel();
-        return;
-    }
-    if (!m_timelinePlanController->readFromStream(stream))
-        stream.setStatus(QDataStream::ReadCorruptData);
 }
 
 bool TimelineRuntime::savePlanToFile(const QString &filePath)

@@ -4,6 +4,8 @@
 #include "devices/DeviceConstants.h"
 
 #include <QVariant>
+#include <QUrl>
+#include <QUrlQuery>
 
 namespace {
 
@@ -100,7 +102,7 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
     return true;
 }
 
-QVariantMap DeviceCommand::resolvedParams(const QVariantMap &) const
+QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValues) const
 {
     QVariantMap params = m_configMap;
     params.remove(QString::fromLatin1(kExecutionInputFieldsKey));
@@ -108,12 +110,52 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap &) const
     for (DeviceParamSpec *field : m_creationInputFields)
         params.insert(field->key(), field->value());
 
+	for (auto it = executionInputValues.cbegin();
+		 it != executionInputValues.cend();
+		 ++it) {
+        params.insert(it.key(), it.value());
+	}
+
+    if (params.contains(m_stringTemplateKey)) {
+        auto str = params[m_stringTemplateKey].toString();
+		
+		for (auto it = params.cbegin(); it != params.cend(); ++it) {
+            QString k = QString("{%1}").arg(it.key());
+            // 普通替换
+            if (str.contains(k)) {
+                str = str.replace(k, it.value().toString());
+            } 
+            // http query插入
+            else if (k.insert(1, "&"); str.contains(k)) {
+                QUrl qurl(str);
+                QUrlQuery query(qurl);
+                query.addQueryItem(it.key(), it.value().toString());
+                qurl.setQuery(query);
+                str = qurl.toString();
+            }
+		}
+
+        params[m_stringTemplateKey] = str;
+    }
+
     return params;
 }
 
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
 {
-    return DeviceCommandFactory::createFromJson(toJson(), parent);
+    auto *command = DeviceCommandFactory::createFromJson(toJson(), parent);
+    if (!command)
+        return nullptr;
+
+    for (DeviceParamSpec *field : command->m_executionInputFields)
+        delete field;
+    command->m_executionInputFields.clear();
+
+    for (DeviceParamSpec *field : m_executionInputFields)
+        command->addExecutionInputField(field->clone(command));
+
+    command->m_stringTemplateKey = m_stringTemplateKey;
+    return command;
 }
 
 void DeviceCommand::addCreationInputField(DeviceParamSpec *field)
@@ -191,6 +233,25 @@ QVariantList DeviceCommand::executionInputFields() const
 void DeviceCommand::emitFieldChanged()
 {
     emit fieldChanged(qobject_cast<DeviceParamSpec *>(sender()));
+}
+
+//////////////////////////////////////////////////////////////////////////
+DeviceCommand_Udp::DeviceCommand_Udp(QObject* parent)
+	: DeviceCommand_Udp(DeviceProtocol::Udp, QStringLiteral("Udp指令"), QString(), parent)
+{
+	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
+	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
+	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::ApiPath));
+}
+
+DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
+                  const QString& name,
+                  const QString& commandType,
+                  QObject* parent)
+    : DeviceCommand(protocol, name, commandType, parent)
+{
+	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
+	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
 }
 
 DeviceCommand_Http::DeviceCommand_Http(QObject *parent)

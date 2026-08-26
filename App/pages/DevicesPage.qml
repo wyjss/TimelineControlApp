@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/components/form" as Form
 import "qrc:/UICore/qml/theme" as Theme
+import "../components" as AppComponents
 
 Item {
     id: root
@@ -262,12 +263,6 @@ Item {
         return name.length > 0 ? name : qsTr("指令")
     }
 
-    function commandProtocol(command) {
-        return command && command.protocol !== undefined && command.protocol !== null
-            ? String(command.protocol)
-            : ""
-    }
-
     function executionParameterNames(command) {
         var fields = command ? command.executionInputFields || [] : []
         var names = []
@@ -276,7 +271,7 @@ Item {
             if (name.length > 0)
                 names.push(name)
         }
-        return names.join("、")
+        return names.join(" · ")
     }
 
     function commandInputCount(command) {
@@ -285,39 +280,6 @@ Item {
 
         var creationFields = command.creationInputFields || []
         return creationFields.length
-    }
-
-    function commandFieldValue(command, key, fallback) {
-        var fields = command ? command.creationInputFields || [] : []
-        for (var index = 0; index < fields.length; ++index) {
-            if (String(fields[index].key || "") === key)
-                return fields[index].value
-        }
-        return fallback
-    }
-
-    function commandSummary(command) {
-        var protocol = root.commandProtocol(command).toLowerCase()
-        if (protocol === "http" || protocol === "pc") {
-            var address = String(commandFieldValue(command, "ip", "") || "").trim()
-            var port = String(commandFieldValue(command, "port", "") || "").trim()
-            var path = String(commandFieldValue(command, "apiPath", "") || "").trim()
-            var method = String(commandFieldValue(command, "httpMethod", "") || "").trim()
-            if (address.length > 0 && port.length > 0)
-                address += ":" + port
-            return [method, address, path].filter(function(part) { return part.length > 0 }).join(" / ")
-        }
-        if (protocol === "serial") {
-            var serialPort = String(commandFieldValue(command, "serialPort", "") || "").trim()
-            var baudRate = String(commandFieldValue(command, "baudRate", "") || "").trim()
-            var serialPayload = String(commandFieldValue(command, "serialPayload", "") || "").trim()
-            return [serialPort, baudRate, serialPayload].filter(function(part) { return part.length > 0 }).join(" / ")
-        }
-        if (protocol === "dmx512")
-            return qsTr("通道 %1 / 值 %2")
-                .arg(commandFieldValue(command, "channel", 1))
-                .arg(commandFieldValue(command, "value", 0))
-        return qsTr("%1 个字段").arg(root.commandInputCount(command))
     }
 
     function selectDeviceType(deviceType) {
@@ -351,18 +313,33 @@ Item {
             : String(groupData.name || "")
     }
 
+    function groupIconName(groupData) {
+        if (deviceDisplayMode === "type")
+            return String(groupData || "")
+
+        var deviceType = String(groupData.deviceType || "")
+        return deviceType.length > 0 ? deviceType : String(groupData.name || "")
+    }
+
     function groupDescription(groupData) {
         if (deviceDisplayMode === "type")
-            return qsTr("%1 台设备").arg(deviceCountForType(groupData))
+            return qsTr("%1 台设备").arg(deviceCountForGroup(groupData))
 
-        return String((groupData.supportedProtocols || []).join(", ")) + " - " + String(groupData.description || "")
+        var deviceType = String(groupData.deviceType || "")
+        var protocols = String((groupData.supportedProtocols || []).join(" · "))
+        return deviceType.length > 0 && protocols.length > 0
+            ? deviceType + " · " + protocols
+            : deviceType + protocols
     }
 
     function groupFootnote(groupData) {
         if (deviceDisplayMode === "type")
             return qsTr("设备类型")
 
-        return qsTr("%1 项配置").arg(groupData.configSpecs ? groupData.configSpecs.length : 0)
+        var description = String(groupData.description || "")
+        return description.length > 0 && description !== String(groupData.name || "")
+            ? description
+            : qsTr("%1 项配置").arg(groupData.configSpecs ? groupData.configSpecs.length : 0)
     }
 
     function deviceAddress(device) {
@@ -385,10 +362,16 @@ Item {
             : String(groupData.name || "") === selectedTemplateName
     }
 
-    function deviceCountForType(deviceType) {
+    function deviceCountForGroup(groupData) {
+        var groupValue = deviceDisplayMode === "type"
+            ? String(groupData || "")
+            : String(groupData.name || "")
         var count = 0
         for (var index = 0; index < devices.length; ++index) {
-            if (String(devices[index].deviceType || "") === String(deviceType || ""))
+            var nextValue = deviceDisplayMode === "type"
+                ? String(devices[index].deviceType || "")
+                : String(devices[index].templateName || "")
+            if (nextValue === groupValue)
                 ++count
         }
 
@@ -509,46 +492,78 @@ Item {
                                         readonly property bool selected: root.groupSelected(modelData)
 
                                         Layout.fillWidth: true
+                                        Layout.preferredHeight: 82
                                         text: root.groupName(modelData)
                                         compact: true
-                                        contentSpacing: root.pageTheme.density.controlGap
+                                        contentSpacing: 0
                                         checkable: true
                                         checked: selected
-                                        emphasizedSelection: true
+                                        surfaceTone: UiStyle.SurfaceTone.SectionOverlay
                                         selectionTransition: groupCardSelectionTransition
                                         animateScale: false
                                         onClicked: root.selectGroup(modelData)
 
-                                        Base.AppText {
+                                        RowLayout {
                                             Layout.fillWidth: true
-                                            text: root.groupName(modelData)
-                                            styleRole: UiStyle.TypographyRole.BodyM
-                                            elide: Text.ElideRight
-                                        }
+                                            Layout.fillHeight: true
+                                            spacing: root.pageTheme.density.controlGap
 
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: root.groupDescription(modelData)
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Secondary
-                                            elide: Text.ElideRight
-                                        }
+                                            AppComponents.DeviceIcon {
+                                                size: 32
+                                                name: root.groupIconName(modelData)
+                                            }
 
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: root.groupFootnote(modelData)
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: selected ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
-                                            elide: Text.ElideRight
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 2
+
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: root.pageTheme.density.controlGap
+
+                                                    Base.AppText {
+                                                        Layout.fillWidth: true
+                                                        text: root.groupName(modelData)
+                                                        styleRole: UiStyle.TypographyRole.BodyM
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    Base.AppText {
+                                                        visible: root.deviceDisplayMode === "template"
+                                                        text: qsTr("%1 台").arg(root.deviceCountForGroup(modelData))
+                                                        styleRole: UiStyle.TypographyRole.BodyS
+                                                        textTone: groupRow.selected
+                                                            ? UiStyle.TextTone.Accent
+                                                            : UiStyle.TextTone.Secondary
+                                                    }
+                                                }
+
+                                                Base.AppText {
+                                                    Layout.fillWidth: true
+                                                    text: root.groupDescription(modelData)
+                                                    styleRole: UiStyle.TypographyRole.BodyS
+                                                    textTone: UiStyle.TextTone.Secondary
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                Base.AppText {
+                                                    Layout.fillWidth: true
+                                                    text: root.groupFootnote(modelData)
+                                                    styleRole: UiStyle.TypographyRole.BodyS
+                                                    textTone: UiStyle.TextTone.Secondary
+                                                    elide: Text.ElideRight
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
 
-                            Base.AppCardSelectionTransition {
+                            AppComponents.SubtleCardSelectionTransition {
                                 id: groupCardSelectionTransition
 
                                 anchors.fill: parent
+                                selectionColor: root.pageTheme.colors.highlightText
                             }
                         }
                     }
@@ -582,25 +597,6 @@ Item {
                             styleRole: UiStyle.TypographyRole.BodyS
                             textTone: UiStyle.TextTone.Secondary
                         }
-
-                        Item {
-                            Layout.fillWidth: true
-                        }
-
-                        Base.AppText {
-                            Layout.preferredWidth: 90
-                            text: qsTr("协议")
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                        }
-
-                        Base.AppText {
-                            Layout.preferredWidth: 88
-                            text: qsTr("状态")
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                            horizontalAlignment: Text.AlignRight
-                        }
                     }
 
                     Base.AppScrollPane {
@@ -610,25 +606,67 @@ Item {
 
                         Item {
                             Layout.fillWidth: true
-                            implicitHeight: deviceCardLayout.implicitHeight
+                            implicitHeight: Math.max(deviceCardFlow.implicitHeight,
+                                                     root.filteredDevices.length === 0 ? 160 : 0)
 
-                            ColumnLayout {
-                                id: deviceCardLayout
+                            Flow {
+                                id: deviceCardFlow
 
-                                anchors.fill: parent
+                                readonly property real availableWidth: parent ? parent.width : 0
+                                readonly property real minimumCardWidth: 280
+                                readonly property real maximumCardWidth: 320
+                                readonly property int maximumColumnCount: 4
+                                readonly property int itemCount: root.filteredDevices.length
+                                readonly property int fitColumnCount: Math.max(1,
+                                    Math.floor((availableWidth + spacing) / (minimumCardWidth + spacing)))
+                                readonly property int columnCount: Math.min(maximumColumnCount,
+                                    fitColumnCount, Math.max(1, itemCount))
+                                readonly property real cardWidth: Math.min(maximumCardWidth,
+                                    (availableWidth - spacing * (columnCount - 1)) / columnCount)
+                                readonly property int lastRowCount: itemCount > 0
+                                    ? (itemCount - 1) % columnCount + 1
+                                    : 0
+                                readonly property real lastRowIndent: lastRowCount > 0
+                                    && lastRowCount < columnCount
+                                    ? (width - lastRowCount * cardWidth
+                                       - (lastRowCount - 1) * spacing) / 2
+                                    : 0
+
+                                anchors.top: parent.top
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                width: columnCount * cardWidth + (columnCount - 1) * spacing
                                 spacing: root.pageTheme.density.controlGap
 
                                 Repeater {
                                     model: root.filteredDevices
 
-                                    delegate: Base.AppCard {
-                                        id: deviceRow
+                                    delegate: Item {
+                                        id: deviceCardSlot
+
+                                        readonly property bool startsLastRow: deviceCardFlow.lastRowCount
+                                            < deviceCardFlow.columnCount
+                                            && index === deviceCardFlow.itemCount - deviceCardFlow.lastRowCount
+
+                                        width: deviceCardFlow.cardWidth
+                                            + (startsLastRow ? deviceCardFlow.lastRowIndent : 0)
+                                        height: Math.round(deviceCardFlow.cardWidth / 1.4)
+
+                                        Base.AppCard {
+                                            id: deviceRow
 
                                         readonly property bool selected: modelData.id === root.deviceValue("id", "")
+                                        readonly property bool online: String(modelData.status || "") === qsTr("在线")
+                                        readonly property var deviceConfig: modelData.configValues || ({})
+                                        readonly property int screenColumns: Math.max(0, Number(deviceConfig.screenColumns || 0))
+                                        readonly property int screenRows: Math.max(0, Number(deviceConfig.screenRows || 0))
+                                        readonly property bool hasScreenLayout: screenColumns > 0 && screenRows > 0
 
-                                        Layout.fillWidth: true
+                                        anchors.right: parent.right
+                                        width: deviceCardFlow.cardWidth
+                                        height: parent.height
                                         text: modelData.name
-                                        compact: true
+                                        padding: 0
+                                        contentSpacing: 0
                                         checkable: true
                                         checked: selected
                                         emphasizedSelection: true
@@ -636,50 +674,175 @@ Item {
                                         animateScale: false
                                         onClicked: root.selectDevice(modelData.id)
 
-                                        RowLayout {
+                                        ColumnLayout {
                                             Layout.fillWidth: true
                                             Layout.fillHeight: true
-                                            spacing: root.pageTheme.density.paneSpacing
+                                            spacing: 0
 
-                                            ColumnLayout {
+                                            Item {
                                                 Layout.fillWidth: true
-                                                spacing: 2
+                                                Layout.fillHeight: true
 
-                                                Base.AppText {
-                                                    Layout.fillWidth: true
-                                                    text: modelData.name
-                                                    styleRole: UiStyle.TypographyRole.BodyM
-                                                    elide: Text.ElideRight
-                                                }
+                                                ColumnLayout {
+                                                    anchors.fill: parent
+                                                    anchors.margins: root.pageTheme.density.panePaddingCompact
+                                                    spacing: root.pageTheme.density.controlGap
 
-                                                Base.AppText {
-                                                    Layout.fillWidth: true
-                                                    text: root.deviceAddress(modelData)
-                                                    styleRole: UiStyle.TypographyRole.BodyS
-                                                    textTone: UiStyle.TextTone.Secondary
-                                                    elide: Text.ElideRight
+                                                    RowLayout {
+                                                        Layout.fillWidth: true
+                                                        spacing: root.pageTheme.density.controlGap
+
+                                                        Base.AppSurface {
+                                                            Layout.preferredWidth: 32
+                                                            Layout.preferredHeight: 32
+                                                            sizeToContent: false
+                                                            surfaceTone: deviceRow.selected
+                                                                ? UiStyle.SurfaceTone.Highlight
+                                                                : UiStyle.SurfaceTone.Control
+                                                            shapeRole: UiStyle.ShapeRole.Control
+                                                            strokeWidth: 0
+
+                                                            AppComponents.DeviceIcon {
+                                                                anchors.centerIn: parent
+                                                                size: 20
+                                                                name: String(modelData.deviceType || "")
+                                                            }
+                                                        }
+
+                                                        Base.AppText {
+                                                            Layout.fillWidth: true
+                                                            text: modelData.name
+                                                            styleRole: UiStyle.TypographyRole.BodyM
+                                                            elide: Text.ElideRight
+                                                        }
+
+                                                        Rectangle {
+                                                            Layout.preferredWidth: 8
+                                                            Layout.preferredHeight: 8
+                                                            radius: 4
+                                                            color: deviceRow.online
+                                                                ? root.pageTheme.colors.successFill
+                                                                : root.pageTheme.colors.dangerFill
+                                                        }
+
+                                                        Base.AppText {
+                                                            text: String(modelData.status || qsTr("未知"))
+                                                            styleRole: UiStyle.TypographyRole.BodyS
+                                                            textTone: deviceRow.online
+                                                                ? UiStyle.TextTone.Success
+                                                                : UiStyle.TextTone.Danger
+                                                            elide: Text.ElideRight
+                                                        }
+                                                    }
+
+                                                    Item {
+                                                        Layout.fillWidth: true
+                                                        Layout.fillHeight: true
+
+                                                        ColumnLayout {
+                                                            anchors.centerIn: parent
+                                                            spacing: root.pageTheme.density.controlGap
+
+                                                            Grid {
+                                                                id: screenLayoutPreview
+
+                                                                readonly property int columnCount: Math.max(1, deviceRow.screenColumns)
+                                                                readonly property int rowCount: Math.max(1, deviceRow.screenRows)
+                                                                readonly property real maximumWidth: Math.min(180, deviceRow.width - 64)
+                                                                readonly property real cellWidth: Math.min(64,
+                                                                                                           (maximumWidth
+                                                                                                            - spacing * (columnCount - 1))
+                                                                                                           / columnCount)
+
+                                                                Layout.alignment: Qt.AlignHCenter
+                                                                visible: deviceRow.hasScreenLayout
+                                                                columns: columnCount
+                                                                spacing: 2
+
+                                                                Repeater {
+                                                                    model: deviceRow.hasScreenLayout
+                                                                        ? screenLayoutPreview.columnCount * screenLayoutPreview.rowCount
+                                                                        : 0
+
+                                                                    Rectangle {
+                                                                        width: screenLayoutPreview.cellWidth
+                                                                        height: Math.round(width * 0.58)
+                                                                        radius: 2
+                                                                        color: "transparent"
+                                                                        border.width: 1
+                                                                        border.color: deviceRow.selected
+                                                                            ? root.pageTheme.colors.highlightText
+                                                                            : root.pageTheme.colors.neutralText
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            Base.AppText {
+                                                                Layout.alignment: Qt.AlignHCenter
+                                                                text: deviceRow.hasScreenLayout
+                                                                    ? qsTr("屏幕布局 %1×%2")
+                                                                        .arg(deviceRow.screenColumns)
+                                                                        .arg(deviceRow.screenRows)
+                                                                    : String(modelData.description || modelData.deviceType || "")
+                                                                styleRole: UiStyle.TypographyRole.BodyS
+                                                                textTone: UiStyle.TextTone.Secondary
+                                                                elide: Text.ElideRight
+                                                            }
+                                                        }
+                                                    }
                                                 }
                                             }
 
-                                            Base.AppText {
-                                                Layout.preferredWidth: 90
-                                                text: root.deviceProtocols(modelData)
-                                                styleRole: UiStyle.TypographyRole.BodyS
-                                                textTone: UiStyle.TextTone.Secondary
-                                                elide: Text.ElideRight
-                                            }
+                                            Rectangle {
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 40
+                                                color: deviceRow.selected
+                                                    ? Qt.darker(root.pageTheme.colors.highlightSoft, 1.14)
+                                                    : root.pageTheme.colors.backgroundWindowVariant
 
-                                            Base.AppText {
-                                                Layout.preferredWidth: 88
-                                                text: modelData.status
-                                                styleRole: UiStyle.TypographyRole.BodyS
-                                                textTone: modelData.status === qsTr("在线") ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
-                                                horizontalAlignment: Text.AlignRight
-                                                elide: Text.ElideRight
+                                                Rectangle {
+                                                    anchors.left: parent.left
+                                                    anchors.right: parent.right
+                                                    anchors.top: parent.top
+                                                    height: 1
+                                                    color: root.pageTheme.colors.borderOverlay
+                                                }
+
+                                                RowLayout {
+                                                    anchors.fill: parent
+                                                    anchors.leftMargin: root.pageTheme.density.panePaddingCompact
+                                                    anchors.rightMargin: root.pageTheme.density.panePaddingCompact
+                                                    spacing: root.pageTheme.density.controlGap
+
+                                                    Base.AppText {
+                                                        Layout.fillWidth: true
+                                                        text: root.deviceAddress(modelData)
+                                                        styleRole: UiStyle.TypographyRole.BodyS
+                                                        textTone: UiStyle.TextTone.Secondary
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    Base.AppText {
+                                                        Layout.maximumWidth: parent.width / 2
+                                                        text: root.deviceProtocols(modelData).replace(/, /g, " · ")
+                                                        styleRole: UiStyle.TypographyRole.BodyS
+                                                        textTone: UiStyle.TextTone.Secondary
+                                                        elide: Text.ElideRight
+                                                    }
+                                                }
                                             }
                                         }
                                     }
+                                    }
                                 }
+                            }
+
+                            Base.AppText {
+                                anchors.centerIn: parent
+                                visible: root.filteredDevices.length === 0
+                                text: qsTr("暂无设备")
+                                styleRole: UiStyle.TypographyRole.BodyM
+                                textTone: UiStyle.TextTone.Secondary
                             }
 
                             Base.AppCardSelectionTransition {
@@ -810,7 +973,7 @@ Item {
 
                         ColumnLayout {
                             width: parent ? parent.width : 0
-                            spacing: root.pageTheme.density.paneSpacing
+                            spacing: root.pageTheme.density.controlGap
 
                             RowLayout {
                                 Layout.fillWidth: true
@@ -871,174 +1034,159 @@ Item {
                                     id: commandCardLayout
 
                                     anchors.fill: parent
-                                    spacing: root.pageTheme.density.controlGap
+                                    spacing: 0
 
                                     Repeater {
                                         model: root.selectedDeviceCommands
 
-                                        delegate: Base.AppCard {
-                                        id: commandRow
+                                        delegate: ColumnLayout {
+                                            id: commandEntry
 
-                                        readonly property var commandData: modelData
-                                        readonly property bool selected: index === root.selectedCommandIndex
-                                        readonly property bool expanded: index === root.expandedCommandIndex
-                                        readonly property string summaryText: root.commandSummary(modelData)
-                                        readonly property int inputCount: root.commandInputCount(modelData)
-
-                                        Layout.fillWidth: true
-                                        text: root.commandName(commandData)
-                                        compact: true
-                                        checkable: true
-                                        checked: selected
-                                        emphasizedSelection: true
-                                        selectionTransition: commandCardSelectionTransition
-                                        animateScale: false
-                                        onClicked: root.selectCommandIndex(index)
-
-                                        ColumnLayout {
-                                            id: commandRowContent
+                                            readonly property var commandData: modelData
+                                            readonly property bool selected: index === root.selectedCommandIndex
+                                            readonly property bool expanded: index === root.expandedCommandIndex
+                                            readonly property string executionParametersText: root.executionParameterNames(modelData)
+                                            readonly property int inputCount: root.commandInputCount(modelData)
 
                                             Layout.fillWidth: true
-                                            spacing: commandRow.expanded
-                                                ? root.pageTheme.density.paneSpacing
-                                                : 0
+                                            spacing: 0
 
-                                            RowLayout {
+                                            Base.AppCard {
+                                                id: commandRow
+
                                                 Layout.fillWidth: true
-                                                Layout.preferredHeight: 50
-                                                spacing: root.pageTheme.density.controlGap
+                                                Layout.preferredHeight: 40
+                                                text: root.commandName(commandEntry.commandData)
+                                                padding: 0
+                                                surfaceTone: UiStyle.SurfaceTone.Ghost
+                                                shapeRole: UiStyle.ShapeRole.Control
+                                                checkable: true
+                                                checked: commandEntry.selected
+                                                selectionTransition: commandCardSelectionTransition
+                                                animateScale: false
+                                                onClicked: root.selectCommandIndex(index)
 
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 2
-
-                                            RowLayout {
-                                                Layout.fillWidth: true
-                                                spacing: root.pageTheme.density.controlGap
-
-                                                Base.AppText {
+                                                Item {
                                                     Layout.fillWidth: true
-                                                    text: root.commandName(commandRow.commandData)
-                                                    styleRole: UiStyle.TypographyRole.BodyM
-                                                    colorOverride: commandRow.selected
-                                                        ? root.pageTheme.colors.inverseText
-                                                        : undefined
-                                                    elide: Text.ElideRight
+                                                    Layout.preferredHeight: 40
+
+                                                    RowLayout {
+                                                        anchors.fill: parent
+                                                        anchors.leftMargin: 10
+                                                        anchors.rightMargin: 6
+                                                        spacing: root.pageTheme.density.controlGap
+
+                                                        Base.AppText {
+                                                            Layout.preferredWidth: 88
+                                                            text: root.commandName(commandEntry.commandData)
+                                                            styleRole: UiStyle.TypographyRole.BodyM
+                                                            elide: Text.ElideRight
+                                                        }
+
+                                                        Base.AppText {
+                                                            Layout.fillWidth: true
+                                                            text: commandEntry.executionParametersText
+                                                            styleRole: UiStyle.TypographyRole.BodyS
+                                                            textTone: UiStyle.TextTone.Info
+                                                            elide: Text.ElideRight
+                                                        }
+
+                                                        Base.AppButton {
+                                                            Layout.preferredWidth: 28
+                                                            size: UiStyle.ButtonSize.Small
+                                                            variant: UiStyle.ButtonVariant.Ghost
+                                                            text: commandEntry.expanded ? "▾" : "›"
+                                                            onClicked: {
+                                                                root.selectCommandIndex(index)
+                                                                root.expandedCommandIndex = commandEntry.expanded ? -1 : index
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Rectangle {
+                                                visible: commandEntry.expanded
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: 10
+                                                Layout.rightMargin: 8
+                                                Layout.preferredHeight: 1
+                                                color: root.pageTheme.colors.borderOverlay
+                                            }
+
+                                            ColumnLayout {
+                                                visible: commandEntry.expanded
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: 10
+                                                Layout.rightMargin: 8
+                                                Layout.topMargin: 8
+                                                Layout.bottomMargin: 8
+                                                spacing: root.pageTheme.density.controlGap
+
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    spacing: root.pageTheme.density.controlGap
+
+                                                    Base.AppText {
+                                                        id: commandInputCountText
+
+                                                        visible: commandEntry.inputCount > 0
+                                                        Layout.fillWidth: true
+                                                        text: qsTr("%1 个创建参数").arg(commandEntry.inputCount)
+                                                        styleRole: UiStyle.TypographyRole.BodyS
+                                                        textTone: UiStyle.TextTone.Secondary
+                                                        elide: Text.ElideRight
+                                                    }
+
+                                                    Item {
+                                                        visible: !commandInputCountText.visible
+                                                        Layout.fillWidth: true
+                                                    }
+
+                                                    Base.AppButton {
+                                                        size: UiStyle.ButtonSize.Small
+                                                        variant: UiStyle.ButtonVariant.Ghost
+                                                        text: qsTr("编辑")
+                                                        onClicked: root.editCommand(commandEntry.commandData)
+                                                    }
+
+                                                    Base.AppButton {
+                                                        size: UiStyle.ButtonSize.Small
+                                                        variant: UiStyle.ButtonVariant.Danger
+                                                        text: qsTr("移除")
+                                                        onClicked: root.removeSelectedCommand()
+                                                    }
                                                 }
 
-                                                Base.AppText {
-                                                    Layout.maximumWidth: 120
-                                                    text: root.executionParameterNames(commandRow.commandData)
-                                                    visible: text.length > 0
-                                                    styleRole: UiStyle.TypographyRole.BodyS
-                                                    textTone: UiStyle.TextTone.Info
-                                                    elide: Text.ElideRight
+                                                DeviceFieldForm {
+                                                    visible: commandEntry.inputCount > 0
+                                                    Layout.fillWidth: true
+                                                    fields: commandEntry.commandData
+                                                        ? commandEntry.commandData.creationInputFields
+                                                        : []
+                                                    readOnly: true
+                                                    writeBack: true
+                                                    emptyText: qsTr("无创建参数")
                                                 }
                                             }
 
-                                            Base.AppText {
+                                            Rectangle {
+                                                visible: index < root.selectedDeviceCommands.length - 1
                                                 Layout.fillWidth: true
-                                                text: commandRow.summaryText.length > 0
-                                                    ? commandRow.summaryText
-                                                    : qsTr("%1 个字段").arg(commandRow.inputCount)
-                                                styleRole: UiStyle.TypographyRole.BodyS
-                                                textTone: UiStyle.TextTone.Secondary
-                                                elide: Text.ElideRight
-                                            }
-                                        }
-
-                                        Base.AppButton {
-                                            size: UiStyle.ButtonSize.Small
-                                            variant: UiStyle.ButtonVariant.Ghost
-                                            text: commandRow.expanded ? "▾" : "›"
-                                            onClicked: {
-                                                root.selectCommandIndex(index)
-                                                root.expandedCommandIndex = commandRow.expanded ? -1 : index
+                                                Layout.leftMargin: 10
+                                                Layout.rightMargin: 8
+                                                Layout.preferredHeight: 1
+                                                color: root.pageTheme.colors.borderOverlay
                                             }
                                         }
                                     }
-
-                                    Rectangle {
-                                        visible: commandRow.expanded
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 1
-                                        color: root.pageTheme.colors.highlightText
-                                        opacity: 0.34
-                                    }
-
-                                    RowLayout {
-                                        visible: commandRow.expanded
-                                        Layout.fillWidth: true
-                                        spacing: root.pageTheme.density.controlGap
-
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: 2
-
-                                            Base.AppText {
-                                                Layout.fillWidth: true
-                                                text: root.commandName(commandRow.commandData)
-                                                styleRole: UiStyle.TypographyRole.BodyM
-                                                elide: Text.ElideRight
-                                            }
-
-                                            Base.AppText {
-                                                Layout.fillWidth: true
-                                                text: root.commandProtocol(commandRow.commandData).toUpperCase()
-                                                    + " / "
-                                                    + root.commandSummary(commandRow.commandData)
-                                                styleRole: UiStyle.TypographyRole.BodyS
-                                                textTone: UiStyle.TextTone.Secondary
-                                                elide: Text.ElideRight
-                                            }
-                                        }
-
-                                        Base.AppButton {
-                                            text: qsTr("编辑")
-                                            onClicked: root.editCommand(commandRow.commandData)
-                                        }
-
-                                        Base.AppButton {
-                                            text: qsTr("移除")
-                                            onClicked: root.removeSelectedCommand()
-                                        }
-                                    }
-
-                                    Rectangle {
-                                        visible: commandRow.expanded
-                                        Layout.fillWidth: true
-                                        Layout.preferredHeight: 1
-                                        color: root.pageTheme.colors.borderOverlay
-                                        opacity: 0.48
-                                    }
-
-                                    Base.AppText {
-                                        visible: commandRow.expanded
-                                        Layout.fillWidth: true
-                                        text: qsTr("创建参数")
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: UiStyle.TextTone.Secondary
-                                        elide: Text.ElideRight
-                                    }
-
-                                    DeviceFieldForm {
-                                        visible: commandRow.expanded
-                                        Layout.fillWidth: true
-                                        fields: commandRow.commandData ? commandRow.commandData.creationInputFields : []
-                                        readOnly: true
-                                        writeBack: true
-                                        emptyText: qsTr("无创建参数")
-                                    }
-
-                                }
-                                    }
-                                }
                             }
 
-                            Base.AppCardSelectionTransition {
+                            AppComponents.SubtleCardSelectionTransition {
                                 id: commandCardSelectionTransition
 
                                 anchors.fill: parent
+                                selectionColor: root.pageTheme.colors.highlightText
                             }
                         }
                     }
@@ -1146,7 +1294,7 @@ Item {
                 var nextType = String(root.manualDeviceTypes[index])
                 result.push({ "label": nextType, "value": nextType })
             }
-            result.push({ "label": qsTr("其它"), "value": customDeviceTypeOption })
+            result.push({ "label": qsTr("自定义类型…"), "value": customDeviceTypeOption })
             return result
         }
 

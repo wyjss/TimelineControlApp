@@ -14,6 +14,9 @@ ApplicationWindow {
 
     property QtObject appTheme: Theme.AppTheme {}
     property var appRuntime: typeof app !== "undefined" ? app : null
+    property var timelineManager: appRuntime && appRuntime.timelineManager
+        ? appRuntime.timelineManager
+        : null
     property var shellController: appRuntime && appRuntime.shell
         ? appRuntime.shell
         : (typeof timelineShellController !== "undefined" ? timelineShellController : null)
@@ -27,9 +30,9 @@ ApplicationWindow {
     readonly property string defaultCanvasDelegateSource: appRuntime && appRuntime.settings
         ? String(appRuntime.settings.value("canvasDelegateSource", ""))
         : ""
-    readonly property bool timelineStopped: !appRuntime || appRuntime.state === 0
-    readonly property bool timelinePaused: appRuntime && appRuntime.state === 2
-    readonly property bool timelineCompleted: appRuntime && appRuntime.state === 3
+    readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
+    readonly property bool timelinePaused: timelineManager && timelineManager.playbackState === 2
+    readonly property bool timelineCompleted: timelineManager && timelineManager.playbackState === 3
 
     function activateNavigation(key) {
         var items = shell.navigationItems || []
@@ -123,9 +126,8 @@ ApplicationWindow {
                     text: window.timelineStopped ? qsTr("开始") : qsTr("停止")
                     iconName: window.timelineStopped ? "play" : "stop"
                     enabled: !window.timelineStopped
-                        || (window.appRuntime
-                            && window.appRuntime.timelinePlanController
-                            && window.appRuntime.timelinePlanController.selectedPlanIds.length > 0)
+                        || (window.timelineManager
+                            && window.timelineManager.playQueue.length > 0)
                     onClicked: {
                         if (window.shellController)
                             window.shellController.handleUiAction(

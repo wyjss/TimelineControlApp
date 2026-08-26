@@ -43,6 +43,8 @@ int main(int argc, char *argv[])
     //char ddd[10];
     //copyFieldValueToDds(ddd, ddd, 0);
     //exit(0);
+
+    //qputenv("QT_QUICK_BACKEND", "software");
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
@@ -78,8 +80,7 @@ int main(int argc, char *argv[])
     TimelineRuntime runtime;
     TimelineShellController shellController(&runtime);
     runtime.setShell(&shellController);
-    PcTimelinePreviewGenerator pcTimelinePreviewGenerator(runtime.timelineController(),
-                                                           runtime.timelineCommandModel(),
+    PcTimelinePreviewGenerator pcTimelinePreviewGenerator(runtime.timelineManager(),
                                                            runtime.deviceModel(),
                                                            &shellController);
     runtime.settings()->setApplicationName(QStringLiteral("时间线控制应用"));

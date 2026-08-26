@@ -18,72 +18,96 @@ Item {
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
     property var appRuntime: typeof app !== "undefined" ? app : null
-    property var timelinePlanController: appRuntime && appRuntime.timelinePlanController
-        ? appRuntime.timelinePlanController
+    property var timelineManager: appRuntime && appRuntime.timelineManager
+        ? appRuntime.timelineManager
         : null
-    property var timelineController: appRuntime && appRuntime.timelineController
-        ? appRuntime.timelineController
+    property var timelineModel: timelineManager && timelineManager.timelineModel
+        ? timelineManager.timelineModel
         : null
-    readonly property var timelinePlans: timelinePlanController && timelinePlanController.plans
-        ? timelinePlanController.plans
+    property var timelines: []
+    readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
+    readonly property var queuedTimelineIds: timelineManager
+        ? timelineManager.playQueue
         : []
-    readonly property bool timelineStopped: !timelineController || timelineController.state === 0
-    readonly property var selectedPlanIds: timelinePlanController
-        ? timelinePlanController.selectedPlanIds
-        : []
-    readonly property int checkedPlanCount: selectedPlanIds.length
+    readonly property int queuedTimelineCount: queuedTimelineIds.length
     readonly property bool editing: ApplicationWindow.window
         ? ApplicationWindow.window.timelineEditing
         : false
 
 
     Connections {
-        target: root.timelinePlanController
-        function onCurrentPlanChanged() {
-            editorTimelinePlanSelector.value = root.timelinePlanController
-                ? root.timelinePlanController.currentPlanIndex
-                : -1
+        target: root.timelineManager
+        function onCurrentTimelineChanged() {
+            editorTimelineSelector.value = root.timelineManager.currentTimeline
+                ? root.timelineManager.currentTimeline.id
+                : ""
         }
     }
 
-    function isPlanChecked(planId) {
-        return checkedPlanNumber(planId) > 0
+    Connections {
+        target: root.timelineModel
+        function onTimelinesChanged() {
+            root.rebuildTimelines()
+        }
     }
 
-    function checkedPlanNumber(planId) {
-        return selectedPlanIds.indexOf(String(planId || "")) + 1
+    Component.onCompleted: rebuildTimelines()
+
+    function rebuildTimelines() {
+        var items = []
+        if (timelineModel) {
+            for (var index = 0; index < timelineModel.count; ++index) {
+                var timeline = timelineModel.timelineAt(index)
+                items.push({
+                    "id": timeline.id,
+                    "name": timeline.name,
+                    "index": index,
+                    "timeline": timeline
+                })
+            }
+        }
+        timelines = items
     }
 
-    function togglePlanChecked(planId) {
-        if (timelinePlanController)
-            timelinePlanController.togglePlanSelected(String(planId || ""))
+    function isTimelineQueued(timelineId) {
+        return queueNumber(timelineId) > 0
     }
 
-    function createPlan(name) {
-        if (!timelinePlanController || !timelineStopped || String(name || "").trim().length === 0)
+    function queueNumber(timelineId) {
+        return queuedTimelineIds.indexOf(String(timelineId || "")) + 1
+    }
+
+    function toggleTimelineQueued(timelineId) {
+        if (!timelineManager)
+            return
+
+        var id = String(timelineId || "")
+        var timelineIds = queuedTimelineIds.slice()
+        var index = timelineIds.indexOf(id)
+        if (index >= 0)
+            timelineIds.splice(index, 1)
+        else
+            timelineIds.push(id)
+        timelineManager.setPlayQueue(timelineIds)
+    }
+
+    function createTimeline(name) {
+        if (!timelineManager || !timelineStopped || String(name || "").trim().length === 0)
             return -1
-        return timelinePlanController.createPlan(String(name).trim())
+        var timeline = timelineManager.createTimeline(String(name).trim())
+        return timeline ? timelineModel.count - 1 : -1
     }
 
-    function removePlan(plan) {
-        if (!timelinePlanController || !timelineStopped || timelinePlans.length <= 1 || !plan)
+    function removeTimeline(timeline) {
+        if (!timelineManager || !timelineStopped || timelines.length <= 1 || !timeline)
             return
-
-        var planIndex = Number(plan.index)
-        timelinePlanController.currentPlanIndex = planIndex
-        if (timelinePlanController.currentPlanIndex !== planIndex)
-            return
-
-        timelinePlanController.removeCurrentPlan()
+        timelineManager.removeTimeline(String(timeline.id || ""))
     }
 
-    function editPlan(plan) {
-        if (!timelinePlanController || !plan)
+    function editTimeline(timeline) {
+        if (!timelineManager || !timeline)
             return
-
-        var planIndex = Number(plan.index)
-        timelinePlanController.currentPlanIndex = planIndex
-        if (timelinePlanController.currentPlanIndex !== planIndex)
+        if (!timelineManager.setCurrentTimelineId(String(timeline.id || "")))
             return
 
         if (ApplicationWindow.window)
@@ -101,15 +125,15 @@ Item {
                 spacing: 10
 
                 Base.AppText {
-                    visible: root.checkedPlanCount > 0
+                    visible: root.queuedTimelineCount > 0
                     Layout.alignment: Qt.AlignRight
-                    text: qsTr("已选 %1 项").arg(root.checkedPlanCount)
+                    text: qsTr("已选 %1 项").arg(root.queuedTimelineCount)
                     styleRole: UiStyle.TypographyRole.BodyM
                     textTone: UiStyle.TextTone.Accent
                 }
 
                 GridView {
-                    id: planGrid
+                    id: timelineGrid
 
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -117,55 +141,55 @@ Item {
                     boundsBehavior: Flickable.StopAtBounds
                     cellWidth: 190
                     cellHeight: 190
-                    model: root.timelinePlans.length + 1
+                    model: root.timelines.length + 1
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
                     }
 
                     delegate: Item {
-                        id: planCell
+                        id: timelineCell
 
-                        readonly property bool addItem: index === root.timelinePlans.length
-                        readonly property var planData: addItem ? null : root.timelinePlans[index]
-                        readonly property string planId: planData ? String(planData.id || "") : ""
-                        readonly property bool checked: !addItem && root.isPlanChecked(planId)
-                        readonly property int checkedNumber: root.checkedPlanNumber(planId)
+                        readonly property bool addItem: index === root.timelines.length
+                        readonly property var timelineData: addItem ? null : root.timelines[index]
+                        readonly property string timelineId: timelineData ? String(timelineData.id || "") : ""
+                        readonly property bool checked: !addItem && root.isTimelineQueued(timelineId)
+                        readonly property int queueNumber: root.queueNumber(timelineId)
                         readonly property bool current: !addItem
-                            && root.timelinePlanController
-                            && Number(planData.index) === root.timelinePlanController.currentPlanIndex
-                        readonly property bool playing: !addItem && Boolean(planData.playbackActive)
-                        readonly property bool completed: !addItem && Boolean(planData.playbackCompleted)
+                            && root.timelineManager
+                            && root.timelineManager.currentTimeline === timelineData.timeline
+                        readonly property bool playing: !addItem && timelineData.timeline.state === 2
+                        readonly property bool completed: !addItem && timelineData.timeline.state === 3
                         readonly property real playProgress: completed
                             ? 1
-                            : (playing && root.timelineController.durationMs > 0
-                               ? Math.max(0, Math.min(1, root.timelineController.currentTimeMs
-                                                     / root.timelineController.durationMs))
+                            : (playing && timelineData.timeline.durationMs > 0
+                               ? Math.max(0, Math.min(1, timelineData.timeline.currentTimeMs
+                                                     / timelineData.timeline.durationMs))
                                : 0)
 
-                        width: planGrid.cellWidth
-                        height: planGrid.cellHeight
+                        width: timelineGrid.cellWidth
+                        height: timelineGrid.cellHeight
 
                         Base.AppCard {
-                            id: planCard
+                            id: timelineCard
 
                             anchors.fill: parent
                             anchors.margins: 8
-                            text: planCell.addItem
+                            text: timelineCell.addItem
                                 ? qsTr("新建时间轴")
-                                : String(planCell.planData.name || qsTr("未命名时间轴"))
+                                : String(timelineCell.timelineData.name || qsTr("未命名时间轴"))
                             checkable: false
-                            checked: planCell.checked
+                            checked: timelineCell.checked
                             emphasizedSelection: true
-                            enabled: !planCell.addItem || root.timelineStopped
+                            enabled: !timelineCell.addItem || root.timelineStopped
                             onCheckedChanged: {
-                                if (checked !== planCell.checked)
-                                    checked = Qt.binding(function() { return planCell.checked })
+                                if (checked !== timelineCell.checked)
+                                    checked = Qt.binding(function() { return timelineCell.checked })
                             }
                             onClicked: {
-                                if (planCell.addItem)
-                                    createPlanPopupLoader.openForCreate()
+                                if (timelineCell.addItem)
+                                    createTimelinePopupLoader.openForCreate()
                                 else
-                                    root.editPlan(planCell.planData)
+                                    root.editTimeline(timelineCell.timelineData)
                             }
 
                             Base.AppText {
@@ -174,9 +198,9 @@ Item {
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 wrapMode: Text.Wrap
-                                text: planCell.addItem ? "+" : String(planCell.planData.name || qsTr("未命名时间轴"))
-                                styleRole: planCell.addItem ? UiStyle.TypographyRole.TitleL : UiStyle.TypographyRole.TitleM
-                                textTone: planCell.addItem ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
+                                text: timelineCell.addItem ? "+" : String(timelineCell.timelineData.name || qsTr("未命名时间轴"))
+                                styleRole: timelineCell.addItem ? UiStyle.TypographyRole.TitleL : UiStyle.TypographyRole.TitleM
+                                textTone: timelineCell.addItem ? UiStyle.TextTone.Accent : UiStyle.TextTone.Primary
                             }
                         }
 
@@ -189,7 +213,7 @@ Item {
                             anchors.rightMargin: 16
                             anchors.bottomMargin: 10
                             height: 4
-                            visible: planCell.playing || planCell.completed
+                            visible: timelineCell.playing || timelineCell.completed
 
                             Rectangle {
                                 anchors.fill: parent
@@ -198,7 +222,7 @@ Item {
                             }
 
                             Rectangle {
-                                width: parent.width * planCell.playProgress
+                                width: parent.width * timelineCell.playProgress
                                 height: parent.height
                                 radius: height / 2
                                 color: root.pageTheme.colors.highlightFill
@@ -214,13 +238,13 @@ Item {
                             anchors.rightMargin: 14
                             width: 28
                             height: 28
-                            visible: !planCell.addItem && (planCard.hovered || hovered)
+                            visible: !timelineCell.addItem && (timelineCard.hovered || hovered)
                             text: "×"
                             size: UiStyle.ButtonSize.Small
                             minWidth: 28
-                            enabled: root.timelineStopped && root.timelinePlans.length > 1
+                            enabled: root.timelineStopped && root.timelines.length > 1
                             opacity: enabled ? 1 : 0.35
-                            onClicked: removePlanPopupLoader.openForPlan(planCell.planData)
+                            onClicked: removeTimelinePopupLoader.openForTimeline(timelineCell.timelineData)
                         }
 
                         Item {
@@ -231,36 +255,36 @@ Item {
                             anchors.bottomMargin: 16
                             width: 22
                             height: 22
-                            visible: !planCell.addItem
-                                && (planCard.hovered || checkPlanMouse.containsMouse || planCell.checked)
+                            visible: !timelineCell.addItem
+                                && (timelineCard.hovered || queueTimelineMouse.containsMouse || timelineCell.checked)
 
                             Rectangle {
                                 anchors.fill: parent
                                 radius: 4
-                                color: planCell.checked
+                                color: timelineCell.checked
                                     ? root.pageTheme.colors.highlightFill
                                     : root.pageTheme.colors.disabledFill
                                 border.width: 1
-                                border.color: planCell.checked
+                                border.color: timelineCell.checked
                                     ? root.pageTheme.colors.highlightText
                                     : root.pageTheme.colors.controlBorder
                             }
 
                             Base.AppText {
                                 anchors.centerIn: parent
-                                visible: planCell.checked
-                                text: String(planCell.checkedNumber)
+                                visible: timelineCell.checked
+                                text: String(timelineCell.queueNumber)
                                 styleRole: UiStyle.TypographyRole.BodyS
                                 colorOverride: root.pageTheme.colors.inverseText
                             }
 
                             MouseArea {
-                                id: checkPlanMouse
+                                id: queueTimelineMouse
 
                                 anchors.fill: parent
                                 enabled: root.timelineStopped
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: root.togglePlanChecked(planCell.planId)
+                                onClicked: root.toggleTimelineQueued(timelineCell.timelineId)
                             }
                         }
                     }
@@ -296,19 +320,19 @@ Item {
                         }
 
                         Base.AppSelect {
-                            id: editorTimelinePlanSelector
+                            id: editorTimelineSelector
 
                             Layout.preferredWidth: 210
-                            options: root.timelinePlans
+                            options: root.timelines
                             textRole: "name"
-                            valueRole: "index"
-                            value: root.timelinePlanController
-                                ? root.timelinePlanController.currentPlanIndex
-                                : -1
-                            enabled: root.timelinePlanController !== null && root.timelineStopped
+                            valueRole: "id"
+                            value: root.timelineManager && root.timelineManager.currentTimeline
+                                ? root.timelineManager.currentTimeline.id
+                                : ""
+                            enabled: root.timelineManager !== null && root.timelineStopped
                             onValueSelected: {
-                                if (root.timelinePlanController)
-                                    root.timelinePlanController.currentPlanIndex = Number(nextValue)
+                                if (root.timelineManager)
+                                    root.timelineManager.setCurrentTimelineId(String(nextValue))
                             }
                         }
 
@@ -329,7 +353,7 @@ Item {
     }
 
     Loader {
-        id: createPlanPopupLoader
+        id: createTimelinePopupLoader
 
         active: false
 
@@ -340,23 +364,23 @@ Item {
 
         sourceComponent: Component {
             Base.AppDialog {
-                id: createPlanPopup
+                id: createTimelinePopup
                 parent: root
-                onClosed: createPlanPopupLoader.active = false
+                onClosed: createTimelinePopupLoader.active = false
 
-        property string planName: ""
+        property string timelineName: ""
 
         function openForCreate() {
-            planName = qsTr("时间轴 %1").arg(root.timelinePlans.length + 1)
+            timelineName = qsTr("时间轴 %1").arg(root.timelines.length + 1)
             open()
             Qt.callLater(function() {
-                createPlanNameField.forceActiveFocus()
-                createPlanNameField.selectAll()
+                createTimelineNameField.forceActiveFocus()
+                createTimelineNameField.selectAll()
             })
         }
 
         function commit() {
-            if (root.createPlan(planName) >= 0)
+            if (root.createTimeline(timelineName) >= 0)
                 close()
         }
 
@@ -366,48 +390,48 @@ Item {
         title: qsTr("新建时间轴")
         rejectText: qsTr("取消")
         acceptText: qsTr("创建")
-        acceptEnabled: planName.trim().length > 0
-        initialFocusItem: createPlanNameField
+        acceptEnabled: timelineName.trim().length > 0
+        initialFocusItem: createTimelineNameField
         closeOnAccepted: false
         onAccepted: commit()
 
         Base.AppTextField {
-            id: createPlanNameField
+            id: createTimelineNameField
 
             Layout.fillWidth: true
-            text: createPlanPopup.planName
+            text: createTimelinePopup.timelineName
             placeholderText: qsTr("时间轴名称")
-            onTextChanged: createPlanPopup.planName = text
+            onTextChanged: createTimelinePopup.timelineName = text
         }
             }
         }
     }
 
     Loader {
-        id: removePlanPopupLoader
+        id: removeTimelinePopupLoader
 
         active: false
 
-        function openForPlan(plan) {
+        function openForTimeline(timeline) {
             active = true
-            item.openForPlan(plan)
+            item.openForTimeline(timeline)
         }
 
         sourceComponent: Component {
             Base.AppDialog {
-                id: removePlanPopup
+                id: removeTimelinePopup
                 parent: root
-                onClosed: removePlanPopupLoader.active = false
+                onClosed: removeTimelinePopupLoader.active = false
 
-        property var planData: null
+        property var timelineData: null
 
-        function openForPlan(plan) {
-            planData = plan
+        function openForTimeline(timeline) {
+            timelineData = timeline
             open()
         }
 
         function commit() {
-            root.removePlan(planData)
+            root.removeTimeline(timelineData)
         }
 
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
@@ -415,7 +439,7 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         title: qsTr("删除时间轴")
         message: qsTr("确定删除“%1”？其中的时间轴指令也会被删除。")
-            .arg(removePlanPopup.planData ? removePlanPopup.planData.name : "")
+            .arg(removeTimelinePopup.timelineData ? removeTimelinePopup.timelineData.name : "")
         rejectText: qsTr("取消")
         acceptText: qsTr("删除")
         acceptButtonVariant: UiStyle.ButtonVariant.Danger

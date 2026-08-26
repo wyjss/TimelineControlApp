@@ -39,11 +39,14 @@ Item {
     property bool dragEnabled: true
     // 是否允许拖动时刻线。
     property bool currentTimeDragEnabled: true
-    readonly property real labelWidth: 72
+    // 拖动时刻线的时间步进，单位毫秒。
+    property int currentTimeDragStepMs: 100
+    readonly property real labelWidth: majorTickMs < 1000 ? 96 : 72
+    readonly property real currentTimeLabelWidth: 96
 
     readonly property real targetMajorTickSeconds: Math.max(1, baseMajorTickSeconds) * safeTimeScale()
     readonly property real majorTickSeconds: calcRealMajorTickSeconds(baseMajorTickSeconds)
-    readonly property int majorTickMs: majorTickSeconds * 1000
+    readonly property int majorTickMs: Math.round(majorTickSeconds * 1000)
     readonly property real effectiveMinorTickPixelSpacing: resolveMinorTickPixelSpacing()
     readonly property real majorTickPixelSpacing: effectiveMinorTickPixelSpacing * safeMinorTicksPerMajor()
     // 当前缩放和吸附后的时间像素比例，单位 px/s。
@@ -122,7 +125,9 @@ Item {
     }
 
     function clampTimeMs(value) {
-        return Math.max(0, Math.min(durationMs, Math.round(value)))
+        var stepMs = Math.max(1, currentTimeDragStepMs)
+        var maxTimeMs = Math.floor(durationMs / stepMs) * stepMs
+        return Math.max(0, Math.min(maxTimeMs, Math.round(value / stepMs) * stepMs))
     }
 
     function requestCurrentTimeMs(value) {
@@ -173,16 +178,23 @@ Item {
         return value < 10 ? "0" + value : String(value)
     }
 
-    function formatTime(ms) {
+    function pad3(value) {
+        if (value < 10)
+            return "00" + value
+        return value < 100 ? "0" + value : String(value)
+    }
+
+    function formatTime(ms, showMilliseconds) {
         var totalSeconds = Math.floor(ms / 1000)
         var hours = Math.floor(totalSeconds / 3600)
         var minutes = Math.floor((totalSeconds % 3600) / 60)
         var seconds = totalSeconds % 60
+        var suffix = showMilliseconds ? "." + pad3(Math.floor(ms) % 1000) : ""
 
         if (hours > 0)
-            return pad2(hours) + ":" + pad2(minutes) + ":" + pad2(seconds)
+            return pad2(hours) + ":" + pad2(minutes) + ":" + pad2(seconds) + suffix
 
-        return pad2(minutes) + ":" + pad2(seconds)
+        return pad2(minutes) + ":" + pad2(seconds) + suffix
     }
 
     // 将时间转换为组件内的 x 坐标，入参单位毫秒，返回单位像素。
@@ -206,7 +218,11 @@ Item {
             var labelX = clampLabelX(tickX, labelWidth)
             if (tickX < resolvedTrackLeftX || tickX > width || labelX < lastLabelRight)
                 continue
-            result.push({ "timeMs": tickMs, "label": formatTime(tickMs), "x": tickX })
+            result.push({
+                "timeMs": tickMs,
+                "label": formatTime(tickMs, majorTickMs < 1000),
+                "x": tickX
+            })
             lastLabelRight = labelX + labelWidth
         }
 
@@ -331,7 +347,7 @@ Item {
         x: Math.round(root.clampLabelX(root.currentTimeX, width))
         y: -22
         z: 1
-        width: root.labelWidth
+        width: root.currentTimeLabelWidth
         height: 20
         radius: 4
         visible: root.currentTimeX >= root.resolvedTrackLeftX && root.currentTimeX <= root.width
@@ -339,7 +355,7 @@ Item {
 
         Base.AppText {
             anchors.fill: parent
-            text: root.formatTime(root.resolvedCurrentTimeMs)
+            text: root.formatTime(root.resolvedCurrentTimeMs, true)
             styleRole: UiStyle.TypographyRole.BodyS
             colorOverride: root.colorValue("inverseText", "#f8fafc")
             horizontalAlignment: Text.AlignHCenter

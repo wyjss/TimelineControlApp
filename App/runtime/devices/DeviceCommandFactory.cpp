@@ -68,6 +68,18 @@ public:
     }
 };
 
+///↓↓↓↓↓commandType指令↓↓↓↓↓
+
+class UdpStrTemplateCommand : public DeviceCommand_Udp
+{
+public:
+    UdpStrTemplateCommand(QObject* parent)
+        : DeviceCommand_Udp(parent)
+    {
+        
+    }
+};
+
 class _VideoControlCommand : public DeviceCommand_PC
 {
 public:
@@ -251,6 +263,9 @@ public:
 void registerBuiltInCommands()
 {
     static const bool registered = [] {
+		DeviceCommandFactory::registerCommand([](QObject* parent) -> DeviceCommand* {
+			return new DeviceCommand_Udp(parent);
+											  });
         DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
             return new DeviceCommand_Http(parent);
         });

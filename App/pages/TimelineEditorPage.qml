@@ -4,6 +4,7 @@ import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/theme" as Theme
+import "../components" as AppComponents
 import "timeline" as Timeline
 
 Item {
@@ -18,27 +19,32 @@ Item {
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
     property var appRuntime: typeof app !== "undefined" ? app : null
-    property var timelineCommandModel: appRuntime && appRuntime.timelineCommandModel ? appRuntime.timelineCommandModel : null
-    property var timelineController: appRuntime && appRuntime.timelineController ? appRuntime.timelineController : null
+    property var timelineManager: appRuntime && appRuntime.timelineManager ? appRuntime.timelineManager : null
+    property var currentTimeline: timelineManager ? timelineManager.currentTimeline : null
+    property var timelineCommandModel: currentTimeline ? currentTimeline.commandModel : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     property var pcPreviewGenerator: typeof pcTimelinePreviewGenerator !== "undefined"
         ? pcTimelinePreviewGenerator
         : null
     readonly property int preStartTimelineDurationMs: 24 * 60 * 60 * 1000
-    readonly property int timelineDurationMs: timelineController ? timelineController.durationMs : preStartTimelineDurationMs
+    readonly property int timelineDurationMs: currentTimeline && currentTimeline.durationMs > 0
+        ? currentTimeline.durationMs
+        : preStartTimelineDurationMs
     readonly property int timelineTrackLabelWidth: 224
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
     readonly property var visibleTimelineCommands: buildVisibleTimelineCommands()
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
-    readonly property bool timelineStopped: !timelineController || timelineController.state === 0
+    readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
     readonly property var selectedCommand: selectedCommandIndex >= 0
         && selectedCommandIndex < deviceCommands.length
         ? deviceCommands[selectedCommandIndex]
         : null
-    readonly property int timelineCurrentTimeMs: timelineController ? timelineController.currentTimeMs : fallbackTimelineCurrentTimeMs
+    readonly property int timelineCurrentTimeMs: timelineStopped || !currentTimeline
+        ? fallbackTimelineCurrentTimeMs
+        : currentTimeline.currentTimeMs
     property int fallbackTimelineCurrentTimeMs: 0
     property real timelineScrollX: 0
     property real timelineTimeScale: 1.0
@@ -59,6 +65,14 @@ Item {
     Component.onCompleted: {
         ensureSelectedTimelineDevice()
         ensureSelectedCommand()
+        if (pcPreviewGenerator)
+            pcPreviewGenerator.seek(fallbackTimelineCurrentTimeMs)
+    }
+
+    onCurrentTimelineChanged: {
+        fallbackTimelineCurrentTimeMs = 0
+        if (pcPreviewGenerator)
+            pcPreviewGenerator.seek(0)
     }
 
     function deviceForId(deviceId) {
@@ -185,10 +199,9 @@ Item {
             return
 
         var normalizedTimeMs = Math.max(0, Math.round(Number(currentTimeMs || 0)))
-        if (timelineController)
-            timelineController.seek(normalizedTimeMs)
-        else
-            fallbackTimelineCurrentTimeMs = normalizedTimeMs
+        fallbackTimelineCurrentTimeMs = normalizedTimeMs
+        if (pcPreviewGenerator)
+            pcPreviewGenerator.seek(normalizedTimeMs)
     }
 
     function deviceName(device) {
@@ -239,12 +252,6 @@ Item {
         return name.length > 0 ? name : qsTr("指令")
     }
 
-    function commandProtocol(command) {
-        return command && command.protocol !== undefined && command.protocol !== null
-            ? String(command.protocol)
-            : ""
-    }
-
     function executionParameterNames(command) {
         var fields = command ? command.executionInputFields || [] : []
         var names = []
@@ -253,49 +260,7 @@ Item {
             if (name.length > 0)
                 names.push(name)
         }
-        return names.join("、")
-    }
-
-    function commandFieldValue(command, key, fallback) {
-        var fields = command ? command.creationInputFields || [] : []
-        for (var index = 0; index < fields.length; ++index) {
-            if (String(fields[index].key || "") === key)
-                return fields[index].value
-        }
-        return fallback
-    }
-
-    function commandSummary(command) {
-        var protocol = commandProtocol(command).toLowerCase()
-        if (protocol === "http" || protocol === "pc") {
-            var address = String(commandFieldValue(command, "ip", "") || "").trim()
-            var port = String(commandFieldValue(command, "port", "") || "").trim()
-            var path = String(commandFieldValue(command, "apiPath", "") || "").trim()
-            var method = String(commandFieldValue(command, "httpMethod", "") || "").trim()
-            if (address.length > 0 && port.length > 0)
-                address += ":" + port
-            var httpSummary = [method, address, path].filter(function(part) { return part.length > 0 }).join(" / ")
-            return httpSummary.length > 0 ? httpSummary : commandProtocol(command)
-        }
-
-        if (protocol === "serial") {
-            var serialPort = String(commandFieldValue(command, "serialPort", "") || "").trim()
-            var baudRate = String(commandFieldValue(command, "baudRate", "") || "").trim()
-            var serialPayload = String(commandFieldValue(command, "serialPayload", "") || "").trim()
-            var serialSummary = [serialPort, baudRate, serialPayload].filter(function(part) { return part.length > 0 }).join(" / ")
-            return serialSummary.length > 0 ? serialSummary : commandProtocol(command)
-        }
-
-        if (protocol === "dmx512") {
-            var channel = String(commandFieldValue(command, "channel", "") || "").trim()
-            var value = String(commandFieldValue(command, "value", "") || "").trim()
-            var dmxSummary = [channel.length > 0 ? qsTr("通道 %1").arg(channel) : "",
-                              value.length > 0 ? qsTr("值 %1").arg(value) : ""]
-                .filter(function(part) { return part.length > 0 }).join(" / ")
-            return dmxSummary.length > 0 ? dmxSummary : commandProtocol(command)
-        }
-
-        return commandProtocol(command)
+        return names.join(" · ")
     }
 
     function formatTimelineMs(ms) {
@@ -303,7 +268,14 @@ Item {
         var totalSeconds = Math.floor(totalMs / 1000)
         var minutes = Math.floor(totalSeconds / 60)
         var seconds = totalSeconds % 60
-        return qsTr("%1:%2").arg(minutes).arg(seconds < 10 ? "0" + seconds : seconds)
+        var milliseconds = totalMs % 1000
+        var millisecondsText = milliseconds < 10
+            ? "00" + milliseconds
+            : (milliseconds < 100 ? "0" + milliseconds : String(milliseconds))
+        return qsTr("%1:%2.%3")
+            .arg(minutes)
+            .arg(seconds < 10 ? "0" + seconds : seconds)
+            .arg(millisecondsText)
     }
 
     function timelineCommandMeta(command) {
@@ -413,8 +385,8 @@ Item {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 14
+                    anchors.margins: 14
+                    spacing: 10
 
                     Base.AppText {
                         text: qsTr("执行")
@@ -434,7 +406,7 @@ Item {
                         }
 
                         Base.AppText {
-                            text: qsTr("%1").arg(root.deviceCommands.length)
+                            text: qsTr("%1 条").arg(root.deviceCommands.length)
                             styleRole: UiStyle.TypographyRole.BodyS
                             textTone: UiStyle.TextTone.Secondary
                         }
@@ -446,16 +418,16 @@ Item {
                         Layout.minimumHeight: 176
                         Layout.preferredHeight: 260
                         sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.Section
+                        surfaceTone: UiStyle.SurfaceTone.SectionOverlay
 
                         ListView {
                             id: commandList
 
                             anchors.fill: parent
-                            anchors.margins: 8
+                            anchors.margins: 6
                             clip: true
                             boundsBehavior: Flickable.StopAtBounds
-                            spacing: 6
+                            spacing: 0
                             model: root.deviceCommands
                             ScrollBar.vertical: ScrollBar {
                                 policy: ScrollBar.AsNeeded
@@ -468,65 +440,72 @@ Item {
                                 readonly property bool selected: index === root.selectedCommandIndex
 
                                 width: commandList.width
-                                height: 56
+                                height: 40
                                 text: root.commandName(commandRow.commandData)
                                 surfaceTone: UiStyle.SurfaceTone.Ghost
-                                leftPadding: 18
-                                rightPadding: 12
-                                topPadding: 7
-                                bottomPadding: 7
+                                shapeRole: UiStyle.ShapeRole.Control
+                                padding: 0
                                 checkable: true
                                 checked: selected
-                                emphasizedSelection: true
                                 selectionTransition: commandCardSelectionTransition
                                 animateScale: false
                                 onClicked: root.selectCommandIndex(index)
 
-                                ColumnLayout {
+                                Item {
                                     Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    spacing: 2
+                                    Layout.preferredHeight: 40
 
                                     RowLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 8
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 8
+                                        anchors.bottomMargin: 1
+                                        spacing: root.pageTheme.density.controlGap
 
                                         Base.AppText {
-                                            Layout.fillWidth: true
+                                            Layout.preferredWidth: 92
                                             text: root.commandName(commandRow.commandData)
                                             styleRole: UiStyle.TypographyRole.BodyM
-                                            colorOverride: commandRow.selected
-                                                ? root.pageTheme.colors.inverseText
-                                                : undefined
                                             elide: Text.ElideRight
                                         }
 
                                         Base.AppText {
-                                            Layout.maximumWidth: 120
+                                            Layout.fillWidth: true
                                             text: root.executionParameterNames(commandRow.commandData)
-                                            visible: text.length > 0
                                             styleRole: UiStyle.TypographyRole.BodyS
                                             textTone: UiStyle.TextTone.Info
                                             elide: Text.ElideRight
                                         }
+
+                                        Base.AppText {
+                                            Layout.preferredWidth: 20
+                                            text: commandRow.selected ? "✓" : ""
+                                            styleRole: UiStyle.TypographyRole.BodyS
+                                            textTone: UiStyle.TextTone.Accent
+                                            horizontalAlignment: Text.AlignHCenter
+                                        }
                                     }
 
-                                    Base.AppText {
-                                        Layout.fillWidth: true
-                                        text: root.commandSummary(commandRow.commandData)
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: UiStyle.TextTone.Secondary
-                                        elide: Text.ElideRight
+                                    Rectangle {
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 10
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 8
+                                        anchors.bottom: parent.bottom
+                                        height: 1
+                                        visible: index < root.deviceCommands.length - 1
+                                        color: root.pageTheme.colors.borderOverlay
                                     }
                                 }
                             }
                         }
 
-                        Base.AppCardSelectionTransition {
+                        AppComponents.SubtleCardSelectionTransition {
                             id: commandCardSelectionTransition
 
                             anchors.fill: commandList
                             clip: true
+                            selectionColor: root.pageTheme.colors.highlightText
                         }
 
                         Base.AppText {

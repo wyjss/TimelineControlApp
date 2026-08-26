@@ -1,7 +1,7 @@
 #include "TimelineShellController.h"
 
 #include "TimelineRuntime.h"
-#include "timeline/TimelineController.h"
+#include "timeline/TimelineManager.h"
 
 
 TimelineShellController::TimelineShellController(QObject *parent)
@@ -56,22 +56,26 @@ QVariantList TimelineShellController::navigationItems() const
 void TimelineShellController::handleUiAction(const QString &actionId, const QVariantMap &payload)
 {
     auto *runtime = qobject_cast<TimelineRuntime *>(parent());
-    if (!runtime || !runtime->timelineController())
+    if (!runtime || !runtime->timelineManager())
         return;
+    TimelineManager *timelineManager = runtime->timelineManager();
 
     if (actionId == QStringLiteral("timeline.plan.save")) {
-        if (runtime->state() == TimelineRuntime::Stopped) {
+        if (timelineManager->playbackState() == TimelineManager::Stopped) {
             const QString filePath = payload.value(QStringLiteral("filePath")).toString();
             runtime->savePlanToFile(filePath.isEmpty() ? runtime->currentPlanFilePath() : filePath);
         }
     } else if (actionId == QStringLiteral("timeline.plan.load")) {
-        if (runtime->state() == TimelineRuntime::Stopped)
+        if (timelineManager->playbackState() == TimelineManager::Stopped)
             runtime->loadPlanFromFile(payload.value(QStringLiteral("filePath")).toString());
     } else if (actionId == QStringLiteral("timeline.start")) {
-        runtime->startTimeline();
+        if (timelineManager->playbackState() == TimelineManager::Paused)
+            timelineManager->resumePlayback();
+        else if (timelineManager->playbackState() == TimelineManager::Stopped)
+            timelineManager->startPlayback(timelineManager->playQueue());
     } else if (actionId == QStringLiteral("timeline.pause")) {
-        runtime->timelineController()->pause();
+        timelineManager->pausePlayback();
     } else if (actionId == QStringLiteral("timeline.stop")) {
-        runtime->stopTimeline();
+        timelineManager->stopPlayback();
     }
 }

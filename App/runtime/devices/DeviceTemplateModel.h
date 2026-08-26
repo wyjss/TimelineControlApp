@@ -39,6 +39,7 @@ private:
     DeviceTemplate *createDefaultDeviceTemplateHttp();
     DeviceTemplate *createDefaultDeviceTemplateSerial();
     DeviceTemplate *createDefaultDeviceTemplateOsc();
+    DeviceTemplate *createDefaultDeviceTemplateFusion3();
 
     DeviceTemplate *makeDeviceTemplate(const QString &name,
                                        const QString &deviceType,

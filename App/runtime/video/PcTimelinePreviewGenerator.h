@@ -14,7 +14,7 @@
 class Device;
 class DeviceModel;
 class TimelineCommandModel;
-class TimelineController;
+class TimelineManager;
 namespace UICore {
 class AppShellController;
 }
@@ -31,8 +31,7 @@ class PcTimelinePreviewGenerator final : public QObject
     Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged FINAL)
 
 public:
-    PcTimelinePreviewGenerator(TimelineController *timelineController,
-                               TimelineCommandModel *timelineCommandModel,
+    PcTimelinePreviewGenerator(TimelineManager *timelineManager,
                                DeviceModel *deviceModel,
                                UICore::AppShellController *shellController,
                                QObject *parent = nullptr);
@@ -50,6 +49,7 @@ public:
     QString errorString() const;
 
     Q_INVOKABLE void refresh();
+    Q_INVOKABLE void seek(qint64 timeMs);
 
 signals:
     void pcDeviceChanged();
@@ -72,6 +72,7 @@ private:
     void requestPreview();
     bool isActive() const;
     void updateActiveState();
+    void updateCurrentTimeline();
     void updatePcDevice();
     void setPcDevice(Device *device);
     void startPreview();
@@ -82,7 +83,7 @@ private:
     void setBusy(bool busy);
     void setErrorString(const QString &errorString);
 
-    QPointer<TimelineController> m_timelineController;
+    QPointer<TimelineManager> m_timelineManager;
     QPointer<TimelineCommandModel> m_timelineCommandModel;
     QPointer<DeviceModel> m_deviceModel;
     QPointer<UICore::AppShellController> m_shellController;
@@ -102,6 +103,7 @@ private:
     int m_frameIndex = 0;
     int m_revision = 0;
     int m_generationRevision = 0;
+    qint64 m_requestedTimeMs = 0;
     qint64 m_generationTimeMs = 0;
     bool m_framePending = false;
 };

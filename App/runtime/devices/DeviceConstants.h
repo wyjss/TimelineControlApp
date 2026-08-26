@@ -14,12 +14,20 @@
 		inline const QString Projector = "投影机";
 		inline const QString Light = "灯光";
 		inline const QString Sound = "音响";
+		inline const QString Locator = "定位器";
+		inline const QString Fusion3 = "分布式融合器3.0";
 	};
 //! Stable keys used by device config specs and command params.
 namespace DeviceKey {
 inline const QString Name = QStringLiteral("name");
 inline const QString CommandType = QStringLiteral("commandType");
 inline const QString Protocol = QStringLiteral("protocol");
+//! 通过模板拼接url，支持http/udp/serial
+//! 模板：xxxx{paramName}xxx 
+//! 通过查询param.name == paramName进行插入
+//! @todo 将http/udp/serial统一接入
+//inline const QString StringTemplate = QStringLiteral("stringTemplate");
+
 inline const QString BaudRate = QStringLiteral("baudRate");
 inline const QString Dmx512AdapterDeviceId = QStringLiteral("dmx512AdapterDeviceId");
 inline const QString Ip = QStringLiteral("ip");
@@ -58,6 +66,7 @@ namespace DeviceProtocol {
 inline const QString Null = QStringLiteral("null");
 inline const QString Dmx512 = QStringLiteral("dmx512");
 inline const QString Http = QStringLiteral("http");
+inline const QString Udp = QStringLiteral("udp");
 inline const QString Serial = QStringLiteral("serial");
 inline const QString Osc = QStringLiteral("osc");
 inline const QString Pc = QStringLiteral("pc");

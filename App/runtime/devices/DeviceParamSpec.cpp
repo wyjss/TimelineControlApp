@@ -210,6 +210,15 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey)
         return spec;
     }
 
+    //if (deviceKey == DeviceKey::StringTemplate) {
+	//	auto* spec = new DeviceParamSpec(deviceKey,
+	//									 QStringLiteral("字符模板"),
+	//									 "",
+	//									 StringType,
+	//									 TextEditor);
+    //    return spec;
+    //}
+
     if (deviceKey == DeviceKey::BaudRate) {
         auto *spec = new DeviceParamSpec(deviceKey,
                                          QStringLiteral("波特率"),

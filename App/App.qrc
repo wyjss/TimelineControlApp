@@ -1,6 +1,13 @@
 <RCC>
     <qresource prefix="/TimelineControlApp">
         <file alias="App/main.qml">main.qml</file>
+        <file alias="App/components/DeviceIcon.qml">components/DeviceIcon.qml</file>
+        <file alias="App/components/SubtleCardSelectionTransition.qml">components/SubtleCardSelectionTransition.qml</file>
+        <file alias="App/assets/icons/missing.png">assets/icons/missing.png</file>
+        <file alias="App/assets/icons/灯光.png">assets/icons/灯光.png</file>
+        <file alias="App/assets/icons/电脑.png">assets/icons/电脑.png</file>
+        <file alias="App/assets/icons/投影机.png">assets/icons/投影机.png</file>
+        <file alias="App/assets/icons/音响.png">assets/icons/音响.png</file>
         <file alias="App/pages/DevicesPage.qml">pages/DevicesPage.qml</file>
         <file alias="App/pages/DeviceControlPage.qml">pages/DeviceControlPage.qml</file>
         <file alias="App/pages/DeviceCommandDialog.qml">pages/DeviceCommandDialog.qml</file>
@@ -16,5 +23,10 @@
         <file alias="App/pages/VirtualPlaybackCommandPage.qml">pages/VirtualPlaybackCommandPage.qml</file>
         <file alias="App/pages/timeline/TimelineDeviceTrackArea.qml">pages/timeline/TimelineDeviceTrackArea.qml</file>
         <file alias="App/pages/timeline/TimelineRuler.qml">pages/timeline/TimelineRuler.qml</file>
+        <file alias="App/assets/icons/定位器.png">assets/icons/定位器.png</file>
+        <file alias="App/assets/icons/分布式融合器3.0.png">assets/icons/分布式融合器3.0.png</file>
+        <file alias="App/assets/icons/dmx512.png">assets/icons/dmx512.png</file>
+        <file alias="App/assets/icons/http.png">assets/icons/http.png</file>
+        <file alias="App/assets/icons/serial.png">assets/icons/serial.png</file>
     </qresource>
 </RCC>

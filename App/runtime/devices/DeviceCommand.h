@@ -57,6 +57,11 @@ public:
     Q_INVOKABLE QVariantList creationMinInputFields() const;
     Q_INVOKABLE QVariantList executionInputFields() const;
 
+    //! 将指定key参数作为模板，自动从其它参数拼接
+    //! {OtherParam}: 字符解析
+    //! {&OtherParam}: http参数解析
+    void setStringTemplateKey(const QString& k) { m_stringTemplateKey = k; }
+
     DeviceCommand *clone(QObject *parent = nullptr) const;
 
 signals:
@@ -72,6 +77,35 @@ private:
     QVariantMap m_configMap;
     QString m_protocol;
     QString m_commandType;
+    QString m_stringTemplateKey;
+};
+
+//! StringTemplate指令
+//! 通过string进行url拼接的指令都接入
+//! http/udp/serial
+//class StringTemplateCommand : public DeviceCommand
+//{
+//protected:
+//    StringTemplateCommand(const QString& protocol,
+//					  const QString& name,
+//					  const QString& commandType,
+//					  QObject* parent);
+//public:
+//    QVariantMap resolvedParams(
+//        const QVariantMap& executionInputValues = QVariantMap()) const override;
+//};
+
+
+class DeviceCommand_Udp : public DeviceCommand
+{
+public:
+	explicit DeviceCommand_Udp(QObject* parent = nullptr);
+
+protected:
+    DeviceCommand_Udp(const QString& protocol,
+					   const QString& name,
+					   const QString& commandType,
+					   QObject* parent);
 };
 
 class DeviceCommand_Http : public DeviceCommand

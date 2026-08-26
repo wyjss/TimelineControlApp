@@ -9,8 +9,9 @@
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceModel.h"
 #include <UICore/Shell/AppShellController.h>
+#include "timeline/Timeline.h"
 #include "timeline/TimelineCommand.h"
-#include "timeline/TimelineController.h"
+#include "timeline/TimelineManager.h"
 
 
 namespace {
@@ -47,14 +48,12 @@ QRect videoRect(const QVariant &value, const QSize &canvasSize)
 } // namespace
 
 
-PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineController *timelineController,
-                                                       TimelineCommandModel *timelineCommandModel,
+PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineManager *timelineManager,
                                                        DeviceModel *deviceModel,
                                                        UICore::AppShellController *shellController,
                                                        QObject *parent)
     : QObject(parent)
-    , m_timelineController(timelineController)
-    , m_timelineCommandModel(timelineCommandModel)
+    , m_timelineManager(timelineManager)
     , m_deviceModel(deviceModel)
     , m_shellController(shellController)
 {
@@ -62,15 +61,12 @@ PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineController *timel
     m_refreshTimer.setSingleShot(true);
     connect(&m_refreshTimer, &QTimer::timeout, this, &PcTimelinePreviewGenerator::startPreview);
 
-    if (m_timelineController)
-        connect(m_timelineController, &TimelineController::currentTimeMsChanged,
-                this, &PcTimelinePreviewGenerator::requestPreview);
-    if (m_timelineController)
-        connect(m_timelineController, &TimelineController::stateChanged,
+    if (m_timelineManager) {
+        connect(m_timelineManager, &TimelineManager::playbackStateChanged,
                 this, &PcTimelinePreviewGenerator::updateActiveState);
-    if (m_timelineCommandModel)
-        connect(m_timelineCommandModel, &TimelineCommandModel::commandsChanged,
-                this, &PcTimelinePreviewGenerator::requestPreview);
+        connect(m_timelineManager, &TimelineManager::currentTimelineChanged,
+                this, &PcTimelinePreviewGenerator::updateCurrentTimeline);
+    }
     if (m_deviceModel)
         connect(m_deviceModel, &DeviceModel::currentDeviceChanged,
                 this, &PcTimelinePreviewGenerator::updatePcDevice);
@@ -90,6 +86,7 @@ PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineController *timel
             completeFrame(false, m_process.errorString());
     });
 
+    updateCurrentTimeline();
     updatePcDevice();
     updateActiveState();
 }
@@ -174,6 +171,16 @@ void PcTimelinePreviewGenerator::refresh()
     requestPreview();
 }
 
+void PcTimelinePreviewGenerator::seek(qint64 timeMs)
+{
+    const qint64 normalizedTimeMs = qMax<qint64>(0, timeMs);
+    if (m_requestedTimeMs == normalizedTimeMs)
+        return;
+
+    m_requestedTimeMs = normalizedTimeMs;
+    requestPreview();
+}
+
 void PcTimelinePreviewGenerator::requestPreview()
 {
     if (!isActive())
@@ -185,10 +192,30 @@ void PcTimelinePreviewGenerator::requestPreview()
 
 bool PcTimelinePreviewGenerator::isActive() const
 {
-    return m_timelineController
-        && m_timelineController->state() == TimelineController::Stopped
+    return m_timelineManager
+        && m_timelineManager->playbackState() == TimelineManager::Stopped
         && m_shellController
         && m_shellController->activeNavigationKey() == kTimelineDrawerKey;
+}
+
+void PcTimelinePreviewGenerator::updateCurrentTimeline()
+{
+    TimelineCommandModel *commandModel = m_timelineManager
+        && m_timelineManager->currentTimeline()
+        ? m_timelineManager->currentTimeline()->commandModel()
+        : nullptr;
+    if (m_timelineCommandModel == commandModel)
+        return;
+
+    if (m_timelineCommandModel)
+        disconnect(m_timelineCommandModel, nullptr, this, nullptr);
+    m_timelineCommandModel = commandModel;
+    if (m_timelineCommandModel) {
+        connect(m_timelineCommandModel, &TimelineCommandModel::commandsChanged,
+                this, &PcTimelinePreviewGenerator::requestPreview);
+    }
+    m_requestedTimeMs = 0;
+    requestPreview();
 }
 
 void PcTimelinePreviewGenerator::updateActiveState()
@@ -216,7 +243,7 @@ void PcTimelinePreviewGenerator::startPreview()
     }
 
     m_generationRevision = m_revision;
-    m_generationTimeMs = m_timelineController ? m_timelineController->currentTimeMs() : 0;
+    m_generationTimeMs = m_requestedTimeMs;
     if (!m_pcDevice || !m_timelineCommandModel) {
         m_previewImage = QImage();
         if (m_previewUrl.toLocalFile().isEmpty() == false) {

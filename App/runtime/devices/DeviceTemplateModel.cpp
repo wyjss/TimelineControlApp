@@ -22,6 +22,7 @@ void DeviceTemplateModel::loadDefaultTemplates()
     appendTemplate(createDefaultDeviceTemplateHttp());
     appendTemplate(createDefaultDeviceTemplateSerial());
     appendTemplate(createDefaultDeviceTemplateOsc());
+    appendTemplate(createDefaultDeviceTemplateFusion3());
     appendTemplate(new SerialPowerDeviceTemplate);
 }
 
@@ -196,6 +197,90 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateOsc()
                               tr("OSC协议设备"),
                               params,
                               commands);
+}
+
+namespace
+{
+	DeviceCommand* createFusionCommand(const QString& name,
+									   const QString& strTemplate,
+									   const QString& paramKey = "",
+									   const QString& paramLabel = "",
+									   const QVariant& v = {},
+									   const double& minV = {},
+									   const double& maxV = {}
+	)
+	{
+		auto cmd = DeviceCommandFactory::createForProtocol(DeviceProtocol::Udp, nullptr);
+		cmd->setName(name);
+
+		cmd->setStringTemplateKey(DeviceKey::ApiPath);
+		if (!paramKey.isEmpty()) {
+			auto param = new DeviceParamSpec(paramKey, paramLabel, v);
+			param->setMinimum(minV);
+			param->setMaximum(maxV);
+			cmd->addExecutionInputField(param);
+		}
+		return cmd;
+	}
+
+	QList< DeviceCommand*> createFusionCommands()
+	{
+		QList< DeviceCommand*> cmds;
+
+		cmds << createFusionCommand("播放视频", R"({"_msg":"v_play","_p":"{videoIndex}"})", "videoIndex", "视频索引", 0, 99);
+		cmds << createFusionCommand("暂停", R"({"_msg":"v_pause"})");
+		cmds << createFusionCommand("继续", R"({"_msg":"v_resume"})");
+		cmds << createFusionCommand("停止", R"({"_msg":"stop"})");
+		cmds << createFusionCommand("上一曲", R"({"_msg":"v_prev"})");
+		cmds << createFusionCommand("下一曲", R"({"_msg":"v_next"})");
+		cmds << createFusionCommand("循环模式", R"({"_msg":"set_loop","_p":"{loopMode}"})", "loopMode", "循环模式", 0, 3);
+		cmds << createFusionCommand("视频定位", R"({"_msg":"seek","_p":{sec}})", "sec", "秒", 0, 9999);
+		cmds << createFusionCommand("前进10秒", R"({"_msg":"forward"})");
+		cmds << createFusionCommand("后退10秒", R"({"_msg":"rewind"})");
+		cmds << createFusionCommand("前进或者后退", R"({"_msg":"move","_p":"{sec}"})", "sec", "秒数", -999, 999);
+		cmds << createFusionCommand("声音大小", R"({"_msg":"vol","_p":"{volume}"})", "volume", "音量", 0, 100);
+		cmds << createFusionCommand("静音", R"({"_msg":"mute"})");
+		cmds << createFusionCommand("取消静音", R"({"_msg":"un_mute"})");
+		cmds << createFusionCommand("音量-", R"({"_msg":"vol-"})");
+		cmds << createFusionCommand("音量+", R"({"_msg":"vol+"})");
+		cmds << createFusionCommand("播放第几张图片", R"({"_msg":"p_play","_p":"{imageIndex}"})", "imageIndex", "图片索引", 0, 999);
+		cmds << createFusionCommand("上一张", R"({"_msg":"p_prev"})");
+		cmds << createFusionCommand("下一张", R"({"_msg":"p_next"})");
+		cmds << createFusionCommand("播放第几个播单", R"({"_msg":"ls_index","_p":"{playIndex}"})", "playIndex", "播单索引", 0, 999);
+		cmds << createFusionCommand("上一播单", R"({"_msg":"pl_prev"})");
+		cmds << createFusionCommand("下一播单", R"({"_msg":"pl_next"})");
+		cmds << createFusionCommand("选播单内曲目", R"({"_msg":"ls_sub","_p":"{index}"})", "index", "曲目索引", 0, 999);
+		cmds << createFusionCommand("遮罩开", R"({"_msg":"show_mask","_p":"1"})");
+		cmds << createFusionCommand("遮罩关", R"({"_msg":"show_mask","_p":"0"})");
+		cmds << createFusionCommand("采集开", R"({"_msg":"show_capture","_p":"1"})");
+		cmds << createFusionCommand("采集关", R"({"_msg":"show_capture","_p":"0"})");
+		cmds << createFusionCommand("跑马灯开", R"({"_msg":"floating","_p":"1"})");
+		cmds << createFusionCommand("跑马灯关", R"({"_msg":"floating","_p":"0"})");
+		cmds << createFusionCommand("重启", R"({"_msg":"reboot"})");
+		cmds << createFusionCommand("开机", R"({"_msg":"on"})");
+		cmds << createFusionCommand("关机", R"({"_msg":"off"})");
+
+		return cmds;
+	}
+}
+DeviceTemplate* DeviceTemplateModel::createDefaultDeviceTemplateFusion3()
+{
+	QList<DeviceParamSpec*> params;
+
+	auto* portSpec = DeviceParamSpec::createForKey(DeviceKey::Port);
+	portSpec->setValue(9999);
+	portSpec->setDefaultValue(9999);
+	params << portSpec;
+
+	params << DeviceParamSpec::createForKey(DeviceKey::OscTransProtocol);
+
+
+	return makeDeviceTemplate(tr("分布式融合器"),
+                              DeviceType::Fusion3,
+							  QStringList{DeviceProtocol::Udp},
+							  tr("分布式融合器3.0设备"),
+							  params,
+                              createFusionCommands());
 }
 
 DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,
