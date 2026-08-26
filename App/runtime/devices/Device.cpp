@@ -305,7 +305,7 @@ void Device::writeToStream(QDataStream& stream) const
     }
 }
 
-void Device::readFromStream(QDataStream& stream)
+void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
 {
     QString id;
     QString templateName;
@@ -335,7 +335,7 @@ void Device::readFromStream(QDataStream& stream)
 
         const QJsonDocument document = QJsonDocument::fromJson(commandData);
         DeviceCommand *command = document.isObject()
-            ? DeviceCommandFactory::createFromJson(document.object(), this)
+            ? DeviceCommandFactory::createFromJson(document.object(), this, timelineModel)
             : nullptr;
         if (command)
             commands.append(command);

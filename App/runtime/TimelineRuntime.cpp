@@ -120,7 +120,9 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
     }
 
     DeviceCommand *deviceCommand = DeviceCommandFactory::createFromJson(
-        QJsonObject::fromVariantMap(commandParams), this);
+        QJsonObject::fromVariantMap(commandParams),
+        this,
+        m_timelineManager->timelineModel());
     if (!deviceCommand) {
         timelineCommand->setErrorMessage(tr("无效指令"));
         timelineCommand->setState(TimelineCommand::Failed);
@@ -219,7 +221,7 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
         return;
     }
 
-    m_deviceModel->readFromStream(stream);
+    m_deviceModel->readFromStream(stream, m_timelineManager->timelineModel());
     if (stream.status() != QDataStream::Ok)
         return;
 

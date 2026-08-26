@@ -861,7 +861,9 @@ Item {
             Qt.callLater(function() {
                 clearEditDraft()
                 editingTimelineCommand = command
-                editDraft = timelineCommandModel.createEditDraft(command)
+                editDraft = timelineCommandModel.createEditDraft(
+                    command,
+                    root.timelineManager ? root.timelineManager.timelineModel : null)
                 if (!editDraft) {
                     close()
                     return

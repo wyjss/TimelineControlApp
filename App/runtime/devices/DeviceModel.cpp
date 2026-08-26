@@ -260,7 +260,7 @@ void DeviceModel::writeToStream(QDataStream &stream) const
     stream << m_currentDeviceId;
 }
 
-void DeviceModel::readFromStream(QDataStream &stream)
+void DeviceModel::readFromStream(QDataStream &stream, TimelineModel *timelineModel)
 {
     int deviceCount = 0;
     stream >> deviceCount;
@@ -271,7 +271,7 @@ void DeviceModel::readFromStream(QDataStream &stream)
     devices.reserve(deviceCount);
     for (int index = 0; index < deviceCount; ++index) {
         auto *device = new Device(QString(), this);
-        device->readFromStream(stream);
+        device->readFromStream(stream, timelineModel);
         if (stream.status() != QDataStream::Ok) {
             delete device;
             break;

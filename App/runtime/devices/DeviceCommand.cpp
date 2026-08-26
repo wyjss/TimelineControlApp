@@ -3,6 +3,7 @@
 #include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 
+#include <QJsonArray>
 #include <QVariant>
 #include <QUrl>
 #include <QUrlQuery>
@@ -11,6 +12,32 @@ namespace {
 
 const char *kProtocolKey = "protocol";
 const char *kExecutionInputFieldsKey = "executionInputFields";
+const char *kCreationInputFieldSpecsKey = "creationInputFieldSpecs";
+const char *kExecutionInputFieldSpecsKey = "executionInputFieldSpecs";
+
+QJsonObject fieldSpecToJson(const DeviceParamSpec *field)
+{
+    QJsonObject json;
+    json.insert(QStringLiteral("key"), field->key());
+    json.insert(QStringLiteral("label"), field->label());
+    json.insert(QStringLiteral("subtitle"), field->subtitle());
+    json.insert(QStringLiteral("valueType"), static_cast<int>(field->valueType()));
+    json.insert(QStringLiteral("editorHint"), static_cast<int>(field->editorHint()));
+    json.insert(QStringLiteral("defaultValue"), QJsonValue::fromVariant(field->defaultValue()));
+    json.insert(QStringLiteral("required"), field->required());
+    json.insert(QStringLiteral("readOnly"), field->readOnly());
+    json.insert(QStringLiteral("placeholderText"), field->placeholderText());
+    json.insert(QStringLiteral("pattern"), field->pattern());
+    json.insert(QStringLiteral("minimum"), field->minimum());
+    json.insert(QStringLiteral("maximum"), field->maximum());
+    json.insert(QStringLiteral("stepSize"), field->stepSize());
+    json.insert(QStringLiteral("suffix"), field->suffix());
+    if (field->key() == DeviceKey::Timeline)
+        json.insert(QStringLiteral("optionSource"), QStringLiteral("timelines"));
+    else
+        json.insert(QStringLiteral("options"), QJsonArray::fromVariantList(field->options()));
+    return json;
+}
 
 } // namespace
 
@@ -75,6 +102,18 @@ QJsonObject DeviceCommand::toJson() const
 
     for (DeviceParamSpec *field : m_creationInputFields)
         json.insert(field->key(), QJsonValue::fromVariant(field->value()));
+
+    if (commandType().isEmpty()) {
+        QJsonArray creationInputFieldSpecs;
+        for (DeviceParamSpec *field : m_creationInputFields)
+            creationInputFieldSpecs.append(fieldSpecToJson(field));
+        json.insert(QString::fromLatin1(kCreationInputFieldSpecsKey), creationInputFieldSpecs);
+
+        QJsonArray executionInputFieldSpecs;
+        for (DeviceParamSpec *field : m_executionInputFields)
+            executionInputFieldSpecs.append(fieldSpecToJson(field));
+        json.insert(QString::fromLatin1(kExecutionInputFieldSpecsKey), executionInputFieldSpecs);
+    }
 
     return json;
 }

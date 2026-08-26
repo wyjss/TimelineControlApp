@@ -415,12 +415,14 @@ TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
     return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, targetCommand);
 }
 
-DeviceCommand *TimelineCommandModel::createEditDraft(TimelineCommand *command)
+DeviceCommand *TimelineCommandModel::createEditDraft(TimelineCommand *command,
+                                                     TimelineModel *timelineModel)
 {
     if (indexOfCommand(command) < 0)
         return nullptr;
 
-    return DeviceCommandFactory::createFromJson(QJsonObject::fromVariantMap(command->commandParams()), this);
+    return DeviceCommandFactory::createFromJson(
+        QJsonObject::fromVariantMap(command->commandParams()), this, timelineModel);
 }
 
 void TimelineCommandModel::deleteEditDraft(DeviceCommand *draft)

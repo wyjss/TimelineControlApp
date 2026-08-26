@@ -13,6 +13,7 @@ class QDataStream;
 
 
 class DeviceCommand;
+class TimelineModel;
 
 class TimelineCommand final : public QObject
 {
@@ -116,7 +117,8 @@ public:
                                                                    const QString &targetDeviceId,
                                                                    DeviceCommand *targetCommand,
                                                                    const QVariantMap &extraParams);
-    Q_INVOKABLE DeviceCommand *createEditDraft(TimelineCommand *command);
+    Q_INVOKABLE DeviceCommand *createEditDraft(TimelineCommand *command,
+                                                TimelineModel *timelineModel);
     Q_INVOKABLE void deleteEditDraft(DeviceCommand *draft);
     Q_INVOKABLE bool updateCommand(TimelineCommand *command,
                                    qint64 startTimeMs,

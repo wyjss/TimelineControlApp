@@ -4,6 +4,7 @@
 #include "devices/DeviceConstants.h"
 #include "LogMacros.h"
 
+#include <QJsonArray>
 #include <QList>
 #include <QUrl>
 #include <QUrlQuery>
@@ -13,6 +14,59 @@
 namespace {
 
 const char *kProtocolKey = "protocol";
+const char *kCreationInputFieldSpecsKey = "creationInputFieldSpecs";
+const char *kExecutionInputFieldSpecsKey = "executionInputFieldSpecs";
+
+bool applyFieldSpec(DeviceParamSpec *field, const QJsonObject &json)
+{
+    const QVariant defaultValue = json.value(QStringLiteral("defaultValue")).toVariant();
+    field->setLabel(json.value(QStringLiteral("label")).toString());
+    field->setSubtitle(json.value(QStringLiteral("subtitle")).toString());
+    field->setValueType(static_cast<DeviceParamSpec::ValueType>(
+        json.value(QStringLiteral("valueType")).toInt(DeviceParamSpec::VariantType)));
+    field->setEditorHint(static_cast<DeviceParamSpec::EditorHint>(
+        json.value(QStringLiteral("editorHint")).toInt(DeviceParamSpec::AutoEditor)));
+    field->setDefaultValue(defaultValue);
+    field->setValue(defaultValue);
+    field->setRequired(json.value(QStringLiteral("required")).toBool());
+    field->setReadOnly(json.value(QStringLiteral("readOnly")).toBool());
+    field->setPlaceholderText(json.value(QStringLiteral("placeholderText")).toString());
+    field->setPattern(json.value(QStringLiteral("pattern")).toString());
+    field->setMinimum(json.value(QStringLiteral("minimum")).toDouble());
+    field->setMaximum(json.value(QStringLiteral("maximum")).toDouble());
+    field->setStepSize(json.value(QStringLiteral("stepSize")).toDouble());
+    field->setSuffix(json.value(QStringLiteral("suffix")).toString());
+    const QString optionSource = json.value(QStringLiteral("optionSource")).toString().trimmed();
+    if (optionSource.isEmpty())
+        field->setOptions(json.value(QStringLiteral("options")).toArray().toVariantList());
+    else if (optionSource != QStringLiteral("timelines"))
+        return false;
+    return true;
+}
+
+DeviceParamSpec *fieldFromJson(const QJsonObject &json,
+                               TimelineModel *timelineModel,
+                               QObject *parent)
+{
+    const QString key = json.value(QStringLiteral("key")).toString().trimmed();
+    if (key.isEmpty())
+        return nullptr;
+
+    const QString optionSource = json.value(QStringLiteral("optionSource")).toString().trimmed();
+    DeviceParamSpec *field = optionSource == QStringLiteral("timelines")
+        ? DeviceParamSpec::createForKey(DeviceKey::Timeline, timelineModel)
+        : (optionSource.isEmpty() ? new DeviceParamSpec(parent) : nullptr);
+    if (!field)
+        return nullptr;
+    if (field->parent() != parent)
+        field->setParent(parent);
+    field->setKey(key);
+    if (!applyFieldSpec(field, json)) {
+        delete field;
+        return nullptr;
+    }
+    return field;
+}
 
 struct RegisteredCommand
 {
@@ -353,13 +407,54 @@ DeviceCommand *DeviceCommandFactory::createForProtocol(const QString &protocol, 
     return create(protocol, QString(), parent);
 }
 
-DeviceCommand *DeviceCommandFactory::createFromJson(const QJsonObject &json, QObject *parent)
+DeviceCommand *DeviceCommandFactory::createFromJson(const QJsonObject &json,
+                                                    QObject *parent,
+                                                    TimelineModel *timelineModel)
 {
-    DeviceCommand *command = create(json.value(QString::fromLatin1(kProtocolKey)).toString(),
-                                    json.value(DeviceKey::CommandType).toString(),
-                                    parent);
+    const bool nativeCommand = json.contains(DeviceKey::CommandType);
+    const QString protocol = json.value(QString::fromLatin1(kProtocolKey)).toString();
+    const QString commandType = json.value(DeviceKey::CommandType).toString().trimmed();
+    if (nativeCommand && commandType.isEmpty())
+        return nullptr;
+
+    DeviceCommand *command = nativeCommand
+        ? create(protocol, commandType, parent)
+        : createForProtocol(protocol, parent);
     if (!command)
         return nullptr;
+
+    if (!nativeCommand) {
+        const auto addFields = [command, timelineModel, &json](const char *key,
+                                                               bool executionFields) {
+            const QJsonArray fields = json.value(QString::fromLatin1(key)).toArray();
+            for (const QJsonValue &value : fields) {
+                const QJsonObject fieldJson = value.toObject();
+                const QString fieldKey = fieldJson.value(QStringLiteral("key")).toString();
+                if (!executionFields) {
+                    if (DeviceParamSpec *field = command->getField(fieldKey)) {
+                        if (!applyFieldSpec(field, fieldJson))
+                            return false;
+                        continue;
+                    }
+                }
+
+                DeviceParamSpec *field = fieldFromJson(fieldJson, timelineModel, command);
+                if (!field)
+                    return false;
+                if (executionFields)
+                    command->addExecutionInputField(field);
+                else
+                    command->addCreationInputField(field);
+            }
+            return true;
+        };
+
+        if (!addFields(kCreationInputFieldSpecsKey, false)
+            || !addFields(kExecutionInputFieldSpecsKey, true)) {
+            delete command;
+            return nullptr;
+        }
+    }
 
     if (!command->loadFromJson(json)) {
         delete command;
