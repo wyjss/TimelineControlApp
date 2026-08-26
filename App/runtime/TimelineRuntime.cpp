@@ -40,14 +40,14 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     : BaseRuntime(parent)
     , m_taskManager(new UICore::TaskManager(this))
     , m_deviceModel(new DeviceModel(this))
-    , m_deviceTemplateModel(new DeviceTemplateModel(this))
+    , m_timelineManager(new TimelineManager(this))
+    , m_deviceTemplateModel(new DeviceTemplateModel(m_timelineManager->timelineModel(), this))
     , m_deviceExecutorManager(new DeviceExecutorManager(this))
     , m_deviceManager(new DeviceManager(m_deviceModel, m_deviceTemplateModel, m_deviceExecutorManager, this))
     , m_deviceInspectorFormProvider(new DeviceInspectorFormProvider(m_deviceModel,
                                                                     m_deviceTemplateModel,
                                                                     this))
     , m_videoProjectionPlanController(new VideoProjectionPlanController(this))
-    , m_timelineManager(new TimelineManager(this))
 {
     qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
     qRegisterMetaType<Device *>("Device*");

@@ -95,6 +95,18 @@ private:
 //        const QVariantMap& executionInputValues = QVariantMap()) const override;
 //};
 
+class DeviceCommand_Internal : public DeviceCommand
+{
+public:
+	explicit DeviceCommand_Internal(QObject* parent = nullptr);
+
+protected:
+    DeviceCommand_Internal(const QString& protocol,
+					  const QString& name,
+					  const QString& commandType,
+					  QObject* parent);
+};
+
 
 class DeviceCommand_Udp : public DeviceCommand
 {

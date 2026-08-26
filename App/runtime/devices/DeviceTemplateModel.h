@@ -8,13 +8,17 @@
 #include <QVariantList>
 
 
+class TimelineModel;
+
+
 class DeviceTemplateModel final : public TypedListModel<DeviceTemplate *>
 {
     Q_OBJECT
     Q_PROPERTY(QVariantList templates READ templates NOTIFY templatesChanged FINAL)
 
 public:
-    explicit DeviceTemplateModel(QObject *parent = nullptr);
+    explicit DeviceTemplateModel(TimelineModel *timelineModel,
+                                 QObject *parent = nullptr);
 
     void loadDefaultTemplates();
 
@@ -40,6 +44,7 @@ private:
     DeviceTemplate *createDefaultDeviceTemplateSerial();
     DeviceTemplate *createDefaultDeviceTemplateOsc();
     DeviceTemplate *createDefaultDeviceTemplateFusion3();
+    DeviceTemplate *createDefaultDeviceTemplateLocator();
 
     DeviceTemplate *makeDeviceTemplate(const QString &name,
                                        const QString &deviceType,
@@ -47,6 +52,8 @@ private:
                                        const QString &description,
                                        const QList<DeviceParamSpec *> &configSpecs,
                                        const QList<DeviceCommand *> &commands = {});
+
+    TimelineModel *m_timelineModel = nullptr;
 };
 
 

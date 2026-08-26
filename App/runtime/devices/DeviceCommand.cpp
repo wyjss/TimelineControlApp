@@ -236,12 +236,26 @@ void DeviceCommand::emitFieldChanged()
 }
 
 //////////////////////////////////////////////////////////////////////////
+DeviceCommand_Internal::DeviceCommand_Internal(QObject* parent)
+	: DeviceCommand_Internal(DeviceProtocol::Internal, QStringLiteral("内部指令"), QString(), parent)
+{
+
+}
+
+DeviceCommand_Internal::DeviceCommand_Internal(const QString& protocol,
+									 const QString& name,
+									 const QString& commandType,
+									 QObject* parent)
+	: DeviceCommand(protocol, name, commandType, parent)
+{
+	
+}
+
+//////////////////////////////////////////////////////////////////////////
 DeviceCommand_Udp::DeviceCommand_Udp(QObject* parent)
 	: DeviceCommand_Udp(DeviceProtocol::Udp, QStringLiteral("Udp指令"), QString(), parent)
 {
-	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
-	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
-	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::ApiPath));
+	
 }
 
 DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
@@ -252,8 +266,10 @@ DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
 {
 	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
 	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::ApiPath));
 }
 
+//////////////////////////////////////////////////////////////////////////
 DeviceCommand_Http::DeviceCommand_Http(QObject *parent)
     : DeviceCommand_Http(DeviceProtocol::Http, QStringLiteral("HTTP指令"), QString(), parent)
 {

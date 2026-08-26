@@ -461,9 +461,18 @@ TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
                                         commandName,
                                         commandParams,
                                         targetCommand);
-    if (!appendItem(command)) {
-        command->deleteLater();
-        return nullptr;
+
+    auto cmds = this->items();
+	int targetIndex = cmds.size();
+    for (int i = 0; i < cmds.size(); ++i) {
+        if (cmds[i]->startTimeMs() > startTimeMs) {
+            targetIndex = i;
+            break;
+        }
+    }
+    if (!insertItem(targetIndex, command)) {
+		command->deleteLater();
+		return nullptr;
     }
 
     return command;

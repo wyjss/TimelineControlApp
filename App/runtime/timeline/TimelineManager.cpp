@@ -4,6 +4,8 @@
 #include "timeline/TimelineClock.h"
 #include "timeline/TimelineModel.h"
 
+#include "LogMacros.h"
+
 #include <QDataStream>
 #include <QUuid>
 #include <QtAlgorithms>
@@ -248,6 +250,20 @@ void TimelineManager::stopPlayback()
     m_clock->stop();
 }
 
+void TimelineManager::setPlaybackDevices(const QStringList& ids)
+{
+    if (ids != m_paybackDevices) {
+        m_paybackDevices = ids;
+        emit playbackDevicesChanged(m_paybackDevices);
+    }
+}
+
+QStringList TimelineManager::getPlaybackDevices()
+{
+    return m_paybackDevices;
+}
+
+
 void TimelineManager::writeToStream(QDataStream &stream) const
 {
     const QList<Timeline *> timelines = m_timelineModel->items();
@@ -329,8 +345,13 @@ void TimelineManager::updateTimeline(Timeline *timeline, qint64 clockTimeMs)
 
     const Timeline::State previousState = timeline->state();
     const QList<TimelineCommand *> commands = timeline->updateTime(clockTimeMs);
-    for (TimelineCommand *command : commands)
-        emit commandTriggered(timeline, command);
+    for (TimelineCommand* command : commands) {
+        if (m_paybackDevices.isEmpty() || m_paybackDevices.contains(command->targetDeviceId())) {
+			emit commandTriggered(timeline, command);
+        } else {
+            command->setState(TimelineCommand::Succeeded);
+        }
+    }
     if (previousState == Timeline::Running
         && timeline->state() == Timeline::Completed)
         handleTimelineCompleted(timeline);

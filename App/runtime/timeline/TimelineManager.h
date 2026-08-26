@@ -21,6 +21,7 @@ class TimelineManager final : public QObject
     Q_PROPERTY(qint64 currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged FINAL)
     Q_PROPERTY(QStringList playQueue READ playQueue NOTIFY playQueueChanged FINAL)
     Q_PROPERTY(int playQueueIndex READ playQueueIndex NOTIFY playQueueIndexChanged FINAL)
+    Q_PROPERTY(QStringList playbackDevices READ getPlaybackDevices WRITE setPlaybackDevices NOTIFY playbackDevicesChanged FINAL)
 
 public:
     enum PlaybackState
@@ -58,6 +59,10 @@ public:
     Q_INVOKABLE void resumePlayback();
     Q_INVOKABLE void stopPlayback();
 
+    // 播控-过滤
+    void setPlaybackDevices(const QStringList& ids);
+    QStringList getPlaybackDevices();
+
     void writeToStream(QDataStream &stream) const;
     bool readFromStream(QDataStream &stream);
 signals:
@@ -67,7 +72,7 @@ signals:
     void playQueueChanged();
     void playQueueIndexChanged(int index);
     void commandTriggered(Timeline *timeline, TimelineCommand *command);
-
+    void playbackDevicesChanged(QStringList);
 private:
     bool startTimeline(const QString &id);
     void updateTimeline(Timeline *timeline, qint64 clockTimeMs);
@@ -78,6 +83,7 @@ private:
     TimelineModel *m_timelineModel = nullptr;
     QStringList m_playQueue;
     int m_playQueueIndex = -1;
+    QStringList m_paybackDevices;
 };
 
 

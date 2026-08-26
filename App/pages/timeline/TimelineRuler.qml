@@ -42,7 +42,6 @@ Item {
     // 拖动时刻线的时间步进，单位毫秒。
     property int currentTimeDragStepMs: 100
     readonly property real labelWidth: majorTickMs < 1000 ? 96 : 72
-    readonly property real currentTimeLabelWidth: 96
 
     readonly property real targetMajorTickSeconds: Math.max(1, baseMajorTickSeconds) * safeTimeScale()
     readonly property real majorTickSeconds: calcRealMajorTickSeconds(baseMajorTickSeconds)
@@ -130,8 +129,10 @@ Item {
         return Math.max(0, Math.min(maxTimeMs, Math.round(value / stepMs) * stepMs))
     }
 
-    function requestCurrentTimeMs(value) {
-        var nextCurrentTimeMs = clampTimeMs(value)
+    function requestCurrentTimeMs(value, snapToStep) {
+        var nextCurrentTimeMs = snapToStep === false
+            ? Math.max(0, Math.min(durationMs, Math.round(value)))
+            : clampTimeMs(value)
         if (nextCurrentTimeMs !== resolvedCurrentTimeMs)
             currentTimeMsChangeRequested(nextCurrentTimeMs)
     }
@@ -195,6 +196,39 @@ Item {
             return pad2(hours) + ":" + pad2(minutes) + ":" + pad2(seconds) + suffix
 
         return pad2(minutes) + ":" + pad2(seconds) + suffix
+    }
+
+    function parseTime(text) {
+        var parts = String(text || "").trim().split(":")
+        if (parts.length < 2 || parts.length > 3)
+            return -1
+
+        var secondParts = parts[parts.length - 1].split(".")
+        if (secondParts.length > 2
+                || !/^\d+$/.test(secondParts[0])
+                || (secondParts.length === 2 && !/^\d{1,3}$/.test(secondParts[1])))
+            return -1
+
+        var seconds = Number(secondParts[0])
+        var minutes = Number(parts[parts.length - 2])
+        var hours = parts.length === 3 ? Number(parts[0]) : 0
+        if (!/^\d+$/.test(parts[parts.length - 2])
+                || (parts.length === 3 && !/^\d+$/.test(parts[0]))
+                || seconds >= 60
+                || (parts.length === 3 && minutes >= 60))
+            return -1
+
+        var milliseconds = secondParts.length === 2
+            ? Number((secondParts[1] + "00").slice(0, 3))
+            : 0
+        return ((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds
+    }
+
+    function syncCurrentTimeText() {
+        if (!currentTimeField.activeFocus) {
+            currentTimeField.text = formatTime(resolvedCurrentTimeMs, true)
+            currentTimeField.cursorPosition = currentTimeField.length
+        }
     }
 
     // 将时间转换为组件内的 x 坐标，入参单位毫秒，返回单位像素。
@@ -313,8 +347,14 @@ Item {
         Connections {
             target: root
             function onWidthChanged() { root.updateRuler(true, false) }
-            function onDurationMsChanged() { root.updateRuler(true, true) }
-            function onCurrentTimeMsChanged() { root.updateRuler(false, false) }
+            function onDurationMsChanged() {
+                root.updateRuler(true, true)
+                root.syncCurrentTimeText()
+            }
+            function onCurrentTimeMsChanged() {
+                root.updateRuler(false, false)
+                root.syncCurrentTimeText()
+            }
             function onScrollXChanged() { root.updateRuler(false, false) }
             function onTrackLeftXChanged() { root.updateRuler(false, false) }
             function onStartTimeXChanged() { root.updateRuler(true, false) }
@@ -343,23 +383,54 @@ Item {
         }
     }
 
-    Rectangle {
-        x: Math.round(root.clampLabelX(root.currentTimeX, width))
-        y: -22
-        z: 1
-        width: root.currentTimeLabelWidth
-        height: 20
-        radius: 4
-        visible: root.currentTimeX >= root.resolvedTrackLeftX && root.currentTimeX <= root.width
-        color: root.colorValue("dangerFill", "#f85149")
+    Item {
+        width: root.resolvedTrackLeftX
+        height: parent.height
+        z: 2
+        visible: width >= 120
 
         Base.AppText {
-            anchors.fill: parent
-            text: root.formatTime(root.resolvedCurrentTimeMs, true)
+            anchors.left: parent.left
+            anchors.leftMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            text: qsTr("当前时间")
             styleRole: UiStyle.TypographyRole.BodyS
-            colorOverride: root.colorValue("inverseText", "#f8fafc")
+            textTone: UiStyle.TextTone.Secondary
+        }
+
+        Base.AppTextField {
+            id: currentTimeField
+
+            anchors.left: parent.left
+            anchors.leftMargin: 72
+            anchors.right: parent.right
+            anchors.rightMargin: 12
+            anchors.verticalCenter: parent.verticalCenter
+            controlHeight: 32
+            contentPaddingX: 8
+            contentPaddingY: 4
+            readOnly: !root.currentTimeDragEnabled
+            placeholderText: "00:00.000"
+            inputMethodHints: Qt.ImhPreferNumbers
             horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
+
+            onEditingFinished: {
+                var timeMs = root.parseTime(text)
+                var nextTimeMs = timeMs >= 0
+                    ? Math.max(0, Math.min(root.durationMs, Math.round(timeMs)))
+                    : root.resolvedCurrentTimeMs
+                if (timeMs >= 0)
+                    root.requestCurrentTimeMs(nextTimeMs, false)
+                text = root.formatTime(nextTimeMs, true)
+                cursorPosition = length
+            }
+            onReadOnlyChanged: root.syncCurrentTimeText()
+            Keys.onEscapePressed: {
+                focus = false
+                root.syncCurrentTimeText()
+                event.accepted = true
+            }
+            Component.onCompleted: root.syncCurrentTimeText()
         }
     }
 

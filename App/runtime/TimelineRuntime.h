@@ -57,12 +57,12 @@ private:
 
     UICore::TaskManager *m_taskManager = nullptr;
     DeviceModel *m_deviceModel = nullptr;
+    TimelineManager *m_timelineManager = nullptr;
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;
     DeviceExecutorManager *m_deviceExecutorManager = nullptr;
     DeviceManager *m_deviceManager = nullptr;
     DeviceInspectorFormProvider *m_deviceInspectorFormProvider = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
-    TimelineManager *m_timelineManager = nullptr;
     QString m_currentPlanFilePath;
     int m_runId = 0;
 };

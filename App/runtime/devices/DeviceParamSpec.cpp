@@ -1,5 +1,7 @@
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceConstants.h"
+#include "timeline/Timeline.h"
+#include "timeline/TimelineModel.h"
 #include <QColor>
 #include <QRegularExpression>
 #include <QDir>
@@ -64,7 +66,11 @@ QString DeviceParamSpec::typeName() const
 
 DeviceParamSpec *DeviceParamSpec::clone(QObject *parent) const
 {
-    auto *field = new DeviceParamSpec(parent);
+    auto *field = m_timelineModel
+        ? createForKey(key(), m_timelineModel)
+        : new DeviceParamSpec(parent);
+    if (field->parent() != parent)
+        field->setParent(parent);
     field->setKey(key());
     field->setLabel(label());
     field->setSubtitle(subtitle());
@@ -162,7 +168,8 @@ QVariant DeviceParamSpec::normalizedValue(ValueType valueType, const QVariant &v
     return value;
 }
 
-DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey)
+DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
+                                               TimelineModel *timelineModel)
 {
     if (deviceKey == DeviceKey::Name) {
         auto *spec = new DeviceParamSpec(deviceKey,
@@ -374,15 +381,45 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey)
 		return spec;
 	}
 
-    if (deviceKey == DeviceKey::Rect) {
+	if (deviceKey == DeviceKey::Rect) {
 		auto* spec = new DeviceParamSpec(deviceKey,
 										 QStringLiteral("目标矩形（x,y,w,h）"),
 										 "",
 										 StringType,
 										 TextEditor);
-        spec->setPattern(DevicePattern::Rect);
-        return spec;
-    }
+		spec->setPattern(DevicePattern::Rect);
+		return spec;
+	}
+
+	if (deviceKey == DeviceKey::Timeline) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("时间线"),
+										 "",
+                                         SelectType,
+                                         SelectEditor);
+        spec->setRequired(true);
+		spec->m_timelineModel = timelineModel;
+		if (timelineModel) {
+			const auto func_updateTimelineOpts = [spec, timelineModel]() {
+				QVariantList options;
+				options.reserve(timelineModel->count());
+				for (int index = 0; index < timelineModel->count(); ++index) {
+					const Timeline *timeline = timelineModel->timelineAt(index);
+					if (timeline) {
+						options.append(QVariantMap{
+							{QStringLiteral("label"), timeline->name()},
+							{QStringLiteral("value"), timeline->id()}
+						});
+					}
+				}
+				spec->setOptions(options);
+			};
+			connect(timelineModel, &TimelineModel::timelinesChanged,
+					spec, func_updateTimelineOpts);
+			func_updateTimelineOpts();
+		}
+		return spec;
+	}
 
     return nullptr;
 }

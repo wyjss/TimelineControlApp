@@ -14,6 +14,7 @@ Base.AppDialog {
     property bool validationVisible: false
     readonly property bool editing: editingCommand !== null
     readonly property var protocolOptions: [
+        { "label": qsTr("无协议"), "value": "internal" },
         { "label": qsTr("串口"), "value": "serial" },
         { "label": qsTr("HTTP"), "value": "http" },
         { "label": qsTr("PC"), "value": "pc" },

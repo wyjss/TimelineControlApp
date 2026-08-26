@@ -70,11 +70,11 @@ public:
 
 ///↓↓↓↓↓commandType指令↓↓↓↓↓
 
-class UdpStrTemplateCommand : public DeviceCommand_Udp
+class UdpStrTemplateCommand : public DeviceCommand_Internal
 {
 public:
     UdpStrTemplateCommand(QObject* parent)
-        : DeviceCommand_Udp(parent)
+        : DeviceCommand_Internal(parent)
     {
         
     }
@@ -262,7 +262,10 @@ public:
 
 void registerBuiltInCommands()
 {
-    static const bool registered = [] {
+	static const bool registered = [] {
+		DeviceCommandFactory::registerCommand([](QObject* parent) -> DeviceCommand* {
+			return new DeviceCommand_Internal(parent);
+											  });
 		DeviceCommandFactory::registerCommand([](QObject* parent) -> DeviceCommand* {
 			return new DeviceCommand_Udp(parent);
 											  });

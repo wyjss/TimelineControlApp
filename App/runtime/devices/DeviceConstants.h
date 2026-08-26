@@ -51,6 +51,9 @@ inline const QString Videos = QStringLiteral("videos");
 inline const QString VideoFile = QStringLiteral("videoFile");
 inline const QString Rect = QStringLiteral("rect");
 
+// 时间线选择
+inline const QString Timeline = QStringLiteral("timeline");
+
 // 特殊指令
 inline const QString PowerOn = QStringLiteral("powerOn");
 inline const QString PowerOff = QStringLiteral("powerOff");
@@ -70,6 +73,7 @@ inline const QString Udp = QStringLiteral("udp");
 inline const QString Serial = QStringLiteral("serial");
 inline const QString Osc = QStringLiteral("osc");
 inline const QString Pc = QStringLiteral("pc");
+inline const QString Internal = QStringLiteral("internal");
 } // namespace DeviceProtocol
 
 //! Common validation patterns.

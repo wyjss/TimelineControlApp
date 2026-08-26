@@ -16,10 +16,13 @@ Item {
     property var childTracksByParentId: ({})
     property var expandedParentTrackIds: ({})
     property string selectedDeviceId: ""
+    property string selectedCommandId: ""
     property int rowHeight: 56
     property int childRowHeight: 30
     property int rowSpacing: 4
     property int labelWidth: 224
+    property int instantCommandMinWidth: 56
+    property int instantCommandMaxWidth: 132
     property int moveAnimationDuration: 220
 
     signal trackSelected(string targetDeviceId)
@@ -105,7 +108,9 @@ Item {
             return ""
 
         var parts = []
-        var protocolText = String((device.supportedProtocols || []).join(", ")).trim()
+        var protocolText = (device.supportedProtocols || []).map(function(protocol) {
+            return String(protocol).toLowerCase() === "internal" ? qsTr("无协议") : String(protocol)
+        }).join(", ").trim()
         var typeText = (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))
             ? "PC"
             : String(device.deviceType || "").trim()
@@ -128,6 +133,7 @@ Item {
         return commandBelongsToDevice(left, deviceId)
             && commandBelongsToDevice(right, deviceId)
             && commandStartMs(left) === commandStartMs(right)
+            && (commandDurationMs(left) <= 0) === (commandDurationMs(right) <= 0)
     }
 
     function commandStackIndex(command, deviceId) {
@@ -155,6 +161,81 @@ Item {
         return Math.max(1, count)
     }
 
+    function instantCommandDisplayWidth(command) {
+        var text = String(command && command.commandName ? command.commandName : qsTr("指令"))
+        return Math.min(instantCommandMaxWidth,
+                        Math.max(instantCommandMinWidth,
+                                 Math.ceil(instantCommandFontMetrics.advanceWidth(text)) + 28))
+    }
+
+    function instantCommandLayout(command, deviceId, contentWidth) {
+        var commands = []
+        for (var index = 0; index < commandList.length; ++index) {
+            var item = commandList[index]
+            if (commandBelongsToDevice(item, deviceId) && commandDurationMs(item) <= 0)
+                commands.push({ "command": item, "order": index })
+        }
+        commands.sort(function(left, right) {
+            return commandStartMs(left.command) - commandStartMs(right.command)
+                || left.order - right.order
+        })
+
+        var layouts = {}
+        var laneEnd = [-Number.MAX_VALUE, -Number.MAX_VALUE, -Number.MAX_VALUE]
+        var laneCommandKey = ["", "", ""]
+        var laneOrder = [1, 0, 2]
+        for (index = 0; index < commands.length; ++index) {
+            item = commands[index].command
+            var key = String(item.id || commands[index].order)
+            var anchorX = timeToX(commandStartMs(item)) - labelWidth
+            var commandWidth = instantCommandDisplayWidth(item)
+            var onLeft = anchorX + commandWidth > contentWidth
+                && anchorX - commandWidth >= 0
+            var leftX = onLeft ? anchorX - commandWidth + 6 : anchorX - 6
+            var rightX = leftX + commandWidth
+            var lane = -1
+            for (var laneIndex = 0; laneIndex < laneOrder.length; ++laneIndex) {
+                var candidate = laneOrder[laneIndex]
+                if (leftX >= laneEnd[candidate] + 6) {
+                    lane = candidate
+                    break
+                }
+            }
+
+            if (lane >= 0) {
+                layouts[key] = {
+                    "lane": lane,
+                    "visible": true,
+                    "overflowCount": 0,
+                    "onLeft": onLeft,
+                    "width": commandWidth
+                }
+                laneEnd[lane] = rightX
+                laneCommandKey[lane] = key
+            } else {
+                var overflowKey = laneCommandKey[2]
+                layouts[key] = {
+                    "lane": 2,
+                    "visible": false,
+                    "overflowCount": 0,
+                    "onLeft": onLeft,
+                    "width": commandWidth
+                }
+                layouts[overflowKey].overflowCount += 1
+                laneEnd[2] = Math.max(laneEnd[2], rightX)
+            }
+        }
+
+        key = String(command && command.id || commandList.indexOf(command))
+        return layouts[key] || {
+            "lane": 1,
+            "visible": true,
+            "overflowCount": 0,
+            "onLeft": false,
+            "width": instantCommandMinWidth
+        }
+    }
+
     function childTracksForParent(parentTrackId) {
         var tracks = childTracksByParentId
             ? childTracksByParentId[String(parentTrackId || "")]
@@ -180,6 +261,21 @@ Item {
         trackModel.clear()
         for (var index = 0; index < root.devices.length; ++index)
             trackModel.append({ "sourceIndex": index })
+
+        Qt.callLater(positionSelectedTrack)
+    }
+
+    function positionSelectedTrack() {
+        for (var index = 0; index < trackModel.count; ++index) {
+            var sourceIndex = Number(trackModel.get(index).sourceIndex)
+            var device = sourceIndex >= 0 && sourceIndex < root.devices.length
+                ? root.devices[sourceIndex]
+                : null
+            if (device && String(device.id || "") === root.selectedDeviceId) {
+                trackList.positionViewAtIndex(index, ListView.Contain)
+                return
+            }
+        }
     }
 
     function randomIndex(maxExclusive) {
@@ -202,12 +298,26 @@ Item {
     }
 
     onDevicesChanged: rebuildTrackModel()
+    onSelectedDeviceIdChanged: Qt.callLater(positionSelectedTrack)
     Component.onCompleted: rebuildTrackModel()
 
     ListModel {
         id: trackModel
 
         dynamicRoles: true
+    }
+
+    Base.AppText {
+        id: instantCommandMeasureText
+
+        visible: false
+        styleRole: UiStyle.TypographyRole.BodyS
+    }
+
+    FontMetrics {
+        id: instantCommandFontMetrics
+
+        font: instantCommandMeasureText.font
     }
 
     ListView {
@@ -397,25 +507,55 @@ Item {
                         readonly property string commandText: String(commandData && commandData.commandName
                             ? commandData.commandName
                             : qsTr("指令"))
+                        readonly property bool selected: String(commandData && commandData.id || "")
+                            === root.selectedCommandId
                         readonly property int stackIndex: root.commandStackIndex(commandData, trackRow.targetDeviceId)
                         readonly property int stackCount: root.commandStackCount(commandData, trackRow.targetDeviceId)
-                        readonly property real stackOffsetY: (stackIndex - (stackCount - 1) / 2) * 8
+                        readonly property var instantLayout: instantCommand
+                            ? root.instantCommandLayout(commandData, trackRow.targetDeviceId, parent.width)
+                            : ({ "lane": 1, "visible": true, "overflowCount": 0, "onLeft": false, "width": 0 })
+                        readonly property bool overflowCommand: instantCommand
+                            && instantLayout.overflowCount > 0
+                        readonly property string displayText: overflowCommand
+                            ? "+" + String(instantLayout.overflowCount + 1)
+                            : commandText
+                        readonly property real anchorX: root.timeToX(root.commandStartMs(commandData))
+                            - root.labelWidth
+                        readonly property bool instantLabelOnLeft: instantCommand
+                            && instantLayout.onLeft
+                        readonly property real stackOffsetY: instantCommand
+                            ? (instantLayout.lane - 1) * 18
+                            : (stackIndex - (stackCount - 1) / 2) * 8
 
-                        x: root.timeToX(root.commandStartMs(commandData))
-                           - root.labelWidth
-                           - (instantCommand ? width / 2 : 0)
+                        x: instantCommand
+                            ? anchorX - (instantLabelOnLeft ? width - 6 : 6)
+                            : anchorX
                         y: 0
                         width: belongsToTrack
-                            ? (instantCommand ? 22 : Math.max(40, root.durationToWidth(durationMs)))
+                            ? (instantCommand ? instantLayout.width : Math.max(40, root.durationToWidth(durationMs)))
                             : 0
                         height: parent.height
-                        visible: belongsToTrack && x + width > 0 && x < parent.width
+                        z: selected ? 3 : (commandMouse.containsMouse ? 2 : 1)
+                        visible: belongsToTrack && instantLayout.visible && x + width > 0 && x < parent.width
 
                         MouseArea {
                             id: commandMouse
 
-                            anchors.fill: parent
+                            x: commandBlock.instantCommand ? instantCommandPill.x : 0
+                            y: commandBlock.instantCommand
+                                ? instantCommandPill.y
+                                : Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
+                            width: commandBlock.instantCommand ? instantCommandPill.width : parent.width
+                            height: commandBlock.instantCommand ? instantCommandPill.height : 26
                             hoverEnabled: true
+                            ToolTip.visible: containsMouse
+                            ToolTip.delay: 500
+                            ToolTip.text: commandBlock.overflowCommand
+                                ? qsTr("重叠区域内合并 %1 条指令")
+                                    .arg(commandBlock.instantLayout.overflowCount + 1)
+                                : qsTr("%1 · %2 ms")
+                                    .arg(commandBlock.commandText)
+                                    .arg(root.commandStartMs(commandBlock.commandData))
                             onClicked: {
                                 mouse.accepted = true
                                 root.commandSelected(commandBlock.commandData)
@@ -424,25 +564,67 @@ Item {
 
                         Rectangle {
                             visible: commandBlock.instantCommand
-                            x: Math.round(parent.width / 2)
+                            x: commandBlock.instantLabelOnLeft ? parent.width - 6 : 6
                             y: 8
                             width: 1
                             height: parent.height - 16
                             color: commandBlock.commandColor
-                            opacity: commandMouse.containsMouse ? 0.9 : 0.52
+                            opacity: commandMouse.containsMouse || commandBlock.selected ? 0.9 : 0.52
                         }
 
                         Rectangle {
                             visible: commandBlock.instantCommand
-                            width: commandMouse.containsMouse ? 14 : 12
-                            height: width
-                            x: Math.round((parent.width - width) / 2)
+                            x: commandBlock.instantLabelOnLeft ? parent.width - 14 : 6
+                            y: Math.round(parent.height / 2 + commandBlock.stackOffsetY)
+                            width: 8
+                            height: 1
+                            color: commandBlock.commandColor
+                            opacity: 0.76
+                        }
+
+                        Rectangle {
+                            id: instantCommandPill
+
+                            visible: commandBlock.instantCommand
+                            x: commandBlock.instantLabelOnLeft ? 0 : 14
                             y: Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
-                            radius: width / 2
+                            width: parent.width - 14
+                            height: 16
+                            radius: 4
+                            color: commandBlock.commandColor
+                            opacity: commandMouse.containsMouse || commandBlock.selected ? 0.96 : 0.84
+                            border.width: commandMouse.containsMouse || commandBlock.selected ? 1 : 0
+                            border.color: commandBlock.selected
+                                ? root.colorValue("inverseText", "#f8fafc")
+                                : commandBlock.stateColor
+                        }
+
+                        Rectangle {
+                            visible: commandBlock.instantCommand
+                            width: commandMouse.containsMouse || commandBlock.selected ? 10 : 8
+                            height: width
+                            x: (commandBlock.instantLabelOnLeft ? parent.width - 6 : 6) - width / 2
+                            y: Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
+                            radius: 2
+                            rotation: 45
                             color: commandBlock.commandColor
                             border.width: 1
                             border.color: commandBlock.stateColor
                             opacity: 0.96
+                        }
+
+                        Base.AppText {
+                            id: instantCommandText
+
+                            visible: commandBlock.instantCommand
+                            anchors.fill: instantCommandPill
+                            anchors.leftMargin: 7
+                            anchors.rightMargin: 7
+                            text: commandBlock.displayText
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Inverse
+                            verticalAlignment: Text.AlignVCenter
+                            elide: Text.ElideRight
                         }
 
                         Rectangle {
@@ -450,11 +632,11 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.verticalCenterOffset: commandBlock.stackOffsetY
                             width: parent.width
-                            height: commandMouse.containsMouse ? 26 : 24
+                            height: commandMouse.containsMouse || commandBlock.selected ? 26 : 24
                             radius: height / 2
                             color: commandBlock.commandColor
-                            opacity: commandMouse.containsMouse ? 0.96 : 0.86
-                            border.width: commandMouse.containsMouse
+                            opacity: commandMouse.containsMouse || commandBlock.selected ? 0.96 : 0.86
+                            border.width: commandMouse.containsMouse || commandBlock.selected
                                 || Number(commandBlock.commandData && commandBlock.commandData.state !== undefined ? commandBlock.commandData.state : 0) !== 0
                                 ? 1
                                 : 0

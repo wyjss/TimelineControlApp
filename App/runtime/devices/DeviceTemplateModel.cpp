@@ -6,8 +6,10 @@
 #include "devices/DeviceCommandFactory.h"
 
 
-DeviceTemplateModel::DeviceTemplateModel(QObject *parent)
+DeviceTemplateModel::DeviceTemplateModel(TimelineModel *timelineModel,
+                                         QObject *parent)
     : TypedListModel<DeviceTemplate *>(parent)
+    , m_timelineModel(timelineModel)
 {
 }
 
@@ -23,6 +25,7 @@ void DeviceTemplateModel::loadDefaultTemplates()
     appendTemplate(createDefaultDeviceTemplateSerial());
     appendTemplate(createDefaultDeviceTemplateOsc());
     appendTemplate(createDefaultDeviceTemplateFusion3());
+    appendTemplate(createDefaultDeviceTemplateLocator());
     appendTemplate(new SerialPowerDeviceTemplate);
 }
 
@@ -272,15 +275,28 @@ DeviceTemplate* DeviceTemplateModel::createDefaultDeviceTemplateFusion3()
 	portSpec->setDefaultValue(9999);
 	params << portSpec;
 
-	params << DeviceParamSpec::createForKey(DeviceKey::OscTransProtocol);
-
-
 	return makeDeviceTemplate(tr("分布式融合器"),
                               DeviceType::Fusion3,
 							  QStringList{DeviceProtocol::Udp},
 							  tr("分布式融合器3.0设备"),
 							  params,
                               createFusionCommands());
+}
+
+DeviceTemplate* DeviceTemplateModel::createDefaultDeviceTemplateLocator()
+{
+	QList<DeviceParamSpec*> params;
+
+    auto cmd = DeviceCommandFactory::createForProtocol(DeviceProtocol::Internal);
+    cmd->setName("节目触发");
+	cmd->addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::Timeline,
+														 m_timelineModel));
+	return makeDeviceTemplate(tr("定位器"),
+							  DeviceType::Locator,
+							  QStringList{DeviceProtocol::Internal},
+							  tr("定位器设备"),
+							  params,
+                              {cmd});
 }
 
 DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,

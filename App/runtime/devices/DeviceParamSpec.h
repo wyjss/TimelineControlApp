@@ -5,6 +5,9 @@
 #include <UICore/Fields/BaseField.h>
 
 
+class TimelineModel;
+
+
 class DeviceParamSpec final : public UICore::BaseField
 {
     Q_OBJECT
@@ -55,7 +58,8 @@ public:
     Q_INVOKABLE QString invalidReason(const QVariant &value = QVariant()) const;
 
     static QString typeName(ValueType valueType);
-    static DeviceParamSpec *createForKey(const QString &deviceKey);
+    static DeviceParamSpec *createForKey(const QString &deviceKey,
+                                         TimelineModel *timelineModel = nullptr);
 
 signals:
     void defaultValueChanged();
@@ -66,6 +70,7 @@ private:
 
     QVariant m_defaultValue;
     QString m_pattern;
+    TimelineModel *m_timelineModel = nullptr;
 };
 
 

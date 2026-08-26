@@ -230,7 +230,9 @@ Item {
             return ""
 
         var parts = []
-        var protocolText = String((device.supportedProtocols || []).join(", ")).trim()
+        var protocolText = (device.supportedProtocols || []).map(function(protocol) {
+            return String(protocol).toLowerCase() === "internal" ? qsTr("无协议") : String(protocol)
+        }).join(", ").trim()
         var typeText = (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))
             ? "PC"
             : String(device.deviceType || "").trim()
@@ -333,6 +335,17 @@ Item {
                         styleRole: UiStyle.TypographyRole.SectionTitle
                     }
 
+                    Timeline.TimelineExternalTriggerEditor {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: implicitHeight
+                        devices: root.devices
+                        timelineModel: root.timelineManager
+                            ? root.timelineManager.timelineModel
+                            : null
+                        dialogParent: root
+                        editable: root.timelineStopped
+                    }
+
                     Timeline.TimelineRuler {
                         id: timelineRuler
 
@@ -370,8 +383,12 @@ Item {
                             : ({})
                         labelWidth: root.timelineTrackLabelWidth
                         selectedDeviceId: root.selectedTimelineDeviceId
+                        selectedCommandId: root.selectedTimelineCommandId
                         onTrackSelected: function(targetDeviceId) {
                             root.selectTimelineDevice(targetDeviceId)
+                        }
+                        onCommandSelected: function(command) {
+                            root.selectTimelineCommand(command)
                         }
                     }
                 }
@@ -673,7 +690,7 @@ Item {
                                     }
 
                                     Base.AppButton {
-                                        visible: timelineCommandRow.selected
+                                        visible: timelineCommandRow.hovered
                                         text: qsTr("编辑")
                                         enabled: root.timelineStopped
                                         onClicked: root.editTimelineCommand(timelineCommandRow.commandData)
@@ -681,13 +698,10 @@ Item {
 
                                     Base.AppButton {
                                         variant: UiStyle.ButtonVariant.Danger
-                                        visible: timelineCommandRow.selected
+                                        visible: timelineCommandRow.hovered
                                         text: qsTr("删除")
                                         enabled: root.timelineStopped
-                                        onClicked: {
-                                            if (root.timelineCommandModel)
-                                                root.timelineCommandModel.removeCommand(timelineCommandRow.commandData)
-                                        }
+                                        onClicked: removeTimelineCommandPopup.openForCommand(timelineCommandRow.commandData)
                                     }
                                 }
                             }
@@ -765,6 +779,38 @@ Item {
                 }
             }
         }
+    }
+
+    Base.AppDialog {
+        id: removeTimelineCommandPopup
+
+        parent: root
+
+        property var timelineCommand: null
+
+        function openForCommand(command) {
+            timelineCommand = command
+            open()
+        }
+
+        width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        title: qsTr("删除时间线指令")
+        message: timelineCommand
+            ? qsTr("确定删除“%1”？设备：%2，执行时间：%3。")
+                .arg(timelineCommand.commandName || qsTr("指令"))
+                .arg(root.deviceName(root.deviceForId(String(timelineCommand.targetDeviceId || ""))))
+                .arg(root.formatTimelineMs(timelineCommand.startTimeMs))
+            : ""
+        rejectText: qsTr("取消")
+        acceptText: qsTr("删除")
+        acceptButtonVariant: UiStyle.ButtonVariant.Danger
+        onAccepted: {
+            if (root.timelineCommandModel && timelineCommand)
+                root.timelineCommandModel.removeCommand(timelineCommand)
+        }
+        onClosed: timelineCommand = null
     }
 
     Base.AppDialog {

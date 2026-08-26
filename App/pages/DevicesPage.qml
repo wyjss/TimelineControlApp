@@ -326,7 +326,7 @@ Item {
             return qsTr("%1 台设备").arg(deviceCountForGroup(groupData))
 
         var deviceType = String(groupData.deviceType || "")
-        var protocols = String((groupData.supportedProtocols || []).join(" · "))
+        var protocols = protocolsText(groupData.supportedProtocols, " · ")
         return deviceType.length > 0 && protocols.length > 0
             ? deviceType + " · " + protocols
             : deviceType + protocols
@@ -353,7 +353,13 @@ Item {
     }
 
     function deviceProtocols(device) {
-        return String((device && device.supportedProtocols ? device.supportedProtocols : []).join(", "))
+        return protocolsText(device && device.supportedProtocols ? device.supportedProtocols : [])
+    }
+
+    function protocolsText(protocols, separator) {
+        return (protocols || []).map(function(protocol) {
+            return String(protocol).toLowerCase() === "internal" ? qsTr("无协议") : String(protocol)
+        }).join(separator || ", ")
     }
 
     function groupSelected(groupData) {
@@ -900,7 +906,7 @@ Item {
                                 Layout.fillWidth: true
                                 text: root.deviceDisplayMode === "type"
                                     ? qsTr("%1 台设备").arg(root.filteredDevices.length)
-                                    : String((root.selectedTemplate && root.selectedTemplate.supportedProtocols ? root.selectedTemplate.supportedProtocols : []).join(", ")) + " - " + root.templateValue("description", "")
+                                    : root.protocolsText(root.selectedTemplate && root.selectedTemplate.supportedProtocols ? root.selectedTemplate.supportedProtocols : []) + " - " + root.templateValue("description", "")
                                 styleRole: UiStyle.TypographyRole.BodyS
                                 textTone: UiStyle.TextTone.Secondary
                                 elide: Text.ElideRight
@@ -1352,7 +1358,7 @@ Item {
         y: parent ? Math.round((parent.height - height) / 2) : 0
         title: editing ? qsTr("编辑设备") : qsTr("创建设备")
         message: deviceTemplate
-            ? String(deviceTemplate.name) + " / " + String((deviceTemplate.supportedProtocols || []).join(", "))
+            ? String(deviceTemplate.name) + " / " + root.protocolsText(deviceTemplate.supportedProtocols)
             : ""
         rejectText: qsTr("取消")
         acceptText: editing ? qsTr("保存") : qsTr("创建")
