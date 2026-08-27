@@ -338,27 +338,7 @@ void registerBuiltInCommands()
         DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
             return new Dmx512Command(parent);
         });
-		DeviceCommandFactory::registerCommand([](QObject* parent) -> DeviceCommand* {
-			return new OpenVideoCommand(parent);
-											  });
-        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
-            return new PlayVideoCommand(parent);
-        });
-        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
-            return new PauseVideoCommand(parent);
-        });
-        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
-            return new StopVideoCommand(parent);
-											  });
-		DeviceCommandFactory::registerCommand([](QObject* parent) -> DeviceCommand* {
-			return new ClosePlayerCommand(parent);
-											  });
-        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
-            return new PlayDomeVideoCommand(parent);
-        });
-        DeviceCommandFactory::registerCommand([](QObject *parent) -> DeviceCommand * {
-            return new VirtualPlaybackCommand(parent);
-        });
+		
         return true;
     }();
     Q_UNUSED(registered)

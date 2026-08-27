@@ -3,6 +3,7 @@
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
+#include "devices/DeviceParamSpec.h"
 
 #include <QDataStream>
 #include <QJsonDocument>
@@ -149,9 +150,75 @@ void Device::setConfigValues(const QVariantMap &configValues)
         return;
 
     m_configValues = configValues;
+    for (DeviceParamSpec *param : m_params) {
+        if (m_configValues.contains(param->key()))
+            param->setValue(m_configValues.value(param->key()));
+    }
     for (DeviceCommand *command : m_commands)
         command->updateConfigMap(m_configValues);
     emit configValuesChanged();
+}
+
+QVariantList Device::params() const
+{
+    QVariantList result;
+    result.reserve(m_params.size());
+    for (DeviceParamSpec *param : m_params)
+        result.append(QVariant::fromValue(param));
+    return result;
+}
+
+DeviceParamSpec *Device::getParam(const QString &key) const
+{
+    for (DeviceParamSpec *param : m_params) {
+        if (param->key() == key)
+            return param;
+    }
+    return nullptr;
+}
+
+bool Device::addParam(DeviceParamSpec *param)
+{
+    if (!param || param->key().isEmpty() || getParam(param->key()))
+        return false;
+    if (param->parent() && param->parent() != this)
+        return false;
+
+    if (param->parent() != this)
+        param->setParent(this);
+
+    const bool hasValue = m_configValues.contains(param->key());
+    if (hasValue)
+        param->setValue(m_configValues.value(param->key()));
+    else
+        m_configValues.insert(param->key(), param->value());
+
+    connect(param, &DeviceParamSpec::valueChanged, this, [this, param]() {
+        m_configValues.insert(param->key(), param->value());
+        for (DeviceCommand *command : m_commands)
+            command->updateConfigMap(m_configValues);
+        emit configValuesChanged();
+        emit paramChanged(param->key(), param->value());
+    });
+
+    m_params.append(param);
+    if (!hasValue) {
+        for (DeviceCommand *command : m_commands)
+            command->updateConfigMap(m_configValues);
+        emit configValuesChanged();
+    }
+    emit paramsChanged();
+    return true;
+}
+
+bool Device::setParamValue(const QString &key, const QVariant &value)
+{
+    DeviceParamSpec *param = getParam(key);
+    if (!param)
+        return false;
+
+    param->setValue(value);
+    return true;
 }
 
 QVariantList Device::commands() const

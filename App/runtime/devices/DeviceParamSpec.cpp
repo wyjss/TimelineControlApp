@@ -391,6 +391,20 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		return spec;
 	}
 
+	if (deviceKey == DeviceKey::Location) {
+        QVariantMap vm;
+        vm["lon"] = 0;
+        vm["lat"] = 0;
+
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("坐标"),
+										 vm,
+                                         VariantType,
+                                         CustomEditor);
+        spec->setReadOnly(true);
+		return spec;
+	}
+
 	if (deviceKey == DeviceKey::Timeline) {
 		auto* spec = new DeviceParamSpec(deviceKey,
 										 QStringLiteral("时间线"),

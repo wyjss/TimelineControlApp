@@ -73,6 +73,9 @@ Device *DeviceTemplate::createDevice(QObject *parent, const QVariantMap &configV
 	device->setDescription(description());
     device->setConfigValues(configValues);
 
+    for (DeviceParamSpec *configSpec : m_configSpecs)
+        device->addParam(configSpec->clone(device));
+
     for (auto cmd : m_commands) {
         auto newCmd = cmd->clone(device);
         Q_ASSERT(newCmd);

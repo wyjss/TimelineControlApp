@@ -17,13 +17,14 @@
 		inline const QString Locator = "定位器";
 		inline const QString Fusion3 = "分布式融合器3.0";
 	};
-//! Stable keys used by device config specs and command params.
+
+//! 公共key定义，包括DeviceParamSpec::createForKey和指令CommandType
 namespace DeviceKey {
 inline const QString Name = QStringLiteral("name");
 inline const QString CommandType = QStringLiteral("commandType");
 inline const QString Protocol = QStringLiteral("protocol");
 //! 通过模板拼接url，支持http/udp/serial
-//! 模板：xxxx{paramName}xxx 
+//! 模板：xxxx${paramName}xxx 
 //! 通过查询param.name == paramName进行插入
 //! @todo 将http/udp/serial统一接入
 //inline const QString StringTemplate = QStringLiteral("stringTemplate");
@@ -51,6 +52,9 @@ inline const QString Videos = QStringLiteral("videos");
 inline const QString VideoFile = QStringLiteral("videoFile");
 inline const QString Rect = QStringLiteral("rect");
 
+// 定位器坐标，VMap["lon" "lat"]
+inline const QString Location = QStringLiteral("location");
+
 // 时间线选择
 inline const QString Timeline = QStringLiteral("timeline");
 
@@ -58,6 +62,16 @@ inline const QString Timeline = QStringLiteral("timeline");
 inline const QString PowerOn = QStringLiteral("powerOn");
 inline const QString PowerOff = QStringLiteral("powerOff");
 inline const QString Pause = QStringLiteral("pause");
+
+
+//////////////////////////////////////////////////////////////////////////
+// PC-视频控制指令
+inline const QString CommandOpenVideo = QStringLiteral("openVideo");
+inline const QString CommandPlayVideo = QStringLiteral("playVideo");
+inline const QString CommandPauseVideo = QStringLiteral("pauseVideo");
+inline const QString CommandStopVideo = QStringLiteral("closeVideo");
+inline const QString CommandClosePlayer = QStringLiteral("closePlayer");
+inline const QString CommandPlayDomeVideo = QStringLiteral("playDomeVideo");
 } // namespace DeviceKey
 
 namespace DeviceConstants {

@@ -13,8 +13,9 @@ class TimelineModel;
 
 
 class DeviceCommand;
+class DeviceParamSpec;
 
-class Device final : public QObject
+class Device : public QObject
 {
     Q_OBJECT
 
@@ -29,6 +30,7 @@ class Device final : public QObject
     Q_PROPERTY(QString lastSeen READ lastSeen WRITE setLastSeen NOTIFY lastSeenChanged FINAL)
     Q_PROPERTY(QString description READ description WRITE setDescription NOTIFY descriptionChanged FINAL)
     Q_PROPERTY(QVariantMap configValues READ configValues WRITE setConfigValues NOTIFY configValuesChanged FINAL)
+    Q_PROPERTY(QVariantList params READ params NOTIFY paramsChanged FINAL)
     Q_PROPERTY(QVariantList commands READ commands NOTIFY commandsChanged FINAL)
 
 public:
@@ -59,6 +61,11 @@ public:
     QVariantMap configValues() const;
     void setConfigValues(const QVariantMap &configValues);
 
+    QVariantList params() const;
+    Q_INVOKABLE DeviceParamSpec *getParam(const QString &key) const;
+    bool addParam(DeviceParamSpec *param);
+    Q_INVOKABLE bool setParamValue(const QString &key, const QVariant &value);
+
     QVariantList commands() const;
     Q_INVOKABLE DeviceCommand *createCommandDraft(const QString &protocol = QString()) const;
     Q_INVOKABLE void deleteCommandDraft(DeviceCommand *command) const;
@@ -81,6 +88,8 @@ signals:
     void lastSeenChanged();
     void descriptionChanged();
     void configValuesChanged();
+    void paramsChanged();
+    void paramChanged(const QString &key, const QVariant &value);
     void commandsChanged();
 
 private:
@@ -93,6 +102,7 @@ private:
     QString m_lastSeen;
     QString m_description;
     QVariantMap m_configValues;
+    QList<DeviceParamSpec *> m_params;
     QList<DeviceCommand *> m_commands;
 };
 

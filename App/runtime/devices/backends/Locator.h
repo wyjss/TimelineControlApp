@@ -6,5 +6,20 @@
 class LocatorDeviceTemplate : public DeviceTemplate
 {
 public:
-	virtual Device* createDevice(QObject* parent, const QVariantMap& configValues) override;
+	LocatorDeviceTemplate(QObject* parent);
+	virtual Device* createDevice(
+		QObject* parent, const QVariantMap& configValues)override;
+};
+
+class LocationRecver : public QObject
+{
+	Q_OBJECT
+private:
+	friend class LocatorDeviceTemplate;
+
+	LocationRecver();
+	static LocationRecver* getInstance();
+
+signals:
+	void locationChanged(QString, double, double);
 };
