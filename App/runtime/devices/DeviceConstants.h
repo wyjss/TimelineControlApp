@@ -31,6 +31,8 @@ inline const QString Protocol = QStringLiteral("protocol");
 
 inline const QString BaudRate = QStringLiteral("baudRate");
 inline const QString Dmx512AdapterDeviceId = QStringLiteral("dmx512AdapterDeviceId");
+// QVector<int32>的dmx适配器实时数据
+inline const QString Dmx512Bits = QStringLiteral("dmx512Bits");
 inline const QString Ip = QStringLiteral("ip");
 inline const QString HttpMethod = QStringLiteral("httpMethod");
 //inline const QString HttpQueryParams = QStringLiteral("httpQueryParams");
@@ -72,6 +74,7 @@ inline const QString CommandPauseVideo = QStringLiteral("pauseVideo");
 inline const QString CommandStopVideo = QStringLiteral("closeVideo");
 inline const QString CommandClosePlayer = QStringLiteral("closePlayer");
 inline const QString CommandPlayDomeVideo = QStringLiteral("playDomeVideo");
+inline const QString CommandVirtualPlayback = QStringLiteral("virtualPlayback");
 } // namespace DeviceKey
 
 namespace DeviceConstants {

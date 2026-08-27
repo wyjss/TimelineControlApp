@@ -117,6 +117,34 @@ Item {
                                  Math.ceil(commandFontMetrics.advanceWidth(text)) + 28))
     }
 
+    function commandInfo(command) {
+        if (!command)
+            return ""
+
+        var commandParams = command.commandParams || {}
+        var parts = [String(command.commandName || qsTr("指令"))]
+        var deviceText = String(commandParams.targetDeviceName || command.targetDeviceId || "")
+        if (deviceText.length > 0)
+            parts.push(deviceText)
+        parts.push(qsTr("%1 ms").arg(commandStartMs(command)))
+        if (String(command.stateText || "").length > 0)
+            parts.push(String(command.stateText))
+
+        var values = commandParams.executionInputFields || {}
+        var valueParts = []
+        Object.keys(values).forEach(function(key) {
+            var value = values[key]
+            if (value === undefined || value === null || String(value).length === 0)
+                return
+            if (typeof value === "boolean")
+                value = value ? qsTr("是") : qsTr("否")
+            valueParts.push(String(value))
+        })
+        if (valueParts.length > 0)
+            parts.push(valueParts.join(" / "))
+        return parts.join(" · ")
+    }
+
     function instantCommandLayout(command) {
         var instantCommands = []
         for (var index = 0; index < visibleCommands.length; ++index) {
@@ -138,7 +166,7 @@ Item {
             var key = String(item.id || instantCommands[index].order)
             var anchorX = timeToX(commandStartMs(item))
             var commandWidth = instantCommandDisplayWidth(item)
-            var onLeft = anchorX + commandWidth > width && anchorX - commandWidth >= 0
+            var onLeft = anchorX + commandWidth > root.width && anchorX - commandWidth >= 0
             var leftX = onLeft ? anchorX - commandWidth + 6 : anchorX - 6
             var rightX = leftX + commandWidth
             var lane = -1
@@ -155,6 +183,7 @@ Item {
                     "lane": lane,
                     "visible": true,
                     "overflowCount": 0,
+                    "mergedCommands": [item],
                     "onLeft": onLeft,
                     "width": commandWidth
                 }
@@ -166,10 +195,23 @@ Item {
                     "lane": 2,
                     "visible": false,
                     "overflowCount": 0,
+                    "mergedCommands": [item],
                     "onLeft": onLeft,
                     "width": commandWidth
                 }
-                layouts[overflowKey].overflowCount += 1
+                var overflowLayout = layouts[overflowKey]
+                overflowLayout.mergedCommands.push(item)
+                overflowLayout.overflowCount = overflowLayout.mergedCommands.length - 1
+                if (overflowLayout.overflowCount === 1) {
+                    var overflowAnchorX = timeToX(commandStartMs(overflowLayout.mergedCommands[0]))
+                    overflowLayout.width += 20
+                    overflowLayout.onLeft = overflowAnchorX + overflowLayout.width > root.width
+                        && overflowAnchorX - overflowLayout.width >= 0
+                    var overflowLeftX = overflowLayout.onLeft
+                        ? overflowAnchorX - overflowLayout.width + 6
+                        : overflowAnchorX - 6
+                    laneEnd[2] = overflowLeftX + overflowLayout.width
+                }
                 laneEnd[2] = Math.max(laneEnd[2], rightX)
             }
         }
@@ -179,6 +221,7 @@ Item {
             "lane": 1,
             "visible": true,
             "overflowCount": 0,
+            "mergedCommands": command ? [command] : [],
             "onLeft": false,
             "width": instantCommandMinWidth
         }
@@ -231,7 +274,7 @@ Item {
                 : ({ "lane": 1, "visible": true, "overflowCount": 0, "onLeft": false, "width": 0 })
             readonly property bool overflowCommand: instantCommand && instantLayout.overflowCount > 0
             readonly property string displayText: overflowCommand
-                ? "+" + String(instantLayout.overflowCount + 1)
+                ? commandText + " +" + String(instantLayout.overflowCount)
                 : commandText
             readonly property real anchorX: root.timeToX(root.commandStartMs(commandData))
             readonly property bool instantLabelOnLeft: instantCommand && instantLayout.onLeft
@@ -243,7 +286,9 @@ Item {
                 ? anchorX - (instantLabelOnLeft ? width - 6 : 6)
                 : anchorX
             y: 0
-            width: instantCommand ? instantLayout.width : Math.max(40, root.durationToWidth(durationMs))
+            width: instantCommand
+                ? instantLayout.width
+                : Math.max(40, root.durationToWidth(durationMs))
             height: root.height
             z: selected ? 3 : (commandMouse.containsMouse ? 2 : 1)
             visible: instantLayout.visible && x + width > 0 && x < root.width
@@ -261,11 +306,10 @@ Item {
                 ToolTip.visible: containsMouse
                 ToolTip.delay: 500
                 ToolTip.text: commandBlock.overflowCommand
-                    ? qsTr("重叠区域内合并 %1 条指令")
-                        .arg(commandBlock.instantLayout.overflowCount + 1)
-                    : qsTr("%1 · %2 ms")
-                        .arg(commandBlock.commandText)
-                        .arg(root.commandStartMs(commandBlock.commandData))
+                    ? commandBlock.instantLayout.mergedCommands.map(function(command) {
+                        return "• " + root.commandInfo(command)
+                    }).join("\n")
+                    : root.commandInfo(commandBlock.commandData)
                 onClicked: {
                     mouse.accepted = true
                     root.commandSelected(commandBlock.commandData)

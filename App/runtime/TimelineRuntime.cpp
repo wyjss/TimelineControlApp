@@ -3,7 +3,6 @@
 #include <QMetaType>
 
 #include "devices/DeviceCommand.h"
-#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceInspectorFormProvider.h"
 #include "devices/DeviceManager.h"
@@ -31,7 +30,7 @@
 namespace {
 
 constexpr quint32 kTimelinePlanMagic = 0x544C504E;
-constexpr qint32 kTimelinePlanVersion = 1;
+constexpr qint32 kTimelinePlanVersion = 2;
 
 } // namespace
 
@@ -119,7 +118,7 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
         return;
     }
 
-    DeviceCommand *deviceCommand = DeviceCommandFactory::createFromJson(
+    DeviceCommand *deviceCommand = targetDevice->createCommandFromJson(
         QJsonObject::fromVariantMap(commandParams),
         this,
         m_timelineManager->timelineModel());
@@ -150,7 +149,6 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
         deviceCommand->deleteLater();
     });
     m_deviceExecutorManager->execute(
-        targetDevice,
         deviceCommand,
         commandParams.value(QStringLiteral("executionInputFields")).toMap());
 }
@@ -221,7 +219,9 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
         return;
     }
 
-    m_deviceModel->readFromStream(stream, m_timelineManager->timelineModel());
+    m_deviceModel->readFromStream(stream,
+                                  m_deviceTemplateModel,
+                                  m_timelineManager->timelineModel());
     if (stream.status() != QDataStream::Ok)
         return;
 

@@ -1,5 +1,7 @@
 #include "devices/DeviceModel.h"
 #include "devices/DeviceConstants.h"
+#include "devices/DeviceTemplate.h"
+#include "devices/DeviceTemplateModel.h"
 #include <QDataStream>
 #include <QVariantMap>
 
@@ -254,13 +256,17 @@ void DeviceModel::writeToStream(QDataStream &stream) const
     const QList<Device *> currentItems = items();
     stream << currentItems.size();
 
-    for (Device *device : currentItems)
+    for (Device *device : currentItems) {
+        stream << device->templateName();
         device->writeToStream(stream);
+    }
 
     stream << m_currentDeviceId;
 }
 
-void DeviceModel::readFromStream(QDataStream &stream, TimelineModel *timelineModel)
+void DeviceModel::readFromStream(QDataStream &stream,
+                                 DeviceTemplateModel *deviceTemplateModel,
+                                 TimelineModel *timelineModel)
 {
     int deviceCount = 0;
     stream >> deviceCount;
@@ -270,7 +276,21 @@ void DeviceModel::readFromStream(QDataStream &stream, TimelineModel *timelineMod
     QList<Device *> devices;
     devices.reserve(deviceCount);
     for (int index = 0; index < deviceCount; ++index) {
-        auto *device = new Device(QString(), this);
+        QString templateName;
+        stream >> templateName;
+        DeviceTemplate *deviceTemplate = deviceTemplateModel
+            ? deviceTemplateModel->templateByName(templateName)
+            : nullptr;
+        if (!deviceTemplate) {
+            stream.setStatus(QDataStream::ReadCorruptData);
+            break;
+        }
+
+        Device *device = deviceTemplate->createDevice(this, QVariantMap());
+        if (!device) {
+            stream.setStatus(QDataStream::ReadCorruptData);
+            break;
+        }
         device->readFromStream(stream, timelineModel);
         if (stream.status() != QDataStream::Ok) {
             delete device;
@@ -340,7 +360,6 @@ void DeviceModel::prepareDevice(Device *device)
     connect(device, &Device::nameChanged, this, notifyChanged);
     connect(device, &Device::supportedProtocolsChanged, this, notifyChanged);
     connect(device, &Device::statusChanged, this, notifyChanged);
-    connect(device, &Device::lastSeenChanged, this, notifyChanged);
     connect(device, &Device::descriptionChanged, this, notifyChanged);
     connect(device, &Device::configValuesChanged, this, notifyChanged);
     connect(device, &Device::commandsChanged, this, notifyChanged);

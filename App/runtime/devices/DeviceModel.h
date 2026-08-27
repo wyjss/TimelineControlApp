@@ -9,6 +9,7 @@
 
 class QDataStream;
 class TimelineModel;
+class DeviceTemplateModel;
 
 
 class DeviceModel final : public TypedListModel<Device *>
@@ -41,7 +42,9 @@ public:
     void appendDevice(Device *device);
 
     void writeToStream(QDataStream &stream) const;
-    void readFromStream(QDataStream &stream, TimelineModel *timelineModel = nullptr);
+    void readFromStream(QDataStream &stream,
+                        DeviceTemplateModel *deviceTemplateModel,
+                        TimelineModel *timelineModel = nullptr);
 
 signals:
     void devicesChanged();

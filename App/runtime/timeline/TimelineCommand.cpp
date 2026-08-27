@@ -1,8 +1,9 @@
 #include "timeline/TimelineCommand.h"
 
+#include "devices/Device.h"
 #include "devices/DeviceCommand.h"
-#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
+#include "devices/DeviceModel.h"
 
 #include <algorithm>
 #include <QDataStream>
@@ -47,6 +48,7 @@ TimelineCommand::TimelineCommand(qint64 startTimeMs,
     if (targetCommand) {
         connect(targetCommand, &QObject::destroyed, this, [this]() {
             m_targetCommand.clear();
+            emit targetCommandChanged();
             emit targetCommandDestroyed();
         });
     }
@@ -416,13 +418,16 @@ TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
 }
 
 DeviceCommand *TimelineCommandModel::createEditDraft(TimelineCommand *command,
+                                                     DeviceModel *deviceModel,
                                                      TimelineModel *timelineModel)
 {
-    if (indexOfCommand(command) < 0)
+    if (indexOfCommand(command) < 0 || !deviceModel)
         return nullptr;
 
-    return DeviceCommandFactory::createFromJson(
-        QJsonObject::fromVariantMap(command->commandParams()), this, timelineModel);
+    Device *device = deviceModel->deviceById(command->targetDeviceId());
+    return device ? device->createCommandFromJson(
+        QJsonObject::fromVariantMap(command->commandParams()), this, timelineModel)
+        : nullptr;
 }
 
 void TimelineCommandModel::deleteEditDraft(DeviceCommand *draft)

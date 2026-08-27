@@ -3,12 +3,14 @@
 #include "devices/Device.h"
 #include "devices/DeviceTemplate.h"
 
+class TimelineModel;
+
 class LocatorDeviceTemplate : public DeviceTemplate
 {
 public:
-	LocatorDeviceTemplate(QObject* parent);
-	virtual Device* createDevice(
-		QObject* parent, const QVariantMap& configValues)override;
+	LocatorDeviceTemplate(TimelineModel *timelineModel, QObject* parent);
+	Device* createDevice(QObject* parent,
+	                     const QVariantMap& configValues) override;
 };
 
 class LocationRecver : public QObject

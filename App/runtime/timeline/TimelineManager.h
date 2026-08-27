@@ -34,7 +34,7 @@ public:
     Q_ENUM(PlaybackState)
 
     explicit TimelineManager(QObject *parent = nullptr);
-
+    static TimelineManager* getInstance();
     // 查询
     TimelineModel *timelineModel() const;
     Timeline *currentTimeline() const;

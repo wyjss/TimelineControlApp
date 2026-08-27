@@ -9,13 +9,15 @@
 #include <QVariantMap>
 
 class QDataStream;
+class QJsonObject;
 class TimelineModel;
 
 
 class DeviceCommand;
 class DeviceParamSpec;
+class DeviceTemplate;
 
-class Device : public QObject
+class Device final : public QObject
 {
     Q_OBJECT
 
@@ -27,14 +29,13 @@ class Device : public QObject
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
     Q_PROPERTY(QStringList supportedProtocols READ supportedProtocols WRITE setSupportedProtocols NOTIFY supportedProtocolsChanged FINAL)
     Q_PROPERTY(QString status READ status WRITE setStatus NOTIFY statusChanged FINAL)
-    Q_PROPERTY(QString lastSeen READ lastSeen WRITE setLastSeen NOTIFY lastSeenChanged FINAL)
     Q_PROPERTY(QString description READ description WRITE setDescription NOTIFY descriptionChanged FINAL)
-    Q_PROPERTY(QVariantMap configValues READ configValues WRITE setConfigValues NOTIFY configValuesChanged FINAL)
+    Q_PROPERTY(QVariantMap configValues READ configValues NOTIFY configValuesChanged FINAL)
     Q_PROPERTY(QVariantList params READ params NOTIFY paramsChanged FINAL)
     Q_PROPERTY(QVariantList commands READ commands NOTIFY commandsChanged FINAL)
 
 public:
-    explicit Device(const QString &templateName, QObject *parent = nullptr);
+    explicit Device(DeviceTemplate *deviceTemplate, QObject *parent = nullptr);
 
     QString id() const;
     QString templateName() const;
@@ -52,14 +53,10 @@ public:
     QString status() const;
     void setStatus(const QString &status);
 
-    QString lastSeen() const;
-    void setLastSeen(const QString &lastSeen);
-
     QString description() const;
     void setDescription(const QString &description);
 
     QVariantMap configValues() const;
-    void setConfigValues(const QVariantMap &configValues);
 
     QVariantList params() const;
     Q_INVOKABLE DeviceParamSpec *getParam(const QString &key) const;
@@ -72,6 +69,9 @@ public:
     Q_INVOKABLE DeviceCommand *createCommand(const QString &protocol = QString(),
                                                               const QString &name = QString());
     Q_INVOKABLE DeviceCommand *createCommandForType(const QString &commandType);
+    DeviceCommand *createCommandFromJson(const QJsonObject &json,
+                                         QObject *parent = nullptr,
+                                         TimelineModel *timelineModel = nullptr) const;
     void appendCommand(DeviceCommand *command);
     Q_INVOKABLE bool removeCommandAt(int index);
     bool removeCommand(DeviceCommand *command);
@@ -85,7 +85,6 @@ signals:
     void nameChanged();
     void supportedProtocolsChanged();
     void statusChanged();
-    void lastSeenChanged();
     void descriptionChanged();
     void configValuesChanged();
     void paramsChanged();
@@ -95,13 +94,12 @@ signals:
 private:
     QString m_id;
     QString m_templateName;
+    DeviceTemplate *m_deviceTemplate = nullptr;
     QString m_deviceType;
     QString m_name;
     QStringList m_supportedProtocols;
     QString m_status;
-    QString m_lastSeen;
     QString m_description;
-    QVariantMap m_configValues;
     QList<DeviceParamSpec *> m_params;
     QList<DeviceCommand *> m_commands;
 };

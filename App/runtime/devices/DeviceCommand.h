@@ -2,8 +2,8 @@
 
 #include <QList>
 #include <QJsonObject>
-#include <QMap>
 #include <QObject>
+#include <QPointer>
 #include <QString>
 #include <QVariantList>
 #include <QVariantMap>
@@ -12,7 +12,8 @@
 #include "devices/DeviceConstants.h"
 
 
-    class Device;
+class Device;
+class TimelineModel;
 //! 设备指令实例基类，保存设备指令通用信息，不绑定时间线调度。
 class DeviceCommand : public QObject
 {
@@ -20,8 +21,10 @@ class DeviceCommand : public QObject
 
     //! 指令显示名称。
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
-    //! 协议标识，例如 serial、dmx512、http。
+    Q_PROPERTY(Device *device READ device NOTIFY deviceChanged FINAL)
+    //! 协议标识DeviceProtocol，例如 serial、dmx512、http。
     Q_PROPERTY(QString protocol READ protocol CONSTANT)
+    //! 指令类型，仅内部定义指令使用
     Q_PROPERTY(QString commandType READ commandType CONSTANT FINAL)
     //! 创建指令时需要输入的字段描述。
     Q_PROPERTY(QVariantList creationInputFields READ creationInputFields CONSTANT FINAL)
@@ -36,48 +39,62 @@ public:
                   const QString &commandType,
                   QObject *parent = nullptr);
 
+    // 创建基础协议指令
+	static DeviceCommand* createForProtocol(const QString& protocol,
+											QObject* parent = nullptr);
+	static DeviceCommand* createFromJson(const QJsonObject& json,
+										 QObject* parent = nullptr,
+										 TimelineModel* timelineModel = nullptr);
+
     QString name() const;
     void setName(const QString &name);
 
     QString protocol() const;
     QString commandType() const;
+    Device *device() const;
 
     DeviceParamSpec* getField(const QString& key) const;
 
 	QJsonObject toJson() const;
 	bool loadFromJson(const QJsonObject& json);
+
 	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const;
-	virtual void onInstall(Device*) {}
 
     void addCreationInputField(DeviceParamSpec *field);
     void addExecutionInputField(DeviceParamSpec *field);
 
-    void updateConfigMap(const QVariantMap &configMap);
     Q_INVOKABLE QVariantList creationInputFields() const;
     Q_INVOKABLE QVariantList creationMinInputFields() const;
     Q_INVOKABLE QVariantList executionInputFields() const;
 
     //! 将指定key参数作为模板，自动从其它参数拼接
-    //! {OtherParam}: 字符解析
-    //! {&OtherParam}: http参数解析
+    //! ${OtherParam}: 字符解析
+    //! ${&OtherParam}: http参数解析
     void setStringTemplateKey(const QString& k) { m_stringTemplateKey = k; }
 
     DeviceCommand *clone(QObject *parent = nullptr) const;
 
 signals:
     void nameChanged();
+    void deviceChanged();
     void fieldChanged(DeviceParamSpec *field);
 
 private:
-    void emitFieldChanged();
+    friend class Device;
 
-    QMap<QString, DeviceParamSpec *> m_creationInputFieldMap;
+    void setDevice(Device *device);
+    void emitFieldChanged();
+    void updateParamFromDevice();
+
+    // 创建时需要输入的参数
     QList<DeviceParamSpec *> m_creationInputFields;
+    // 执行需要的参数，仅作为字段描述，实际值在TimelineCommand中
     QList<DeviceParamSpec *> m_executionInputFields;
-    QVariantMap m_configMap;
+    //
     QString m_protocol;
     QString m_commandType;
     QString m_stringTemplateKey;
+    QPointer<Device> m_device;
 };
 
 //! StringTemplate指令

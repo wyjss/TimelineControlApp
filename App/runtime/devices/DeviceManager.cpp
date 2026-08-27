@@ -50,7 +50,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                DeviceType::PC,
                                                tr("测试PC 1x1"),
                                                tr("在线"),
-                                               tr("本地测试"),
                                                pc1x1Config);
     m_deviceModel->appendDevice(defaultDevice);
 
@@ -65,7 +64,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                DeviceType::PC,
                                                tr("测试PC 2x2"),
                                                tr("在线"),
-                                               tr("本地测试"),
                                                pc2x2Config));
     QVariantMap pc3x1Config;
     pc3x1Config.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
@@ -78,7 +76,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                DeviceType::PC,
                                                tr("测试PC 3x1"),
                                                tr("在线"),
-                                               tr("移动预览"),
                                                pc3x1Config));
 
     QVariantMap pc1x2Config;
@@ -92,7 +89,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                DeviceType::PC,
                                                tr("测试PC 1x2"),
                                                tr("在线"),
-                                               tr("移动预览"),
                                                pc1x2Config));
 
     QVariantMap pcWideConfig;
@@ -106,7 +102,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                DeviceType::PC,
                                                tr("测试PC 宽屏"),
                                                tr("离线"),
-                                               tr("移动预览"),
                                                pcWideConfig));
 
     QVariantMap pcWallConfig;
@@ -120,7 +115,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                DeviceType::PC,
                                                tr("测试PC 拼接墙"),
                                                tr("离线"),
-                                               tr("移动预览"),
                                                pcWallConfig));
 
     QVariantMap otherConfig;
@@ -131,7 +125,6 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
                                                tr("其他"),
                                                tr("测试其他设备"),
                                                tr("在线"),
-                                               tr("本地测试"),
                                                otherConfig));
 
     if (m_deviceModel && defaultDevice)
@@ -239,7 +232,6 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
                                                resolvedDeviceType,
                                                resolvedDeviceName,
                                                tr("离线"),
-                                               tr("从未"),
                                                resolvedConfigValues);
     if (!newDevice)
         return false;
@@ -276,14 +268,11 @@ bool DeviceManager::updateDevice(Device *device,
     if (!validateDeviceUpdate(device, deviceName).isEmpty())
         return false;
 
-    QVariantMap resolvedConfigValues = device->configValues();
+    device->setName(deviceName.trimmed());
     for (auto it = configValues.cbegin(); it != configValues.cend(); ++it) {
         if (!it.key().trimmed().isEmpty())
-            resolvedConfigValues.insert(it.key(), it.value());
+            device->setParamValue(it.key(), it.value());
     }
-
-    device->setName(deviceName.trimmed());
-    device->setConfigValues(resolvedConfigValues);
     return true;
 }
 
@@ -309,7 +298,6 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &templateName,
                                               const QString &deviceType,
                                               const QString &name,
                                               const QString &status,
-                                              const QString &lastSeen,
                                               const QVariantMap &configValues)
 {
     DeviceTemplate *sourceTemplate = m_deviceTemplateModel ? m_deviceTemplateModel->templateByName(templateName) : nullptr;
@@ -321,7 +309,6 @@ Device *DeviceManager::makeDeviceFromTemplate(const QString &templateName,
     device->setName(name);
     device->setSupportedProtocols(sourceTemplate->supportedProtocols());
     device->setStatus(status);
-    device->setLastSeen(lastSeen);
     device->setDescription(sourceTemplate->description());
 
     return device;

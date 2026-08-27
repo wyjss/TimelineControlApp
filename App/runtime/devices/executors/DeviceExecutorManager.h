@@ -22,7 +22,7 @@ public:
 
     void bindDevice(Device *device);
     void unbindDevice(Device *device);
-    void execute(Device *device, DeviceCommand *command, const QVariantMap &executionInputValues = QVariantMap());
+    void execute(DeviceCommand *command, const QVariantMap &executionInputValues = QVariantMap());
 
 signals:
     void executionFinished(DeviceCommand *command,

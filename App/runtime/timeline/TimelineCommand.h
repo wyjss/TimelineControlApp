@@ -13,6 +13,7 @@ class QDataStream;
 
 
 class DeviceCommand;
+class DeviceModel;
 class TimelineModel;
 
 class TimelineCommand final : public QObject
@@ -23,6 +24,7 @@ class TimelineCommand final : public QObject
     Q_PROPERTY(QString targetDeviceId READ targetDeviceId CONSTANT FINAL)
     Q_PROPERTY(QString commandName READ commandName CONSTANT FINAL)
     Q_PROPERTY(QVariantMap commandParams READ commandParams WRITE setCommandParams NOTIFY commandParamsChanged FINAL)
+    Q_PROPERTY(DeviceCommand *targetCommand READ targetCommand NOTIFY targetCommandChanged FINAL)
     Q_PROPERTY(qint64 durationMs READ durationMs NOTIFY commandParamsChanged FINAL)
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString stateText READ stateText NOTIFY stateChanged FINAL)
@@ -76,6 +78,7 @@ public:
 signals:
     void startTimeMsChanged();
     void commandParamsChanged();
+    void targetCommandChanged();
     void targetCommandDestroyed();
     void stateChanged();
     void errorMessageChanged();
@@ -118,6 +121,7 @@ public:
                                                                    DeviceCommand *targetCommand,
                                                                    const QVariantMap &extraParams);
     Q_INVOKABLE DeviceCommand *createEditDraft(TimelineCommand *command,
+                                                DeviceModel *deviceModel,
                                                 TimelineModel *timelineModel);
     Q_INVOKABLE void deleteEditDraft(DeviceCommand *draft);
     Q_INVOKABLE bool updateCommand(TimelineCommand *command,

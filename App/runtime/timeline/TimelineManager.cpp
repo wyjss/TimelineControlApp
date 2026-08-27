@@ -15,14 +15,24 @@ namespace {
 constexpr quint32 kTimelineManagerMagic = 0x544C4D47;
 constexpr qint32 kTimelineManagerVersion = 1;
 
+static TimelineManager* g_TimelineManager = nullptr;
 } // namespace
 
+TimelineManager* TimelineManager::getInstance()
+{
+    if (!g_TimelineManager) {
+        LOG_FATAL("g_TimelineManager == null");
+    }
+    return g_TimelineManager;
+}
 
 TimelineManager::TimelineManager(QObject *parent)
     : QObject(parent)
     , m_clock(new TimelineClock(this))
     , m_timelineModel(new TimelineModel(this))
 {
+    g_TimelineManager = this;
+
     connect(m_timelineModel, &TimelineModel::selectedItemChanged, this, [this]() {
         emit currentTimelineChanged(currentTimeline());
     });

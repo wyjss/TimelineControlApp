@@ -1,7 +1,6 @@
 #include "devices/backends/PC.h"
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
-#include "devices/DeviceCommandFactory.h"
 
 #include <QUrl>
 #include <QUrlQuery>
@@ -51,7 +50,7 @@ class OpenVideoCommand : public DeviceCommand_PC
 public:
 	explicit OpenVideoCommand(QObject* parent)
 		: DeviceCommand_PC("加载视频",
-						   "openVideo",
+						   DeviceKey::CommandOpenVideo,
 						   parent)
 	{
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoFile));
@@ -100,7 +99,7 @@ class PlayVideoCommand : public _VideoControlCommand
 public:
 	explicit PlayVideoCommand(QObject* parent)
 		: _VideoControlCommand("播放视频",
-							   "playVideo",
+							   DeviceKey::CommandPlayVideo,
 							   "/video/play",
 							   parent)
 	{
@@ -112,7 +111,7 @@ class PauseVideoCommand : public _VideoControlCommand
 public:
 	explicit PauseVideoCommand(QObject* parent)
 		: _VideoControlCommand("暂停播放",
-							   "pauseVideo",
+							   DeviceKey::CommandPauseVideo,
 							   "/video/pause",
 							   parent)
 	{
@@ -124,7 +123,7 @@ class StopVideoCommand : public _VideoControlCommand
 public:
 	explicit StopVideoCommand(QObject* parent)
 		: _VideoControlCommand("停止播放",
-							   "closeVideo",
+							   DeviceKey::CommandStopVideo,
 							   "/video/close",
 							   parent)
 	{
@@ -136,7 +135,7 @@ class ClosePlayerCommand : public DeviceCommand_PC
 public:
 	explicit ClosePlayerCommand(QObject* parent)
 		: DeviceCommand_PC("关闭播放器",
-						   "closePlayer",
+						   DeviceKey::CommandClosePlayer,
 						   parent)
 	{
 		getField(DeviceKey::ApiPath)->setValue("/video/closePlayer");
@@ -148,7 +147,7 @@ class PlayDomeVideoCommand final : public DeviceCommand_PC
 public:
 	explicit PlayDomeVideoCommand(QObject* parent)
 		: DeviceCommand_PC(QStringLiteral("播放全景视频"),
-						   QStringLiteral("playDomeVideo"),
+						   DeviceKey::CommandPlayDomeVideo,
 						   parent)
 	{
 		auto* videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
@@ -163,7 +162,7 @@ public:
 
 	QVariantMap resolvedParams(const QVariantMap& executionInputValues) const override
 	{
-		QVariantMap params = DeviceCommand::resolvedParams();
+		QVariantMap params = DeviceCommand::resolvedParams(executionInputValues);
 		const QString videoFile = executionInputValues.value(QStringLiteral("videoFile")).toString().trimmed();
 		if (!videoFile.isEmpty()) {
 			params.insert(DeviceKey::ApiPath,
@@ -179,7 +178,7 @@ class VirtualPlaybackCommand final : public DeviceCommand_PC
 public:
 	explicit VirtualPlaybackCommand(QObject* parent)
 		: DeviceCommand_PC(QStringLiteral("虚拟播放"),
-						   QStringLiteral("virtualPlayback"),
+						   DeviceKey::CommandVirtualPlayback,
 						   parent)
 	{
 		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Videos));
@@ -191,7 +190,12 @@ PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
 					DeviceType::PC,
 					QStringList{DeviceProtocol::Pc, DeviceProtocol::Http},
 					"电脑设备",
-					{},
+					{DeviceParamSpec::createForKey(DeviceKey::VirtualScreenWidth),
+					 DeviceParamSpec::createForKey(DeviceKey::VirtualScreenHeight),
+					 DeviceParamSpec::createForKey(DeviceKey::ScreenWidth),
+					 DeviceParamSpec::createForKey(DeviceKey::ScreenHeight),
+					 DeviceParamSpec::createForKey(DeviceKey::ScreenColumns),
+					 DeviceParamSpec::createForKey(DeviceKey::ScreenRows)},
 					{},
 					parent
 	)
@@ -202,6 +206,16 @@ PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
 Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& configValues)
 {
 	auto device = DeviceTemplate::createDevice(parent, configValues);
+	auto* keystoneCorrection = new DeviceParamSpec(DeviceKey::KeystoneCorrection,
+													  QStringLiteral("几何校正"),
+													  QVariantList(),
+													  DeviceParamSpec::VariantType,
+													  DeviceParamSpec::AutoEditor,
+													  device);
+	device->addParam(keystoneCorrection);
+	if (configValues.contains(DeviceKey::KeystoneCorrection))
+		device->setParamValue(DeviceKey::KeystoneCorrection,
+							  configValues.value(DeviceKey::KeystoneCorrection));
 
 	device->appendCommand(new OpenVideoCommand(device));
 	device->appendCommand(new PlayVideoCommand(device));
@@ -209,7 +223,26 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(new StopVideoCommand(device));
 	device->appendCommand(new ClosePlayerCommand(device));
 	device->appendCommand(new PlayDomeVideoCommand(device));
-	device->appendCommand(new VirtualPlaybackCommand(device));
 
 	return device;
+}
+
+DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
+                                               QObject *parent) const
+{
+	if (commandType == DeviceKey::CommandOpenVideo)
+		return new OpenVideoCommand(parent);
+	if (commandType == DeviceKey::CommandPlayVideo)
+		return new PlayVideoCommand(parent);
+	if (commandType == DeviceKey::CommandPauseVideo)
+		return new PauseVideoCommand(parent);
+	if (commandType == DeviceKey::CommandStopVideo)
+		return new StopVideoCommand(parent);
+	if (commandType == DeviceKey::CommandClosePlayer)
+		return new ClosePlayerCommand(parent);
+	if (commandType == DeviceKey::CommandPlayDomeVideo)
+		return new PlayDomeVideoCommand(parent);
+	if (commandType == DeviceKey::CommandVirtualPlayback)
+		return new VirtualPlaybackCommand(parent);
+	return nullptr;
 }

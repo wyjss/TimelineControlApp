@@ -67,14 +67,16 @@ QList<DeviceParamSpec *> DeviceTemplate::configSpecObjects() const
 
 Device *DeviceTemplate::createDevice(QObject *parent, const QVariantMap &configValues)
 {
-    auto *device = new Device(name(), parent);
+    auto *device = new Device(this, parent);
 	device->setDeviceType(deviceType());
     device->setSupportedProtocols(supportedProtocols());
 	device->setDescription(description());
-    device->setConfigValues(configValues);
 
     for (DeviceParamSpec *configSpec : m_configSpecs)
         device->addParam(configSpec->clone(device));
+
+    for (auto it = configValues.cbegin(); it != configValues.cend(); ++it)
+        device->setParamValue(it.key(), it.value());
 
     for (auto cmd : m_commands) {
         auto newCmd = cmd->clone(device);
@@ -83,6 +85,14 @@ Device *DeviceTemplate::createDevice(QObject *parent, const QVariantMap &configV
     }
 
 	return device;
+}
+
+DeviceCommand *DeviceTemplate::createCommand(const QString &commandType,
+                                             QObject *parent) const
+{
+    Q_UNUSED(commandType)
+    Q_UNUSED(parent)
+    return nullptr;
 }
 
 SerialPowerDeviceTemplate::SerialPowerDeviceTemplate(QObject* parent /* = nullptr */)

@@ -17,10 +17,19 @@ Item {
     property bool editingEnabled: true
     readonly property var visibleCommands: filterCommands()
     readonly property int count: visibleCommands.length
+    readonly property int timeColumnWidth: 92
+    readonly property int typeColumnWidth: 68
+    readonly property int resultColumnWidth: 44
 
     signal commandSelected(var command)
     signal editRequested(var command)
     signal removeRequested(var command)
+
+    function colorValue(name, fallback) {
+        return theme && theme.colors && theme.colors[name] !== undefined
+            ? theme.colors[name]
+            : fallback
+    }
 
     function filterCommands() {
         if (deviceIdFilter.length === 0)
@@ -44,169 +53,302 @@ Item {
         return normalizedDeviceId.length > 0 ? normalizedDeviceId : qsTr("未分配")
     }
 
+    function padNumber(value, width) {
+        var text = String(value)
+        while (text.length < width)
+            text = "0" + text
+        return text
+    }
+
     function formatTime(ms) {
         var totalMs = Math.max(0, Math.round(Number(ms || 0)))
         var totalSeconds = Math.floor(totalMs / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
+        var hours = Math.floor(totalSeconds / 3600)
+        var minutes = Math.floor(totalSeconds / 60) % 60
         var seconds = totalSeconds % 60
-        var milliseconds = totalMs % 1000
-        return qsTr("%1:%2.%3")
-            .arg(minutes)
-            .arg(seconds < 10 ? "0" + seconds : seconds)
-            .arg(milliseconds < 10 ? "00" + milliseconds
-                : (milliseconds < 100 ? "0" + milliseconds : milliseconds))
+        return "%1:%2:%3.%4"
+            .arg(padNumber(hours, 2))
+            .arg(padNumber(minutes, 2))
+            .arg(padNumber(seconds, 2))
+            .arg(padNumber(totalMs % 1000, 3))
     }
 
-    function executionSummary(command) {
-        var values = command && command.commandParams
-            ? command.commandParams.executionInputFields || {}
-            : {}
-        var parts = []
-        Object.keys(values).forEach(function(key) {
-            var value = values[key]
-            if (value === undefined || value === null || String(value).length === 0)
-                return
-            if (typeof value === "boolean")
-                value = value ? qsTr("是") : qsTr("否")
-            parts.push(String(value))
-        })
-        return parts.join(" / ")
+    function commandProtocol(command) {
+        return String(command && command.commandParams
+            ? command.commandParams.protocol || ""
+            : "").toLowerCase()
     }
 
-    ListView {
-        id: commandList
+    function protocolLabel(command) {
+        switch (commandProtocol(command)) {
+        case "internal": return qsTr("无协议")
+        case "udp": return "UDP"
+        case "http": return "HTTP"
+        case "pc": return "PC"
+        case "serial": return qsTr("串口")
+        case "osc": return "OSC"
+        case "dmx512": return "DMX"
+        default: return qsTr("其他")
+        }
+    }
 
+    function protocolColor(command) {
+        switch (commandProtocol(command)) {
+        case "internal": return "#8b5cf6"
+        case "udp": return "#0ea5e9"
+        case "http": return "#06b6d4"
+        case "pc": return "#3b82f6"
+        case "serial": return "#f59e0b"
+        case "osc": return "#a855f7"
+        case "dmx512": return "#22c55e"
+        default: return root.colorValue("neutralText", "#94a3b8")
+        }
+    }
+
+    function resultColor(command) {
+        return command && command.stateColor
+            ? String(command.stateColor)
+            : root.colorValue("neutralBorder", "#45576b")
+    }
+
+    ColumnLayout {
         anchors.fill: parent
         anchors.margins: 6
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        spacing: 2
-        model: root.visibleCommands
-        ScrollBar.vertical: ScrollBar {
-            policy: ScrollBar.AsNeeded
-        }
+        spacing: 0
 
-        delegate: Base.AppCard {
-            id: commandRow
-
-            readonly property var commandData: modelData
-            readonly property bool selected: String(commandData && commandData.id || "")
-                === root.selectedCommandId
-            readonly property string parameterText: root.executionSummary(commandData)
-
-            width: commandList.width
-            height: parameterText.length > 0 ? 66 : 50
-            surfaceTone: UiStyle.SurfaceTone.Ghost
-            shapeRole: UiStyle.ShapeRole.Control
-            padding: 0
-            checkable: true
-            checked: selected
-            emphasizedSelection: true
-            selectionTransition: commandSelectionTransition
-            animateScale: false
-            onClicked: root.commandSelected(commandData)
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.leftMargin: 3
-                anchors.verticalCenter: parent.verticalCenter
-                width: 3
-                height: parent.height - 14
-                radius: 2
-                color: commandRow.commandData && commandRow.commandData.stateColor
-                    ? commandRow.commandData.stateColor
-                    : (root.theme ? root.theme.colors.border : "#334155")
-                opacity: commandRow.selected ? 1 : (commandRow.hovered ? 0.62 : 0.28)
-            }
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 34
+            color: root.colorValue("backgroundSurfaceOverlay", "#20262c")
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 8
-                spacing: 10
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                spacing: 8
 
                 Base.AppText {
-                    Layout.preferredWidth: 72
-                    text: root.formatTime(commandRow.commandData ? commandRow.commandData.startTimeMs : 0)
+                    Layout.preferredWidth: root.timeColumnWidth
+                    text: qsTr("时间")
                     styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: commandRow.selected
-                        ? UiStyle.TextTone.Inverse
-                        : UiStyle.TextTone.Secondary
-                    elide: Text.ElideRight
+                    textTone: UiStyle.TextTone.Secondary
                 }
 
-                ColumnLayout {
+                Base.AppText {
+                    Layout.preferredWidth: root.typeColumnWidth
+                    text: qsTr("类型")
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
+                }
+
+                Base.AppText {
                     Layout.fillWidth: true
-                    spacing: 1
+                    text: qsTr("名称")
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
+                }
+
+                Base.AppText {
+                    Layout.preferredWidth: root.resultColumnWidth
+                    horizontalAlignment: Text.AlignHCenter
+                    text: qsTr("结果")
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
+                }
+            }
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 1
+                color: root.colorValue("border", "#334155")
+            }
+        }
+
+        ListView {
+            id: commandList
+
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            spacing: 0
+            model: root.visibleCommands
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
+
+            delegate: AbstractButton {
+                id: commandRow
+
+                readonly property var commandData: modelData
+                readonly property bool selected: String(commandData && commandData.id || "")
+                    === root.selectedCommandId
+
+                width: commandList.width
+                height: 40
+                leftPadding: 10
+                rightPadding: 10
+                topPadding: 0
+                bottomPadding: 0
+                hoverEnabled: true
+                focusPolicy: Qt.StrongFocus
+                onClicked: root.commandSelected(commandData)
+
+                background: Rectangle {
+                    color: commandRow.selected
+                        ? root.colorValue("highlightSoft", "#162d4a")
+                        : (commandRow.hovered
+                            ? root.colorValue("backgroundSectionOverlay", "#242b31")
+                            : "transparent")
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: 3
+                        color: root.colorValue("highlightText", "#78afff")
+                        visible: commandRow.selected
+                    }
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 1
+                        color: root.colorValue("border", "#334155")
+                        opacity: 0.72
+                    }
+                }
+
+                contentItem: RowLayout {
+                    spacing: 8
 
                     Base.AppText {
-                        Layout.fillWidth: true
-                        text: String(commandRow.commandData && commandRow.commandData.commandName
-                            ? commandRow.commandData.commandName
-                            : qsTr("指令"))
-                        styleRole: UiStyle.TypographyRole.BodyM
-                        textTone: commandRow.selected
-                            ? UiStyle.TextTone.Inverse
-                            : UiStyle.TextTone.Primary
+                        Layout.preferredWidth: root.timeColumnWidth
+                        text: root.formatTime(commandRow.commandData
+                            ? commandRow.commandData.startTimeMs
+                            : 0)
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight
                     }
 
-                    Base.AppText {
+                    Item {
+                        Layout.preferredWidth: root.typeColumnWidth
+                        Layout.fillHeight: true
+
+                        Row {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 6
+
+                            Rectangle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 7
+                                height: 7
+                                radius: 2
+                                color: root.protocolColor(commandRow.commandData)
+                                rotation: root.commandProtocol(commandRow.commandData) === "osc" ? 45 : 0
+                            }
+
+                            Base.AppText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: root.protocolLabel(commandRow.commandData)
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                            }
+                        }
+                    }
+
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: root.deviceName(commandRow.commandData
-                            ? commandRow.commandData.targetDeviceId
-                            : "") + " / " + String(commandRow.commandData && commandRow.commandData.stateText
+                        spacing: 4
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: String(commandRow.commandData && commandRow.commandData.commandName
+                                ? commandRow.commandData.commandName
+                                : qsTr("指令"))
+                            styleRole: UiStyle.TypographyRole.BodyM
+                            textTone: UiStyle.TextTone.Primary
+                            elide: Text.ElideRight
+
+                            MouseArea {
+                                id: nameHover
+
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                            }
+
+                            ToolTip.visible: nameHover.containsMouse
+                                && commandRow.commandData
+                                && String(commandRow.commandData.commandName || "").length > 0
+                            ToolTip.delay: 700
+                            ToolTip.text: root.deviceName(commandRow.commandData
+                                ? commandRow.commandData.targetDeviceId
+                                : "")
+                        }
+
+                        Base.AppButton {
+                            Layout.preferredWidth: 28
+                            visible: commandRow.hovered && root.editingEnabled
+                            size: UiStyle.ButtonSize.Small
+                            variant: UiStyle.ButtonVariant.Ghost
+                            iconSymbol: "✎"
+                            onClicked: root.editRequested(commandRow.commandData)
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("编辑")
+                        }
+
+                        Base.AppButton {
+                            Layout.preferredWidth: 28
+                            visible: commandRow.hovered && root.editingEnabled
+                            size: UiStyle.ButtonSize.Small
+                            variant: UiStyle.ButtonVariant.Danger
+                            iconSymbol: "×"
+                            onClicked: root.removeRequested(commandRow.commandData)
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("删除")
+                        }
+                    }
+
+                    Item {
+                        Layout.preferredWidth: root.resultColumnWidth
+                        Layout.fillHeight: true
+
+                        Rectangle {
+                            anchors.centerIn: parent
+                            width: 18
+                            height: 5
+                            radius: height / 2
+                            color: root.resultColor(commandRow.commandData)
+
+                            MouseArea {
+                                id: resultHover
+
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                            }
+
+                            ToolTip.visible: resultHover.containsMouse
+                            ToolTip.text: String(commandRow.commandData
+                                && commandRow.commandData.stateText
                                 ? commandRow.commandData.stateText
                                 : qsTr("待执行"))
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: commandRow.selected
-                            ? UiStyle.TextTone.Inverse
-                            : UiStyle.TextTone.Secondary
-                        elide: Text.ElideRight
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        visible: commandRow.parameterText.length > 0
-                        text: commandRow.parameterText
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: commandRow.selected
-                            ? UiStyle.TextTone.Inverse
-                            : UiStyle.TextTone.Accent
-                        elide: Text.ElideRight
-                    }
-                }
-
-                RowLayout {
-                    visible: commandRow.hovered
-                    spacing: 4
-
-                    Base.AppButton {
-                        text: qsTr("编辑")
-                        enabled: root.editingEnabled
-                        onClicked: root.editRequested(commandRow.commandData)
-                    }
-
-                    Base.AppButton {
-                        text: qsTr("删除")
-                        variant: UiStyle.ButtonVariant.Danger
-                        enabled: root.editingEnabled
-                        onClicked: root.removeRequested(commandRow.commandData)
+                        }
                     }
                 }
             }
         }
-    }
-
-    Base.AppCardSelectionTransition {
-        id: commandSelectionTransition
-
-        anchors.fill: commandList
-        clip: true
     }
 
     Base.AppText {
         anchors.centerIn: parent
+        anchors.verticalCenterOffset: 17
         visible: root.count === 0
         text: qsTr("暂无时间线指令")
         styleRole: UiStyle.TypographyRole.BodyS

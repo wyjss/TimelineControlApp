@@ -45,7 +45,6 @@ private:
                                    const QString &deviceType,
                                    const QString &name,
                                    const QString &status,
-                                   const QString &lastSeen,
                                    const QVariantMap &configValues);
     QVariantMap defaultConfigValues(const DeviceTemplate *deviceTemplate) const;
 

@@ -2,7 +2,6 @@
 
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
-#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 #include "devices/executors/DeviceCommandExecutor.h"
 #include "devices/executors/HttpCommandExecutor.h"
@@ -42,13 +41,9 @@ void DeviceExecutorManager::bindDevice(Device *device)
             && protocolValue != DeviceProtocol::Pc)
             continue;
 
-        QVariantMap params = device->configValues();
-        DeviceCommand *command = DeviceCommandFactory::createForProtocol(protocolValue);
-        if (command) {
-            command->updateConfigMap(params);
-            params = command->resolvedParams();
-            delete command;
-        }
+        DeviceCommand *command = device->createCommandDraft(protocolValue);
+        const QVariantMap params = command ? command->resolvedParams() : device->configValues();
+        delete command;
 
         QString executorKey;
         bool created = false;
@@ -86,13 +81,10 @@ void DeviceExecutorManager::unbindDevice(Device *device)
         unbindDeviceId(device->id());
 }
 
-void DeviceExecutorManager::execute(Device *device, DeviceCommand *command, const QVariantMap &executionInputValues)
+void DeviceExecutorManager::execute(DeviceCommand *command, const QVariantMap &executionInputValues)
 {
     if (!command)
         return;
-
-    if (device)
-        command->updateConfigMap(device->configValues());
 
     const QVariantMap params = command->resolvedParams(executionInputValues);
 

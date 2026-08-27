@@ -249,14 +249,8 @@ Item {
         if (!root.selectedPc)
             return
 
-        var values = {}
-        var currentValues = root.selectedPc.configValues || {}
-        for (var key in currentValues)
-            values[key] = currentValues[key]
-
-        values["keystoneCorrection"] = items
-        root.selectedPc.configValues = values
-        root.keystoneRevision += 1
+        if (root.selectedPc.setParamValue("keystoneCorrection", items))
+            root.keystoneRevision += 1
     }
 
     function setCornersForScreen(screenIndex, corners) {

@@ -727,6 +727,7 @@ Item {
                 editingTimelineCommand = command
                 editDraft = timelineCommandModel.createEditDraft(
                     command,
+                    root.deviceModel,
                     root.timelineManager ? root.timelineManager.timelineModel : null)
                 if (!editDraft) {
                     close()

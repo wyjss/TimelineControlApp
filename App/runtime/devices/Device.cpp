@@ -1,9 +1,9 @@
 #include "devices/Device.h"
 
 #include "devices/DeviceCommand.h"
-#include "devices/DeviceCommandFactory.h"
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceParamSpec.h"
+#include "devices/DeviceTemplate.h"
 
 #include <QDataStream>
 #include <QJsonDocument>
@@ -16,7 +16,6 @@ namespace {
 
 const char *kSupportedProtocolsConfigKey = "__supportedProtocols";
 const char *kStatusConfigKey = "__status";
-const char *kLastSeenConfigKey = "__lastSeen";
 
 QString createDeviceId()
 {
@@ -25,10 +24,11 @@ QString createDeviceId()
 
 } // namespace
 
-Device::Device(const QString &templateName, QObject *parent)
+Device::Device(DeviceTemplate *deviceTemplate, QObject *parent)
     : QObject(parent)
     , m_id(createDeviceId())
-    , m_templateName(templateName)
+    , m_templateName(deviceTemplate ? deviceTemplate->name() : QString())
+    , m_deviceTemplate(deviceTemplate)
 {
 }
 
@@ -111,20 +111,6 @@ void Device::setStatus(const QString &status)
     emit statusChanged();
 }
 
-QString Device::lastSeen() const
-{
-    return m_lastSeen;
-}
-
-void Device::setLastSeen(const QString &lastSeen)
-{
-    if (m_lastSeen == lastSeen)
-        return;
-
-    m_lastSeen = lastSeen;
-    emit lastSeenChanged();
-}
-
 QString Device::description() const
 {
     return m_description;
@@ -141,22 +127,10 @@ void Device::setDescription(const QString &description)
 
 QVariantMap Device::configValues() const
 {
-    return m_configValues;
-}
-
-void Device::setConfigValues(const QVariantMap &configValues)
-{
-    if (m_configValues == configValues)
-        return;
-
-    m_configValues = configValues;
-    for (DeviceParamSpec *param : m_params) {
-        if (m_configValues.contains(param->key()))
-            param->setValue(m_configValues.value(param->key()));
-    }
-    for (DeviceCommand *command : m_commands)
-        command->updateConfigMap(m_configValues);
-    emit configValuesChanged();
+    QVariantMap values;
+    for (DeviceParamSpec *param : m_params)
+        values.insert(param->key(), param->value());
+    return values;
 }
 
 QVariantList Device::params() const
@@ -187,26 +161,13 @@ bool Device::addParam(DeviceParamSpec *param)
     if (param->parent() != this)
         param->setParent(this);
 
-    const bool hasValue = m_configValues.contains(param->key());
-    if (hasValue)
-        param->setValue(m_configValues.value(param->key()));
-    else
-        m_configValues.insert(param->key(), param->value());
-
     connect(param, &DeviceParamSpec::valueChanged, this, [this, param]() {
-        m_configValues.insert(param->key(), param->value());
-        for (DeviceCommand *command : m_commands)
-            command->updateConfigMap(m_configValues);
         emit configValuesChanged();
         emit paramChanged(param->key(), param->value());
     });
 
     m_params.append(param);
-    if (!hasValue) {
-        for (DeviceCommand *command : m_commands)
-            command->updateConfigMap(m_configValues);
-        emit configValuesChanged();
-    }
+    emit configValuesChanged();
     emit paramsChanged();
     return true;
 }
@@ -238,9 +199,9 @@ DeviceCommand *Device::createCommandDraft(const QString &protocol) const
     if (!supportsProtocol(commandProtocol))
         return nullptr;
 
-    DeviceCommand *command = DeviceCommandFactory::createForProtocol(commandProtocol, const_cast<Device *>(this));
+    DeviceCommand *command = DeviceCommand::createForProtocol(commandProtocol, const_cast<Device *>(this));
     if (command)
-        command->updateConfigMap(m_configValues);
+        command->setDevice(const_cast<Device *>(this));
     return command;
 }
 
@@ -273,17 +234,32 @@ DeviceCommand *Device::createCommand(const QString &protocol, const QString &nam
 
 DeviceCommand *Device::createCommandForType(const QString &commandType)
 {
-    for (const QString &protocol : m_supportedProtocols) {
-        DeviceCommand *command = DeviceCommandFactory::create(protocol, commandType, this);
-        if (!command)
-            continue;
+    DeviceCommand *command = m_deviceTemplate
+        ? m_deviceTemplate->createCommand(commandType, this)
+        : nullptr;
+    if (!command)
+        return nullptr;
 
-        command->updateConfigMap(m_configValues);
-        appendCommand(command);
-        return command;
+    appendCommand(command);
+    return command;
+}
+
+DeviceCommand *Device::createCommandFromJson(const QJsonObject &json,
+                                             QObject *parent,
+                                             TimelineModel *timelineModel) const
+{
+    const QString commandType = json.value(DeviceKey::CommandType).toString().trimmed();
+    DeviceCommand *command = commandType.isEmpty()
+        ? DeviceCommand::createFromJson(json, parent, timelineModel)
+        : (m_deviceTemplate ? m_deviceTemplate->createCommand(commandType, parent) : nullptr);
+    if (!command)
+        return nullptr;
+    if (!commandType.isEmpty() && !command->loadFromJson(json)) {
+        delete command;
+        return nullptr;
     }
-
-    return nullptr;
+    command->setDevice(const_cast<Device *>(this));
+    return command;
 }
 
 void Device::appendCommand(DeviceCommand *command)
@@ -297,13 +273,11 @@ void Device::appendCommand(DeviceCommand *command)
     if (command->parent() != this)
         command->setParent(this);
 
-    command->updateConfigMap(m_configValues);
+    command->setDevice(this);
     connect(command, &DeviceCommand::fieldChanged, this, [this]() {
         emit commandsChanged();
     });
     m_commands.append(command);
-
-    command->onInstall(this);
 
     emit commandsChanged();
 }
@@ -350,14 +324,12 @@ bool Device::setFieldValue(const QString &field, const QVariant &value)
 
 void Device::writeToStream(QDataStream& stream) const
 {
-    QVariantMap streamConfigValues = m_configValues;
+    QVariantMap streamConfigValues = configValues();
     if (!supportedProtocols().isEmpty())
         streamConfigValues.insert(QString::fromLatin1(kSupportedProtocolsConfigKey), supportedProtocols());
     streamConfigValues.insert(QString::fromLatin1(kStatusConfigKey), status());
-    streamConfigValues.insert(QString::fromLatin1(kLastSeenConfigKey), lastSeen());
 
     stream << m_id
-           << m_templateName
            << m_deviceType
            << m_name
            << m_description
@@ -375,7 +347,6 @@ void Device::writeToStream(QDataStream& stream) const
 void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
 {
     QString id;
-    QString templateName;
     QString deviceType;
     QString name;
     QString description;
@@ -383,7 +354,6 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
     int commandCount = 0;
 
     stream >> id
-           >> templateName
            >> deviceType
            >> name
            >> description
@@ -402,10 +372,13 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
 
         const QJsonDocument document = QJsonDocument::fromJson(commandData);
         DeviceCommand *command = document.isObject()
-            ? DeviceCommandFactory::createFromJson(document.object(), this, timelineModel)
+            ? createCommandFromJson(document.object(), this, timelineModel)
             : nullptr;
-        if (command)
-            commands.append(command);
+        if (!command) {
+            stream.setStatus(QDataStream::ReadCorruptData);
+            break;
+        }
+        commands.append(command);
     }
 
     if (stream.status() != QDataStream::Ok) {
@@ -415,21 +388,19 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
     }
 
     m_id = id;
-    m_templateName = templateName;
     setDeviceType(deviceType);
     setName(name);
     setDescription(description);
     const QStringList restoredSupportedProtocols = configValues.take(QString::fromLatin1(kSupportedProtocolsConfigKey)).toStringList();
     const QString restoredStatus = configValues.take(QString::fromLatin1(kStatusConfigKey)).toString();
-    const QString restoredLastSeen = configValues.take(QString::fromLatin1(kLastSeenConfigKey)).toString();
-    setConfigValues(configValues);
+    for (auto it = configValues.cbegin(); it != configValues.cend(); ++it)
+        setParamValue(it.key(), it.value());
     if (!restoredSupportedProtocols.isEmpty())
         setSupportedProtocols(restoredSupportedProtocols);
     setStatus(restoredStatus);
-    setLastSeen(restoredLastSeen);
 
-    for (DeviceCommand *command : m_commands)
-        delete command;
+    qDeleteAll(m_commands);
+    m_commands.clear();
 
     for (DeviceCommand *command : commands) {
         appendCommand(command);

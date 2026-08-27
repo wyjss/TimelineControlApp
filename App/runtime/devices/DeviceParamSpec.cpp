@@ -348,6 +348,17 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                    SelectType,
                                    SelectEditor);
 
+    if (deviceKey == DeviceKey::Dmx512Bits) {
+        auto vs = QVector<qint32>(512, 0);
+		auto param = new DeviceParamSpec(deviceKey,
+								   QStringLiteral("目标DMX512适配器"),
+								   QVariant::fromValue(vs),
+								   VariantType,
+								   CustomEditor);
+        param->setReadOnly(true);
+        return param;
+    }
+
 	if (deviceKey == DeviceKey::Videos) {
 		auto* spec = new DeviceParamSpec(deviceKey,
 										 QStringLiteral("视频"),

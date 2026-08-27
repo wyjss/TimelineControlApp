@@ -40,6 +40,8 @@ public:
     QList<DeviceParamSpec *> configSpecObjects() const;
 
     virtual Device *createDevice(QObject *parent, const QVariantMap &configValues);
+    virtual DeviceCommand *createCommand(const QString &commandType,
+                                         QObject *parent = nullptr) const;
 protected:
     QString m_name;
     QString m_deviceType;

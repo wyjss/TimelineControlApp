@@ -37,15 +37,11 @@ private:
     int indexOfTemplateName(const QString &templateName) const;
     void appendTemplate(DeviceTemplate *deviceTemplate);
 
-    DeviceTemplate *createDefaultDeviceTemplatePc();
     DeviceTemplate *createDefaultDeviceTemplateDmx512Adapter();
     DeviceTemplate *createDefaultDeviceTemplateDmx512();
     DeviceTemplate *createDefaultDeviceTemplateHttp();
     DeviceTemplate *createDefaultDeviceTemplateSerial();
     DeviceTemplate *createDefaultDeviceTemplateOsc();
-    DeviceTemplate *createDefaultDeviceTemplateFusion3();
-    DeviceTemplate *createDefaultDeviceTemplateLocator();
-
     DeviceTemplate *makeDeviceTemplate(const QString &name,
                                        const QString &deviceType,
                                        const QStringList &supportedProtocols,
