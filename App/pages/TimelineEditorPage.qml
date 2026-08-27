@@ -35,7 +35,6 @@ Item {
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
-    readonly property var visibleTimelineCommands: buildVisibleTimelineCommands()
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
     readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
     readonly property var selectedCommand: selectedCommandIndex >= 0
@@ -163,19 +162,6 @@ Item {
         executionStatusText = qsTr("已在 %2 ms 添加 %1").arg(commandName(targetCommand)).arg(startTimeMs)
     }
 
-    function buildVisibleTimelineCommands() {
-        var result = []
-        for (var index = 0; index < timelineCommands.length; ++index) {
-            var command = timelineCommands[index]
-            if (timelineCommandListMode === "device"
-                && String(command.targetDeviceId || "") !== selectedTimelineDeviceId)
-                continue
-
-            result.push(command)
-        }
-        return result
-    }
-
     function selectTimelineCommand(command) {
         if (!command)
             return
@@ -278,31 +264,6 @@ Item {
             .arg(minutes)
             .arg(seconds < 10 ? "0" + seconds : seconds)
             .arg(millisecondsText)
-    }
-
-    function timelineCommandMeta(command) {
-        if (!command)
-            return ""
-
-        var device = deviceForId(String(command.targetDeviceId || ""))
-        return [formatTimelineMs(command.startTimeMs), deviceName(device)]
-            .filter(function(part) { return String(part || "").length > 0 }).join(" / ")
-    }
-
-    function timelineCommandExecutionSummary(command) {
-        var values = command && command.commandParams
-            ? command.commandParams.executionInputFields || {}
-            : {}
-        var parts = []
-        Object.keys(values).forEach(function(key) {
-            var value = values[key]
-            if (value === undefined || value === null || String(value).length === 0)
-                return
-            if (typeof value === "boolean")
-                value = value ? qsTr("是") : qsTr("否")
-            parts.push(String(value))
-        })
-        return parts.join(" / ")
     }
 
     ColumnLayout {
@@ -577,7 +538,7 @@ Item {
                         }
 
                         Base.AppText {
-                            text: qsTr("%1").arg(root.visibleTimelineCommands.length)
+                            text: qsTr("%1").arg(timelineCommandVerticalList.count)
                             styleRole: UiStyle.TypographyRole.BodyS
                             textTone: UiStyle.TextTone.Secondary
                         }
@@ -602,124 +563,27 @@ Item {
                         sizeToContent: false
                         surfaceTone: UiStyle.SurfaceTone.Section
 
-                        ListView {
-                            id: timelineCommandList
+                        Timeline.TimelineCommandVerticalList {
+                            id: timelineCommandVerticalList
 
                             anchors.fill: parent
-                            anchors.margins: 8
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            spacing: 6
-                            model: root.visibleTimelineCommands
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
+                            theme: root.pageTheme
+                            commands: root.timelineCommands
+                            devices: root.devices
+                            deviceIdFilter: root.timelineCommandListMode === "device"
+                                ? root.selectedTimelineDeviceId
+                                : ""
+                            selectedCommandId: root.selectedTimelineCommandId
+                            editingEnabled: root.timelineStopped
+                            onCommandSelected: function(command) {
+                                root.selectTimelineCommand(command)
                             }
-
-                            delegate: Base.AppCard {
-                                id: timelineCommandRow
-
-                                readonly property var commandData: modelData
-                                readonly property bool selected: String(commandData.id || "") === root.selectedTimelineCommandId
-                                readonly property string executionSummary: root.timelineCommandExecutionSummary(commandData)
-
-                                width: timelineCommandList.width
-                                height: executionSummary.length > 0 ? 74 : 56
-                                text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
-                                surfaceTone: UiStyle.SurfaceTone.Ghost
-                                leftPadding: 12
-                                rightPadding: 12
-                                topPadding: 7
-                                bottomPadding: 7
-                                checkable: true
-                                checked: selected
-                                emphasizedSelection: true
-                                selectionTransition: timelineCommandCardSelectionTransition
-                                animateScale: false
-                                onClicked: root.selectTimelineCommand(timelineCommandRow.commandData)
-
-                                RowLayout {
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    spacing: 8
-
-                                    Rectangle {
-                                        visible: !timelineCommandRow.selected
-                                        Layout.preferredWidth: 3
-                                        Layout.fillHeight: true
-                                        radius: 2
-                                        color: String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateColor
-                                            ? timelineCommandRow.commandData.stateColor
-                                            : root.pageTheme.colors.border)
-                                        opacity: timelineCommandRow.hovered ? 0.44 : 0.18
-                                    }
-
-                                    ColumnLayout {
-                                        Layout.fillWidth: true
-                                        spacing: 2
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: String(timelineCommandRow.commandData.commandName || qsTr("指令"))
-                                            styleRole: UiStyle.TypographyRole.BodyM
-                                            colorOverride: timelineCommandRow.selected
-                                                ? root.pageTheme.colors.inverseText
-                                                : undefined
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: root.timelineCommandMeta(timelineCommandRow.commandData)
-                                                + " / "
-                                                + String(timelineCommandRow.commandData && timelineCommandRow.commandData.stateText
-                                                    ? timelineCommandRow.commandData.stateText
-                                                    : qsTr("待执行"))
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Secondary
-                                            elide: Text.ElideRight
-                                        }
-
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            visible: timelineCommandRow.executionSummary.length > 0
-                                            text: timelineCommandRow.executionSummary
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Accent
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-
-                                    Base.AppButton {
-                                        visible: timelineCommandRow.hovered
-                                        text: qsTr("编辑")
-                                        enabled: root.timelineStopped
-                                        onClicked: root.editTimelineCommand(timelineCommandRow.commandData)
-                                    }
-
-                                    Base.AppButton {
-                                        variant: UiStyle.ButtonVariant.Danger
-                                        visible: timelineCommandRow.hovered
-                                        text: qsTr("删除")
-                                        enabled: root.timelineStopped
-                                        onClicked: removeTimelineCommandPopup.openForCommand(timelineCommandRow.commandData)
-                                    }
-                                }
+                            onEditRequested: function(command) {
+                                root.editTimelineCommand(command)
                             }
-                        }
-
-                        Base.AppCardSelectionTransition {
-                            id: timelineCommandCardSelectionTransition
-
-                            anchors.fill: timelineCommandList
-                            clip: true
-                        }
-
-                        Base.AppText {
-                            anchors.centerIn: parent
-                            visible: root.visibleTimelineCommands.length === 0
-                            text: qsTr("暂无时间线指令")
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
+                            onRemoveRequested: function(command) {
+                                removeTimelineCommandPopup.openForCommand(command)
+                            }
                         }
                     }
 
