@@ -13,6 +13,9 @@ void DeviceCommandExecutor::execute(DeviceCommand *command, const QVariantMap &p
     if (!command)
         return;
 
+    if (m_failed && m_time.elapsed() > 2000) {
+        m_failed = false;
+    }
     if (m_failed) {
         emit executionFinished(command, false, m_errorMessage);
         return;
@@ -21,15 +24,9 @@ void DeviceCommandExecutor::execute(DeviceCommand *command, const QVariantMap &p
     executeImpl(command, params);
 }
 
-void DeviceCommandExecutor::checkOnline(const QStringList &requestIds, const QVariantMap &params)
-{
-    const bool online = checkOnlineImpl(params);
-    for (const QString &requestId : requestIds)
-        emit onlineChecked(requestId, online);
-}
-
 void DeviceCommandExecutor::markFailed(const QString &errorMessage)
 {
+    m_time.restart();
     m_failed = true;
     m_errorMessage = errorMessage;
 }

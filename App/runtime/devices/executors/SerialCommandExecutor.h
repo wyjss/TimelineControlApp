@@ -15,7 +15,6 @@ public:
 
 protected:
     void executeImpl(DeviceCommand *command, const QVariantMap &params) override;
-    bool checkOnlineImpl(const QVariantMap &params) override;
 
 private:
     QString m_ip;

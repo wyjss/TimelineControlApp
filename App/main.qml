@@ -31,8 +31,51 @@ ApplicationWindow {
         ? String(appRuntime.settings.value("canvasDelegateSource", ""))
         : ""
     readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
+    readonly property bool timelineRunning: timelineManager && timelineManager.playbackState === 1
     readonly property bool timelinePaused: timelineManager && timelineManager.playbackState === 2
     readonly property bool timelineCompleted: timelineManager && timelineManager.playbackState === 3
+    readonly property bool hasQueuedTimelines: timelineManager
+        && timelineManager.playQueue.length > 0
+    readonly property var availablePlaybackDevices: appRuntime && appRuntime.deviceModel
+        ? appRuntime.deviceModel.devices
+        : []
+    readonly property var playbackDeviceIds: timelineManager
+        ? timelineManager.playbackDevices
+        : []
+    readonly property int playbackDeviceCount: playbackDeviceIds.length
+    readonly property string playbackStateText: timelineRunning
+        ? qsTr("播放中")
+        : (timelinePaused
+            ? qsTr("已暂停")
+            : (timelineCompleted ? qsTr("已完成") : qsTr("待播放")))
+    readonly property string playbackActionText: timelineRunning
+        ? qsTr("暂停")
+        : (timelinePaused
+            ? qsTr("继续播放")
+            : (hasQueuedTimelines ? qsTr("播放队列") : qsTr("播放当前节目")))
+
+    function playbackDeviceSelected(deviceId) {
+        return playbackDeviceIds.indexOf(String(deviceId || "")) >= 0
+    }
+
+    function setPlaybackDevices(deviceIds) {
+        if (timelineManager && timelineStopped)
+            timelineManager.playbackDevices = deviceIds
+    }
+
+    function togglePlaybackDevice(deviceId) {
+        if (!timelineManager || !timelineStopped)
+            return
+
+        var id = String(deviceId || "")
+        var deviceIds = playbackDeviceIds.slice()
+        var index = deviceIds.indexOf(id)
+        if (index >= 0)
+            deviceIds.splice(index, 1)
+        else
+            deviceIds.push(id)
+        setPlaybackDevices(deviceIds)
+    }
 
     function activateNavigation(key) {
         var items = shell.navigationItems || []
@@ -108,60 +151,218 @@ ApplicationWindow {
 
                 Rectangle {
                     Layout.alignment: Qt.AlignVCenter
-                    width: 8
-                    height: 8
-                    radius: 4
-                    color: window.timelineCompleted
-                        ? window.appTheme.colors.warningFill
-                        : (window.timelineStopped
-                            ? window.appTheme.colors.dangerFill
-                            : window.appTheme.colors.successFill)
-                }
+                    implicitWidth: playbackControls.implicitWidth + 12
+                    implicitHeight: 40
+                    radius: 8
+                    color: window.appTheme.colors.backgroundSection
+                    border.width: 1
+                    border.color: window.appTheme.colors.border
 
-                Base.AppButton {
-                    size: UiStyle.ButtonSize.Small
-                    variant: window.timelineStopped
-                        ? UiStyle.ButtonVariant.Primary
-                        : UiStyle.ButtonVariant.Secondary
-                    text: window.timelineStopped ? qsTr("开始") : qsTr("停止")
-                    iconName: window.timelineStopped ? "play" : "stop"
-                    enabled: !window.timelineStopped
-                        || (window.timelineManager
-                            && window.timelineManager.playQueue.length > 0)
-                    onClicked: {
-                        if (window.shellController)
-                            window.shellController.handleUiAction(
-                                window.timelineStopped ? "timeline.start" : "timeline.stop",
-                                {}
-                            )
+                    RowLayout {
+                        id: playbackControls
+
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        spacing: 6
+
+                        Rectangle {
+                            Layout.leftMargin: 4
+                            width: 8
+                            height: 8
+                            radius: 4
+                            color: window.timelineRunning
+                                ? window.appTheme.colors.successFill
+                                : (window.timelinePaused
+                                    ? window.appTheme.colors.warningFill
+                                    : window.appTheme.colors.neutralBorder)
+                        }
+
+                        Base.AppText {
+                            text: window.playbackStateText
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: window.timelineRunning
+                                ? UiStyle.TextTone.Success
+                                : (window.timelinePaused
+                                    ? UiStyle.TextTone.Warning
+                                    : UiStyle.TextTone.Secondary)
+                        }
+
+                        Base.AppButton {
+                            id: playbackDeviceButton
+
+                            size: UiStyle.ButtonSize.Small
+                            variant: window.playbackDeviceCount > 0
+                                ? UiStyle.ButtonVariant.Danger
+                                : UiStyle.ButtonVariant.Tonal
+                            minWidth: window.playbackDeviceCount > 0 ? 112 : 96
+                            text: window.playbackDeviceCount > 0
+                                ? qsTr("过滤中 · %1 台").arg(window.playbackDeviceCount)
+                                : qsTr("设备过滤")
+                            iconName: "resources"
+                            onClicked: playbackDevicePopup.opened
+                                ? playbackDevicePopup.close()
+                                : playbackDevicePopup.open()
+
+                            ToolTip.visible: hovered
+                            ToolTip.text: window.timelineStopped
+                                ? qsTr("设置参与播放的设备")
+                                : qsTr("播放期间不能修改设备过滤")
+                        }
+
+                        Rectangle {
+                            Layout.leftMargin: 2
+                            Layout.rightMargin: 2
+                            width: 1
+                            height: 20
+                            color: window.appTheme.colors.border
+                        }
+
+                        Base.AppButton {
+                            size: UiStyle.ButtonSize.Small
+                            variant: UiStyle.ButtonVariant.Primary
+                            minWidth: window.timelineRunning || window.timelinePaused ? 88 : 116
+                            text: window.playbackActionText
+                            iconName: window.timelineRunning ? "pause" : "play"
+                            enabled: window.timelineRunning
+                                || window.timelinePaused
+                                || (window.timelineManager
+                                    && (window.hasQueuedTimelines
+                                        || window.timelineManager.currentTimeline))
+                            onClicked: {
+                                if (window.shellController)
+                                    window.shellController.handleUiAction(
+                                        window.timelineRunning ? "timeline.pause" : "timeline.start",
+                                        {}
+                                    )
+                            }
+                        }
+
+                        Base.AppButton {
+                            size: UiStyle.ButtonSize.Small
+                            variant: UiStyle.ButtonVariant.Danger
+                            minWidth: 92
+                            text: qsTr("停止播放")
+                            iconName: "stop"
+                            enabled: !window.timelineStopped
+                            onClicked: {
+                                if (window.shellController)
+                                    window.shellController.handleUiAction("timeline.stop", {})
+                            }
+                        }
                     }
                 }
 
-                Base.AppButton {
-                    size: UiStyle.ButtonSize.Small
-                    variant: UiStyle.ButtonVariant.Secondary
-                    text: window.timelinePaused ? qsTr("继续") : qsTr("暂停")
-                    iconName: window.timelinePaused ? "play" : "pause"
-                    enabled: !window.timelineStopped && !window.timelineCompleted
-                    onClicked: {
-                        if (window.shellController)
-                            window.shellController.handleUiAction(
-                                window.timelinePaused ? "timeline.start" : "timeline.pause",
-                                {}
-                            )
+                Base.AppPopup {
+                    id: playbackDevicePopup
+
+                    parent: window.contentItem
+                    width: 280
+                    modal: false
+                    showModalOverlay: false
+                    surfaceTone: UiStyle.SurfaceTone.SurfaceOverlay
+                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+                    onAboutToShow: {
+                        var origin = playbackDeviceButton.mapToItem(
+                            parent,
+                            0,
+                            playbackDeviceButton.height + 8
+                        )
+                        x = origin.x
+                        y = origin.y
                     }
+
+                    Base.AppText {
+                        Layout.fillWidth: true
+                        text: qsTr("播放设备")
+                        styleRole: UiStyle.TypographyRole.BodyM
+                        overrideWeight: window.appTheme.typography.weightBold
+                    }
+
+                    Base.AppText {
+                        Layout.fillWidth: true
+                        text: window.timelineStopped
+                            ? qsTr("不勾选设备时播放全部设备")
+                            : qsTr("播放期间已锁定过滤范围")
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
+                    }
+
+                    Base.AppButton {
+                        Layout.fillWidth: true
+                        text: qsTr("全部设备")
+                        iconSymbol: window.playbackDeviceCount === 0 ? "✓" : ""
+                        contentAlignment: "start"
+                        variant: window.playbackDeviceCount === 0
+                            ? UiStyle.ButtonVariant.Tonal
+                            : UiStyle.ButtonVariant.Ghost
+                        enabled: window.timelineStopped
+                        onClicked: window.setPlaybackDevices([])
+                    }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: window.appTheme.colors.border
+                    }
+
+                    ListView {
+                        id: playbackDeviceList
+
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(240,
+                            Math.max(36, window.availablePlaybackDevices.length * 36))
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        model: window.availablePlaybackDevices
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                        }
+
+                        delegate: Base.AppCheckBox {
+                            readonly property string deviceId: String(modelData.id || "")
+
+                            width: playbackDeviceList.width
+                            text: String(modelData.name || deviceId || qsTr("未命名设备"))
+                            checked: window.playbackDeviceSelected(deviceId)
+                            enabled: window.timelineStopped
+                            onClicked: window.togglePlaybackDevice(deviceId)
+                        }
+
+                        Base.AppText {
+                            anchors.centerIn: parent
+                            visible: window.availablePlaybackDevices.length === 0
+                            text: qsTr("暂无设备")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
+                    }
+                }
+
+                Rectangle {
+                    Layout.leftMargin: 4
+                    Layout.rightMargin: 4
+                    width: 1
+                    height: 24
+                    color: window.appTheme.colors.borderHeaderDivider
                 }
 
                 Base.AppButton {
                     id: plansButton
 
                     size: UiStyle.ButtonSize.Small
-                    variant: UiStyle.ButtonVariant.Ghost
+                    variant: UiStyle.ButtonVariant.Secondary
+                    minWidth: 112
+                    iconName: "workflow"
                     text: window.appRuntime && window.appRuntime.currentPlanName.length > 0
-                        ? window.appRuntime.currentPlanName
-                        : qsTr("未选择方案")
+                        ? qsTr("管理工程 · %1").arg(window.appRuntime.currentPlanName)
+                        : qsTr("管理工程")
                     enabled: window.timelineStopped
                     onClicked: planPopup.opened ? planPopup.close() : planPopup.open()
+
+                    ToolTip.visible: hovered
+                    ToolTip.text: window.appRuntime && window.appRuntime.currentPlanName.length > 0
+                        ? qsTr("当前工程：%1").arg(window.appRuntime.currentPlanName)
+                        : qsTr("保存、另存或加载工程")
                 }
 
                 Item {

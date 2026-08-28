@@ -111,6 +111,20 @@ void Device::setStatus(const QString &status)
     emit statusChanged();
 }
 
+bool Device::filteredOut() const
+{
+    return m_filteredOut;
+}
+
+void Device::setFilteredOut(bool filteredOut)
+{
+    if (m_filteredOut == filteredOut)
+        return;
+
+    m_filteredOut = filteredOut;
+    emit filteredOutChanged();
+}
+
 QString Device::description() const
 {
     return m_description;

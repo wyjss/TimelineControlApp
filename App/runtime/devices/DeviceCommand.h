@@ -22,6 +22,7 @@ class DeviceCommand : public QObject
     //! 指令显示名称。
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
     Q_PROPERTY(Device *device READ device NOTIFY deviceChanged FINAL)
+    Q_PROPERTY(bool filteredOut READ filteredOut NOTIFY filteredOutChanged FINAL)
     //! 协议标识DeviceProtocol，例如 serial、dmx512、http。
     Q_PROPERTY(QString protocol READ protocol CONSTANT)
     //! 指令类型，仅内部定义指令使用
@@ -52,6 +53,7 @@ public:
     QString protocol() const;
     QString commandType() const;
     Device *device() const;
+    bool filteredOut() const;
 
     DeviceParamSpec* getField(const QString& key) const;
 
@@ -77,6 +79,7 @@ public:
 signals:
     void nameChanged();
     void deviceChanged();
+    void filteredOutChanged();
     void fieldChanged(DeviceParamSpec *field);
 
 private:

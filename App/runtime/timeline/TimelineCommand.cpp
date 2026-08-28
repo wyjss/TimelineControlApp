@@ -5,6 +5,9 @@
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceModel.h"
 
+#define LC "[TimelineCommand] "
+#include "LogMacros.h"
+
 #include <algorithm>
 #include <QDataStream>
 #include <QFileInfo>
@@ -46,9 +49,12 @@ TimelineCommand::TimelineCommand(qint64 startTimeMs,
     , m_targetCommand(targetCommand)
 {
     if (targetCommand) {
+        connect(targetCommand, &DeviceCommand::filteredOutChanged,
+                this, &TimelineCommand::filteredOutChanged);
         connect(targetCommand, &QObject::destroyed, this, [this]() {
             m_targetCommand.clear();
             emit targetCommandChanged();
+            emit filteredOutChanged();
             emit targetCommandDestroyed();
         });
     }
@@ -103,6 +109,11 @@ DeviceCommand *TimelineCommand::targetCommand() const
     return m_targetCommand.data();
 }
 
+bool TimelineCommand::filteredOut() const
+{
+    return m_targetCommand && m_targetCommand->filteredOut();
+}
+
 qint64 TimelineCommand::durationMs() const
 {
     return qMax<qint64>(0, variantInt64(m_commandParams, QString::fromLatin1(kDurationMsKey), 0));
@@ -131,6 +142,8 @@ QString TimelineCommand::stateText() const
         return tr("已成功");
     case Failed:
         return m_errorMessage.isEmpty() ? tr("已失败") : tr("失败：%1").arg(m_errorMessage);
+    case Skipped:
+        return tr("已跳过");
     case Idle:
         break;
     }
@@ -147,6 +160,8 @@ QString TimelineCommand::stateColor() const
         return QStringLiteral("#22c55e");
     case Failed:
         return QStringLiteral("#ef4444");
+    case Skipped:
+        return QStringLiteral("#64748b");
     case Idle:
         break;
     }
@@ -231,6 +246,33 @@ QVariantList TimelineCommandModel::commandVariants() const
         result.append(QVariant::fromValue(command));
 
     return result;
+}
+
+qint64 TimelineCommandModel::realDurationMs()
+{
+	if (m_realDurationNeedUpdate) {
+		m_realDurationNeedUpdate = false;
+
+		LOG_DEBUG("updateRealDuration");
+		qint64 realDurationMs = 0;
+		for (TimelineCommand* command : items()) {
+			if (command)
+				realDurationMs = qMax(realDurationMs,
+									  command->startTimeMs() + command->durationMs());
+		}
+
+		m_realDurationMs = realDurationMs;
+	}
+
+	return m_realDurationMs;
+}
+
+void TimelineCommandModel::makeRealTimeChanged()
+{
+    if (!m_realDurationNeedUpdate) {
+        m_realDurationNeedUpdate = true;
+        emit realDurationMsChanged();
+    }
 }
 
 QVariantMap TimelineCommandModel::childTracksByParentId() const
@@ -492,6 +534,7 @@ void TimelineCommandModel::resetCommands(const QList<TimelineCommand *> &command
         qDeleteAll(oldCommands);
         if (!m_selectedCommandId.isEmpty() && !commandById(m_selectedCommandId))
             setSelectedCommandId(QString());
+        makeRealTimeChanged();
         emit commandsChanged();
     }
 }
@@ -509,6 +552,7 @@ void TimelineCommandModel::removeCommandAt(int row)
             setSelectedCommandId(nextCommand ? nextCommand->id() : QString());
         }
         command->deleteLater();
+        makeRealTimeChanged();
         emit commandsChanged();
     }
 }
@@ -588,6 +632,7 @@ void TimelineCommandModel::itemInserted(TimelineCommand *command, int row)
 {
     Q_UNUSED(row)
     prepareCommand(command);
+    makeRealTimeChanged();
     emit commandsChanged();
 }
 
@@ -605,12 +650,16 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
     disconnectCommand(command);
     command->setParent(this);
 
+    const auto notifyDurationChanged = [this, command]() {
+        makeRealTimeChanged();
+        emitCommandChanged(command);
+    };
     const auto notifyChanged = [this, command]() {
         emitCommandChanged(command);
     };
 
-    connect(command, &TimelineCommand::startTimeMsChanged, this, notifyChanged);
-    connect(command, &TimelineCommand::commandParamsChanged, this, notifyChanged);
+    connect(command, &TimelineCommand::startTimeMsChanged, this, notifyDurationChanged);
+    connect(command, &TimelineCommand::commandParamsChanged, this, notifyDurationChanged);
     connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {
         removeCommand(command);
     });

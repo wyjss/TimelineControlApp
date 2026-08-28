@@ -74,6 +74,8 @@ QString commandStateName(TimelineCommand::State state)
         return QStringLiteral("succeeded");
     case TimelineCommand::Failed:
         return QStringLiteral("failed");
+    case TimelineCommand::Skipped:
+        return QStringLiteral("skipped");
     default:
         return QStringLiteral("idle");
     }
@@ -136,6 +138,24 @@ bool WebControlServer::start(const QString &host, quint16 port)
 
         QJsonObject body;
         const int status = updateQueue(document.object().value(QStringLiteral("timelineIds")).toArray(), body);
+        sendJson(response, status, body);
+    });
+    m_server->Post("/api/v1/playback-devices", [this](const httplib::Request &request, httplib::Response &response) {
+        if (!authorize(request, response))
+            return;
+
+        QJsonParseError parseError;
+        const QJsonDocument document = QJsonDocument::fromJson(
+            QByteArray::fromStdString(request.body), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+            sendJson(response, 400, errorResponse(QStringLiteral("invalid_json"),
+                                                  QStringLiteral("请求内容不是有效 JSON")));
+            return;
+        }
+
+        QJsonObject body;
+        const int status = updatePlaybackDevices(
+            document.object().value(QStringLiteral("deviceIds")).toArray(), body);
         sendJson(response, status, body);
     });
     m_server->Post("/api/v1/control", [this](const httplib::Request &request, httplib::Response &response) {
@@ -307,8 +327,13 @@ QJsonObject WebControlServer::statusSnapshot() const
             {QStringLiteral("planName"), runtime->currentPlanName()},
             {QStringLiteral("playbackState"), playbackStateName(manager->playbackState())},
             {QStringLiteral("currentTimeMs"), manager->currentTimeMs()},
+            {QStringLiteral("currentTimelineId"), manager->currentTimeline()
+                ? manager->currentTimeline()->id()
+                : QString()},
             {QStringLiteral("queueIndex"), manager->playQueueIndex()},
             {QStringLiteral("playQueue"), QJsonArray::fromStringList(playQueue)},
+            {QStringLiteral("playbackDevices"),
+             QJsonArray::fromStringList(manager->getPlaybackDevices())},
             {QStringLiteral("timelines"), timelines},
             {QStringLiteral("devices"), devices}
         };
@@ -344,6 +369,54 @@ int WebControlServer::updateQueue(const QJsonArray &timelineIds,
     if (!accepted) {
         response = errorResponse(QStringLiteral("queue_rejected"),
                                  QStringLiteral("仅停止状态可修改队列，且所有节目必须存在"));
+        return 409;
+    }
+
+    response = statusSnapshot();
+    return 200;
+}
+
+int WebControlServer::updatePlaybackDevices(const QJsonArray &deviceIds,
+                                            QJsonObject &response) const
+{
+    QStringList ids;
+    for (const QJsonValue &value : deviceIds) {
+        const QString id = value.toString().trimmed();
+        if (id.isEmpty() || ids.contains(id)) {
+            response = errorResponse(QStringLiteral("invalid_devices"),
+                                     QStringLiteral("设备选择包含无效或重复项目"));
+            return 400;
+        }
+        ids.append(id);
+    }
+
+    bool stopped = false;
+    bool valid = false;
+    if (!invokeRuntime([&stopped, &valid, &ids](TimelineRuntime *runtime) {
+        TimelineManager *manager = runtime->timelineManager();
+        stopped = manager->playbackState() == TimelineManager::Stopped;
+        valid = true;
+        for (const QString &id : ids) {
+            if (!runtime->deviceModel()->deviceById(id)) {
+                valid = false;
+                break;
+            }
+        }
+        if (stopped && valid)
+            manager->setPlaybackDevices(ids);
+    })) {
+        response = errorResponse(QStringLiteral("runtime_unavailable"),
+                                 QStringLiteral("播控运行时不可用"));
+        return 503;
+    }
+    if (!valid) {
+        response = errorResponse(QStringLiteral("invalid_devices"),
+                                 QStringLiteral("选择的设备不存在"));
+        return 400;
+    }
+    if (!stopped) {
+        response = errorResponse(QStringLiteral("devices_locked"),
+                                 QStringLiteral("仅停止状态可修改播控设备"));
         return 409;
     }
 

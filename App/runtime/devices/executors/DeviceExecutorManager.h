@@ -12,6 +12,7 @@
 class Device;
 class DeviceCommand;
 class DeviceCommandExecutor;
+class NetworkPing;
 
 class DeviceExecutorManager final : public QObject
 {
@@ -33,7 +34,8 @@ signals:
 private:
     struct OnlineCheck
     {
-        QVariantMap params;
+        QString ip;
+        quint16 tcpPort = 0;
         QString executorKey;
     };
 
@@ -42,11 +44,12 @@ private:
     void unbindDeviceId(const QString &deviceId);
     DeviceCommandExecutor *executorFor(const QString &protocol,
                                        const QVariantMap &params,
-                                       QString *executorKey = nullptr,
-                                       bool *created = nullptr);
+                                       QString *executorKey = nullptr);
 
     QThread m_thread;
+    QThread m_onlineCheckThread;
     QTimer m_onlineCheckTimer;
+    NetworkPing *m_networkPing = nullptr;
     QHash<QString, DeviceCommandExecutor *> m_executors;
     QHash<QString, OnlineCheck> m_onlineChecks;
     QHash<QString, QStringList> m_deviceIdsByExecutorKey;

@@ -41,6 +41,7 @@ private:
                     httplib::Response &response) const;
     QJsonObject statusSnapshot() const;
     int updateQueue(const QJsonArray &timelineIds, QJsonObject &response) const;
+    int updatePlaybackDevices(const QJsonArray &deviceIds, QJsonObject &response) const;
     int control(const QJsonObject &request, QJsonObject &response) const;
 
     QPointer<TimelineRuntime> m_runtime;

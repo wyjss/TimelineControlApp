@@ -670,6 +670,7 @@ Item {
                                         anchors.right: parent.right
                                         width: deviceCardFlow.cardWidth
                                         height: parent.height
+                                        opacity: modelData.filteredOut ? 0.46 : 1
                                         text: modelData.name
                                         padding: 0
                                         contentSpacing: 0
@@ -679,6 +680,10 @@ Item {
                                         selectionTransition: deviceCardSelectionTransition
                                         animateScale: false
                                         onClicked: root.selectDevice(modelData.id)
+
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: 120 }
+                                        }
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
@@ -1056,6 +1061,11 @@ Item {
 
                                             Layout.fillWidth: true
                                             spacing: 0
+                                            opacity: commandData && commandData.filteredOut ? 0.46 : 1
+
+                                            Behavior on opacity {
+                                                NumberAnimation { duration: 120 }
+                                            }
 
                                             Base.AppCard {
                                                 id: commandRow

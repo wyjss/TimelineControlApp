@@ -1,6 +1,7 @@
 #include "TimelineShellController.h"
 
 #include "TimelineRuntime.h"
+#include "timeline/Timeline.h"
 #include "timeline/TimelineManager.h"
 
 
@@ -71,8 +72,13 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
     } else if (actionId == QStringLiteral("timeline.start")) {
         if (timelineManager->playbackState() == TimelineManager::Paused)
             timelineManager->resumePlayback();
-        else if (timelineManager->playbackState() == TimelineManager::Stopped)
-            timelineManager->startPlayback(timelineManager->playQueue());
+        else if (timelineManager->playbackState() == TimelineManager::Stopped
+                 || timelineManager->playbackState() == TimelineManager::Completed) {
+            QStringList timelineIds = timelineManager->playQueue();
+            if (timelineIds.isEmpty() && timelineManager->currentTimeline())
+                timelineIds.append(timelineManager->currentTimeline()->id());
+            timelineManager->startPlayback(timelineIds);
+        }
     } else if (actionId == QStringLiteral("timeline.pause")) {
         timelineManager->pausePlayback();
     } else if (actionId == QStringLiteral("timeline.stop")) {

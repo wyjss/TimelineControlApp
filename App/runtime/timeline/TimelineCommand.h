@@ -25,6 +25,7 @@ class TimelineCommand final : public QObject
     Q_PROPERTY(QString commandName READ commandName CONSTANT FINAL)
     Q_PROPERTY(QVariantMap commandParams READ commandParams WRITE setCommandParams NOTIFY commandParamsChanged FINAL)
     Q_PROPERTY(DeviceCommand *targetCommand READ targetCommand NOTIFY targetCommandChanged FINAL)
+    Q_PROPERTY(bool filteredOut READ filteredOut NOTIFY filteredOutChanged FINAL)
     Q_PROPERTY(qint64 durationMs READ durationMs NOTIFY commandParamsChanged FINAL)
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString stateText READ stateText NOTIFY stateChanged FINAL)
@@ -37,7 +38,8 @@ public:
         Idle,
         Running,
         Succeeded,
-        Failed
+        Failed,
+        Skipped
     };
     Q_ENUM(State)
 
@@ -61,6 +63,7 @@ public:
     void setCommandParams(const QVariantMap &commandParams);
 
     DeviceCommand *targetCommand() const;
+    bool filteredOut() const;
 
     qint64 durationMs() const;
 
@@ -80,6 +83,7 @@ signals:
     void commandParamsChanged();
     void targetCommandChanged();
     void targetCommandDestroyed();
+    void filteredOutChanged();
     void stateChanged();
     void errorMessageChanged();
 
@@ -98,6 +102,7 @@ class TimelineCommandModel final : public TypedListModel<TimelineCommand *>
 {
     Q_OBJECT
     Q_PROPERTY(QVariantList commands READ commandVariants NOTIFY commandsChanged FINAL)
+    Q_PROPERTY(qint64 realDurationMs READ realDurationMs NOTIFY realDurationMsChanged FINAL)
     //! 父轨 ID 到只读子轨投影列表的映射。
     Q_PROPERTY(QVariantMap childTracksByParentId READ childTracksByParentId NOTIFY commandsChanged FINAL)
     Q_PROPERTY(QString selectedCommandId READ selectedCommandId WRITE setSelectedCommandId NOTIFY selectedCommandIdChanged FINAL)
@@ -108,6 +113,7 @@ public:
 
     QList<TimelineCommand *> commands() const;
     QVariantList commandVariants() const;
+    qint64 realDurationMs();
     QVariantMap childTracksByParentId() const;
     TimelineCommand *commandAt(int row) const;
     TimelineCommand *commandById(const QString &id) const;
@@ -144,6 +150,7 @@ public:
 
 signals:
     void commandsChanged();
+    void realDurationMsChanged();
     void selectedCommandIdChanged();
 
 protected:
@@ -152,11 +159,14 @@ protected:
     void itemRemoved(TimelineCommand *command, int row) override;
 
 private:
+    void makeRealTimeChanged();
     void prepareCommand(TimelineCommand *command);
     void disconnectCommand(TimelineCommand *command);
     void emitCommandChanged(TimelineCommand *command);
 
     QString m_selectedCommandId;
+    bool m_realDurationNeedUpdate = false;
+    qint64 m_realDurationMs = 0;
 };
 
 

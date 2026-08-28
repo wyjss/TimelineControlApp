@@ -67,7 +67,40 @@
                 <div id="empty-timelines" class="empty-state" hidden>当前方案中还没有节目</div>
             </section>
 
+            <section class="panel command-panel" aria-labelledby="command-title">
+                <div class="section-heading compact">
+                    <div>
+                        <p class="eyebrow">COMMAND MONITOR</p>
+                        <h2 id="command-title">节目指令</h2>
+                        <p id="command-program" class="section-caption">等待选择节目</p>
+                    </div>
+                    <span id="command-count" class="count-badge">0</span>
+                </div>
+                <div class="command-grid command-grid-header" aria-hidden="true">
+                    <span>执行时间</span>
+                    <span>指令</span>
+                    <span>目标设备</span>
+                    <span>持续时间</span>
+                    <span>状态</span>
+                </div>
+                <div id="command-list" class="command-list"></div>
+                <div id="empty-commands" class="empty-state">选择节目后查看指令</div>
+            </section>
+
             <aside class="side-stack">
+                <section class="panel device-panel" aria-labelledby="device-title">
+                    <div class="section-heading compact">
+                        <div>
+                            <p class="eyebrow">DEVICE HEALTH</p>
+                            <h2 id="device-title">设备状态</h2>
+                            <p id="device-selection" class="section-caption">当前：全部设备</p>
+                        </div>
+                        <span id="device-count" class="count-badge">0</span>
+                    </div>
+                    <div id="device-list" class="device-list"></div>
+                    <div id="empty-devices" class="empty-state">当前方案中没有设备</div>
+                </section>
+
                 <section class="panel queue-panel" aria-labelledby="queue-title">
                     <div class="section-heading compact">
                         <div>
@@ -78,18 +111,6 @@
                     </div>
                     <ol id="queue-list" class="queue-list"></ol>
                     <div id="empty-queue" class="empty-state">点击节目加入队列</div>
-                </section>
-
-                <section class="panel device-panel" aria-labelledby="device-title">
-                    <div class="section-heading compact">
-                        <div>
-                            <p class="eyebrow">DEVICE HEALTH</p>
-                            <h2 id="device-title">设备状态</h2>
-                        </div>
-                        <span id="device-count" class="count-badge">0</span>
-                    </div>
-                    <div id="device-list" class="device-list"></div>
-                    <div id="empty-devices" class="empty-state">当前方案中没有设备</div>
                 </section>
             </aside>
         </div>

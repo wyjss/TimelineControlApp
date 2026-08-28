@@ -3,6 +3,8 @@
 #include "timeline/Timeline.h"
 #include "timeline/TimelineClock.h"
 #include "timeline/TimelineModel.h"
+#include "devices/Device.h"
+#include "devices/DeviceModel.h"
 
 #include "LogMacros.h"
 
@@ -26,10 +28,11 @@ TimelineManager* TimelineManager::getInstance()
     return g_TimelineManager;
 }
 
-TimelineManager::TimelineManager(QObject *parent)
+TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
     : QObject(parent)
     , m_clock(new TimelineClock(this))
     , m_timelineModel(new TimelineModel(this))
+    , m_deviceModel(deviceModel)
 {
     g_TimelineManager = this;
 
@@ -47,6 +50,18 @@ TimelineManager::TimelineManager(QObject *parent)
             updateTimeline(timeline, clockTimeMs);
         emit currentTimeMsChanged(clockTimeMs);
     });
+    if (m_deviceModel) {
+        connect(m_deviceModel, &DeviceModel::deviceAdded, this, [this](Device *device) {
+            if (device)
+                device->setFilteredOut(!m_playbackDevices.isEmpty()
+                                       && !m_playbackDevices.contains(device->id()));
+        });
+        connect(m_deviceModel, &DeviceModel::deviceRemoved, this, [this](const QString &deviceId) {
+            QStringList playbackDevices = m_playbackDevices;
+            if (playbackDevices.removeAll(deviceId) > 0)
+                setPlaybackDevices(playbackDevices);
+        });
+    }
 }
 
 TimelineModel *TimelineManager::timelineModel() const
@@ -262,15 +277,33 @@ void TimelineManager::stopPlayback()
 
 void TimelineManager::setPlaybackDevices(const QStringList& ids)
 {
-    if (ids != m_paybackDevices) {
-        m_paybackDevices = ids;
-        emit playbackDevicesChanged(m_paybackDevices);
+    if (playbackState() != Stopped)
+        return;
+
+    QStringList playbackDevices;
+    for (const QString &id : ids) {
+        const QString deviceId = id.trimmed();
+        if (!deviceId.isEmpty() && !playbackDevices.contains(deviceId)
+            && (!m_deviceModel || m_deviceModel->deviceById(deviceId)))
+            playbackDevices.append(deviceId);
     }
+    if (playbackDevices == m_playbackDevices)
+        return;
+
+    m_playbackDevices = playbackDevices;
+    if (m_deviceModel) {
+        for (Device *device : m_deviceModel->items()) {
+            if (device)
+                device->setFilteredOut(!m_playbackDevices.isEmpty()
+                                       && !m_playbackDevices.contains(device->id()));
+        }
+    }
+    emit playbackDevicesChanged(m_playbackDevices);
 }
 
-QStringList TimelineManager::getPlaybackDevices()
+QStringList TimelineManager::getPlaybackDevices() const
 {
-    return m_paybackDevices;
+    return m_playbackDevices;
 }
 
 
@@ -333,6 +366,7 @@ bool TimelineManager::readFromStream(QDataStream &stream)
     }
 
     stopPlayback();
+    setPlaybackDevices({});
     if (!m_playQueue.isEmpty()) {
         m_playQueue.clear();
         emit playQueueChanged();
@@ -356,10 +390,10 @@ void TimelineManager::updateTimeline(Timeline *timeline, qint64 clockTimeMs)
     const Timeline::State previousState = timeline->state();
     const QList<TimelineCommand *> commands = timeline->updateTime(clockTimeMs);
     for (TimelineCommand* command : commands) {
-        if (m_paybackDevices.isEmpty() || m_paybackDevices.contains(command->targetDeviceId())) {
+        if (m_playbackDevices.isEmpty() || m_playbackDevices.contains(command->targetDeviceId())) {
 			emit commandTriggered(timeline, command);
         } else {
-            command->setState(TimelineCommand::Succeeded);
+            command->setState(TimelineCommand::Skipped);
         }
     }
     if (previousState == Timeline::Running

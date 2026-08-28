@@ -16,10 +16,11 @@ Item {
     property string deviceIdFilter: ""
     property string selectedCommandId: ""
     property bool editingEnabled: true
+    property bool showDeviceName: false
     readonly property var visibleCommands: filterCommands()
     readonly property int count: visibleCommands.length
     readonly property int timeColumnWidth: 92
-    readonly property int typeColumnWidth: 36
+    readonly property int deviceColumnWidth: showDeviceName ? 112 : 36
     readonly property int resultColumnWidth: 32
 
     signal commandSelected(var command)
@@ -57,6 +58,13 @@ Item {
         return name.length > 0 ? name : String(deviceId || qsTr("未分配"))
     }
 
+    function commandFilteredOut(command) {
+        if (command && command.filteredOut)
+            return true
+        var device = deviceForId(command ? command.targetDeviceId : "")
+        return device && device.filteredOut
+    }
+
     function padNumber(value, width) {
         var text = String(value)
         while (text.length < width)
@@ -78,6 +86,9 @@ Item {
     }
 
     function resultColor(command) {
+        if (commandFilteredOut(command))
+            return root.colorValue("neutralBorder", "#45576b")
+
         return command && command.stateColor
             ? String(command.stateColor)
             : root.colorValue("neutralBorder", "#45576b")
@@ -107,9 +118,11 @@ Item {
                 }
 
                 Base.AppText {
-                    Layout.preferredWidth: root.typeColumnWidth
-                    horizontalAlignment: Text.AlignHCenter
-                    text: qsTr("类型")
+                    Layout.preferredWidth: root.deviceColumnWidth
+                    horizontalAlignment: root.showDeviceName
+                        ? Text.AlignLeft
+                        : Text.AlignHCenter
+                    text: qsTr("设备")
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                 }
@@ -161,9 +174,11 @@ Item {
                     : "")
                 readonly property bool selected: String(commandData && commandData.id || "")
                     === root.selectedCommandId
+                readonly property bool filteredOut: root.commandFilteredOut(commandData)
 
                 width: commandList.width
                 height: 40
+                opacity: filteredOut ? 0.46 : 1
                 leftPadding: 10
                 rightPadding: 10
                 topPadding: 0
@@ -171,6 +186,10 @@ Item {
                 hoverEnabled: true
                 focusPolicy: Qt.StrongFocus
                 onClicked: root.commandSelected(commandData)
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 120 }
+                }
 
                 background: Rectangle {
                     color: commandRow.selected
@@ -212,11 +231,14 @@ Item {
                     }
 
                     Item {
-                        Layout.preferredWidth: root.typeColumnWidth
+                        Layout.preferredWidth: root.deviceColumnWidth
                         Layout.fillHeight: true
 
                         AppComponents.DeviceIcon {
-                            anchors.centerIn: parent
+                            id: deviceIcon
+
+                            x: root.showDeviceName ? 0 : Math.round((parent.width - width) / 2)
+                            anchors.verticalCenter: parent.verticalCenter
                             size: 18
                             name: String(commandRow.targetDevice
                                 && commandRow.targetDevice.deviceType
@@ -237,6 +259,20 @@ Item {
                                 ? commandRow.targetDevice.deviceType
                                 : qsTr("未知类型"))
                         }
+
+                        Base.AppText {
+                            visible: root.showDeviceName
+                            anchors.left: deviceIcon.right
+                            anchors.leftMargin: 6
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: root.deviceName(commandRow.commandData
+                                ? commandRow.commandData.targetDeviceId
+                                : "")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                            elide: Text.ElideRight
+                        }
                     }
 
                     RowLayout {
@@ -249,7 +285,9 @@ Item {
                                 ? commandRow.commandData.commandName
                                 : qsTr("指令"))
                             styleRole: UiStyle.TypographyRole.BodyM
-                            textTone: UiStyle.TextTone.Primary
+                            textTone: commandRow.filteredOut
+                                ? UiStyle.TextTone.Secondary
+                                : UiStyle.TextTone.Primary
                             elide: Text.ElideRight
 
                             MouseArea {

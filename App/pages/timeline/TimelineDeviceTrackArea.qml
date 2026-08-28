@@ -177,6 +177,7 @@ Item {
             readonly property string targetDeviceId: String(trackData.id || "")
             readonly property bool selected: root.trackSelectedState(trackData)
             readonly property bool online: String(trackData.status || "") === qsTr("在线")
+            readonly property bool filteredOut: trackData && trackData.filteredOut
             readonly property var childTracks: root.childTracksForParent(targetDeviceId)
             readonly property bool expanded: childTracks.length > 0
                 && root.parentTrackExpanded(targetDeviceId)
@@ -282,7 +283,12 @@ Item {
                 y: Math.round((root.rowHeight - height) / 2)
                 width: Math.max(80, root.labelWidth - x - 14)
                 spacing: 8
+                opacity: trackRow.filteredOut ? 0.42 : 1
                 z: 2
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 120 }
+                }
 
                 Rectangle {
                     id: onlineIndicator
@@ -291,9 +297,11 @@ Item {
                     width: 8
                     height: 8
                     radius: 4
-                    color: trackRow.online
+                    color: trackRow.filteredOut
+                        ? root.colorValue("neutralBorder", "#45576b")
+                        : (trackRow.online
                         ? root.colorValue("successFill", "#22c55e")
-                        : root.colorValue("dangerFill", "#ef4444")
+                        : root.colorValue("dangerFill", "#ef4444"))
                 }
 
                 AppComponents.DeviceIcon {
@@ -310,7 +318,9 @@ Item {
                         - deviceTypeIcon.width - onlineIndicator.width - parent.spacing * 2)
                     text: root.deviceName(trackRow.trackData)
                     styleRole: UiStyle.TypographyRole.BodyM
-                    textTone: UiStyle.TextTone.Primary
+                    textTone: trackRow.filteredOut
+                        ? UiStyle.TextTone.Secondary
+                        : UiStyle.TextTone.Primary
                     elide: Text.ElideRight
                 }
             }
@@ -326,6 +336,7 @@ Item {
                 commands: root.commandModel && root.commandModel.commands
                     ? root.commandModel.commands
                     : []
+                devices: root.devices
                 deviceIdFilter: trackRow.targetDeviceId
                 selectedCommandId: root.selectedCommandId
                 timelineOffsetX: root.labelWidth
@@ -346,6 +357,11 @@ Item {
                     y: root.rowHeight + index * root.childRowHeight
                     width: trackRow.width
                     height: root.childRowHeight
+                    opacity: trackRow.filteredOut ? 0.42 : 1
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 120 }
+                    }
 
                     Rectangle {
                         anchors.fill: parent
@@ -376,7 +392,9 @@ Item {
                         width: 6
                         height: 6
                         radius: 3
-                        color: String(childTrackRow.childTrackData.color || "#16a34a")
+                        color: trackRow.filteredOut
+                            ? root.colorValue("neutralBorder", "#45576b")
+                            : String(childTrackRow.childTrackData.color || "#16a34a")
                     }
 
                     Base.AppText {
@@ -424,7 +442,11 @@ Item {
                                 width: Math.max(1, Math.min(parent.width, endX) - x)
                                 height: 14
                                 radius: 3
-                                color: String(segmentData.color || childTrackRow.childTrackData.color || "#16a34a")
+                                color: trackRow.filteredOut
+                                    ? root.colorValue("neutralBorder", "#45576b")
+                                    : String(segmentData.color
+                                             || childTrackRow.childTrackData.color
+                                             || "#16a34a")
                                 opacity: 0.82
                                 visible: endTimeMs > startTimeMs && endX > 0 && startX < parent.width
                             }

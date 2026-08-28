@@ -5,22 +5,38 @@
 #include "devices/DeviceConstants.h"
 #include "devices/executors/DeviceCommandExecutor.h"
 #include "devices/executors/HttpCommandExecutor.h"
+#include "devices/executors/NetworkPing.h"
 #include "devices/executors/SerialCommandExecutor.h"
 
 #include <QMetaObject>
 
+namespace {
+
+constexpr quint16 kPcOnlinePort = 11357;
+
+}
+
 
 DeviceExecutorManager::DeviceExecutorManager(QObject *parent)
     : QObject(parent)
+    , m_networkPing(new NetworkPing)
 {
+    m_networkPing->moveToThread(&m_onlineCheckThread);
+    connect(m_networkPing, &NetworkPing::onlineChecked,
+            this, &DeviceExecutorManager::onlineChecked);
+    connect(&m_onlineCheckThread, &QThread::finished,
+            m_networkPing, &QObject::deleteLater);
     m_onlineCheckTimer.setInterval(15000);
     connect(&m_onlineCheckTimer, &QTimer::timeout, this, &DeviceExecutorManager::checkOnline);
     m_onlineCheckTimer.start();
+    m_onlineCheckThread.start();
     m_thread.start();
 }
 
 DeviceExecutorManager::~DeviceExecutorManager()
 {
+    m_onlineCheckThread.quit();
+    m_onlineCheckThread.wait();
     m_thread.quit();
     m_thread.wait();
 }
@@ -34,6 +50,7 @@ void DeviceExecutorManager::bindDevice(Device *device)
     disconnect(this, &DeviceExecutorManager::onlineChecked, device, nullptr);
     disconnect(device, &QObject::destroyed, this, nullptr);
 
+    QString executorKey;
     for (const QString &protocol : device->supportedProtocols()) {
         const QString protocolValue = protocol.trimmed();
         if (protocolValue != DeviceProtocol::Http
@@ -45,34 +62,35 @@ void DeviceExecutorManager::bindDevice(Device *device)
         const QVariantMap params = command ? command->resolvedParams() : device->configValues();
         delete command;
 
-        QString executorKey;
-        bool created = false;
-        DeviceCommandExecutor *executor = executorFor(protocolValue, params, &executorKey, &created);
-        if (!executor) {
-            device->setStatus(tr("离线"));
-            return;
-        }
+        if (executorFor(protocolValue, params, &executorKey))
+            break;
+    }
 
-        const QString deviceId = device->id();
-        m_onlineChecks.insert(deviceId, OnlineCheck{params, executorKey});
+    const QString deviceId = device->id();
+    const QString ip = device->configValues().value(DeviceKey::Ip).toString().trimmed();
+    const quint16 tcpPort = device->supportsProtocol(DeviceProtocol::Pc)
+        ? kPcOnlinePort
+        : 0;
+    m_onlineChecks.insert(deviceId, OnlineCheck{ip, tcpPort, executorKey});
+
+    if (!executorKey.isEmpty()) {
         QStringList deviceIds = m_deviceIdsByExecutorKey.value(executorKey);
         if (!deviceIds.contains(deviceId)) {
             deviceIds.append(deviceId);
             m_deviceIdsByExecutorKey.insert(executorKey, deviceIds);
         }
-
-        connect(this, &DeviceExecutorManager::onlineChecked, device, [this, device, deviceId](const QString &checkedDeviceId, bool online) {
-            if (checkedDeviceId == deviceId)
-                device->setStatus(online ? tr("在线") : tr("离线"));
-        });
-        connect(device, &QObject::destroyed, this, [this, deviceId]() {
-            unbindDeviceId(deviceId);
-        });
-
-        if (created)
-            requestOnlineCheck();
-        return;
     }
+
+    connect(this, &DeviceExecutorManager::onlineChecked, device, [this, device, deviceId](const QString &checkedDeviceId, bool online) {
+        if (checkedDeviceId == deviceId)
+            device->setStatus(online ? tr("在线") : tr("离线"));
+    });
+    connect(device, &QObject::destroyed, this, [this, deviceId]() {
+        unbindDeviceId(deviceId);
+    });
+
+    if (!ip.isEmpty())
+        requestOnlineCheck();
 }
 
 void DeviceExecutorManager::unbindDevice(Device *device)
@@ -102,26 +120,27 @@ void DeviceExecutorManager::execute(DeviceCommand *command, const QVariantMap &e
 void DeviceExecutorManager::checkOnline()
 {
     m_onlineCheckRequested = false;
-    QHash<DeviceCommandExecutor *, QStringList> requestIdsByExecutor;
-    QHash<DeviceCommandExecutor *, QVariantMap> paramsByExecutor;
+    QHash<QString, QStringList> requestIdsByTarget;
+    QHash<QString, OnlineCheck> checksByTarget;
     for (auto it = m_onlineChecks.cbegin(); it != m_onlineChecks.cend(); ++it) {
-        DeviceCommandExecutor *executor = m_executors.value(it.value().executorKey);
-        if (!executor) {
-            emit onlineChecked(it.key(), false);
+        const OnlineCheck &check = it.value();
+        if (check.ip.isEmpty())
             continue;
-        }
 
-        requestIdsByExecutor[executor].append(it.key());
-        if (!paramsByExecutor.contains(executor))
-            paramsByExecutor.insert(executor, it.value().params);
+        const QString targetKey = QStringLiteral("%1:%2")
+                                      .arg(check.tcpPort)
+                                      .arg(check.ip);
+        requestIdsByTarget[targetKey].append(it.key());
+        if (!checksByTarget.contains(targetKey))
+            checksByTarget.insert(targetKey, check);
     }
 
-    for (auto it = requestIdsByExecutor.cbegin(); it != requestIdsByExecutor.cend(); ++it) {
-        DeviceCommandExecutor *executor = it.key();
-        const QStringList requestIds = it.value();
-        const QVariantMap params = paramsByExecutor.value(executor);
-        QMetaObject::invokeMethod(executor, [executor, requestIds, params]() {
-            executor->checkOnline(requestIds, params);
+    for (auto it = requestIdsByTarget.cbegin(); it != requestIdsByTarget.cend(); ++it) {
+        NetworkPing *networkPing = m_networkPing;
+        const QStringList deviceIds = it.value();
+        const OnlineCheck check = checksByTarget.value(it.key());
+        QMetaObject::invokeMethod(networkPing, [networkPing, deviceIds, check]() {
+            networkPing->checkOnline(deviceIds, check.ip, check.tcpPort);
         }, Qt::QueuedConnection);
     }
 }
@@ -156,12 +175,8 @@ void DeviceExecutorManager::requestOnlineCheck()
 
 DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protocol,
                                                           const QVariantMap &params,
-                                                          QString *executorKey,
-                                                          bool *created)
+                                                          QString *executorKey)
 {
-    if (created)
-        *created = false;
-
     const QString protocolValue = protocol.trimmed();
     QString key;
     DeviceCommandExecutor *executor = nullptr;
@@ -195,10 +210,7 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
         executor->moveToThread(&m_thread);
         m_executors.insert(key, executor);
         connect(executor, &DeviceCommandExecutor::executionFinished, this, &DeviceExecutorManager::executionFinished);
-        connect(executor, &DeviceCommandExecutor::onlineChecked, this, &DeviceExecutorManager::onlineChecked);
         connect(&m_thread, &QThread::finished, executor, &QObject::deleteLater);
-        if (created)
-            *created = true;
     }
     return executor;
 }

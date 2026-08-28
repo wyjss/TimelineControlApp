@@ -11,6 +11,7 @@ Item {
         : null
     property var ruler: null
     property var commands: []
+    property var devices: []
     property string deviceIdFilter: ""
     property string selectedCommandId: ""
     property real timelineOffsetX: 0
@@ -63,7 +64,23 @@ Item {
             : 0
     }
 
+    function commandFilteredOut(command) {
+        if (command && command.filteredOut)
+            return true
+
+        var deviceId = String(command && command.targetDeviceId || "")
+        for (var index = 0; index < devices.length; ++index) {
+            var device = devices[index]
+            if (String(device.id || "") === deviceId)
+                return device.filteredOut
+        }
+        return false
+    }
+
     function commandColor(command) {
+        if (commandFilteredOut(command))
+            return colorValue("neutralBorder", "#45576b")
+
         var commandParams = command && command.commandParams ? command.commandParams : {}
         if (commandParams.color !== undefined && String(commandParams.color).length > 0)
             return String(commandParams.color)
@@ -258,10 +275,13 @@ Item {
             property var commandData: modelData
             readonly property real durationMs: root.commandDurationMs(commandData)
             readonly property bool instantCommand: durationMs <= 0
+            readonly property bool filteredOut: root.commandFilteredOut(commandData)
             readonly property color commandColor: root.commandColor(commandData)
-            readonly property color stateColor: commandData && commandData.stateColor
+            readonly property color stateColor: filteredOut
+                ? root.colorValue("neutralBorder", "#45576b")
+                : (commandData && commandData.stateColor
                 ? commandData.stateColor
-                : root.colorValue("neutralText", "#cbd5e1")
+                : root.colorValue("neutralText", "#cbd5e1"))
             readonly property string commandText: String(commandData && commandData.commandName
                 ? commandData.commandName
                 : qsTr("指令"))
@@ -292,6 +312,11 @@ Item {
             height: root.height
             z: selected ? 3 : (commandMouse.containsMouse ? 2 : 1)
             visible: instantLayout.visible && x + width > 0 && x < root.width
+            opacity: filteredOut ? 0.48 : 1
+
+            Behavior on opacity {
+                NumberAnimation { duration: 120 }
+            }
 
             MouseArea {
                 id: commandMouse
@@ -374,7 +399,9 @@ Item {
                 anchors.rightMargin: 7
                 text: commandBlock.displayText
                 styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Inverse
+                textTone: commandBlock.filteredOut
+                    ? UiStyle.TextTone.Neutral
+                    : UiStyle.TextTone.Inverse
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
             }
@@ -419,7 +446,9 @@ Item {
                 anchors.rightMargin: 8
                 text: commandBlock.commandText
                 styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Inverse
+                textTone: commandBlock.filteredOut
+                    ? UiStyle.TextTone.Neutral
+                    : UiStyle.TextTone.Inverse
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
             }

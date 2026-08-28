@@ -3,11 +3,11 @@
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
 
+#define LC "[HttpCommandExecutor] "
+#include "LogMacros.h"
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QTcpSocket>
-#include <QNetworkProxy>
 #include <QTimer>
 #include <QUrl>
 
@@ -49,6 +49,8 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
         emit executionFinished(command, false, tr("HTTP 方法为空"));
         return;
     }
+
+    LOG_INFO("POST REQUEST");
     QNetworkReply *reply = method == QStringLiteral("POST")
         ? m_manager->post(request, params.value(DeviceKey::HttpBody).toString().toUtf8())
         : m_manager->get(request);
@@ -57,10 +59,12 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
         if (reply->isRunning()) {
             reply->setProperty("timedOut", true);
             reply->abort();
+            LOG_ERROR("timeout, request force quit");
         }
     });
 
     connect(reply, &QNetworkReply::finished, this, [this, command, reply]() {
+        LOG_INFO("REPLY REQUEST");
         const QVariant status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
         const int httpStatus = status.toInt();
         const bool success = reply->error() == QNetworkReply::NoError
@@ -70,24 +74,13 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
             message = reply->property("timedOut").toBool()
                 ? tr("HTTP 请求超时")
                 : (reply->error() == QNetworkReply::NoError ? tr("HTTP %1").arg(httpStatus) : reply->errorString());
-            markFailed(message);
+            
+            if (reply->error() == QNetworkReply::ConnectionRefusedError) {
+                LOG_ERROR("http连接错误，禁用2000ms" << reply->url());
+				markFailed(message);
+            }
         }
         emit executionFinished(command, success, message);
     });
     connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
-}
-
-bool HttpCommandExecutor::checkOnlineImpl(const QVariantMap &params)
-{
-    const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
-    const int port = params.value(DeviceKey::Port).toInt();
-    if (ip.isEmpty() || port <= 0)
-        return false;
-
-    QTcpSocket socket;
-    socket.setProxy(QNetworkProxy::NoProxy);
-    socket.connectToHost(ip, port);
-    const bool connected = socket.waitForConnected(1000);
-    socket.abort();
-    return connected;
 }

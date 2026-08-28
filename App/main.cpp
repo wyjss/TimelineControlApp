@@ -1,7 +1,9 @@
 #include <QApplication>
 #include <QFileInfo>
+#include <QImage>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickImageProvider>
 #include <QQuickStyle>
 #include <QStringList>
 #include <QSerialPort>
@@ -18,6 +20,35 @@
 #include "runtime/video/FfmpegVideoFrameItem.h"
 #include "runtime/video/PcTimelinePreviewGenerator.h"
 #include "server/web/WebControlServer.h"
+
+namespace {
+
+class DeviceIconProvider final : public QQuickImageProvider
+{
+public:
+    DeviceIconProvider()
+        : QQuickImageProvider(QQuickImageProvider::Image)
+    {
+    }
+
+    QImage requestImage(const QString &id, QSize *size, const QSize &requestedSize) override
+    {
+        const QString name = QFileInfo(QUrl::fromPercentEncoding(id.toUtf8())).fileName();
+        QImage image(QStringLiteral(":/TimelineControlApp/App/assets/icons/%1.png").arg(name));
+        if (image.isNull())
+            image.load(QCoreApplication::applicationDirPath()
+                       + QStringLiteral("/assets/icons/%1.png").arg(name));
+        if (image.isNull())
+            image.load(QStringLiteral(":/TimelineControlApp/App/assets/icons/missing.png"));
+        if (size)
+            *size = image.size();
+        return requestedSize.isValid()
+            ? image.scaled(requestedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation)
+            : image;
+    }
+};
+
+}
 
 //template<typename TDds, typename TProto>
 //static inline void copyFieldValueToDds(const TProto& p, TDds& d, int maxCharXSize)
@@ -100,6 +131,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<FfmpegVideoFrameItem>("TimelineControl.Media", 1, 0, "FfmpegVideoFrameItem");
 
     QQmlApplicationEngine engine;
+    engine.addImageProvider(QStringLiteral("deviceicon"), new DeviceIconProvider);
     engine.rootContext()->setContextProperty(QStringLiteral("app"), &runtime);
     engine.rootContext()->setContextProperty(QStringLiteral("timelineShellController"), &shellController);
     engine.rootContext()->setContextProperty(QStringLiteral("pcTimelinePreviewGenerator"),

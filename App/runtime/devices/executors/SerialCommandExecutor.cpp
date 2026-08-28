@@ -9,7 +9,6 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QStringList>
-#include <QTcpSocket>
 #include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
@@ -105,18 +104,4 @@ void SerialCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMa
         emit executionFinished(command, success, message);
     });
     connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
-}
-
-bool SerialCommandExecutor::checkOnlineImpl(const QVariantMap &params)
-{
-    Q_UNUSED(params)
-    if (m_ip.isEmpty())
-        return false;
-
-    QTcpSocket socket;
-    socket.setProxy(QNetworkProxy::NoProxy);
-    socket.connectToHost(m_ip, kServerPort);
-    const bool connected = socket.waitForConnected(1000);
-    socket.abort();
-    return connected;
 }

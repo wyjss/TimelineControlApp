@@ -10,6 +10,7 @@ class Timeline;
 class TimelineCommand;
 class TimelineClock;
 class TimelineModel;
+class DeviceModel;
 
 // 时间线管理器
 class TimelineManager final : public QObject
@@ -33,7 +34,7 @@ public:
     };
     Q_ENUM(PlaybackState)
 
-    explicit TimelineManager(QObject *parent = nullptr);
+    explicit TimelineManager(DeviceModel *deviceModel, QObject *parent = nullptr);
     static TimelineManager* getInstance();
     // 查询
     TimelineModel *timelineModel() const;
@@ -61,7 +62,7 @@ public:
 
     // 播控-过滤
     void setPlaybackDevices(const QStringList& ids);
-    QStringList getPlaybackDevices();
+    QStringList getPlaybackDevices() const;
 
     void writeToStream(QDataStream &stream) const;
     bool readFromStream(QDataStream &stream);
@@ -81,9 +82,10 @@ private:
 
     TimelineClock *m_clock = nullptr;
     TimelineModel *m_timelineModel = nullptr;
+    DeviceModel *m_deviceModel = nullptr;
     QStringList m_playQueue;
     int m_playQueueIndex = -1;
-    QStringList m_paybackDevices;
+    QStringList m_playbackDevices;
 };
 
 

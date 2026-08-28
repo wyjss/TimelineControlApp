@@ -398,10 +398,15 @@ Item {
                             delegate: Item {
                                 width: deviceGrid.cellWidth
                                 height: deviceGrid.cellHeight
+                                opacity: deviceData && deviceData.filteredOut ? 0.46 : 1
 
                                 readonly property var deviceData: modelData
                                 readonly property bool inSelectedGroup: root.selectedGroupId.length > 0
                                     && root.deviceInGroup(deviceData.id, root.selectedGroupId)
+
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 120 }
+                                }
 
                                 Base.AppCard {
                                     anchors.fill: parent

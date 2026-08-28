@@ -29,6 +29,7 @@ class Device final : public QObject
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
     Q_PROPERTY(QStringList supportedProtocols READ supportedProtocols WRITE setSupportedProtocols NOTIFY supportedProtocolsChanged FINAL)
     Q_PROPERTY(QString status READ status WRITE setStatus NOTIFY statusChanged FINAL)
+    Q_PROPERTY(bool filteredOut READ filteredOut WRITE setFilteredOut NOTIFY filteredOutChanged FINAL)
     Q_PROPERTY(QString description READ description WRITE setDescription NOTIFY descriptionChanged FINAL)
     Q_PROPERTY(QVariantMap configValues READ configValues NOTIFY configValuesChanged FINAL)
     Q_PROPERTY(QVariantList params READ params NOTIFY paramsChanged FINAL)
@@ -52,6 +53,9 @@ public:
 
     QString status() const;
     void setStatus(const QString &status);
+
+    bool filteredOut() const;
+    void setFilteredOut(bool filteredOut);
 
     QString description() const;
     void setDescription(const QString &description);
@@ -85,6 +89,7 @@ signals:
     void nameChanged();
     void supportedProtocolsChanged();
     void statusChanged();
+    void filteredOutChanged();
     void descriptionChanged();
     void configValuesChanged();
     void paramsChanged();
@@ -99,6 +104,7 @@ private:
     QString m_name;
     QStringList m_supportedProtocols;
     QString m_status;
+    bool m_filteredOut = false;
     QString m_description;
     QList<DeviceParamSpec *> m_params;
     QList<DeviceCommand *> m_commands;

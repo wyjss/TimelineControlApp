@@ -34,6 +34,8 @@ find_package(Qt5 5.14 REQUIRED COMPONENTS
     Network
     Widgets
     SerialPort
+    OpenGL
+    Xml
 )
 
 add_subdirectory(UICore_new)
@@ -107,3 +109,5 @@ if(EXISTS "D:/Program/third_party/all/bin/glew32.dll")
             $<TARGET_FILE_DIR:TimelineControlApp>
     )
 endif()
+
+add_subdirectory(LocatorViewer)

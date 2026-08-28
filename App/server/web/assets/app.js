@@ -4,7 +4,8 @@ const elements = Object.fromEntries([
     "remaining-time", "stop-button", "primary-button", "primary-icon", "primary-label",
     "refresh-button", "selection-count", "apply-queue-button", "timeline-list",
     "empty-timelines", "queue-count", "queue-list", "empty-queue", "device-count",
-    "device-list", "empty-devices", "toast"
+    "device-list", "empty-devices", "device-selection", "command-program", "command-count", "command-list",
+    "empty-commands", "toast"
 ].map(id => [id, document.getElementById(id)]));
 
 const state = {
@@ -14,7 +15,8 @@ const state = {
     busy: false,
     refreshing: false,
     connected: false,
-    toastTimer: 0
+    toastTimer: 0,
+    renderSignatures: {}
 };
 
 function formatTime(milliseconds) {
@@ -40,6 +42,16 @@ function stateLabel(value) {
         paused: "已暂停",
         completed: "已完成"
     })[value] || "待播";
+}
+
+function commandStateLabel(value) {
+    return ({
+        idle: "待执行",
+        running: "执行中",
+        succeeded: "已成功",
+        failed: "失败",
+        skipped: "已跳过"
+    })[value] || "待执行";
 }
 
 function showToast(message, error = false) {
@@ -71,28 +83,46 @@ async function api(path, options = {}) {
 }
 
 function currentTimeline(data) {
-    return data.timelines.find(item => item.queuePosition === data.queueIndex)
+    return (data.queueIndex >= 0
+        ? data.timelines.find(item => item.queuePosition === data.queueIndex)
+        : null)
         || data.timelines.find(item => item.state === "running")
+        || data.timelines.find(item => item.id === data.currentTimelineId)
         || data.timelines.find(item => state.selectedIds.has(item.id))
+        || data.timelines[0]
         || null;
 }
 
 function renderTimelineList(data) {
+    const editable = data.playbackState === "stopped";
+    const signature = JSON.stringify([
+        editable,
+        state.busy,
+        [...state.selectedIds],
+        data.timelines.map(timeline => [
+            timeline.id,
+            timeline.name,
+            timeline.state,
+            timeline.durationMs,
+            timeline.commands.map(command => command.state)
+        ])
+    ]);
+    if (state.renderSignatures.timelines === signature) return;
+    state.renderSignatures.timelines = signature;
     elements["timeline-list"].replaceChildren();
     elements["empty-timelines"].hidden = data.timelines.length > 0;
-    const editable = data.playbackState === "stopped";
 
     for (const timeline of data.timelines) {
         const selected = state.selectedIds.has(timeline.id);
         const card = createElement("button", `timeline-card${selected ? " selected" : ""}${timeline.state === "running" ? " active" : ""}`);
         card.type = "button";
-        card.disabled = !editable;
+        card.disabled = !editable || state.busy;
         card.setAttribute("aria-pressed", String(selected));
         card.addEventListener("click", () => {
             if (selected) state.selectedIds.delete(timeline.id);
             else state.selectedIds.add(timeline.id);
             state.selectionDirty = true;
-            render(data);
+            render(state.data);
         });
 
         card.append(createElement("span", "queue-check", "✓"));
@@ -114,6 +144,13 @@ function renderQueue(data) {
     const queue = [...state.selectedIds]
         .map(id => data.timelines.find(timeline => timeline.id === id))
         .filter(Boolean);
+    const signature = JSON.stringify([
+        data.queueIndex,
+        data.playbackState,
+        queue.map(timeline => [timeline.id, timeline.name, timeline.durationMs])
+    ]);
+    if (state.renderSignatures.queue === signature) return;
+    state.renderSignatures.queue = signature;
     elements["queue-list"].replaceChildren();
     elements["queue-count"].textContent = String(queue.length);
     elements["empty-queue"].hidden = queue.length > 0;
@@ -129,22 +166,90 @@ function renderQueue(data) {
 }
 
 function renderDevices(data) {
+    const selectedIds = data.playbackDevices || [];
+    const signature = JSON.stringify(data.devices.map(device => [
+        device.id,
+        device.name,
+        device.type,
+        device.status,
+        selectedIds.includes(device.id)
+    ]).concat([[data.playbackState, state.busy]]));
+    if (state.renderSignatures.devices === signature) return;
+    state.renderSignatures.devices = signature;
     elements["device-list"].replaceChildren();
     elements["device-count"].textContent = String(data.devices.length);
     elements["empty-devices"].hidden = data.devices.length > 0;
+    const selectedNames = data.devices
+        .filter(device => selectedIds.includes(device.id))
+        .map(device => device.name || device.id);
+    elements["device-selection"].textContent = selectedNames.length
+        ? `当前：${selectedNames.join("、")}`
+        : "当前：全部设备";
 
     for (const device of data.devices) {
+        const selected = selectedIds.includes(device.id);
         const status = device.status?.trim() || "未报告";
         const normalized = status.toLowerCase();
         const problem = /离线|断开|失败|故障|异常|offline|error|failed/.test(normalized);
         const online = !problem && /在线|正常|就绪|已连接|online|ready|connected/.test(normalized);
-        const row = createElement("div", "device-row");
+        const row = createElement("button", `device-row${selected ? " selected" : ""}`);
+        row.type = "button";
+        row.disabled = state.busy || data.playbackState !== "stopped";
+        row.setAttribute("aria-pressed", String(selected));
+        row.addEventListener("click", () => post(
+            "/api/v1/playback-devices",
+            { deviceIds: selected ? [] : [device.id] },
+            selected ? "已恢复全部设备播控" : `已选择 ${device.name || device.id}`
+        ));
         row.append(createElement("span", `device-dot${online ? " online" : ""}${problem ? " problem" : ""}`));
         const copy = createElement("span", "device-copy");
         copy.append(createElement("strong", "", device.name || device.id));
         copy.append(createElement("span", "", device.type || "未分类设备"));
         row.append(copy, createElement("span", "device-status", status));
+        row.append(createElement("span", "device-selected", selected ? "✓" : ""));
         elements["device-list"].append(row);
+    }
+}
+
+function renderCommands(data, timeline) {
+    const commands = timeline ? [...timeline.commands].sort((left, right) => left.startTimeMs - right.startTimeMs) : [];
+    const devices = new Map(data.devices.map(device => [device.id, device.name || device.id]));
+    const nextCommand = commands.find(command => command.state === "idle"
+        && command.startTimeMs >= (timeline?.currentTimeMs || 0));
+    const signature = JSON.stringify([
+        timeline?.id,
+        timeline?.name,
+        nextCommand?.id,
+        commands.map(command => [
+            command.id,
+            command.name,
+            command.deviceId,
+            command.startTimeMs,
+            command.durationMs,
+            command.state,
+            command.error
+        ]),
+        [...devices]
+    ]);
+    if (state.renderSignatures.commands === signature) return;
+    state.renderSignatures.commands = signature;
+    elements["command-program"].textContent = timeline?.name || "等待选择节目";
+    elements["command-count"].textContent = String(commands.length);
+    elements["command-list"].replaceChildren();
+    elements["empty-commands"].hidden = commands.length > 0;
+    elements["empty-commands"].textContent = timeline ? "该节目没有指令" : "选择节目后查看指令";
+
+    for (const command of commands) {
+        const row = createElement("div", `command-grid command-row ${command.state}${command === nextCommand ? " next" : ""}`);
+        row.append(createElement("span", "command-time", formatTime(command.startTimeMs)));
+        const copy = createElement("span", "command-copy");
+        copy.append(createElement("strong", "", command.name || "未命名指令"));
+        if (command.error) copy.append(createElement("small", "command-error", command.error));
+        row.append(copy);
+        row.append(createElement("span", "command-device", devices.get(command.deviceId) || command.deviceId || "未指定设备"));
+        row.append(createElement("span", "command-duration", command.durationMs ? formatTime(command.durationMs) : "瞬时"));
+        row.append(createElement("span", `command-status ${command.state}`, commandStateLabel(command.state)));
+        elements["command-list"].append(row);
     }
 }
 
@@ -164,7 +269,7 @@ function render(data) {
     elements["playback-dot"].style.color = playback === "running" ? "var(--green)" : playback === "paused" ? "var(--amber)" : "var(--muted)";
     elements["now-title"].textContent = timeline?.name || "等待选择节目";
     elements["now-summary"].textContent = timeline
-        ? `队列第 ${Math.max(0, timeline.queuePosition) + 1} 项 · ${timeline.commands.length} 条设备指令`
+        ? `${timeline.queuePosition >= 0 ? `队列第 ${timeline.queuePosition + 1} 项` : "当前节目"} · ${timeline.commands.length} 条设备指令`
         : "从节目库中选择并编排播放队列";
     elements["master-time"].textContent = formatTime(data.currentTimeMs);
     elements["progress-fill"].style.width = `${progress}%`;
@@ -184,6 +289,7 @@ function render(data) {
     renderTimelineList(data);
     renderQueue(data);
     renderDevices(data);
+    renderCommands(data, timeline);
 }
 
 async function refresh(showError = false) {
@@ -205,13 +311,13 @@ async function refresh(showError = false) {
     }
 }
 
-async function post(path, body, successMessage) {
+async function post(path, body, successMessage, syncQueue = false) {
     if (state.busy) return;
     state.busy = true;
     if (state.data) render(state.data);
     try {
         const data = await api(path, { method: "POST", body: JSON.stringify(body) });
-        state.selectionDirty = false;
+        if (syncQueue) state.selectionDirty = false;
         render(data);
         showToast(successMessage);
     } catch (error) {
@@ -223,14 +329,14 @@ async function post(path, body, successMessage) {
 }
 
 elements["apply-queue-button"].addEventListener("click", () =>
-    post("/api/v1/queue", { timelineIds: [...state.selectedIds] }, "播放队列已更新"));
+    post("/api/v1/queue", { timelineIds: [...state.selectedIds] }, "播放队列已更新", true));
 
 elements["primary-button"].addEventListener("click", () => {
     const playback = state.data?.playbackState;
     const action = playback === "paused" ? "resume" : playback === "running" ? "pause" : "start";
     const body = { action };
     if (action === "start") body.timelineIds = [...state.selectedIds];
-    post("/api/v1/control", body, action === "pause" ? "播放已暂停" : "播控状态已更新");
+    post("/api/v1/control", body, action === "pause" ? "播放已暂停" : "播控状态已更新", action === "start");
 });
 
 elements["stop-button"].addEventListener("click", () =>

@@ -27,6 +27,7 @@ Item {
     property var pcPreviewGenerator: typeof pcTimelinePreviewGenerator !== "undefined"
         ? pcTimelinePreviewGenerator
         : null
+    property bool controlTrackOnly: false
     readonly property int preStartTimelineDurationMs: 24 * 60 * 60 * 1000
     readonly property int timelineDurationMs: currentTimeline && currentTimeline.durationMs > 0
         ? currentTimeline.durationMs
@@ -52,6 +53,8 @@ Item {
     property int selectedCommandIndex: -1
     property string timelineCommandListMode: "all"
     property string executionStatusText: ""
+
+    signal closeRequested()
 
     onDevicesChanged: ensureSelectedTimelineDevice()
     onSelectedTimelineDeviceIdChanged: {
@@ -171,6 +174,7 @@ Item {
         if (String(command.targetDeviceId || "").length > 0)
             selectTimelineDevice(String(command.targetDeviceId || ""))
         setTimelineCurrentTimeMs(command.startTimeMs)
+        positionControlTrackAtTime(command.startTimeMs)
     }
 
     function editTimelineCommand(command) {
@@ -178,6 +182,11 @@ Item {
             return
 
         addTimelineCommandPopup.openForTimelineCommand(command)
+    }
+
+    function requestRemoveTimelineCommand(command) {
+        if (timelineStopped && timelineCommandModel && command)
+            removeTimelineCommandPopup.openForCommand(command)
     }
 
     function setTimelineCurrentTimeMs(currentTimeMs) {
@@ -188,6 +197,18 @@ Item {
         fallbackTimelineCurrentTimeMs = normalizedTimeMs
         if (pcPreviewGenerator)
             pcPreviewGenerator.seek(normalizedTimeMs)
+    }
+
+    function positionControlTrackAtTime(currentTimeMs) {
+        var viewportWidth = timelineRuler.width - timelineRuler.resolvedTrackLeftX
+        if (viewportWidth <= 0)
+            return
+
+        var timeMs = Math.max(0, Number(currentTimeMs || 0))
+        var contentX = timelineRuler.resolvedStartTimeX
+            + timeMs / 1000 * timelineRuler.safePixelsPerSecond
+        var viewportCenterX = timelineRuler.resolvedTrackLeftX + viewportWidth / 2
+        timelineScrollX = timelineRuler.clampScrollX(contentX - viewportCenterX)
     }
 
     function deviceName(device) {
@@ -275,14 +296,14 @@ Item {
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            columns: 3
+            columns: root.controlTrackOnly ? 2 : 3
             columnSpacing: 14
             rowSpacing: 14
 
             Base.AppSurface {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumWidth: 520
+                Layout.minimumWidth: root.controlTrackOnly ? 420 : 520
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
 
@@ -291,9 +312,24 @@ Item {
                     anchors.margins: 18
                     spacing: 12
 
-                    Base.AppText {
-                        text: qsTr("控制轨")
-                        styleRole: UiStyle.TypographyRole.SectionTitle
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: qsTr("控制轨")
+                            styleRole: UiStyle.TypographyRole.SectionTitle
+                        }
+
+                        Base.AppButton {
+                            visible: root.controlTrackOnly
+                            size: UiStyle.ButtonSize.Small
+                            variant: UiStyle.ButtonVariant.Ghost
+                            iconSymbol: "×"
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("关闭控制轨")
+                            onClicked: root.closeRequested()
+                        }
                     }
 
                     Timeline.TimelineExternalTriggerEditor {
@@ -356,7 +392,7 @@ Item {
             }
 
             Base.AppSurface {
-                Layout.preferredWidth: 340
+                Layout.preferredWidth: root.controlTrackOnly ? 300 : 340
                 Layout.fillHeight: true
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
@@ -419,6 +455,7 @@ Item {
 
                                 width: commandList.width
                                 height: 40
+                                opacity: commandData && commandData.filteredOut ? 0.46 : 1
                                 text: root.commandName(commandRow.commandData)
                                 surfaceTone: UiStyle.SurfaceTone.Ghost
                                 shapeRole: UiStyle.ShapeRole.Control
@@ -428,6 +465,10 @@ Item {
                                 selectionTransition: commandCardSelectionTransition
                                 animateScale: false
                                 onClicked: root.selectCommandIndex(index)
+
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 120 }
+                                }
 
                                 Item {
                                     Layout.fillWidth: true
@@ -444,6 +485,10 @@ Item {
                                             Layout.preferredWidth: 92
                                             text: root.commandName(commandRow.commandData)
                                             styleRole: UiStyle.TypographyRole.BodyM
+                                            textTone: commandRow.commandData
+                                                && commandRow.commandData.filteredOut
+                                                ? UiStyle.TextTone.Secondary
+                                                : UiStyle.TextTone.Primary
                                             elide: Text.ElideRight
                                         }
 
@@ -451,7 +496,10 @@ Item {
                                             Layout.fillWidth: true
                                             text: root.executionParameterNames(commandRow.commandData)
                                             styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Info
+                                            textTone: commandRow.commandData
+                                                && commandRow.commandData.filteredOut
+                                                ? UiStyle.TextTone.Secondary
+                                                : UiStyle.TextTone.Info
                                             elide: Text.ElideRight
                                         }
 
@@ -516,6 +564,7 @@ Item {
             }
 
             Base.AppSurface {
+                visible: !root.controlTrackOnly
                 Layout.preferredWidth: 304
                 Layout.fillHeight: true
                 sizeToContent: false
