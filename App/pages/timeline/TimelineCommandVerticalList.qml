@@ -3,6 +3,7 @@ import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml/components/base" as Base
+import "../../components" as AppComponents
 
 Item {
     id: root
@@ -18,8 +19,8 @@ Item {
     readonly property var visibleCommands: filterCommands()
     readonly property int count: visibleCommands.length
     readonly property int timeColumnWidth: 92
-    readonly property int typeColumnWidth: 68
-    readonly property int resultColumnWidth: 44
+    readonly property int typeColumnWidth: 36
+    readonly property int resultColumnWidth: 32
 
     signal commandSelected(var command)
     signal editRequested(var command)
@@ -40,17 +41,20 @@ Item {
         })
     }
 
-    function deviceName(deviceId) {
+    function deviceForId(deviceId) {
         var normalizedDeviceId = String(deviceId || "")
         for (var index = 0; index < devices.length; ++index) {
             var device = devices[index]
-            if (String(device.id || "") !== normalizedDeviceId)
-                continue
-
-            var name = String(device.name || "").trim()
-            return name.length > 0 ? name : normalizedDeviceId
+            if (String(device.id || "") === normalizedDeviceId)
+                return device
         }
-        return normalizedDeviceId.length > 0 ? normalizedDeviceId : qsTr("未分配")
+        return null
+    }
+
+    function deviceName(deviceId) {
+        var device = deviceForId(deviceId)
+        var name = String(device && device.name || "").trim()
+        return name.length > 0 ? name : String(deviceId || qsTr("未分配"))
     }
 
     function padNumber(value, width) {
@@ -71,38 +75,6 @@ Item {
             .arg(padNumber(minutes, 2))
             .arg(padNumber(seconds, 2))
             .arg(padNumber(totalMs % 1000, 3))
-    }
-
-    function commandProtocol(command) {
-        return String(command && command.commandParams
-            ? command.commandParams.protocol || ""
-            : "").toLowerCase()
-    }
-
-    function protocolLabel(command) {
-        switch (commandProtocol(command)) {
-        case "internal": return qsTr("无协议")
-        case "udp": return "UDP"
-        case "http": return "HTTP"
-        case "pc": return "PC"
-        case "serial": return qsTr("串口")
-        case "osc": return "OSC"
-        case "dmx512": return "DMX"
-        default: return qsTr("其他")
-        }
-    }
-
-    function protocolColor(command) {
-        switch (commandProtocol(command)) {
-        case "internal": return "#8b5cf6"
-        case "udp": return "#0ea5e9"
-        case "http": return "#06b6d4"
-        case "pc": return "#3b82f6"
-        case "serial": return "#f59e0b"
-        case "osc": return "#a855f7"
-        case "dmx512": return "#22c55e"
-        default: return root.colorValue("neutralText", "#94a3b8")
-        }
     }
 
     function resultColor(command) {
@@ -136,6 +108,7 @@ Item {
 
                 Base.AppText {
                     Layout.preferredWidth: root.typeColumnWidth
+                    horizontalAlignment: Text.AlignHCenter
                     text: qsTr("类型")
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
@@ -183,6 +156,9 @@ Item {
                 id: commandRow
 
                 readonly property var commandData: modelData
+                readonly property var targetDevice: root.deviceForId(commandData
+                    ? commandData.targetDeviceId
+                    : "")
                 readonly property bool selected: String(commandData && commandData.id || "")
                     === root.selectedCommandId
 
@@ -239,26 +215,27 @@ Item {
                         Layout.preferredWidth: root.typeColumnWidth
                         Layout.fillHeight: true
 
-                        Row {
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 6
+                        AppComponents.DeviceIcon {
+                            anchors.centerIn: parent
+                            size: 18
+                            name: String(commandRow.targetDevice
+                                && commandRow.targetDevice.deviceType
+                                ? commandRow.targetDevice.deviceType
+                                : "")
 
-                            Rectangle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 7
-                                height: 7
-                                radius: 2
-                                color: root.protocolColor(commandRow.commandData)
-                                rotation: root.commandProtocol(commandRow.commandData) === "osc" ? 45 : 0
+                            MouseArea {
+                                id: typeHover
+
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
                             }
 
-                            Base.AppText {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: root.protocolLabel(commandRow.commandData)
-                                styleRole: UiStyle.TypographyRole.BodyS
-                                textTone: UiStyle.TextTone.Secondary
-                            }
+                            ToolTip.visible: typeHover.containsMouse
+                            ToolTip.text: String(commandRow.targetDevice
+                                && commandRow.targetDevice.deviceType
+                                ? commandRow.targetDevice.deviceType
+                                : qsTr("未知类型"))
                         }
                     }
 

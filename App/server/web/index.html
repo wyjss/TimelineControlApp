@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>节目播控台</title>
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark">T</span>
+            <div>
+                <strong>节目播控台</strong>
+                <span id="plan-name">未加载方案</span>
+            </div>
+        </div>
+        <div class="topbar-meta">
+            <time id="clock">--:--:--</time>
+            <span id="connection" class="connection disconnected"><i></i>正在连接</span>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero panel" aria-labelledby="now-title">
+            <div class="hero-heading">
+                <div>
+                    <p class="eyebrow"><span id="playback-dot"></span><span id="playback-label">停止</span></p>
+                    <h1 id="now-title">等待选择节目</h1>
+                    <p id="now-summary" class="muted">从节目库中选择并编排播放队列</p>
+                </div>
+                <div class="master-time">
+                    <span>主时钟</span>
+                    <strong id="master-time">00:00:00</strong>
+                </div>
+            </div>
+
+            <div class="progress-track" aria-label="当前节目进度">
+                <span id="progress-fill"></span>
+            </div>
+            <div class="progress-meta">
+                <span id="elapsed-time">00:00:00</span>
+                <span id="remaining-time">剩余 00:00:00</span>
+            </div>
+
+            <div class="transport" aria-label="播控操作">
+                <button id="stop-button" class="button danger" type="button"><span>■</span>停止</button>
+                <button id="primary-button" class="button primary" type="button"><span id="primary-icon">▶</span><span id="primary-label">开始播放</span></button>
+                <button id="refresh-button" class="button ghost" type="button">↻ 刷新</button>
+            </div>
+        </section>
+
+        <div class="workspace">
+            <section class="panel library" aria-labelledby="library-title">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">PROGRAM LIBRARY</p>
+                        <h2 id="library-title">节目库</h2>
+                    </div>
+                    <div class="queue-actions">
+                        <span id="selection-count">已选 0 个</span>
+                        <button id="apply-queue-button" class="text-button" type="button">应用队列</button>
+                    </div>
+                </div>
+                <div id="timeline-list" class="timeline-list"></div>
+                <div id="empty-timelines" class="empty-state" hidden>当前方案中还没有节目</div>
+            </section>
+
+            <aside class="side-stack">
+                <section class="panel queue-panel" aria-labelledby="queue-title">
+                    <div class="section-heading compact">
+                        <div>
+                            <p class="eyebrow">PLAY QUEUE</p>
+                            <h2 id="queue-title">播放队列</h2>
+                        </div>
+                        <span id="queue-count" class="count-badge">0</span>
+                    </div>
+                    <ol id="queue-list" class="queue-list"></ol>
+                    <div id="empty-queue" class="empty-state">点击节目加入队列</div>
+                </section>
+
+                <section class="panel device-panel" aria-labelledby="device-title">
+                    <div class="section-heading compact">
+                        <div>
+                            <p class="eyebrow">DEVICE HEALTH</p>
+                            <h2 id="device-title">设备状态</h2>
+                        </div>
+                        <span id="device-count" class="count-badge">0</span>
+                    </div>
+                    <div id="device-list" class="device-list"></div>
+                    <div id="empty-devices" class="empty-state">当前方案中没有设备</div>
+                </section>
+            </aside>
+        </div>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/assets/app.js" defer></script>
+</body>
+</html>

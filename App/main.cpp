@@ -17,6 +17,7 @@
 #include "runtime/TimelineShellController.h"
 #include "runtime/video/FfmpegVideoFrameItem.h"
 #include "runtime/video/PcTimelinePreviewGenerator.h"
+#include "server/web/WebControlServer.h"
 
 //template<typename TDds, typename TProto>
 //static inline void copyFieldValueToDds(const TProto& p, TDds& d, int maxCharXSize)
@@ -78,6 +79,11 @@ int main(int argc, char *argv[])
     }
 
     TimelineRuntime runtime;
+    WebControlServer webControlServer(
+        &runtime,
+        QCoreApplication::applicationDirPath() + QStringLiteral("/web"));
+    if (!webControlServer.start())
+        qWarning("Failed to start web control server on http://127.0.0.1:8080");
     TimelineShellController shellController(&runtime);
     runtime.setShell(&shellController);
     PcTimelinePreviewGenerator pcTimelinePreviewGenerator(runtime.timelineManager(),

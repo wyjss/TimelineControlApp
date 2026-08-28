@@ -2,6 +2,7 @@ import QtQuick 2.14
 import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import "qrc:/UICore/qml/components/base" as Base
+import "../../components" as AppComponents
 
 Item {
     id: root
@@ -50,27 +51,6 @@ Item {
 
         var name = String(device.name || "").trim()
         return name.length > 0 ? name : String(device.id || qsTr("设备"))
-    }
-
-    function deviceMeta(device) {
-        if (!device)
-            return ""
-
-        var parts = []
-        var protocolText = (device.supportedProtocols || []).map(function(protocol) {
-            return String(protocol).toLowerCase() === "internal" ? qsTr("无协议") : String(protocol)
-        }).join(", ").trim()
-        var typeText = (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))
-            ? "PC"
-            : String(device.deviceType || "").trim()
-        var statusText = String(device.status || "").trim()
-        if (typeText.length > 0)
-            parts.push(typeText)
-        if (protocolText.length > 0)
-            parts.push(protocolText)
-        if (statusText.length > 0)
-            parts.push(statusText)
-        return parts.join(" / ")
     }
 
     function childTracksForParent(parentTrackId) {
@@ -196,6 +176,7 @@ Item {
                 : ({})
             readonly property string targetDeviceId: String(trackData.id || "")
             readonly property bool selected: root.trackSelectedState(trackData)
+            readonly property bool online: String(trackData.status || "") === qsTr("在线")
             readonly property var childTracks: root.childTracksForParent(targetDeviceId)
             readonly property bool expanded: childTracks.length > 0
                 && root.parentTrackExpanded(targetDeviceId)
@@ -207,13 +188,35 @@ Item {
                 width: parent.width
                 height: root.rowHeight
                 radius: 6
-                color: trackRow.selected
-                    ? root.colorValue("highlightSoft", "#162d4a")
-                    : (trackMouse.containsMouse
-                        ? root.colorValue("backgroundWindowVariant", "#131d28")
-                        : "transparent")
-                border.width: trackRow.selected ? 1 : 0
+                color: trackMouse.containsMouse
+                    ? root.colorValue("backgroundWindowVariant", "#131d28")
+                    : "transparent"
+            }
+
+            Rectangle {
+                width: parent.width
+                height: root.rowHeight
+                radius: 6
+                color: root.colorValue("highlightSoft", "#162d4a")
+                opacity: trackRow.selected ? 0.48 : 0
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 120 }
+                }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: root.rowHeight
+                radius: 6
+                color: "transparent"
+                border.width: 1
                 border.color: root.colorValue("highlightText", "#78afff")
+                opacity: trackRow.selected ? 0.62 : 0
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 120 }
+                }
             }
 
             Rectangle {
@@ -231,7 +234,11 @@ Item {
                 width: 1
                 height: parent.height
                 color: root.colorValue("border", "#334155")
-                opacity: 0.38
+                opacity: trackRow.selected ? 0 : 0.38
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 120 }
+                }
             }
 
             Rectangle {
@@ -270,28 +277,40 @@ Item {
                 z: 2
             }
 
-            Column {
+            Row {
                 x: trackRow.childTracks.length > 0 ? 28 : 14
                 y: Math.round((root.rowHeight - height) / 2)
                 width: Math.max(80, root.labelWidth - x - 14)
-                spacing: 4
+                spacing: 8
                 z: 2
 
-                Base.AppText {
-                    width: parent.width
-                    text: root.deviceName(trackRow.trackData)
-                    styleRole: UiStyle.TypographyRole.BodyM
-                    textTone: UiStyle.TextTone.Primary
-                    elide: Text.ElideRight
+                Rectangle {
+                    id: onlineIndicator
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 8
+                    height: 8
+                    radius: 4
+                    color: trackRow.online
+                        ? root.colorValue("successFill", "#22c55e")
+                        : root.colorValue("dangerFill", "#ef4444")
+                }
+
+                AppComponents.DeviceIcon {
+                    id: deviceTypeIcon
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    size: 20
+                    name: String(trackRow.trackData.deviceType || "")
                 }
 
                 Base.AppText {
-                    width: parent.width
-                    text: root.deviceMeta(trackRow.trackData).length > 0
-                        ? root.deviceMeta(trackRow.trackData)
-                        : trackRow.targetDeviceId
-                    styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(40, parent.width
+                        - deviceTypeIcon.width - onlineIndicator.width - parent.spacing * 2)
+                    text: root.deviceName(trackRow.trackData)
+                    styleRole: UiStyle.TypographyRole.BodyM
+                    textTone: UiStyle.TextTone.Primary
                     elide: Text.ElideRight
                 }
             }

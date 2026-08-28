@@ -389,30 +389,25 @@ Item {
         z: 2
         visible: width >= 120
 
-        Base.AppText {
-            anchors.left: parent.left
-            anchors.leftMargin: 8
-            anchors.verticalCenter: parent.verticalCenter
-            text: qsTr("当前时间")
-            styleRole: UiStyle.TypographyRole.BodyS
-            textTone: UiStyle.TextTone.Secondary
-        }
-
         Base.AppTextField {
             id: currentTimeField
 
             anchors.left: parent.left
-            anchors.leftMargin: 72
+            anchors.leftMargin: 12
             anchors.right: parent.right
             anchors.rightMargin: 12
             anchors.verticalCenter: parent.verticalCenter
             controlHeight: 32
-            contentPaddingX: 8
-            contentPaddingY: 4
+            contentPaddingX: 0
+            contentPaddingY: 0
             readOnly: !root.currentTimeDragEnabled
             placeholderText: "00:00.000"
             inputMethodHints: Qt.ImhPreferNumbers
-            horizontalAlignment: Text.AlignHCenter
+            horizontalAlignment: Text.AlignLeft
+            color: root.colorValue("highlightText", "#78afff")
+            font.pixelSize: 18
+            font.weight: Font.DemiBold
+            background: Item {}
 
             onEditingFinished: {
                 var timeMs = root.parseTime(text)

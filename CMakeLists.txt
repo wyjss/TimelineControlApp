@@ -63,6 +63,8 @@ add_executable(TimelineControlApp
     ${TIMELINE_APP_RESOURCES}
 )
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/App/server/web/TimelineWebControl.cmake)
+
 target_include_directories(TimelineControlApp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/App
     ${CMAKE_CURRENT_SOURCE_DIR}/App/runtime
