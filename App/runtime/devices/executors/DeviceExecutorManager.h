@@ -14,6 +14,7 @@ class DeviceCommand;
 class DeviceCommandExecutor;
 class NetworkPing;
 
+//! 实例由 TimelineRuntime 创建并管理。
 class DeviceExecutorManager final : public QObject
 {
     Q_OBJECT

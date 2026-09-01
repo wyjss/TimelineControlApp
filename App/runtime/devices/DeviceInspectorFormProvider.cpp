@@ -371,7 +371,7 @@ UICore::AppForm *DeviceInspectorFormProvider::buildDeviceForm(const Device *devi
         {QStringLiteral("leftLabel"), tr("支持协议")},
         {QStringLiteral("leftValue"), device ? device->supportedProtocols().join(QStringLiteral(", ")) : QVariant()},
         {QStringLiteral("rightLabel"), tr("状态")},
-        {QStringLiteral("rightValue"), displayValue(device ? device->status() : QVariant())}
+        {QStringLiteral("rightValue"), device ? (device->isOnline() ? tr("在线") : tr("离线")) : QVariant()}
     });
     profileSection->appendField(protocolStatusField);
 

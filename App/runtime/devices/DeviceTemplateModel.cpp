@@ -111,7 +111,12 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateDmx512Adapter()
 DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateDmx512()
 {
     const QList<DeviceParamSpec *> specs{
-        DeviceParamSpec::createForKey(DeviceKey::Dmx512AdapterDeviceId)
+        DeviceParamSpec::createForKey(DeviceKey::Dmx512AdapterDeviceId),
+        DeviceParamSpec::createForKey(DeviceKey::Dmx512BitStart),
+    };
+
+    const QList<DeviceParamSpec*> cmds = {
+
     };
 
     return makeDeviceTemplate(tr("DMX512协议"),

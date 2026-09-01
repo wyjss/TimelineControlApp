@@ -17,6 +17,7 @@ class DeviceModel;
 class DeviceTemplate;
 class DeviceTemplateModel;
 
+//! 实例由 TimelineRuntime 创建并管理。
 class DeviceManager final : public QObject
 {
     Q_OBJECT
@@ -44,7 +45,7 @@ private:
     Device *makeDeviceFromTemplate(const QString &templateName,
                                    const QString &deviceType,
                                    const QString &name,
-                                   const QString &status,
+                                   bool online,
                                    const QVariantMap &configValues);
     QVariantMap defaultConfigValues(const DeviceTemplate *deviceTemplate) const;
 

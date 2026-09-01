@@ -16,8 +16,10 @@ Base.AppDialog {
     readonly property var protocolOptions: [
         { "label": qsTr("无协议"), "value": "internal" },
         { "label": qsTr("串口"), "value": "serial" },
+        { "label": qsTr("UDP"), "value": "udp" },
         { "label": qsTr("HTTP"), "value": "http" },
         { "label": qsTr("PC"), "value": "pc" },
+        { "label": qsTr("DMX512"), "value": "dmx512" },
         { "label": qsTr("OSC"), "value": "osc" }
     ]
     readonly property var availableProtocolOptions: buildAvailableProtocolOptions()
@@ -131,6 +133,12 @@ Base.AppDialog {
         if (reason.length > 0)
             return reason
 
+        if (draftCommand.invalidReason !== undefined) {
+            reason = draftCommand.invalidReason()
+            if (reason.length > 0)
+                return reason
+        }
+
         return ""
     }
 
@@ -156,7 +164,7 @@ Base.AppDialog {
 
     function commit() {
         validationVisible = true
-        if (!commandValid || !device || device.createCommand === undefined)
+        if (!commandValid || !device || device.commitCommandDraft === undefined)
             return
 
         var creationValues = creationFieldForm.valueMap()
@@ -166,11 +174,13 @@ Base.AppDialog {
             close()
             return
         }
-        var command = device.createCommand(selectedProtocol, String(creationValues.name || ""))
-        if (!command)
+
+        applyFieldValues(draftCommand.creationInputFields || [], creationValues)
+        var command = draftCommand
+        if (!device.commitCommandDraft(command))
             return
 
-        applyFieldValues(command.creationInputFields || [], creationValues)
+        draftCommand = null
         commandAccepted(command)
         close()
     }
@@ -218,7 +228,7 @@ Base.AppDialog {
     Base.AppText {
         Layout.fillWidth: true
         text: root.firstInvalidReason()
-        visible: root.validationVisible && text.length > 0
+        visible: text.length > 0
         styleRole: UiStyle.TypographyRole.BodyS
         textTone: UiStyle.TextTone.Danger
         elide: Text.ElideRight
@@ -238,7 +248,7 @@ Base.AppDialog {
                 ? root.draftCommand.creationMinInputFields()
                 : []
             writeBack: true
-            showErrors: root.validationVisible
+            showErrors: true
             emptyText: qsTr("无创建参数")
         }
     }

@@ -13,6 +13,7 @@ class TimelineModel;
 class DeviceModel;
 
 // 时间线管理器
+//! 实例由 TimelineRuntime 创建并管理。
 class TimelineManager final : public QObject
 {
     Q_OBJECT
@@ -35,7 +36,6 @@ public:
     Q_ENUM(PlaybackState)
 
     explicit TimelineManager(DeviceModel *deviceModel, QObject *parent = nullptr);
-    static TimelineManager* getInstance();
     // 查询
     TimelineModel *timelineModel() const;
     Timeline *currentTimeline() const;

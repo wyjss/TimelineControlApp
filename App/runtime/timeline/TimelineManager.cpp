@@ -6,8 +6,6 @@
 #include "devices/Device.h"
 #include "devices/DeviceModel.h"
 
-#include "LogMacros.h"
-
 #include <QDataStream>
 #include <QUuid>
 #include <QtAlgorithms>
@@ -16,17 +14,7 @@ namespace {
 
 constexpr quint32 kTimelineManagerMagic = 0x544C4D47;
 constexpr qint32 kTimelineManagerVersion = 1;
-
-static TimelineManager* g_TimelineManager = nullptr;
 } // namespace
-
-TimelineManager* TimelineManager::getInstance()
-{
-    if (!g_TimelineManager) {
-        LOG_FATAL("g_TimelineManager == null");
-    }
-    return g_TimelineManager;
-}
 
 TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
     : QObject(parent)
@@ -34,8 +22,6 @@ TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
     , m_timelineModel(new TimelineModel(this))
     , m_deviceModel(deviceModel)
 {
-    g_TimelineManager = this;
-
     connect(m_timelineModel, &TimelineModel::selectedItemChanged, this, [this]() {
         emit currentTimelineChanged(currentTimeline());
     });

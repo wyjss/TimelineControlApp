@@ -201,7 +201,7 @@ Item {
         if (!selectedDeviceInCurrentView
             || !selectedDevice
             || selectedDevice.createCommandDraft === undefined
-            || selectedDevice.createCommand === undefined) {
+            || selectedDevice.commitCommandDraft === undefined) {
             return
         }
 
@@ -661,7 +661,7 @@ Item {
                                             id: deviceRow
 
                                         readonly property bool selected: modelData.id === root.deviceValue("id", "")
-                                        readonly property bool online: String(modelData.status || "") === qsTr("在线")
+                                        readonly property bool online: modelData.online
                                         readonly property var deviceConfig: modelData.configValues || ({})
                                         readonly property int screenColumns: Math.max(0, Number(deviceConfig.screenColumns || 0))
                                         readonly property int screenRows: Math.max(0, Number(deviceConfig.screenRows || 0))
@@ -737,7 +737,7 @@ Item {
                                                         }
 
                                                         Base.AppText {
-                                                            text: String(modelData.status || qsTr("未知"))
+                                                            text: deviceRow.online ? qsTr("在线") : qsTr("离线")
                                                             styleRole: UiStyle.TypographyRole.BodyS
                                                             textTone: deviceRow.online
                                                                 ? UiStyle.TextTone.Success
@@ -1022,7 +1022,7 @@ Item {
                                     enabled: root.selectedDeviceInCurrentView
                                         && root.selectedDevice
                                         && root.selectedDevice.createCommandDraft !== undefined
-                                        && root.selectedDevice.createCommand !== undefined
+                                        && root.selectedDevice.commitCommandDraft !== undefined
                                     onClicked: root.addCommandForSelectedDevice()
                                 }
                             }

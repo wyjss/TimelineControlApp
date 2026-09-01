@@ -359,7 +359,7 @@ void DeviceModel::prepareDevice(Device *device)
     });
     connect(device, &Device::nameChanged, this, notifyChanged);
     connect(device, &Device::supportedProtocolsChanged, this, notifyChanged);
-    connect(device, &Device::statusChanged, this, notifyChanged);
+    connect(device, &Device::onlineChanged, this, notifyChanged);
     connect(device, &Device::descriptionChanged, this, notifyChanged);
     connect(device, &Device::configValuesChanged, this, notifyChanged);
     connect(device, &Device::commandsChanged, this, notifyChanged);

@@ -318,7 +318,7 @@ QJsonObject WebControlServer::statusSnapshot() const
                 {QStringLiteral("id"), device->id()},
                 {QStringLiteral("name"), device->name()},
                 {QStringLiteral("type"), device->deviceType()},
-                {QStringLiteral("status"), device->status()}
+                {QStringLiteral("online"), device->isOnline()}
             });
         }
 

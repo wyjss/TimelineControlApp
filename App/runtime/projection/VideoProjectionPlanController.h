@@ -70,6 +70,7 @@ struct VideoProjectionPlan
     QDateTime updatedAt;
 };
 
+//! 实例由 TimelineRuntime 创建并管理。
 //! 视频投影方案控制器，负责保存方案数据并向 QML 暴露列表模型。
 class VideoProjectionPlanController final : public QObject
 {

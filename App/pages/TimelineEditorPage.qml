@@ -243,7 +243,7 @@ Item {
         var typeText = (device.supportsProtocol !== undefined && device.supportsProtocol("pc"))
             ? "PC"
             : String(device.deviceType || "").trim()
-        var statusText = String(device.status || "").trim()
+        var statusText = device.online ? qsTr("在线") : qsTr("离线")
         if (typeText.length > 0)
             parts.push(typeText)
         if (protocolText.length > 0)

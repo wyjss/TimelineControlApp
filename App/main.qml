@@ -8,6 +8,7 @@ import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/components/shell" as Shell
 import "qrc:/UICore/qml/components/task" as Task
 import "qrc:/UICore/qml/theme" as Theme
+import "qrc:/TimelineControlApp/App/pages" as Pages
 
 ApplicationWindow {
     id: window
@@ -19,8 +20,10 @@ ApplicationWindow {
         : null
     property var shellController: appRuntime && appRuntime.shell
         ? appRuntime.shell
-        : (typeof timelineShellController !== "undefined" ? timelineShellController : null)
+        : null
     property bool timelineEditing: false
+    property bool locatorMonitorOpen: false
+    readonly property bool locatorManagementActive: shell.activeNavigationKey === "locator"
     readonly property var settingsNavigationItem: ({
         "key": "system-settings",
         "label": qsTr("系统设置"),
@@ -82,6 +85,8 @@ ApplicationWindow {
         for (var index = 0; index < items.length; ++index) {
             var item = items[index]
             if (String(item.key) === String(key)) {
+                if (String(key) === "locator")
+                    locatorMonitorOpen = true
                 shell.hideLeftPane()
                 shell.activeNavigationKey = String(key)
                 shell.canvasDelegateSource = String(item.source || "")
@@ -365,6 +370,17 @@ ApplicationWindow {
                         : qsTr("保存、另存或加载工程")
                 }
 
+                Base.AppButton {
+                    size: UiStyle.ButtonSize.Small
+                    variant: window.locatorMonitorOpen
+                        ? UiStyle.ButtonVariant.Tonal
+                        : UiStyle.ButtonVariant.Secondary
+                    minWidth: 104
+                    iconName: "scene"
+                    text: qsTr("定位监视")
+                    onClicked: window.locatorMonitorOpen = true
+                }
+
                 Item {
                     Layout.fillWidth: true
                 }
@@ -490,6 +506,130 @@ ApplicationWindow {
             if (window.shellController)
                 window.shellController.activeNavigationKey = key
             window.activateNavigation(key)
+        }
+    }
+
+    Base.AppSurface {
+        id: locatorViewerHost
+
+        readonly property bool managementMode: window.locatorManagementActive
+        readonly property real hostWidth: Math.max(0, shell.width - shell.leftContentInset)
+        readonly property real hostHeight: Math.max(0, shell.height - shell.topBarHeight
+            - (shell.showBottomBar ? shell.bottomBarHeight : 0))
+        readonly property real monitorMinX: shell.leftContentInset + shell.overlayMargin
+        readonly property real monitorMaxX: Math.max(monitorMinX,
+            shell.width - width - shell.overlayMargin)
+        readonly property real monitorMinY: shell.topBarHeight + shell.overlayMargin
+        readonly property real monitorMaxY: Math.max(monitorMinY,
+            shell.height - (shell.showBottomBar ? shell.bottomBarHeight : 0)
+            - height - shell.overlayMargin)
+        property real monitorX: NaN
+        property real monitorY: NaN
+
+        x: managementMode
+            ? shell.leftContentInset
+            : Math.max(monitorMinX, Math.min(isNaN(monitorX) ? monitorMaxX : monitorX,
+                                             monitorMaxX))
+        y: managementMode
+            ? shell.topBarHeight
+            : Math.max(monitorMinY, Math.min(isNaN(monitorY) ? monitorMinY : monitorY,
+                                             monitorMaxY))
+        width: managementMode
+            ? hostWidth
+            : Math.min(520, Math.max(320, hostWidth * 0.42))
+        height: managementMode
+            ? hostHeight
+            : Math.min(360, Math.max(240, hostHeight * 0.45))
+        visible: managementMode || window.locatorMonitorOpen
+        z: 10
+        sizeToContent: false
+        clipContent: true
+        surfaceTone: managementMode
+            ? UiStyle.SurfaceTone.Canvas
+            : UiStyle.SurfaceTone.SurfaceOverlay
+        shapeRole: managementMode ? UiStyle.ShapeRole.None : UiStyle.ShapeRole.Overlay
+
+        Rectangle {
+            id: locatorMonitorHeader
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            height: visible ? 40 : 0
+            visible: !locatorViewerHost.managementMode
+            color: window.appTheme.colors.backgroundSection
+            border.width: 1
+            border.color: window.appTheme.colors.border
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+
+                property real pressWindowX: 0
+                property real pressWindowY: 0
+                property real pressHostX: 0
+                property real pressHostY: 0
+
+                onPressed: {
+                    var point = mapToItem(window.contentItem, mouse.x, mouse.y)
+                    pressWindowX = point.x
+                    pressWindowY = point.y
+                    pressHostX = locatorViewerHost.x
+                    pressHostY = locatorViewerHost.y
+                }
+                onPositionChanged: {
+                    if (!pressed)
+                        return
+                    var point = mapToItem(window.contentItem, mouse.x, mouse.y)
+                    locatorViewerHost.monitorX = Math.max(locatorViewerHost.monitorMinX,
+                        Math.min(pressHostX + point.x - pressWindowX,
+                                 locatorViewerHost.monitorMaxX))
+                    locatorViewerHost.monitorY = Math.max(locatorViewerHost.monitorMinY,
+                        Math.min(pressHostY + point.y - pressWindowY,
+                                 locatorViewerHost.monitorMaxY))
+                }
+            }
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 6
+                spacing: 6
+
+                Base.AppText {
+                    Layout.fillWidth: true
+                    text: qsTr("定位监视")
+                    styleRole: UiStyle.TypographyRole.BodyM
+                }
+
+                Base.AppButton {
+                    size: UiStyle.ButtonSize.Small
+                    variant: UiStyle.ButtonVariant.Ghost
+                    text: qsTr("展开")
+                    onClicked: {
+                        if (window.shellController)
+                            window.shellController.activeNavigationKey = "locator"
+                        window.activateNavigation("locator")
+                    }
+                }
+
+                Base.AppButton {
+                    size: UiStyle.ButtonSize.Small
+                    variant: UiStyle.ButtonVariant.Ghost
+                    text: "×"
+                    onClicked: window.locatorMonitorOpen = false
+                }
+            }
+        }
+
+        Pages.LocatorManagementPage {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: locatorMonitorHeader.bottom
+            anchors.bottom: parent.bottom
+            managementMode: locatorViewerHost.managementMode && window.timelineStopped
+            deviceModel: window.appRuntime ? window.appRuntime.deviceModel : null
+            fenceManager: window.appRuntime ? window.appRuntime.fenceManager : null
         }
     }
 

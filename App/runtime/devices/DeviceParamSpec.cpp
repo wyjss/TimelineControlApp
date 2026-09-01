@@ -304,6 +304,16 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
+	if (deviceKey == DeviceKey::Payload) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("载荷"),
+										 QString(),
+										 StringType,
+										 TextEditor);
+		spec->setPlaceholderText(QStringLiteral(""));
+		return spec;
+	}
+
 	if (deviceKey == DeviceKey::VirtualScreenWidth || deviceKey == DeviceKey::VirtualScreenHeight) {
 		const bool width = deviceKey == DeviceKey::VirtualScreenWidth;
 		auto* spec = new DeviceParamSpec(deviceKey,
@@ -348,16 +358,64 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                    SelectType,
                                    SelectEditor);
 
-    if (deviceKey == DeviceKey::Dmx512Bits) {
-        auto vs = QVector<qint32>(512, 0);
+	if (deviceKey == DeviceKey::Dmx512Bits) {
+		auto vs = QVector<qint32>(512, 0);
 		auto param = new DeviceParamSpec(deviceKey,
-								   QStringLiteral("目标DMX512适配器"),
-								   QVariant::fromValue(vs),
-								   VariantType,
-								   CustomEditor);
-        param->setReadOnly(true);
-        return param;
-    }
+										 QStringLiteral("目标DMX512适配器"),
+										 QVariant::fromValue(vs),
+										 VariantType,
+										 CustomEditor);
+		param->setReadOnly(true);
+		return param;
+	}
+
+	if (deviceKey == DeviceKey::Dmx512BitStart) {
+		auto param = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("起始位"),
+										 0,
+										 IntType,
+										 AutoEditor);
+		param->setMinimum(0);
+		param->setMaximum(511);
+		param->setReadOnly(false);
+		return param;
+	}
+
+	if (deviceKey == DeviceKey::Dmx512BitOffset) {
+		auto param = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("偏移位（相对起始）"),
+										 0,
+										 IntType,
+										 AutoEditor);
+		param->setMinimum(0);
+		param->setMaximum(511);
+		param->setReadOnly(false);
+		return param;
+	}
+
+	if (deviceKey == DeviceKey::Dmx512BitCount) {
+		auto param = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("指令宽度"),
+										 1,
+										 IntType,
+										 AutoEditor);
+		param->setMinimum(1);
+		param->setMaximum(511);
+		param->setReadOnly(false);
+		return param;
+	}
+
+	if (deviceKey == DeviceKey::Dmx512CommandBits) {
+		
+		auto param = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("指令数据"),
+										 "",
+										 StringType,
+										 TextEditor);
+        param->setPattern(DevicePattern::Dmx);
+		param->setReadOnly(false);
+		return param;
+	}
 
 	if (deviceKey == DeviceKey::Videos) {
 		auto* spec = new DeviceParamSpec(deviceKey,

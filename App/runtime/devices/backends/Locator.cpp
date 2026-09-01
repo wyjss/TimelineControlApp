@@ -1,6 +1,10 @@
 #include "devices/backends/Locator.h"
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
+#include "devices/DeviceModel.h"
+#include "runtime/TimelineRuntime.h"
+
+#include "LocatorViewer.h"
 
 #include "LogMacros.h"
 
@@ -8,6 +12,10 @@
 #include <QNetworkDatagram>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QThread>
+#include <QTcpSocket>
+#include <QDateTime>
+#include <QTimer>
 
 namespace {
 
@@ -32,33 +40,79 @@ LocatorDeviceTemplate::LocatorDeviceTemplate(TimelineModel *timelineModel,
 					 createLocatorCommands(timelineModel),
 					 parent)
 {
+	// 绑定
+	connect(TimelineRuntime::getInstance()->deviceModel(),
+			&DeviceModel::deviceAdded,
+			this,
+			[this](Device* device) {
+				if (device->deviceType() == DeviceType::Locator) {
+					bindLocator(device);
 
+				}
+			}
+	);
 }
 
 Device* LocatorDeviceTemplate::createDevice(
 	QObject* parent, const QVariantMap& configValues)
 {
 	auto device = DeviceTemplate::createDevice(parent, configValues);
+
 	connect(LocationRecver::getInstance(),
 			&LocationRecver::locationChanged,
 			device,
-			[device](QString address, double lon, double lat) {
+			[device](QString address, double lon, double lat, double heading, bool online) {
 				auto *ip = device->getParam(DeviceKey::Ip);
 				if (ip && ip->value().toString() == address) {
+					
 					QVariantMap vm;
 					vm["lon"] = lon;
 					vm["lat"] = lat;
+					vm["heading"] = heading;
 					device->setParamValue(DeviceKey::Location,
 										  vm);
+					device->setOnline(online);
+
+					LocatorViewer::getInstance()->updateTarget(
+						device->name(),
+						lon,
+						lat,
+						heading,
+						online
+					);
 				}
 			});
+
+	
 	return device;
 }
 
+void LocatorDeviceTemplate::bindLocator(Device* device)
+{
+	LocationRecver::getInstance()->addLocator(device, device->name(), device->getParam(DeviceKey::Ip)->value().toString());
+	connect(device, &QObject::destroyed, [device]() {
+		LocationRecver::getInstance()->removeLocator(device);
+		if (LocatorViewer::getInstance()) {
+			auto name = device->name();
+			LocatorViewer::getInstance()->removeTarget(name);
+		}
+			});
+}
 //////////////////////////////////////////////////////////////////////////
 
 LocationRecver::LocationRecver()
 {
+
+	QThread* thread = new QThread;
+	this->moveToThread(thread);
+	thread->start();
+
+	QMetaObject::invokeMethod(this, [this]() {
+		QTimer* timer = new QTimer;
+		connect(timer, &QTimer::timeout, this, &LocationRecver::checkStatus);
+		timer->start(1000);
+							  }, Qt::QueuedConnection);
+
 	quint16 port = 11578;
 	QUdpSocket* sock = new QUdpSocket(this);
 	bool ok = sock->bind(
@@ -81,9 +135,10 @@ LocationRecver::LocationRecver()
 						auto address = o["address"].toString();
 						double lon = o["lon"].toDouble();
 						double lat = o["lat"].toDouble();
+						double heading = o["heading"].toDouble();
 
 						LOG_DEBUG("recv location " << address << lon << lat);
-						emit this->locationChanged(address, lon, lat);
+						emit this->locationChanged(address, lon, lat, heading, true);
 					}
 				}
 			});
@@ -95,138 +150,200 @@ LocationRecver* LocationRecver::getInstance()
 	return s_LocationRecver;
 }
 
+
+void LocationRecver::addLocator(QObject* handle, const QString& name, const QString& ip)
+{
+	if (QThread::currentThread() != this->thread()) {
+		QMetaObject::invokeMethod(this, "addLocator", Qt::QueuedConnection,
+								  Q_ARG(QObject*, handle),
+								  Q_ARG(QString, name),
+								  Q_ARG(QString, ip)
+		);
+		return;
+	}
+
+	QTcpSocket* sock = new QTcpSocket;
+	connect(sock, &QTcpSocket::readyRead, this, &LocationRecver::readData);
+	connect(sock, &QTcpSocket::stateChanged, this, [name, sock](QTcpSocket::SocketState state) {
+		LOG_DEBUG("locator state changed " << name << state);
+			});
+
+	Data d;
+	d.name = name;
+	d.ip = ip;
+	d.sock = sock;
+	m_map[handle] = d;
+}
+
+void LocationRecver::removeLocator(QObject* handle)
+{
+	if (QThread::currentThread() != this->thread()) {
+		QMetaObject::invokeMethod(this, "removeLocator", Qt::QueuedConnection,
+								  Q_ARG(QObject*, handle)
+		);
+		return;
+	}
+
+	if (m_map.contains(handle)) {
+		auto sock = m_map[handle].sock;
+		disconnect(sock, 0, this, 0);
+		sock->deleteLater();
+
+		m_map.remove(handle);
+	}
+}
+
+void LocationRecver::readData()
+{
+	auto sock = dynamic_cast<QTcpSocket*>(sender());
+	auto size = sock->bytesAvailable();
+	QByteArray data;
+	while (size) {
+		data = sock->read(size);
+		size = sock->bytesAvailable();
+	}
+	
+	if (data.isEmpty()) {
+		return;
+	}
+
+	auto handle = mapSock2Handle(sock);
+	m_map[handle].online = true;
+	m_map[handle].lastTouch = QDateTime::currentMSecsSinceEpoch();
+
+	LOG_DEBUG("解析nmea协议" << data);
+
+	double lon, lat, heading;
+	if (parseRmcPosition(data, lon, lat, heading)) {
+		m_map[handle].lon = lon;
+		m_map[handle].lat = lat;
+		m_map[handle].heading = heading;
+		emit locationChanged(m_map[handle].ip, lon, lat, heading, true);
+	}
+}
+
+void LocationRecver::checkStatus()
+{
+
+	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
+		auto sock = itr->sock;
+#if 0
+		if (
+			sock->state() != QTcpSocket::ConnectedState &&
+			sock->state() != QTcpSocket::ConnectingState
+			) {
+			sock->connectToHost(QHostAddress(itr->ip), 12333);
+		}
+
+		// 5s无数据判定离线
+		if (QDateTime::currentMSecsSinceEpoch() - itr->lastTouch > 5000) {
+			emit locationChanged(itr->ip, itr->lon, itr->lat, itr->heading, false);
+		}
+#else// debug
+		bool online = rand() % 2 == 0;
+		double lon = 109.0 + rand() % 1000 / 1000'000.0;
+		double lat = 32.7 + rand() % 1000 / 1000'000.0;
+		double heading = rand() % 360;
+		LOG_DEBUG("发送随机测试数据" << heading);
+		emit locationChanged(itr->ip, lon, lat, heading, online);
+		
+#endif
+	}
+
+
+
+}
 //////////////////////////////////////////////////////////////////////////
 
 
-#include <cmath>
-#include <algorithm>
-
-struct Vec2
+struct GnssPosition
 {
-	double x = 0.0;
-	double y = 0.0;
-
-	Vec2 operator+(const Vec2& v) const {
-		return {x + v.x, y + v.y};
-	}
-
-	Vec2 operator-(const Vec2& v) const {
-		return {x - v.x, y - v.y};
-	}
-
-	Vec2 operator*(double s) const {
-		return {x * s, y * s};
-	}
+	double latitude = 0.0;
+	double longitude = 0.0;
+	double heading = 0.0;   // 单位：度，0=北，90=东
+	bool valid = false;
 };
 
-inline double dot(const Vec2& a, const Vec2& b)
+static double nmeaCoordinateToDegree(const QString& value)
 {
-	return a.x * b.x + a.y * b.y;
+	bool ok = false;
+	const double v = value.toDouble(&ok);
+	if (!ok)
+		return 0.0;
+
+	const int degree = static_cast<int>(v / 100.0);
+	const double minute = v - degree * 100.0;
+
+	return degree + minute / 60.0;
 }
 
-inline double cross(const Vec2& a, const Vec2& b)
+void* LocationRecver::mapSock2Handle(QTcpSocket* sock)
 {
-	return a.x * b.y - a.y * b.x;
-}
-
-inline double length(const Vec2& v)
-{
-	return std::sqrt(dot(v, v));
-}
-
-struct LineResult
-{
-	// 两条有限线段是否相交
-	bool segmentIntersect = false;
-
-	// 两条无限直线是否存在唯一交点
-	bool hasLineIntersection = false;
-
-	// 无限直线交点
-	Vec2 intersection;
-
-	// 从 AB 转到 CD 的有向角 [-180, 180]
-	double angleDegree = 0.0;
-
-	// P = A + t * (B-A)
-	double t = 0.0;
-
-	// P = C + u * (D-C)
-	double u = 0.0;
-
-	// 从 C 沿 C->D 方向到无限直线交点的有符号距离
-	double signedDistance = 0.0;
-
-	// 普通距离
-	double distance = 0.0;
-};
-
-LineResult calculate(
-	const Vec2& A,
-	const Vec2& B,
-	const Vec2& C,
-	const Vec2& D)
-{
-	constexpr double EPS = 1e-10;
-	constexpr double PI = 3.14159265358979323846;
-
-	LineResult result;
-
-	const Vec2 r = B - A;
-	const Vec2 s = D - C;
-
-	const double rLength = length(r);
-	const double sLength = length(s);
-
-	// 无效线段
-	if (rLength < EPS || sLength < EPS)
-		return result;
-
-	// -----------------------------
-	// 1. 有向夹角 AB -> CD
-	// -----------------------------
-	result.angleDegree =
-		std::atan2(cross(r, s), dot(r, s))
-		* 180.0 / PI;
-
-	// -----------------------------
-	// 2. 无限直线交点
-	// -----------------------------
-	const double denominator = cross(r, s);
-
-	// 平行
-	if (std::abs(denominator) < EPS)
-	{
-		return result;
+	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
+		if (itr->sock == sock) {
+			return itr.key();
+		}
 	}
 
-	const Vec2 CA = C - A;
+	assert(false);
+	return nullptr;
+}
 
-	result.t = cross(CA, s) / denominator;
-	result.u = cross(CA, r) / denominator;
+bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& lat, double& heading)
+{
+	if (!nmea.startsWith('$'))
+		return false;
 
-	result.hasLineIntersection = true;
+	const QStringList fields = nmea.split(',');
 
-	result.intersection =
-		A + r * result.t;
+	// RMC至少需要到heading字段
+	if (fields.size() < 9)
+		return false;
 
-	// -----------------------------
-	// 3. 有限线段是否相交
-	// -----------------------------
-	result.segmentIntersect =
-		result.t >= -EPS &&
-		result.t <= 1.0 + EPS &&
-		result.u >= -EPS &&
-		result.u <= 1.0 + EPS;
+	// 兼容 $GPRMC / $GNRMC / $BDRMC 等
+	if (!fields[0].endsWith("RMC"))
+		return false;
 
-	// -----------------------------
-	// 4. C -> 交点的距离
-	// -----------------------------
-	result.signedDistance =
-		result.u * sLength;
+	// RMC:
+	// 0  $GNRMC
+	// 1  UTC时间
+	// 2  状态 A=有效 V=无效
+	// 3  纬度 ddmm.mmmm
+	// 4  N/S
+	// 5  经度 dddmm.mmmm
+	// 6  E/W
+	// 7  地面速度 knots
+	// 8  地面航向 degrees
 
-	result.distance =
-		std::abs(result.signedDistance);
+	if (fields[2] != "A")
+		return false;
 
-	return result;
+	if (fields[3].isEmpty() || fields[5].isEmpty())
+		return false;
+
+	bool latOk = false;
+	bool lonOk = false;
+
+	fields[3].toDouble(&latOk);
+	fields[5].toDouble(&lonOk);
+
+	if (!latOk || !lonOk)
+		return false;
+
+	lat = nmeaCoordinateToDegree(fields[3]);
+	lon = nmeaCoordinateToDegree(fields[5]);
+
+	if (fields[4] == "S")
+		lat = -lat;
+
+	if (fields[6] == "W")
+		lon = -lon;
+
+	bool headingOk = false;
+	heading = fields[8].toDouble(&headingOk);
+	if (headingOk == false) {
+		heading = 0;
+	}
+
+	return true;
 }

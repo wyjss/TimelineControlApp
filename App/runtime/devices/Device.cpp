@@ -15,6 +15,7 @@
 namespace {
 
 const char *kSupportedProtocolsConfigKey = "__supportedProtocols";
+const char *kOnlineConfigKey = "__online";
 const char *kStatusConfigKey = "__status";
 
 QString createDeviceId()
@@ -97,18 +98,18 @@ bool Device::supportsProtocol(const QString &protocol) const
     return !protocolValue.isEmpty() && supportedProtocols().contains(protocolValue);
 }
 
-QString Device::status() const
+bool Device::isOnline() const
 {
-    return m_status;
+    return m_online;
 }
 
-void Device::setStatus(const QString &status)
+void Device::setOnline(bool online)
 {
-    if (m_status == status)
+    if (m_online == online)
         return;
 
-    m_status = status;
-    emit statusChanged();
+    m_online = online;
+    emit onlineChanged();
 }
 
 bool Device::filteredOut() const
@@ -227,6 +228,20 @@ void Device::deleteCommandDraft(DeviceCommand *command) const
     command->deleteLater();
 }
 
+bool Device::commitCommandDraft(DeviceCommand *command)
+{
+    if (!command
+        || command->parent() != this
+        || m_commands.contains(command)
+        || !supportsProtocol(command->protocol())
+        || !command->invalidReason().isEmpty()) {
+        return false;
+    }
+
+    appendCommand(command);
+    return true;
+}
+
 DeviceCommand *Device::createCommand(const QString &protocol, const QString &name)
 {
     for (const QChar character : name) {
@@ -242,7 +257,10 @@ DeviceCommand *Device::createCommand(const QString &protocol, const QString &nam
     if (!trimmedName.isEmpty())
         command->setName(trimmedName);
 
-    appendCommand(command);
+    if (!commitCommandDraft(command)) {
+        deleteCommandDraft(command);
+        return nullptr;
+    }
     return command;
 }
 
@@ -341,7 +359,7 @@ void Device::writeToStream(QDataStream& stream) const
     QVariantMap streamConfigValues = configValues();
     if (!supportedProtocols().isEmpty())
         streamConfigValues.insert(QString::fromLatin1(kSupportedProtocolsConfigKey), supportedProtocols());
-    streamConfigValues.insert(QString::fromLatin1(kStatusConfigKey), status());
+    streamConfigValues.insert(QString::fromLatin1(kOnlineConfigKey), isOnline());
 
     stream << m_id
            << m_deviceType
@@ -406,12 +424,15 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
     setName(name);
     setDescription(description);
     const QStringList restoredSupportedProtocols = configValues.take(QString::fromLatin1(kSupportedProtocolsConfigKey)).toStringList();
+    const QVariant restoredOnline = configValues.take(QString::fromLatin1(kOnlineConfigKey));
     const QString restoredStatus = configValues.take(QString::fromLatin1(kStatusConfigKey)).toString();
     for (auto it = configValues.cbegin(); it != configValues.cend(); ++it)
         setParamValue(it.key(), it.value());
     if (!restoredSupportedProtocols.isEmpty())
         setSupportedProtocols(restoredSupportedProtocols);
-    setStatus(restoredStatus);
+    setOnline(restoredOnline.isValid()
+                  ? restoredOnline.toBool()
+                  : restoredStatus == QStringLiteral("在线"));
 
     qDeleteAll(m_commands);
     m_commands.clear();

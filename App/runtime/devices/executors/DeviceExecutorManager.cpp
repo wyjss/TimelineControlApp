@@ -7,6 +7,7 @@
 #include "devices/executors/HttpCommandExecutor.h"
 #include "devices/executors/NetworkPing.h"
 #include "devices/executors/SerialCommandExecutor.h"
+#include "devices/executors/UdpCommandExecutor.h"
 
 #include <QMetaObject>
 
@@ -54,6 +55,7 @@ void DeviceExecutorManager::bindDevice(Device *device)
     for (const QString &protocol : device->supportedProtocols()) {
         const QString protocolValue = protocol.trimmed();
         if (protocolValue != DeviceProtocol::Http
+            && protocolValue != DeviceProtocol::Udp
             && protocolValue != DeviceProtocol::Serial
             && protocolValue != DeviceProtocol::Pc)
             continue;
@@ -82,8 +84,13 @@ void DeviceExecutorManager::bindDevice(Device *device)
     }
 
     connect(this, &DeviceExecutorManager::onlineChecked, device, [this, device, deviceId](const QString &checkedDeviceId, bool online) {
+        // 定位器单独通过接收定位数据时间判断在线
+        if (device->deviceType() == DeviceType::Locator) {
+            return;
+        }
+
         if (checkedDeviceId == deviceId)
-            device->setStatus(online ? tr("在线") : tr("离线"));
+            device->setOnline(online);
     });
     connect(device, &QObject::destroyed, this, [this, deviceId]() {
         unbindDeviceId(deviceId);
@@ -204,6 +211,18 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
         executor = m_executors.value(key);
         if (!executor)
             executor = new HttpCommandExecutor(ip, port);
+    } else if (protocolValue == DeviceProtocol::Udp) {
+        const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
+        const int port = params.value(DeviceKey::Port).toInt();
+        if (ip.isEmpty() || port <= 0)
+            return nullptr;
+
+        key = QStringLiteral("udp:%1:%2").arg(ip).arg(port);
+        if (executorKey)
+            *executorKey = key;
+        executor = m_executors.value(key);
+        if (!executor)
+            executor = new UdpCommandExecutor(ip, port);
     }
 
     if (executor && !m_executors.contains(key)) {

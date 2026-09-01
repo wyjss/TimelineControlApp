@@ -2,6 +2,7 @@
 
 #include "devices/Device.h"
 #include "devices/DeviceConstants.h"
+#include "runtime/TimelineRuntime.h"
 #include "timeline/TimelineManager.h"
 
 #define LC "[DeviceCommand] "
@@ -115,27 +116,60 @@ public:
     explicit Dmx512Command(QObject *parent)
         : DeviceCommand(DeviceProtocol::Dmx512, QStringLiteral("DMX指令"), parent)
     {
-        auto *channelField = new DeviceParamSpec(QStringLiteral("channel"),
-                                                 QStringLiteral("通道"),
-                                                 1,
-                                                 DeviceParamSpec::IntType,
-                                                 DeviceParamSpec::TextEditor,
-                                                 this);
-        channelField->setMinimum(1);
-        channelField->setMaximum(512);
-        addCreationInputField(channelField);
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Dmx512BitOffset));
 
-        auto *valueField = new DeviceParamSpec(QStringLiteral("value"),
-                                               QStringLiteral("值"),
-                                               255,
-                                               DeviceParamSpec::IntType,
-                                               DeviceParamSpec::SliderEditor,
-                                               this);
-        valueField->setMinimum(0);
-        valueField->setMaximum(255);
-        valueField->setStepSize(1);
-        addCreationInputField(valueField);
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Dmx512BitCount));
+
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Dmx512CommandBits));
     }
+    QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+    {
+        auto paramMap = DeviceCommand::resolvedParams(executionInputValues);
+        auto bitsStr = paramMap[DeviceKey::Dmx512CommandBits].toString();
+        int bitCount = paramMap[DeviceKey::Dmx512BitCount].toInt();
+        auto bitStrs = bitsStr.split(",");
+        // 补全默认值
+        while (bitStrs.size() < bitCount) {
+            if (bitStrs.isEmpty() == false) {
+                bitStrs << ",";
+            }
+            bitStrs << "0";
+        }
+        //
+        while (bitStrs.size() > bitCount) {
+            bitStrs.takeLast();
+        }
+
+        paramMap[DeviceKey::Dmx512CommandBits] = bitStrs.join(",");
+
+        return paramMap;
+    }
+
+    QString invalidReason() const override
+    {
+        const QString reason = DeviceCommand::invalidReason();
+        if (!reason.isEmpty())
+            return reason;
+
+        const auto *countField = getField(DeviceKey::Dmx512BitCount);
+        const auto *dataField = getField(DeviceKey::Dmx512CommandBits);
+        if (!countField || !dataField)
+            return QStringLiteral("DMX512 指令字段不完整");
+
+        const QString data = dataField->value().toString().trimmed();
+        const int actualCount = data.isEmpty()
+            ? 0
+            : data.split(',', Qt::KeepEmptyParts).size();
+        const int expectedCount = countField->value().toInt();
+        if (actualCount != expectedCount) {
+            return QStringLiteral("指令数据数量应为 %1，当前为 %2")
+                .arg(expectedCount)
+                .arg(actualCount);
+        }
+
+        return QString();
+    }
+
 };
 
 } // namespace
@@ -301,6 +335,17 @@ DeviceParamSpec* DeviceCommand::getField(const QString& key) const
     return nullptr;
 }
 
+QString DeviceCommand::invalidReason() const
+{
+    for (DeviceParamSpec *field : m_creationInputFields) {
+        const QString reason = field->invalidReason();
+        if (!reason.isEmpty())
+            return reason;
+    }
+
+    return QString();
+}
+
 QJsonObject DeviceCommand::toJson() const
 {
     QJsonObject json;
@@ -415,7 +460,7 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValu
 DeviceCommand *DeviceCommand::clone(QObject *parent) const
 {
     return createFromJson(toJson(), parent,
-                          TimelineManager::getInstance()->timelineModel());
+                          TimelineRuntime::getInstance()->timelineManager()->timelineModel());
 }
 
 void DeviceCommand::addCreationInputField(DeviceParamSpec *field)
@@ -527,7 +572,7 @@ DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
 {
 	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
 	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
-    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::ApiPath));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Payload));
 }
 
 //////////////////////////////////////////////////////////////////////////

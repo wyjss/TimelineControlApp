@@ -21,6 +21,7 @@ class DeviceParamSpec;
 class DeviceTemplate;
 class DeviceTemplateModel;
 
+//! 实例由 TimelineRuntime 创建并管理。
 //! 为模板、设备和指令生成只读 inspector 表单。
 class DeviceInspectorFormProvider final : public QObject
 {

@@ -45,7 +45,7 @@ button { font: inherit; }
 }
 
 .brand, .topbar-meta, .hero-heading, .section-heading, .transport,
-.progress-meta, .queue-actions, .timeline-main, .timeline-meta,
+.progress-meta, .queue-actions, .device-heading-actions, .timeline-main, .timeline-meta,
 .device-row, .queue-row { display: flex; align-items: center; }
 
 .brand { gap: 12px; }
@@ -173,6 +173,7 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .section-heading.compact { margin-bottom: 14px; }
 .section-caption { margin: 6px 0 0; color: var(--muted); font-size: 11px; }
 .queue-actions { gap: 14px; color: var(--muted); font-size: 12px; }
+.device-heading-actions { gap: 8px; }
 .text-button { padding: 7px 10px; border-radius: 7px; color: var(--green); background: rgba(66, 230, 164, .08); font-size: 12px; font-weight: 700; }
 .count-badge { display: grid; min-width: 27px; height: 27px; padding: 0 8px; place-items: center; border: 1px solid var(--border); border-radius: 9px; color: var(--muted); font-size: 11px; }
 
@@ -226,6 +227,8 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .device-row:last-child { border-bottom: 0; }
 .device-row:hover:not(:disabled) { background: rgba(255, 255, 255, .028); }
 .device-row.selected { background: rgba(66, 230, 164, .07); }
+.device-row.filtered { opacity: .38; filter: grayscale(1); }
+.device-row.filtered:hover:not(:disabled) { opacity: .65; }
 .device-row:disabled { cursor: default; }
 .device-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .device-dot.online { background: var(--green); box-shadow: 0 0 9px rgba(66, 230, 164, .45); }
@@ -259,6 +262,7 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .command-row.next { background: rgba(106, 168, 255, .045); box-shadow: inset 2px 0 var(--blue); }
 .command-row.running { background: rgba(66, 230, 164, .055); box-shadow: inset 2px 0 var(--green); }
 .command-row.failed { background: rgba(255, 97, 116, .04); }
+.command-row.filtered { opacity: .38; filter: grayscale(1); box-shadow: none; background: transparent; }
 .command-time, .command-duration { color: #b7c1cd; font: 600 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .command-time { grid-area: time; }
 .command-copy, .command-device { min-width: 0; }

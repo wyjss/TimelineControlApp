@@ -1,6 +1,5 @@
 <RCC>
-    <qresource prefix="/qml">
-        <file>main.qml</file>
+    <qresource prefix="/LocatorViewer">
+        <file>LocatorViewer.qml</file>
     </qresource>
-    <qresource prefix="/"/>
 </RCC>

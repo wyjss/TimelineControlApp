@@ -12,6 +12,7 @@ class TimelineModel;
 class DeviceTemplateModel;
 
 
+//! 实例由 TimelineRuntime 创建并管理。
 class DeviceModel final : public TypedListModel<Device *>
 {
     Q_OBJECT
@@ -35,7 +36,7 @@ public:
 
     QStringList deviceTypes(bool manual = false) const;
 
-    QVariantList deviceOptionsForDeviceType(const QString &deviceType) const;
+    Q_INVOKABLE QVariantList deviceOptionsForDeviceType(const QString &deviceType) const;
     Q_INVOKABLE void selectDevice(const QString &deviceId);
     Q_INVOKABLE bool removeDevice(const QString &deviceId);
 

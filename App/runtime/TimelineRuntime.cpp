@@ -11,6 +11,7 @@
 #include "devices/DeviceTemplate.h"
 #include "devices/DeviceTemplateModel.h"
 #include "devices/executors/DeviceExecutorManager.h"
+#include "location/FenceManager.h"
 #include "projection/VideoProjectionPlanController.h"
 #include "timeline/Timeline.h"
 #include "timeline/TimelineCommand.h"
@@ -30,24 +31,36 @@
 namespace {
 
 constexpr quint32 kTimelinePlanMagic = 0x544C504E;
-constexpr qint32 kTimelinePlanVersion = 2;
+constexpr qint32 kTimelinePlanVersion = 3;
 
 } // namespace
 
+namespace
+{
+    TimelineRuntime* g_TimelineRuntime = nullptr;
+}
+TimelineRuntime* TimelineRuntime::getInstance()
+{
+    return g_TimelineRuntime;
+}
 
 TimelineRuntime::TimelineRuntime(QObject *parent)
     : BaseRuntime(parent)
-    , m_taskManager(new UICore::TaskManager(this))
-    , m_deviceModel(new DeviceModel(this))
-    , m_timelineManager(new TimelineManager(m_deviceModel, this))
-    , m_deviceTemplateModel(new DeviceTemplateModel(m_timelineManager->timelineModel(), this))
-    , m_deviceExecutorManager(new DeviceExecutorManager(this))
-    , m_deviceManager(new DeviceManager(m_deviceModel, m_deviceTemplateModel, m_deviceExecutorManager, this))
-    , m_deviceInspectorFormProvider(new DeviceInspectorFormProvider(m_deviceModel,
-                                                                    m_deviceTemplateModel,
-                                                                    this))
-    , m_videoProjectionPlanController(new VideoProjectionPlanController(this))
 {
+    g_TimelineRuntime = this;
+
+    m_taskManager = (new UICore::TaskManager(this));
+    m_deviceModel = (new DeviceModel(this));
+	m_timelineManager = (new TimelineManager(m_deviceModel, this));
+	m_deviceTemplateModel = (new DeviceTemplateModel(m_timelineManager->timelineModel(), this));
+	m_deviceExecutorManager = (new DeviceExecutorManager(this));
+	m_deviceManager = (new DeviceManager(m_deviceModel, m_deviceTemplateModel, m_deviceExecutorManager, this));
+	m_deviceInspectorFormProvider = (new DeviceInspectorFormProvider(m_deviceModel,
+																  m_deviceTemplateModel,
+																  this));
+	m_fenceManager = (new FenceManager(this));
+	m_videoProjectionPlanController = (new VideoProjectionPlanController(this));
+
     qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
     qRegisterMetaType<Device *>("Device*");
     qRegisterMetaType<DeviceTemplate *>("DeviceTemplate*");
@@ -57,6 +70,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<DeviceManager *>("DeviceManager*");
     qRegisterMetaType<DeviceModel *>("DeviceModel*");
     qRegisterMetaType<DeviceTemplateModel *>("DeviceTemplateModel*");
+    qRegisterMetaType<FenceManager *>("FenceManager*");
     qRegisterMetaType<VideoProjectionPlanController *>("VideoProjectionPlanController*");
     qRegisterMetaType<Timeline *>("Timeline*");
     qRegisterMetaType<TimelineCommand *>("TimelineCommand*");
@@ -178,6 +192,11 @@ DeviceInspectorFormProvider *TimelineRuntime::deviceInspectorFormProvider() cons
     return m_deviceInspectorFormProvider;
 }
 
+FenceManager *TimelineRuntime::fenceManager() const
+{
+    return m_fenceManager;
+}
+
 VideoProjectionPlanController *TimelineRuntime::videoProjectionPlanController() const
 {
     return m_videoProjectionPlanController;
@@ -205,6 +224,7 @@ void TimelineRuntime::writePlanToStream(QDataStream &stream) const
     m_deviceModel->writeToStream(stream);
     m_timelineManager->writeToStream(stream);
     m_videoProjectionPlanController->writeToStream(stream);
+    m_fenceManager->writeToStream(stream);
 }
 
 void TimelineRuntime::readPlanFromStream(QDataStream &stream)
@@ -214,7 +234,7 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
     stream >> magic >> version;
     if (stream.status() != QDataStream::Ok
         || magic != kTimelinePlanMagic
-        || version != kTimelinePlanVersion) {
+        || (version != 2 && version != kTimelinePlanVersion)) {
         stream.setStatus(QDataStream::ReadCorruptData);
         return;
     }
@@ -229,6 +249,10 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
         return;
 
     m_videoProjectionPlanController->readFromStream(stream);
+    if (stream.status() == QDataStream::Ok && version >= 3)
+        m_fenceManager->readFromStream(stream);
+    else if (stream.status() == QDataStream::Ok)
+        m_fenceManager->clear();
 }
 
 bool TimelineRuntime::savePlanToFile(const QString &filePath)

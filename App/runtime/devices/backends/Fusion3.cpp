@@ -3,6 +3,8 @@
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
 
+#define LC "[Fusion3DeviceTemplate] "
+#include "LogMacros.h"
 namespace {
 
 QList<DeviceParamSpec *> createFusion3Params()
@@ -23,8 +25,8 @@ DeviceCommand *createFusion3Command(const QString &name,
 {
     DeviceCommand *command = DeviceCommand::createForProtocol(DeviceProtocol::Udp);
     command->setName(name);
-    Q_UNUSED(stringTemplate)
-    command->setStringTemplateKey(DeviceKey::ApiPath);
+    command->getField(DeviceKey::Payload)->setValue(stringTemplate);
+    command->setStringTemplateKey(DeviceKey::Payload);
 
     if (!paramKey.isEmpty()) {
         auto *param = new DeviceParamSpec(paramKey, paramLabel, value);

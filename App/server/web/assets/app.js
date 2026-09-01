@@ -4,7 +4,7 @@ const elements = Object.fromEntries([
     "remaining-time", "stop-button", "primary-button", "primary-icon", "primary-label",
     "refresh-button", "selection-count", "apply-queue-button", "timeline-list",
     "empty-timelines", "queue-count", "queue-list", "empty-queue", "device-count",
-    "device-list", "empty-devices", "device-selection", "command-program", "command-count", "command-list",
+    "device-list", "empty-devices", "device-selection", "reset-devices-button", "command-program", "command-count", "command-list",
     "empty-commands", "toast"
 ].map(id => [id, document.getElementById(id)]));
 
@@ -171,7 +171,7 @@ function renderDevices(data) {
         device.id,
         device.name,
         device.type,
-        device.status,
+        device.online,
         selectedIds.includes(device.id)
     ]).concat([[data.playbackState, state.busy]]));
     if (state.renderSignatures.devices === signature) return;
@@ -179,6 +179,9 @@ function renderDevices(data) {
     elements["device-list"].replaceChildren();
     elements["device-count"].textContent = String(data.devices.length);
     elements["empty-devices"].hidden = data.devices.length > 0;
+    elements["reset-devices-button"].disabled = state.busy
+        || data.playbackState !== "stopped"
+        || selectedIds.length === 0;
     const selectedNames = data.devices
         .filter(device => selectedIds.includes(device.id))
         .map(device => device.name || device.id);
@@ -188,20 +191,19 @@ function renderDevices(data) {
 
     for (const device of data.devices) {
         const selected = selectedIds.includes(device.id);
-        const status = device.status?.trim() || "未报告";
-        const normalized = status.toLowerCase();
-        const problem = /离线|断开|失败|故障|异常|offline|error|failed/.test(normalized);
-        const online = !problem && /在线|正常|就绪|已连接|online|ready|connected/.test(normalized);
-        const row = createElement("button", `device-row${selected ? " selected" : ""}`);
+        const status = device.online ? "在线" : "离线";
+        const row = createElement("button", `device-row${selected ? " selected" : selectedIds.length ? " filtered" : ""}`);
         row.type = "button";
         row.disabled = state.busy || data.playbackState !== "stopped";
         row.setAttribute("aria-pressed", String(selected));
         row.addEventListener("click", () => post(
             "/api/v1/playback-devices",
-            { deviceIds: selected ? [] : [device.id] },
-            selected ? "已恢复全部设备播控" : `已选择 ${device.name || device.id}`
+            { deviceIds: selected
+                ? selectedIds.filter(id => id !== device.id)
+                : [...selectedIds, device.id] },
+            selected ? `已取消 ${device.name || device.id}` : `已选择 ${device.name || device.id}`
         ));
-        row.append(createElement("span", `device-dot${online ? " online" : ""}${problem ? " problem" : ""}`));
+        row.append(createElement("span", `device-dot${device.online ? " online" : " problem"}`));
         const copy = createElement("span", "device-copy");
         copy.append(createElement("strong", "", device.name || device.id));
         copy.append(createElement("span", "", device.type || "未分类设备"));
@@ -214,6 +216,7 @@ function renderDevices(data) {
 function renderCommands(data, timeline) {
     const commands = timeline ? [...timeline.commands].sort((left, right) => left.startTimeMs - right.startTimeMs) : [];
     const devices = new Map(data.devices.map(device => [device.id, device.name || device.id]));
+    const selectedIds = data.playbackDevices || [];
     const nextCommand = commands.find(command => command.state === "idle"
         && command.startTimeMs >= (timeline?.currentTimeMs || 0));
     const signature = JSON.stringify([
@@ -229,7 +232,8 @@ function renderCommands(data, timeline) {
             command.state,
             command.error
         ]),
-        [...devices]
+        [...devices],
+        selectedIds
     ]);
     if (state.renderSignatures.commands === signature) return;
     state.renderSignatures.commands = signature;
@@ -240,7 +244,8 @@ function renderCommands(data, timeline) {
     elements["empty-commands"].textContent = timeline ? "该节目没有指令" : "选择节目后查看指令";
 
     for (const command of commands) {
-        const row = createElement("div", `command-grid command-row ${command.state}${command === nextCommand ? " next" : ""}`);
+        const filtered = selectedIds.length > 0 && !selectedIds.includes(command.deviceId);
+        const row = createElement("div", `command-grid command-row ${command.state}${command === nextCommand ? " next" : ""}${filtered ? " filtered" : ""}`);
         row.append(createElement("span", "command-time", formatTime(command.startTimeMs)));
         const copy = createElement("span", "command-copy");
         copy.append(createElement("strong", "", command.name || "未命名指令"));
@@ -341,6 +346,8 @@ elements["primary-button"].addEventListener("click", () => {
 
 elements["stop-button"].addEventListener("click", () =>
     post("/api/v1/control", { action: "stop" }, "播放已停止"));
+elements["reset-devices-button"].addEventListener("click", () =>
+    post("/api/v1/playback-devices", { deviceIds: [] }, "已重置为全部设备"));
 elements["refresh-button"].addEventListener("click", () => refresh(true));
 
 setInterval(() => {

@@ -21,6 +21,12 @@ TimelineShellController::TimelineShellController(QObject *parent)
               {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceControlPage.qml")}
           },
           QVariantMap{
+              {QStringLiteral("key"), QStringLiteral("locator")},
+              {QStringLiteral("label"), tr("定位管理")},
+              {QStringLiteral("iconName"), QStringLiteral("scene")},
+              {QStringLiteral("source"), QString()}
+          },
+          QVariantMap{
               {QStringLiteral("key"), QStringLiteral("timeline")},
               {QStringLiteral("label"), tr("时间线")},
               {QStringLiteral("iconName"), QStringLiteral("workflow")},

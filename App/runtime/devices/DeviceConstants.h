@@ -31,8 +31,18 @@ inline const QString Protocol = QStringLiteral("protocol");
 
 inline const QString BaudRate = QStringLiteral("baudRate");
 inline const QString Dmx512AdapterDeviceId = QStringLiteral("dmx512AdapterDeviceId");
-// QVector<int32>的dmx适配器实时数据
+// QVector<int32>的dmx适配器！完整！实时数据
 inline const QString Dmx512Bits = QStringLiteral("dmx512Bits");
+// dmx512设备的起始位，指令的offset相对于此
+inline const QString Dmx512BitStart = QStringLiteral("dmx512Start");
+// dmx512指令相对Dmx512BitStart的偏移
+inline const QString Dmx512BitOffset = QStringLiteral("dmx512Offset");
+// dmx512指令占据的位宽
+inline const QString Dmx512BitCount = QStringLiteral("dmx512Count");
+// dmx512指令的实时数据，宽度等于Dmx512BitCount
+inline const QString Dmx512CommandBits = QStringLiteral("dmx512CommandBits");
+
+
 inline const QString Ip = QStringLiteral("ip");
 inline const QString HttpMethod = QStringLiteral("httpMethod");
 //inline const QString HttpQueryParams = QStringLiteral("httpQueryParams");
@@ -42,6 +52,8 @@ inline const QString OscTransProtocol = QStringLiteral("oscTransProtocol");
 inline const QString OscMessage = QStringLiteral("oscMessage");
 inline const QString KeystoneCorrection = QStringLiteral("keystoneCorrection");
 inline const QString SerialPayload = QStringLiteral("serialPayload");
+// @todo 可以代替 SerialPayload/HttpBody ?
+inline const QString Payload = QStringLiteral("payload");
 inline const QString Port = QStringLiteral("port");
 inline const QString VirtualScreenWidth = QStringLiteral("virtualScreenWidth");
 inline const QString VirtualScreenHeight = QStringLiteral("virtualScreenHeight");
@@ -97,6 +109,7 @@ inline const QString Internal = QStringLiteral("internal");
 namespace DevicePattern {
 inline const QString Ip = QStringLiteral("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
 inline const QString Rect = QStringLiteral("^\\d+(,\\d+){3}$");
+inline const QString Dmx = QStringLiteral(R"(^(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:,(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d))*$)");
 } // namespace DevicePattern
 
 struct DeviceKeystoneCorrectionItem {

@@ -28,7 +28,7 @@ class Device final : public QObject
     Q_PROPERTY(QString deviceType READ deviceType WRITE setDeviceType NOTIFY deviceTypeChanged FINAL)
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
     Q_PROPERTY(QStringList supportedProtocols READ supportedProtocols WRITE setSupportedProtocols NOTIFY supportedProtocolsChanged FINAL)
-    Q_PROPERTY(QString status READ status WRITE setStatus NOTIFY statusChanged FINAL)
+    Q_PROPERTY(bool online READ isOnline WRITE setOnline NOTIFY onlineChanged FINAL)
     Q_PROPERTY(bool filteredOut READ filteredOut WRITE setFilteredOut NOTIFY filteredOutChanged FINAL)
     Q_PROPERTY(QString description READ description WRITE setDescription NOTIFY descriptionChanged FINAL)
     Q_PROPERTY(QVariantMap configValues READ configValues NOTIFY configValuesChanged FINAL)
@@ -51,8 +51,8 @@ public:
     void setSupportedProtocols(const QStringList &supportedProtocols);
     Q_INVOKABLE bool supportsProtocol(const QString &protocol) const;
 
-    QString status() const;
-    void setStatus(const QString &status);
+    bool isOnline() const;
+    void setOnline(bool online);
 
     bool filteredOut() const;
     void setFilteredOut(bool filteredOut);
@@ -70,6 +70,7 @@ public:
     QVariantList commands() const;
     Q_INVOKABLE DeviceCommand *createCommandDraft(const QString &protocol = QString()) const;
     Q_INVOKABLE void deleteCommandDraft(DeviceCommand *command) const;
+    Q_INVOKABLE bool commitCommandDraft(DeviceCommand *command);
     Q_INVOKABLE DeviceCommand *createCommand(const QString &protocol = QString(),
                                                               const QString &name = QString());
     Q_INVOKABLE DeviceCommand *createCommandForType(const QString &commandType);
@@ -88,7 +89,7 @@ signals:
     void deviceTypeChanged();
     void nameChanged();
     void supportedProtocolsChanged();
-    void statusChanged();
+    void onlineChanged();
     void filteredOutChanged();
     void descriptionChanged();
     void configValuesChanged();
@@ -103,7 +104,7 @@ private:
     QString m_deviceType;
     QString m_name;
     QStringList m_supportedProtocols;
-    QString m_status;
+    bool m_online = false;
     bool m_filteredOut = false;
     QString m_description;
     QList<DeviceParamSpec *> m_params;

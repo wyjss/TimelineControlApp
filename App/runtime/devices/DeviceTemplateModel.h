@@ -11,6 +11,7 @@
 class TimelineModel;
 
 
+//! 实例由 TimelineRuntime 创建并管理。
 class DeviceTemplateModel final : public TypedListModel<DeviceTemplate *>
 {
     Q_OBJECT

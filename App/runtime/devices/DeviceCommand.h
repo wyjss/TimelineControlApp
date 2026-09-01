@@ -56,6 +56,7 @@ public:
     bool filteredOut() const;
 
     DeviceParamSpec* getField(const QString& key) const;
+    Q_INVOKABLE virtual QString invalidReason() const;
 
 	QJsonObject toJson() const;
 	bool loadFromJson(const QJsonObject& json);

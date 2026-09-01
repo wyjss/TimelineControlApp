@@ -15,6 +15,7 @@
 #include <iostream>
 #include <UICore/Shell/AppSettings.h>
 #include <UICore/UICore.h>
+#include <LocatorViewer.h>
 #include "runtime/TimelineRuntime.h"
 #include "runtime/TimelineShellController.h"
 #include "runtime/video/FfmpegVideoFrameItem.h"
@@ -80,11 +81,12 @@ int main(int argc, char *argv[])
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #endif
-
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QApplication application(argc, argv);
     UICore::initialize();
+    LocatorViewer::initialize();
     application.setOrganizationName(QStringLiteral("TimelineControlApp"));
     application.setOrganizationDomain(QStringLiteral("timeline-control.local"));
     application.setApplicationName(QStringLiteral("时间线控制应用"));
@@ -133,7 +135,6 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("deviceicon"), new DeviceIconProvider);
     engine.rootContext()->setContextProperty(QStringLiteral("app"), &runtime);
-    engine.rootContext()->setContextProperty(QStringLiteral("timelineShellController"), &shellController);
     engine.rootContext()->setContextProperty(QStringLiteral("pcTimelinePreviewGenerator"),
                                              &pcTimelinePreviewGenerator);
 
