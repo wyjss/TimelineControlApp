@@ -8,6 +8,7 @@
 #include "devices/executors/NetworkPing.h"
 #include "devices/executors/SerialCommandExecutor.h"
 #include "devices/executors/UdpCommandExecutor.h"
+#include "devices/executors/DmxCommandExecutor.h"
 
 #include <QMetaObject>
 
@@ -55,6 +56,7 @@ void DeviceExecutorManager::bindDevice(Device *device)
     for (const QString &protocol : device->supportedProtocols()) {
         const QString protocolValue = protocol.trimmed();
         if (protocolValue != DeviceProtocol::Http
+            && protocolValue != DeviceProtocol::Dmx512
             && protocolValue != DeviceProtocol::Udp
             && protocolValue != DeviceProtocol::Serial
             && protocolValue != DeviceProtocol::Pc)
@@ -106,22 +108,24 @@ void DeviceExecutorManager::unbindDevice(Device *device)
         unbindDeviceId(device->id());
 }
 
-void DeviceExecutorManager::execute(DeviceCommand *command, const QVariantMap &executionInputValues)
+void DeviceExecutorManager::execute(const QString &executionId,
+                                    DeviceCommand *command,
+                                    const QVariantMap &executionInputValues)
 {
-    if (!command)
+    if (executionId.isEmpty() || !command)
         return;
 
     const QVariantMap params = command->resolvedParams(executionInputValues);
 
     DeviceCommandExecutor *executor = executorFor(command->protocol(), params);
     if (executor) {
-        QMetaObject::invokeMethod(executor, [executor, command, params]() {
-            executor->execute(command, params);
+        QMetaObject::invokeMethod(executor, [executor, executionId, command, params]() {
+            executor->execute(executionId, command, params);
         }, Qt::QueuedConnection);
         return;
     }
 
-    emit executionFinished(command, false, tr("没有可用的执行器"));
+    emit executionFinished(executionId, command, false, tr("没有可用的执行器"));
 }
 
 void DeviceExecutorManager::checkOnline()
@@ -223,6 +227,18 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
         executor = m_executors.value(key);
         if (!executor)
             executor = new UdpCommandExecutor(ip, port);
+    } else if (protocolValue == DeviceProtocol::Dmx512) {
+        const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
+        const int port = params.value(DeviceKey::Port, 80).toInt();
+        if (ip.isEmpty() || port <= 0)
+            return nullptr;
+
+        key = QStringLiteral("dmx512:%1:%2").arg(ip).arg(port);
+        if (executorKey)
+            *executorKey = key;
+        executor = m_executors.value(key);
+        if (!executor)
+            executor = new DmxCommandExecutor(ip, port);
     }
 
     if (executor && !m_executors.contains(key)) {

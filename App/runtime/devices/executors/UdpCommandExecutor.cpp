@@ -18,11 +18,13 @@ UdpCommandExecutor::UdpCommandExecutor(const QString &ip, int port, QObject *par
 {
 }
 
-void UdpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap &params)
+void UdpCommandExecutor::executeImpl(const QString &executionId,
+                                     DeviceCommand *command,
+                                     const QVariantMap &params)
 {
     const QString path = params.value(DeviceKey::Payload).toString();
     if (m_ip.isEmpty() || path.isEmpty()) {
-        emit executionFinished(command, false, tr("HTTP 地址或路径为空"));
+        emit executionFinished(executionId, command, false, tr("HTTP 地址或路径为空"));
         return;
     }
 
@@ -31,8 +33,8 @@ void UdpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap &
     auto size = sock.writeDatagram(data, QHostAddress(m_ip), m_port);
     LOG_DEBUG("send udp order: " << data);
     if (size == data.size()) {
-        emit executionFinished(command, true, "");
+        emit executionFinished(executionId, command, true, "");
     } else {
-        emit executionFinished(command, false, "发送失败");
+        emit executionFinished(executionId, command, false, "发送失败");
     }
 }

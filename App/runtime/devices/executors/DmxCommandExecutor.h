@@ -4,14 +4,12 @@
 
 #include <QString>
 
-class QNetworkAccessManager;
 
-
-class UdpCommandExecutor final : public DeviceCommandExecutor
+class DmxCommandExecutor final : public DeviceCommandExecutor
 {
     Q_OBJECT
 public:
-    UdpCommandExecutor(const QString &ip, int port, QObject *parent = nullptr);
+    DmxCommandExecutor(const QString &ip, int port, QObject *parent = nullptr);
 
 protected:
     void executeImpl(const QString &executionId,
@@ -21,5 +19,4 @@ protected:
 private:
     QString m_ip;
     int m_port = 80;
-    QNetworkAccessManager *m_manager = nullptr;
 };

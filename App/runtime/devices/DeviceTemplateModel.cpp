@@ -101,6 +101,12 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateDmx512Adapter()
         specs.push_back(spec);
     }
 
+    {
+        auto spec = DeviceParamSpec::createForKey(DeviceKey::Dmx512Bits);
+        spec->setRequired(false);
+        specs << spec;
+    }
+
     return makeDeviceTemplate(tr("DMX512适配器"),
                               DeviceType::Dmx512Adapter,
                               QStringList{DeviceProtocol::Dmx512},

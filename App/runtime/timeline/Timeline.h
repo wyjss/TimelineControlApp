@@ -8,6 +8,7 @@
 
 
 class QDataStream;
+class CrossConditionModel;
 
 
 // 对应一条时间线
@@ -17,6 +18,7 @@ class Timeline final : public QObject
     Q_PROPERTY(QString id READ id CONSTANT FINAL)
     Q_PROPERTY(QString name READ name CONSTANT FINAL)
     Q_PROPERTY(TimelineCommandModel *commandModel READ commandModel CONSTANT FINAL)
+    Q_PROPERTY(CrossConditionModel *crossConditionModel READ crossConditionModel CONSTANT FINAL)
     Q_PROPERTY(State state READ state NOTIFY stateChanged FINAL)
     Q_PROPERTY(qint64 currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged FINAL)
     Q_PROPERTY(qint64 durationMs READ durationMs WRITE setDurationMs NOTIFY durationMsChanged FINAL)
@@ -39,6 +41,7 @@ public:
     QString id() const;
     QString name() const;
     TimelineCommandModel *commandModel() const;
+    CrossConditionModel *crossConditionModel() const;
     State state() const;
     qint64 currentTimeMs() const;
     qint64 durationMs() const;
@@ -52,7 +55,9 @@ public:
     QList<TimelineCommand *> updateTime(qint64 masterTimeMs);
 
     void writeToStream(QDataStream &stream) const;
-    static Timeline *readFromStream(QDataStream &stream, QObject *parent = nullptr);
+    static Timeline *readFromStream(QDataStream &stream,
+                                    int streamVersion,
+                                    QObject *parent = nullptr);
 
 signals:
     void stateChanged(State state);
@@ -64,6 +69,7 @@ private:
     QString m_id;
     QString m_name;
     TimelineCommandModel *m_commandModel = nullptr;
+    CrossConditionModel *m_crossConditionModel = nullptr;
     QList<TimelineCommand *> m_playCommands;
     int m_nextCommandIndex = 0;
     State m_state = Stopped;

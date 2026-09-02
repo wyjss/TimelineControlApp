@@ -24,14 +24,19 @@ Item {
     property var timelineCommandModel: currentTimeline ? currentTimeline.commandModel : null
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
+    property var fenceManager: appRuntime && appRuntime.fenceManager ? appRuntime.fenceManager : null
+    property var crossConditionModel: currentTimeline && currentTimeline.crossConditionModel
+        ? currentTimeline.crossConditionModel
+        : null
     property var pcPreviewGenerator: typeof pcTimelinePreviewGenerator !== "undefined"
         ? pcTimelinePreviewGenerator
         : null
     property bool controlTrackOnly: false
     readonly property int preStartTimelineDurationMs: 24 * 60 * 60 * 1000
-    readonly property int timelineDurationMs: currentTimeline && currentTimeline.durationMs > 0
-        ? currentTimeline.durationMs
-        : preStartTimelineDurationMs
+    readonly property int timelineDurationMs: timelineStopped
+        ? Math.max(preStartTimelineDurationMs,
+                   timelineCommandModel ? timelineCommandModel.realDurationMs : 0)
+        : (currentTimeline ? currentTimeline.durationMs : 0)
     readonly property int timelineTrackLabelWidth: 224
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
@@ -151,17 +156,10 @@ Item {
         if (!timelineStopped || !timelineCommandModel)
             return
 
-        var extraParams = {
-            "targetDeviceName": deviceName(targetDevice),
-            "targetDeviceAddress": deviceAddress(targetDevice)
-        }
-        if (executionValues && Object.keys(executionValues).length > 0)
-            extraParams.executionInputFields = executionValues
-
         timelineCommandModel.addDeviceCommand(startTimeMs,
                                               String(targetDevice.id || ""),
                                               targetCommand,
-                                              extraParams)
+                                              executionValues || {})
         executionStatusText = qsTr("已在 %2 ms 添加 %1").arg(commandName(targetCommand)).arg(startTimeMs)
     }
 
@@ -336,9 +334,12 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: implicitHeight
                         devices: root.devices
+                        fences: root.fenceManager ? root.fenceManager.fences : []
+                        conditionModel: root.crossConditionModel
                         timelineModel: root.timelineManager
                             ? root.timelineManager.timelineModel
                             : null
+                        currentTimeline: root.currentTimeline
                         dialogParent: root
                         editable: root.timelineStopped
                     }
@@ -734,7 +735,6 @@ Item {
         property var targetDevice: null
         property var targetCommand: null
         property var editingTimelineCommand: null
-        property var editDraft: null
         property int targetStartTimeMs: 0
         property bool validationVisible: false
         readonly property bool editing: editingTimelineCommand !== null
@@ -747,7 +747,6 @@ Item {
             open()
 
             Qt.callLater(function() {
-                clearEditDraft()
                 editingTimelineCommand = null
                 targetDevice = nextDevice
                 targetCommand = nextCommand
@@ -758,13 +757,6 @@ Item {
             })
         }
 
-        function clearEditDraft() {
-            var draft = editDraft
-            editDraft = null
-            if (timelineCommandModel && draft)
-                timelineCommandModel.deleteEditDraft(draft)
-        }
-
         function openForTimelineCommand(command) {
             if (!timelineCommandModel || !command)
                 return
@@ -772,24 +764,17 @@ Item {
             open()
 
             Qt.callLater(function() {
-                clearEditDraft()
                 editingTimelineCommand = command
-                editDraft = timelineCommandModel.createEditDraft(
-                    command,
-                    root.deviceModel,
-                    root.timelineManager ? root.timelineManager.timelineModel : null)
-                if (!editDraft) {
+                targetCommand = command.targetCommand
+                if (!targetCommand) {
                     close()
                     return
                 }
 
                 targetDevice = root.deviceForId(String(command.targetDeviceId || ""))
-                targetCommand = editDraft
                 targetStartTimeMs = Number(command.startTimeMs || 0)
                 validationVisible = false
-                executionFieldForm.values = command.commandParams
-                    ? command.commandParams.executionInputFields || ({})
-                    : ({})
+                executionFieldForm.values = command.executionInputValues || ({})
             })
         }
 
@@ -826,7 +811,6 @@ Item {
         closeOnAccepted: false
         onAccepted: commit()
         onClosed: {
-            clearEditDraft()
             editingTimelineCommand = null
             targetDevice = null
             targetCommand = null

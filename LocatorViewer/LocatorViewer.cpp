@@ -9,6 +9,7 @@
 #include <QtMath>
 #include <QtQml/qqml.h>
 #include <QDebug>
+#include <QLineF>
 
 using namespace ragis;
 class LocatorViewerLineCallback : public ragis::RagEventCallback
@@ -350,6 +351,33 @@ bool LocatorViewer::startLineDrawing(const QString& name)
 
     m_lineCallback->start(name);
     return true;
+}
+
+bool LocatorViewer::intersect(
+	const QString& lineName,
+	double startLon, double startLat,
+	double endLon, double endLat
+)
+{
+    if (!hasLineData(lineName)) {
+        return false;
+    }
+    auto d = getLineData(lineName);
+
+	QLineF line1(d.startLongitude * 1000,
+				 d.startLatitude * 1000,
+				 d.endLongitude * 1000,
+				 d.endLatitude * 1000
+	);
+
+	QLineF line2(startLon * 1000,
+				 startLat * 1000,
+				 endLon * 1000,
+				 endLat * 1000
+	);
+    
+    QPointF p;
+    return line1.intersect(line2, &p) == QLineF::BoundedIntersection;
 }
 
 LocatorViewer::LineData& LocatorViewer::getLineData(const QString& name)

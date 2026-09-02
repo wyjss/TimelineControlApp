@@ -134,11 +134,11 @@ Item {
             return
 
         var index = selectedCommands.length + 1
-        var command = selectedPc.createCommandForType("virtualPlayback")
+        var command = selectedPc.createCommandForType(
+            "virtualPlayback", qsTr("虚拟播放 %1").arg(index))
         if (!command)
             return
 
-        command.name = qsTr("虚拟播放 %1").arg(index)
         selectedCommand = command
     }
 

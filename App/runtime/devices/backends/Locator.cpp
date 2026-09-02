@@ -110,7 +110,7 @@ LocationRecver::LocationRecver()
 	QMetaObject::invokeMethod(this, [this]() {
 		QTimer* timer = new QTimer;
 		connect(timer, &QTimer::timeout, this, &LocationRecver::checkStatus);
-		timer->start(1000);
+		timer->start(500);
 							  }, Qt::QueuedConnection);
 
 	quint16 port = 11578;
@@ -240,11 +240,13 @@ void LocationRecver::checkStatus()
 			emit locationChanged(itr->ip, itr->lon, itr->lat, itr->heading, false);
 		}
 #else// debug
-		bool online = rand() % 2 == 0;
+		//bool online = rand() % 2 == 0;
+		bool online = true;
 		double lon = 109.0 + rand() % 1000 / 1000'000.0;
 		double lat = 32.7 + rand() % 1000 / 1000'000.0;
 		double heading = rand() % 360;
-		LOG_DEBUG("发送随机测试数据" << heading);
+
+		LOG_MARK_DEBUG_CODE("发送随机测试数据");
 		emit locationChanged(itr->ip, lon, lat, heading, online);
 		
 #endif

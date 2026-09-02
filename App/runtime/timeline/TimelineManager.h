@@ -10,6 +10,7 @@ class Timeline;
 class TimelineCommand;
 class TimelineClock;
 class TimelineModel;
+class Device;
 class DeviceModel;
 
 // 时间线管理器
@@ -54,6 +55,7 @@ public:
 
     // 播控
     Q_INVOKABLE bool waitForTrigger(const QString &id);
+    bool triggerTimeline(const QString &id);
     Q_INVOKABLE bool setPlayQueue(const QStringList &timelineIds);
     Q_INVOKABLE bool startPlayback(const QStringList &timelineIds);
     Q_INVOKABLE void pausePlayback();
@@ -79,6 +81,7 @@ private:
     void updateTimeline(Timeline *timeline, qint64 clockTimeMs);
     void handleTimelineCompleted(Timeline *timeline);
     bool hasRunningTimeline() const;
+    void bindCommandsForDevice(Device *device);
 
     TimelineClock *m_clock = nullptr;
     TimelineModel *m_timelineModel = nullptr;

@@ -14,7 +14,9 @@ public:
     SerialCommandExecutor(const QString &ip, const QString &portName, QObject *parent = nullptr);
 
 protected:
-    void executeImpl(DeviceCommand *command, const QVariantMap &params) override;
+    void executeImpl(const QString &executionId,
+                     DeviceCommand *command,
+                     const QVariantMap &params) override;
 
 private:
     QString m_ip;

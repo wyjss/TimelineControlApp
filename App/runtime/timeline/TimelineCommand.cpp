@@ -3,7 +3,6 @@
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
-#include "devices/DeviceModel.h"
 
 #define LC "[TimelineCommand] "
 #include "LogMacros.h"
@@ -18,6 +17,7 @@
 namespace {
 
 const char *kDurationMsKey = "durationMs";
+const char *kExecutionInputValuesKey = "__executionInputValues";
 
 QString createTimelineCommandId()
 {
@@ -37,7 +37,7 @@ qint64 variantInt64(const QVariantMap &map, const QString &key, qint64 fallback)
 TimelineCommand::TimelineCommand(qint64 startTimeMs,
                                  const QString &targetDeviceId,
                                  const QString &commandName,
-                                 const QVariantMap &commandParams,
+                                 const QVariantMap &executionInputValues,
                                  DeviceCommand *targetCommand,
                                  QObject *parent)
     : QObject(parent)
@@ -45,19 +45,9 @@ TimelineCommand::TimelineCommand(qint64 startTimeMs,
     , m_startTimeMs(qMax<qint64>(0, startTimeMs))
     , m_targetDeviceId(targetDeviceId.trimmed())
     , m_commandName(commandName)
-    , m_commandParams(commandParams)
-    , m_targetCommand(targetCommand)
+    , m_executionInputValues(executionInputValues)
 {
-    if (targetCommand) {
-        connect(targetCommand, &DeviceCommand::filteredOutChanged,
-                this, &TimelineCommand::filteredOutChanged);
-        connect(targetCommand, &QObject::destroyed, this, [this]() {
-            m_targetCommand.clear();
-            emit targetCommandChanged();
-            emit filteredOutChanged();
-            emit targetCommandDestroyed();
-        });
-    }
+    setTargetCommand(targetCommand);
 }
 
 QString TimelineCommand::id() const
@@ -90,23 +80,54 @@ QString TimelineCommand::commandName() const
     return m_commandName;
 }
 
-QVariantMap TimelineCommand::commandParams() const
+QVariantMap TimelineCommand::executionInputValues() const
 {
-    return m_commandParams;
+    return m_executionInputValues;
 }
 
-void TimelineCommand::setCommandParams(const QVariantMap &commandParams)
+void TimelineCommand::setExecutionInputValues(const QVariantMap &executionInputValues)
 {
-    if (m_commandParams == commandParams)
+    if (m_executionInputValues == executionInputValues)
         return;
 
-    m_commandParams = commandParams;
-    emit commandParamsChanged();
+    m_executionInputValues = executionInputValues;
+    emit executionInputValuesChanged();
+    emit durationMsChanged();
 }
 
 DeviceCommand *TimelineCommand::targetCommand() const
 {
     return m_targetCommand.data();
+}
+
+void TimelineCommand::setTargetCommand(DeviceCommand *targetCommand)
+{
+    if (m_targetCommand == targetCommand)
+        return;
+
+    const bool previousFilteredOut = filteredOut();
+    if (m_targetCommand)
+        disconnect(m_targetCommand.data(), nullptr, this, nullptr);
+
+    m_targetCommand = targetCommand;
+    if (m_targetCommand) {
+        connect(m_targetCommand, &DeviceCommand::filteredOutChanged,
+                this, &TimelineCommand::filteredOutChanged);
+        connect(m_targetCommand, &DeviceCommand::fieldChanged,
+                this, &TimelineCommand::durationMsChanged);
+        connect(m_targetCommand, &QObject::destroyed, this, [this]() {
+            m_targetCommand.clear();
+            emit targetCommandChanged();
+            emit filteredOutChanged();
+            emit durationMsChanged();
+            emit targetCommandDestroyed();
+        });
+    }
+
+    emit targetCommandChanged();
+    emit durationMsChanged();
+    if (previousFilteredOut != filteredOut())
+        emit filteredOutChanged();
 }
 
 bool TimelineCommand::filteredOut() const
@@ -116,7 +137,10 @@ bool TimelineCommand::filteredOut() const
 
 qint64 TimelineCommand::durationMs() const
 {
-    return qMax<qint64>(0, variantInt64(m_commandParams, QString::fromLatin1(kDurationMsKey), 0));
+    const QVariantMap params = m_targetCommand
+        ? m_targetCommand->resolvedParams(m_executionInputValues)
+        : m_executionInputValues;
+    return qMax<qint64>(0, variantInt64(params, QString::fromLatin1(kDurationMsKey), 0));
 }
 
 TimelineCommand::State TimelineCommand::state() const
@@ -185,11 +209,14 @@ void TimelineCommand::setErrorMessage(const QString &errorMessage)
 
 void TimelineCommand::writeToStream(QDataStream &stream) const
 {
+    const QVariantMap storedValues{
+        {QString::fromLatin1(kExecutionInputValuesKey), m_executionInputValues}
+    };
     stream << m_id
            << m_startTimeMs
            << m_targetDeviceId
            << m_commandName
-           << m_commandParams;
+           << storedValues;
 }
 
 void TimelineCommand::readFromStream(QDataStream &stream)
@@ -198,28 +225,27 @@ void TimelineCommand::readFromStream(QDataStream &stream)
     qint64 startTimeMs = 0;
     QString targetDeviceId;
     QString commandName;
-    QVariantMap commandParams;
+    QVariantMap storedValues;
 
     stream >> id
            >> startTimeMs
            >> targetDeviceId
            >> commandName
-           >> commandParams;
+           >> storedValues;
 
     if (stream.status() != QDataStream::Ok)
         return;
 
-    if (m_targetCommand)
-        disconnect(m_targetCommand.data(), nullptr, this, nullptr);
-
     m_id = id;
     m_targetDeviceId = targetDeviceId.trimmed();
     m_commandName = commandName;
-    m_targetCommand.clear();
+    setTargetCommand(nullptr);
     m_state = Idle;
     m_errorMessage.clear();
     setStartTimeMs(startTimeMs);
-    setCommandParams(commandParams);
+    setExecutionInputValues(storedValues.contains(QString::fromLatin1(kExecutionInputValuesKey))
+                                ? storedValues.value(QString::fromLatin1(kExecutionInputValuesKey)).toMap()
+                                : storedValues.value(QStringLiteral("executionInputFields")).toMap());
 }
 
 TimelineCommandModel::TimelineCommandModel(QObject *parent)
@@ -311,8 +337,11 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
         if (!command || command->targetDeviceId().isEmpty())
             continue;
 
-        const QVariantMap params = command->commandParams();
-        const QString commandType = params.value(DeviceKey::CommandType).toString();
+        DeviceCommand *targetCommand = command->targetCommand();
+        if (!targetCommand)
+            continue;
+
+        const QString commandType = targetCommand->commandType();
         const bool openVideo = commandType == QStringLiteral("openVideo");
         const bool playVideo = commandType == QStringLiteral("playVideo");
         const bool pauseVideo = commandType == QStringLiteral("pauseVideo");
@@ -321,7 +350,7 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
         if (!openVideo && !playVideo && !pauseVideo && !closeVideo && !closePlayer)
             continue;
 
-        const QVariantMap input = params.value(QStringLiteral("executionInputFields")).toMap();
+        const QVariantMap input = command->executionInputValues();
         QString source = input.value(DeviceKey::VideoFile).toString().trimmed();
         if (source.startsWith(QLatin1Char('$')))
             source = DeviceConstants::LocalVideoPrefix + source.mid(1);
@@ -442,40 +471,16 @@ void TimelineCommandModel::setSelectedCommandId(const QString &selectedCommandId
 TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
                                                         const QString &targetDeviceId,
                                                         DeviceCommand *targetCommand,
-                                                        const QVariantMap &extraParams)
+                                                        const QVariantMap &executionInputValues)
 {
     if (!targetCommand)
         return nullptr;
 
-    QVariantMap commandParams = targetCommand->toJson().toVariantMap();
-    for (auto it = extraParams.cbegin(); it != extraParams.cend(); ++it) {
-        if (!it.key().trimmed().isEmpty())
-            commandParams.insert(it.key(), it.value());
-    }
-
-    const QVariantMap executionValues = extraParams.value(QStringLiteral("executionInputFields")).toMap();
-    const QString commandName = targetCommand->resolvedParams(executionValues)
-                                    .value(DeviceKey::Name, targetCommand->name()).toString();
-    return addCommand(startTimeMs, targetDeviceId, commandName, commandParams, targetCommand);
-}
-
-DeviceCommand *TimelineCommandModel::createEditDraft(TimelineCommand *command,
-                                                     DeviceModel *deviceModel,
-                                                     TimelineModel *timelineModel)
-{
-    if (indexOfCommand(command) < 0 || !deviceModel)
-        return nullptr;
-
-    Device *device = deviceModel->deviceById(command->targetDeviceId());
-    return device ? device->createCommandFromJson(
-        QJsonObject::fromVariantMap(command->commandParams()), this, timelineModel)
-        : nullptr;
-}
-
-void TimelineCommandModel::deleteEditDraft(DeviceCommand *draft)
-{
-    if (draft && draft->parent() == this)
-        draft->deleteLater();
+    return addCommand(startTimeMs,
+                      targetDeviceId,
+                      targetCommand->name(),
+                      executionInputValues,
+                      targetCommand);
 }
 
 bool TimelineCommandModel::updateCommand(TimelineCommand *command,
@@ -485,15 +490,8 @@ bool TimelineCommandModel::updateCommand(TimelineCommand *command,
     if (indexOfCommand(command) < 0)
         return false;
 
-    QVariantMap commandParams = command->commandParams();
-    const QString executionInputFieldsKey = QStringLiteral("executionInputFields");
-    if (executionInputValues.isEmpty())
-        commandParams.remove(executionInputFieldsKey);
-    else
-        commandParams.insert(executionInputFieldsKey, executionInputValues);
-
     command->setStartTimeMs(startTimeMs);
-    command->setCommandParams(commandParams);
+    command->setExecutionInputValues(executionInputValues);
     command->setErrorMessage(QString());
     command->setState(TimelineCommand::Idle);
     return true;
@@ -502,13 +500,13 @@ bool TimelineCommandModel::updateCommand(TimelineCommand *command,
 TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
                                                   const QString &targetDeviceId,
                                                   const QString &commandName,
-                                                  const QVariantMap &commandParams,
+                                                  const QVariantMap &executionInputValues,
                                                   DeviceCommand *targetCommand)
 {
     auto *command = new TimelineCommand(startTimeMs,
                                         targetDeviceId,
                                         commandName,
-                                        commandParams,
+                                        executionInputValues,
                                         targetCommand);
 
     auto cmds = this->items();
@@ -659,7 +657,7 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
     };
 
     connect(command, &TimelineCommand::startTimeMsChanged, this, notifyDurationChanged);
-    connect(command, &TimelineCommand::commandParamsChanged, this, notifyDurationChanged);
+    connect(command, &TimelineCommand::durationMsChanged, this, notifyDurationChanged);
     connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {
         removeCommand(command);
     });

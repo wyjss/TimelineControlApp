@@ -1,5 +1,7 @@
 #include "timeline/Timeline.h"
 
+#include "devices/CrossConditionModel.h"
+
 #include <QDataStream>
 #include <QtGlobal>
 
@@ -13,6 +15,7 @@ Timeline::Timeline(const QString &id,
     , m_id(id)
     , m_name(name)
     , m_commandModel(new TimelineCommandModel(this))
+    , m_crossConditionModel(new CrossConditionModel(this, this))
 {
 }
 
@@ -29,6 +32,11 @@ QString Timeline::name() const
 TimelineCommandModel *Timeline::commandModel() const
 {
     return m_commandModel;
+}
+
+CrossConditionModel *Timeline::crossConditionModel() const
+{
+    return m_crossConditionModel;
 }
 
 Timeline::State Timeline::state() const
@@ -110,8 +118,16 @@ void Timeline::stop()
     if (m_state == Stopped)
         return;
 
+
     m_state = Stopped;
     emit stateChanged(m_state);
+
+	m_currentTimeMs = 0;
+	emit currentTimeMsChanged(m_currentTimeMs);
+
+    for (auto cmd : m_playCommands) {
+        cmd->setState(TimelineCommand::Idle);
+    }
 }
 
 QList<TimelineCommand *> Timeline::updateTime(qint64 masterTimeMs)
@@ -151,9 +167,12 @@ void Timeline::writeToStream(QDataStream &stream) const
 {
     stream << m_id << m_name;
     m_commandModel->writeToStream(stream);
+    m_crossConditionModel->writeToStream(stream);
 }
 
-Timeline *Timeline::readFromStream(QDataStream &stream, QObject *parent)
+Timeline *Timeline::readFromStream(QDataStream &stream,
+                                   int streamVersion,
+                                   QObject *parent)
 {
     QString id;
     QString name;
@@ -167,6 +186,8 @@ Timeline *Timeline::readFromStream(QDataStream &stream, QObject *parent)
 
     auto *timeline = new Timeline(id, name, parent);
     timeline->commandModel()->readFromStream(stream);
+    if (stream.status() == QDataStream::Ok && streamVersion >= 2)
+        timeline->crossConditionModel()->readFromStream(stream);
     if (stream.status() == QDataStream::Ok)
         return timeline;
 

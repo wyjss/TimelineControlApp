@@ -4,6 +4,7 @@
 
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
+#include "devices/CrossConditionModel.h"
 #include "devices/DeviceInspectorFormProvider.h"
 #include "devices/DeviceManager.h"
 #include "devices/DeviceModel.h"
@@ -26,12 +27,13 @@
 #include <QIODevice>
 #include <QJsonObject>
 #include <QPointer>
+#include <QUuid>
 #include <QUrl>
 
 namespace {
 
 constexpr quint32 kTimelinePlanMagic = 0x544C504E;
-constexpr qint32 kTimelinePlanVersion = 3;
+constexpr qint32 kTimelinePlanVersion = 5;
 
 } // namespace
 
@@ -51,6 +53,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
 
     m_taskManager = (new UICore::TaskManager(this));
     m_deviceModel = (new DeviceModel(this));
+	m_fenceManager = (new FenceManager(this));
 	m_timelineManager = (new TimelineManager(m_deviceModel, this));
 	m_deviceTemplateModel = (new DeviceTemplateModel(m_timelineManager->timelineModel(), this));
 	m_deviceExecutorManager = (new DeviceExecutorManager(this));
@@ -58,7 +61,6 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
 	m_deviceInspectorFormProvider = (new DeviceInspectorFormProvider(m_deviceModel,
 																  m_deviceTemplateModel,
 																  this));
-	m_fenceManager = (new FenceManager(this));
 	m_videoProjectionPlanController = (new VideoProjectionPlanController(this));
 
     qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
@@ -70,6 +72,8 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<DeviceManager *>("DeviceManager*");
     qRegisterMetaType<DeviceModel *>("DeviceModel*");
     qRegisterMetaType<DeviceTemplateModel *>("DeviceTemplateModel*");
+    qRegisterMetaType<CrossCondition *>("CrossCondition*");
+    qRegisterMetaType<CrossConditionModel *>("CrossConditionModel*");
     qRegisterMetaType<FenceManager *>("FenceManager*");
     qRegisterMetaType<VideoProjectionPlanController *>("VideoProjectionPlanController*");
     qRegisterMetaType<Timeline *>("Timeline*");
@@ -116,8 +120,6 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
     if (!timelineCommand)
         return;
 
-    const QVariantMap commandParams = timelineCommand->commandParams();
-    const QString commandProtocol = commandParams.value(DeviceKey::Protocol).toString().trimmed();
     Device *targetDevice = m_deviceModel
         ? m_deviceModel->deviceById(timelineCommand->targetDeviceId())
         : nullptr;
@@ -126,32 +128,43 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
         timelineCommand->setState(TimelineCommand::Failed);
         return;
     }
-    if (!targetDevice->supportsProtocol(commandProtocol)) {
+
+    DeviceCommand *deviceCommand = timelineCommand->targetCommand();
+    if (!deviceCommand) {
+        deviceCommand = targetDevice->commandByName(timelineCommand->commandName());
+        timelineCommand->setTargetCommand(deviceCommand);
+    }
+    if (!deviceCommand || deviceCommand->device() != targetDevice) {
+        timelineCommand->setErrorMessage(tr("目标指令不存在"));
+        timelineCommand->setState(TimelineCommand::Failed);
+        return;
+    }
+    if (!targetDevice->supportsProtocol(deviceCommand->protocol())) {
         timelineCommand->setErrorMessage(tr("设备不支持该协议"));
         timelineCommand->setState(TimelineCommand::Failed);
         return;
     }
-
-    DeviceCommand *deviceCommand = targetDevice->createCommandFromJson(
-        QJsonObject::fromVariantMap(commandParams),
-        this,
-        m_timelineManager->timelineModel());
-    if (!deviceCommand) {
-        timelineCommand->setErrorMessage(tr("无效指令"));
+    const QString invalidReason = deviceCommand->invalidReason();
+    if (!invalidReason.isEmpty()) {
+        timelineCommand->setErrorMessage(invalidReason);
         timelineCommand->setState(TimelineCommand::Failed);
         return;
     }
 
     timelineCommand->setState(TimelineCommand::Running);
     const int runId = m_runId;
+    const QString executionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
     QPointer<TimelineCommand> timelineCommandGuard(timelineCommand);
+    disconnect(m_deviceExecutorManager, &DeviceExecutorManager::executionFinished,
+               timelineCommand, nullptr);
     connect(m_deviceExecutorManager, &DeviceExecutorManager::executionFinished,
-            deviceCommand,
-            [this, runId, timelineCommandGuard, deviceCommand](
+            timelineCommand,
+            [this, runId, executionId, timelineCommandGuard, deviceCommand](
+                const QString &finishedExecutionId,
                 DeviceCommand *finishedCommand,
                 bool success,
                 const QString &errorMessage) {
-        if (finishedCommand != deviceCommand)
+        if (finishedExecutionId != executionId || finishedCommand != deviceCommand)
             return;
 
         if (m_runId == runId && timelineCommandGuard) {
@@ -160,11 +173,11 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
                                                ? TimelineCommand::Succeeded
                                                : TimelineCommand::Failed);
         }
-        deviceCommand->deleteLater();
     });
     m_deviceExecutorManager->execute(
+        executionId,
         deviceCommand,
-        commandParams.value(QStringLiteral("executionInputFields")).toMap());
+        timelineCommand->executionInputValues());
 }
 
 UICore::TaskManager *TimelineRuntime::taskManager() const
@@ -234,7 +247,7 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
     stream >> magic >> version;
     if (stream.status() != QDataStream::Ok
         || magic != kTimelinePlanMagic
-        || (version != 2 && version != kTimelinePlanVersion)) {
+        || (version != 2 && version != 3 && version != kTimelinePlanVersion)) {
         stream.setStatus(QDataStream::ReadCorruptData);
         return;
     }

@@ -6,6 +6,7 @@
 #include <QPainter>
 
 #include "devices/Device.h"
+#include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceModel.h"
 #include <UICore/Shell/AppShellController.h>
@@ -16,7 +17,6 @@
 
 namespace {
 
-const QString kExecutionInputFields = QStringLiteral("executionInputFields");
 const QString kTimelineDrawerKey = QStringLiteral("timeline");
 
 QString videoSource(const QVariant &value)
@@ -297,9 +297,12 @@ PcTimelinePreviewGenerator::videoStatesAt(qint64 timeMs, const QSize &canvasSize
         if (!command || command->targetDeviceId() != deviceId || command->startTimeMs() > timeMs)
             continue;
 
-        const QVariantMap params = command->commandParams();
-        const QString commandType = params.value(DeviceKey::CommandType).toString();
-        const QVariantMap input = params.value(kExecutionInputFields).toMap();
+        DeviceCommand *targetCommand = command->targetCommand();
+        if (!targetCommand)
+            continue;
+
+        const QString commandType = targetCommand->commandType();
+        const QVariantMap input = command->executionInputValues();
         const QString source = videoSource(input.value(DeviceKey::VideoFile));
         const qint64 eventTimeMs = command->startTimeMs();
 

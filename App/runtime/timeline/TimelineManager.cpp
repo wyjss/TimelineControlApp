@@ -3,6 +3,7 @@
 #include "timeline/Timeline.h"
 #include "timeline/TimelineClock.h"
 #include "timeline/TimelineModel.h"
+#include "devices/CrossConditionModel.h"
 #include "devices/Device.h"
 #include "devices/DeviceModel.h"
 
@@ -13,7 +14,7 @@
 namespace {
 
 constexpr quint32 kTimelineManagerMagic = 0x544C4D47;
-constexpr qint32 kTimelineManagerVersion = 1;
+constexpr qint32 kTimelineManagerVersion = 2;
 } // namespace
 
 TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
@@ -38,9 +39,15 @@ TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
     });
     if (m_deviceModel) {
         connect(m_deviceModel, &DeviceModel::deviceAdded, this, [this](Device *device) {
-            if (device)
-                device->setFilteredOut(!m_playbackDevices.isEmpty()
-                                       && !m_playbackDevices.contains(device->id()));
+            if (!device)
+                return;
+
+            device->setFilteredOut(!m_playbackDevices.isEmpty()
+                                   && !m_playbackDevices.contains(device->id()));
+            connect(device, &Device::commandsChanged, this, [this, device]() {
+                bindCommandsForDevice(device);
+            });
+            bindCommandsForDevice(device);
         });
         connect(m_deviceModel, &DeviceModel::deviceRemoved, this, [this](const QString &deviceId) {
             QStringList playbackDevices = m_playbackDevices;
@@ -171,6 +178,15 @@ bool TimelineManager::waitForTrigger(const QString &id)
     return true;
 }
 
+bool TimelineManager::triggerTimeline(const QString &id)
+{
+    Timeline *timeline = timelineById(id);
+    if (!timeline || timeline->state() != Timeline::Waiting)
+        return false;
+
+    return startTimeline(id);
+}
+
 bool TimelineManager::startTimeline(const QString &id)
 {
     Timeline *timeline = timelineById(id);
@@ -181,6 +197,7 @@ bool TimelineManager::startTimeline(const QString &id)
         m_clock->start();
     const qint64 clockTimeMs = m_clock->currentTimeMs();
     timeline->start(clockTimeMs);
+    timeline->crossConditionModel()->activate();
     updateTimeline(timeline, clockTimeMs);
     return true;
 }
@@ -240,8 +257,9 @@ bool TimelineManager::startPlayback(const QStringList &timelineIds)
 
 void TimelineManager::pausePlayback()
 {
-    if (m_clock->state() == TimelineClock::Running)
-        m_clock->pause();
+    if (m_clock->state() == TimelineClock::Running) {
+		m_clock->pause();
+    }
 }
 
 void TimelineManager::resumePlayback()
@@ -316,7 +334,8 @@ bool TimelineManager::readFromStream(QDataStream &stream)
            >> timelineCount;
     if (stream.status() != QDataStream::Ok
         || magic != kTimelineManagerMagic
-        || version != kTimelineManagerVersion
+        || version < 1
+        || version > kTimelineManagerVersion
         || timelineCount < 0) {
         stream.setStatus(QDataStream::ReadCorruptData);
         return false;
@@ -327,7 +346,9 @@ bool TimelineManager::readFromStream(QDataStream &stream)
     timelines.reserve(timelineCount);
     timelineIds.reserve(timelineCount);
     for (int index = 0; index < timelineCount; ++index) {
-        Timeline *timeline = Timeline::readFromStream(stream, this);
+        Timeline *timeline = Timeline::readFromStream(stream,
+                                                      version,
+                                                      this);
         if (!timeline || timelineIds.contains(timeline->id())) {
             delete timeline;
             qDeleteAll(timelines);
@@ -365,7 +386,28 @@ bool TimelineManager::readFromStream(QDataStream &stream)
     }
     qDeleteAll(oldTimelines);
     m_timelineModel->setSelectedIndex(currentTimelineIndex);
+    if (m_deviceModel) {
+        for (Device *device : m_deviceModel->items())
+            bindCommandsForDevice(device);
+    }
     return true;
+}
+
+void TimelineManager::bindCommandsForDevice(Device *device)
+{
+    if (!device)
+        return;
+
+    for (Timeline *timeline : m_timelineModel->items()) {
+        for (TimelineCommand *command : timeline->commandModel()->commands()) {
+            if (!command || command->targetDeviceId() != device->id())
+                continue;
+
+            DeviceCommand *targetCommand = device->commandByName(command->commandName());
+            if (targetCommand || !command->targetCommand())
+                command->setTargetCommand(targetCommand);
+        }
+    }
 }
 
 void TimelineManager::updateTimeline(Timeline *timeline, qint64 clockTimeMs)

@@ -68,16 +68,20 @@ public:
     Q_INVOKABLE bool setParamValue(const QString &key, const QVariant &value);
 
     QVariantList commands() const;
+    DeviceCommand *commandByName(const QString &name) const;
+    Q_INVOKABLE QString commandInvalidReason(DeviceCommand *command,
+                                             DeviceCommand *excludedCommand = nullptr) const;
     Q_INVOKABLE DeviceCommand *createCommandDraft(const QString &protocol = QString()) const;
     Q_INVOKABLE void deleteCommandDraft(DeviceCommand *command) const;
     Q_INVOKABLE bool commitCommandDraft(DeviceCommand *command);
     Q_INVOKABLE DeviceCommand *createCommand(const QString &protocol = QString(),
                                                               const QString &name = QString());
-    Q_INVOKABLE DeviceCommand *createCommandForType(const QString &commandType);
+    Q_INVOKABLE DeviceCommand *createCommandForType(const QString &commandType,
+                                                     const QString &name = QString());
     DeviceCommand *createCommandFromJson(const QJsonObject &json,
                                          QObject *parent = nullptr,
                                          TimelineModel *timelineModel = nullptr) const;
-    void appendCommand(DeviceCommand *command);
+    bool appendCommand(DeviceCommand *command);
     Q_INVOKABLE bool removeCommandAt(int index);
     bool removeCommand(DeviceCommand *command);
 

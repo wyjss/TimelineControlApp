@@ -32,7 +32,7 @@ QJsonObject fieldSpecToJson(const DeviceParamSpec *field)
     json.insert(QStringLiteral("editorHint"), static_cast<int>(field->editorHint()));
     json.insert(QStringLiteral("defaultValue"), QJsonValue::fromVariant(field->defaultValue()));
     json.insert(QStringLiteral("required"), field->required());
-    json.insert(QStringLiteral("readOnly"), field->readOnly());
+    json.insert(QStringLiteral("readOnly"), field->key() == DeviceKey::Name ? false : field->readOnly());
     json.insert(QStringLiteral("placeholderText"), field->placeholderText());
     json.insert(QStringLiteral("pattern"), field->pattern());
     json.insert(QStringLiteral("minimum"), field->minimum());
@@ -58,7 +58,8 @@ bool applyFieldSpec(DeviceParamSpec *field, const QJsonObject &json)
     field->setDefaultValue(defaultValue);
     field->setValue(defaultValue);
     field->setRequired(json.value(QStringLiteral("required")).toBool());
-    field->setReadOnly(json.value(QStringLiteral("readOnly")).toBool());
+    field->setReadOnly(field->key() != DeviceKey::Name
+                       && json.value(QStringLiteral("readOnly")).toBool());
     field->setPlaceholderText(json.value(QStringLiteral("placeholderText")).toString());
     field->setPattern(json.value(QStringLiteral("pattern")).toString());
     field->setMinimum(json.value(QStringLiteral("minimum")).toDouble());
@@ -278,7 +279,9 @@ QString DeviceCommand::name() const
 
 void DeviceCommand::setName(const QString &name)
 {
-    getField(DeviceKey::Name)->setValue(name);
+    DeviceParamSpec *field = getField(DeviceKey::Name);
+    if (field && !field->readOnly())
+        field->setValue(name.trimmed());
 }
 
 QString DeviceCommand::protocol() const
@@ -392,7 +395,16 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
 
     const QJsonObject creationInputValues = json.value(
         QString::fromLatin1(kCreationInputValuesKey)).toObject();
+    const QString jsonName = (creationInputValues.contains(DeviceKey::Name)
+                                  ? creationInputValues.value(DeviceKey::Name)
+                                  : json.value(DeviceKey::Name)).toString().trimmed();
+    DeviceParamSpec *nameField = getField(DeviceKey::Name);
+    if (nameField && nameField->readOnly() && jsonName != name())
+        return false;
+
     for (DeviceParamSpec *field : m_creationInputFields) {
+        if (field == nameField && field->readOnly())
+            continue;
         if (creationInputValues.contains(field->key()))
             field->setValue(creationInputValues.value(field->key()).toVariant());
         else if (json.contains(field->key()))

@@ -8,20 +8,22 @@ DeviceCommandExecutor::DeviceCommandExecutor(QObject *parent)
 {
 }
 
-void DeviceCommandExecutor::execute(DeviceCommand *command, const QVariantMap &params)
+void DeviceCommandExecutor::execute(const QString &executionId,
+                                    DeviceCommand *command,
+                                    const QVariantMap &params)
 {
-    if (!command)
+    if (executionId.isEmpty() || !command)
         return;
 
     if (m_failed && m_time.elapsed() > 2000) {
         m_failed = false;
     }
     if (m_failed) {
-        emit executionFinished(command, false, m_errorMessage);
+        emit executionFinished(executionId, command, false, m_errorMessage);
         return;
     }
 
-    executeImpl(command, params);
+    executeImpl(executionId, command, params);
 }
 
 void DeviceCommandExecutor::markFailed(const QString &errorMessage)

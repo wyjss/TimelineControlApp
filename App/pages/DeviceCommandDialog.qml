@@ -116,8 +116,14 @@ Base.AppDialog {
         clearDraft()
         if (device && device.createCommandDraft !== undefined) {
             draftCommand = device.createCommandDraft(selectedProtocol)
-            if (editing && draftCommand)
+            if (editing && draftCommand) {
                 applyFieldValues(draftCommand.creationInputFields || [], fieldValues(editingCommand.creationInputFields || []))
+                var fields = draftCommand.creationInputFields || []
+                for (var index = 0; index < fields.length; ++index) {
+                    if (String(fields[index].key || "") === "name")
+                        fields[index].readOnly = true
+                }
+            }
         }
     }
 
@@ -135,6 +141,12 @@ Base.AppDialog {
 
         if (draftCommand.invalidReason !== undefined) {
             reason = draftCommand.invalidReason()
+            if (reason.length > 0)
+                return reason
+        }
+
+        if (device.commandInvalidReason !== undefined) {
+            reason = device.commandInvalidReason(draftCommand, editingCommand)
             if (reason.length > 0)
                 return reason
         }

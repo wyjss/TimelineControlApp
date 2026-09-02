@@ -53,14 +53,8 @@ Item {
     }
 
     function commandDurationMs(command) {
-        if (!command)
-            return 0
-        if (command.durationMs !== undefined && command.durationMs !== null)
-            return Number(command.durationMs)
-
-        var commandParams = command.commandParams || {}
-        return commandParams.durationMs !== undefined && commandParams.durationMs !== null
-            ? Number(commandParams.durationMs)
+        return command && command.durationMs !== undefined && command.durationMs !== null
+            ? Number(command.durationMs)
             : 0
     }
 
@@ -81,11 +75,8 @@ Item {
         if (commandFilteredOut(command))
             return colorValue("neutralBorder", "#45576b")
 
-        var commandParams = command && command.commandParams ? command.commandParams : {}
-        if (commandParams.color !== undefined && String(commandParams.color).length > 0)
-            return String(commandParams.color)
-
-        switch (String(commandParams.protocol)) {
+        var targetCommand = command ? command.targetCommand : null
+        switch (String(targetCommand ? targetCommand.protocol : "")) {
         case "dmx512":
             return "#2563eb"
         case "http":
@@ -138,16 +129,21 @@ Item {
         if (!command)
             return ""
 
-        var commandParams = command.commandParams || {}
         var parts = [String(command.commandName || qsTr("指令"))]
-        var deviceText = String(commandParams.targetDeviceName || command.targetDeviceId || "")
+        var deviceText = String(command.targetDeviceId || "")
+        for (var index = 0; index < devices.length; ++index) {
+            if (String(devices[index].id || "") === String(command.targetDeviceId || "")) {
+                deviceText = String(devices[index].name || deviceText)
+                break
+            }
+        }
         if (deviceText.length > 0)
             parts.push(deviceText)
         parts.push(qsTr("%1 ms").arg(commandStartMs(command)))
         if (String(command.stateText || "").length > 0)
             parts.push(String(command.stateText))
 
-        var values = commandParams.executionInputFields || {}
+        var values = command.executionInputValues || {}
         var valueParts = []
         Object.keys(values).forEach(function(key) {
             var value = values[key]

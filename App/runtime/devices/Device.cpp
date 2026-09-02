@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMetaProperty>
+#include <QSet>
 #include <QUuid>
 
 
@@ -206,6 +207,32 @@ QVariantList Device::commands() const
     return result;
 }
 
+DeviceCommand *Device::commandByName(const QString &name) const
+{
+    const QString commandName = name.trimmed();
+    for (DeviceCommand *command : m_commands) {
+        if (command && command->name() == commandName)
+            return command;
+    }
+    return nullptr;
+}
+
+QString Device::commandInvalidReason(DeviceCommand *command,
+                                     DeviceCommand *excludedCommand) const
+{
+    if (!command)
+        return tr("指令不存在");
+
+    const QString reason = command->invalidReason();
+    if (!reason.isEmpty())
+        return reason;
+
+    DeviceCommand *existingCommand = commandByName(command->name());
+    return existingCommand && existingCommand != command && existingCommand != excludedCommand
+        ? tr("指令名称已存在")
+        : QString();
+}
+
 DeviceCommand *Device::createCommandDraft(const QString &protocol) const
 {
     const QString commandProtocol = protocol.trimmed().isEmpty() && !m_supportedProtocols.isEmpty()
@@ -234,12 +261,11 @@ bool Device::commitCommandDraft(DeviceCommand *command)
         || command->parent() != this
         || m_commands.contains(command)
         || !supportsProtocol(command->protocol())
-        || !command->invalidReason().isEmpty()) {
+        || !commandInvalidReason(command).isEmpty()) {
         return false;
     }
 
-    appendCommand(command);
-    return true;
+    return appendCommand(command);
 }
 
 DeviceCommand *Device::createCommand(const QString &protocol, const QString &name)
@@ -264,7 +290,8 @@ DeviceCommand *Device::createCommand(const QString &protocol, const QString &nam
     return command;
 }
 
-DeviceCommand *Device::createCommandForType(const QString &commandType)
+DeviceCommand *Device::createCommandForType(const QString &commandType,
+                                            const QString &name)
 {
     DeviceCommand *command = m_deviceTemplate
         ? m_deviceTemplate->createCommand(commandType, this)
@@ -272,7 +299,12 @@ DeviceCommand *Device::createCommandForType(const QString &commandType)
     if (!command)
         return nullptr;
 
-    appendCommand(command);
+    if (!name.trimmed().isEmpty())
+        command->setName(name);
+    if (!appendCommand(command)) {
+        delete command;
+        return nullptr;
+    }
     return command;
 }
 
@@ -294,24 +326,29 @@ DeviceCommand *Device::createCommandFromJson(const QJsonObject &json,
     return command;
 }
 
-void Device::appendCommand(DeviceCommand *command)
+bool Device::appendCommand(DeviceCommand *command)
 {
     if (!command || m_commands.contains(command))
-        return;
+        return false;
 
     if (command->parent() && command->parent() != this)
-        return;
+        return false;
+
+    command->setDevice(this);
+    if (command->name().trimmed().isEmpty() || commandByName(command->name()))
+        return false;
 
     if (command->parent() != this)
         command->setParent(this);
 
-    command->setDevice(this);
+    command->getField(DeviceKey::Name)->setReadOnly(true);
     connect(command, &DeviceCommand::fieldChanged, this, [this]() {
         emit commandsChanged();
     });
     m_commands.append(command);
 
     emit commandsChanged();
+    return true;
 }
 
 bool Device::removeCommandAt(int index)
@@ -395,7 +432,8 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
     if (stream.status() != QDataStream::Ok || commandCount < 0)
         return;
 
-    QList<DeviceCommand *> commands;
+    QList<QJsonObject> commandObjects;
+    QSet<QString> commandNames;
     for (int index = 0; index < commandCount; ++index) {
         QByteArray commandData;
         stream >> commandData;
@@ -403,21 +441,26 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
             break;
 
         const QJsonDocument document = QJsonDocument::fromJson(commandData);
-        DeviceCommand *command = document.isObject()
-            ? createCommandFromJson(document.object(), this, timelineModel)
-            : nullptr;
-        if (!command) {
+        if (!document.isObject()) {
             stream.setStatus(QDataStream::ReadCorruptData);
             break;
         }
-        commands.append(command);
+
+        const QJsonObject commandObject = document.object();
+        const QJsonObject values = commandObject.value(QStringLiteral("creationInputValues")).toObject();
+        const QString commandName = (values.contains(DeviceKey::Name)
+                                         ? values.value(DeviceKey::Name)
+                                         : commandObject.value(DeviceKey::Name)).toString().trimmed();
+        if (commandName.isEmpty() || commandNames.contains(commandName)) {
+            stream.setStatus(QDataStream::ReadCorruptData);
+            break;
+        }
+        commandNames.insert(commandName);
+        commandObjects.append(commandObject);
     }
 
-    if (stream.status() != QDataStream::Ok) {
-        for (DeviceCommand *command : commands)
-            delete command;
+    if (stream.status() != QDataStream::Ok)
         return;
-    }
 
     m_id = id;
     setDeviceType(deviceType);
@@ -434,11 +477,55 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
                   ? restoredOnline.toBool()
                   : restoredStatus == QStringLiteral("在线"));
 
-    qDeleteAll(m_commands);
-    m_commands.clear();
+    QList<DeviceCommand *> commands;
+    QList<DeviceCommand *> createdCommands;
+    for (const QJsonObject &commandObject : commandObjects) {
+        DeviceCommand *loadedCommand = createCommandFromJson(commandObject, this, timelineModel);
+        if (!loadedCommand) {
+            delete loadedCommand;
+            stream.setStatus(QDataStream::ReadCorruptData);
+            break;
+        }
 
-    for (DeviceCommand *command : commands) {
-        appendCommand(command);
+        DeviceCommand *command = commandByName(loadedCommand->name());
+        if (command) {
+            if (command->protocol() != loadedCommand->protocol()
+                || command->commandType() != loadedCommand->commandType()
+                || !command->loadFromJson(commandObject)) {
+                delete loadedCommand;
+                stream.setStatus(QDataStream::ReadCorruptData);
+                break;
+            }
+            delete loadedCommand;
+        } else {
+            command = loadedCommand;
+            createdCommands.append(command);
+        }
+        commands.append(command);
+    }
+
+    if (stream.status() != QDataStream::Ok) {
+        qDeleteAll(createdCommands);
+        return;
+    }
+
+    const QList<DeviceCommand *> oldCommands = m_commands;
+    for (DeviceCommand *command : oldCommands)
+        disconnect(command, &DeviceCommand::fieldChanged, this, nullptr);
+
+    m_commands = commands;
+    for (DeviceCommand *command : m_commands) {
+        command->setParent(this);
+        command->setDevice(this);
+        command->getField(DeviceKey::Name)->setReadOnly(true);
+        connect(command, &DeviceCommand::fieldChanged, this, [this]() {
+            emit commandsChanged();
+        });
+    }
+
+    for (DeviceCommand *command : oldCommands) {
+        if (!m_commands.contains(command))
+            delete command;
     }
     emit commandsChanged();
 }

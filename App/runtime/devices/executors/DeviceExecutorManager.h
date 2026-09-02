@@ -24,10 +24,13 @@ public:
 
     void bindDevice(Device *device);
     void unbindDevice(Device *device);
-    void execute(DeviceCommand *command, const QVariantMap &executionInputValues = QVariantMap());
+    void execute(const QString &executionId,
+                 DeviceCommand *command,
+                 const QVariantMap &executionInputValues = QVariantMap());
 
 signals:
-    void executionFinished(DeviceCommand *command,
+    void executionFinished(const QString &executionId,
+                           DeviceCommand *command,
                            bool success,
                            const QString &errorMessage);
     void onlineChecked(const QString &deviceId, bool online);

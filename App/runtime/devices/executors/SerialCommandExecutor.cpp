@@ -29,7 +29,9 @@ SerialCommandExecutor::SerialCommandExecutor(const QString &ip, const QString &p
 {
 }
 
-void SerialCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap &params)
+void SerialCommandExecutor::executeImpl(const QString &executionId,
+                                        DeviceCommand *command,
+                                        const QVariantMap &params)
 {
     const QStringList parts = params.value(DeviceKey::SerialPayload).toString().simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
     QByteArray bytes;
@@ -38,24 +40,24 @@ void SerialCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMa
         bool ok = false;
         const int value = part.toInt(&ok, 16);
         if (!ok || part.size() != 2 || value < 0 || value > 0xff) {
-            emit executionFinished(command, false, tr("串口数据必须是十六进制字节"));
+            emit executionFinished(executionId, command, false, tr("串口数据必须是十六进制字节"));
             return;
         }
         bytes.append(static_cast<char>(value));
     }
     bytes = params.value(DeviceKey::SerialPayload).toString().simplified().remove(' ').toLatin1();
     if (bytes.isEmpty()) {
-        emit executionFinished(command, false, tr("串口数据不能为空"));
+        emit executionFinished(executionId, command, false, tr("串口数据不能为空"));
         return;
     }
 
     const int baudRate = params.value(DeviceKey::BaudRate).toInt();
     if (baudRate <= 0) {
-        emit executionFinished(command, false, tr("串口波特率无效"));
+        emit executionFinished(executionId, command, false, tr("串口波特率无效"));
         return;
     }
     if (m_ip.isEmpty() || m_portName.isEmpty()) {
-        emit executionFinished(command, false, tr("串口服务地址或串口名称为空"));
+        emit executionFinished(executionId, command, false, tr("串口服务地址或串口名称为空"));
         return;
     }
 
@@ -86,7 +88,7 @@ void SerialCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMa
         }
     });
 
-    connect(reply, &QNetworkReply::finished, this, [this, command, reply]() {
+    connect(reply, &QNetworkReply::finished, this, [this, executionId, command, reply]() {
         const QVariant status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
         const int httpStatus = status.toInt();
         const bool success = reply->error() == QNetworkReply::NoError
@@ -101,7 +103,7 @@ void SerialCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMa
                                               ? tr("HTTP %1").arg(httpStatus)
                                               : reply->errorString()));
         }
-        emit executionFinished(command, success, message);
+        emit executionFinished(executionId, command, success, message);
     });
     connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
 }

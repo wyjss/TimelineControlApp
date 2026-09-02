@@ -43,6 +43,9 @@ public:
     //! 启动两次左键点选绘制，右键取消
     Q_INVOKABLE bool startLineDrawing(const QString& name);
 
+    bool intersect(const QString& lineName, double startLon, double startLat,
+                   double endLon, double endLat
+                   );
 signals:
     void lineChanged(const QString& name,
                      double startLongitude,

@@ -20,11 +20,13 @@ HttpCommandExecutor::HttpCommandExecutor(const QString &ip, int port, QObject *p
 {
 }
 
-void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap &params)
+void HttpCommandExecutor::executeImpl(const QString &executionId,
+                                      DeviceCommand *command,
+                                      const QVariantMap &params)
 {
     const QString path = params.value(DeviceKey::ApiPath).toString();
     if (m_ip.isEmpty() || path.isEmpty()) {
-        emit executionFinished(command, false, tr("HTTP 地址或路径为空"));
+        emit executionFinished(executionId, command, false, tr("HTTP 地址或路径为空"));
         return;
     }
 
@@ -37,7 +39,7 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
     if (queryIndex >= 0)
         url.setQuery(path.mid(queryIndex + 1));
     if (!url.isValid()) {
-        emit executionFinished(command, false, tr("HTTP URL 无效"));
+        emit executionFinished(executionId, command, false, tr("HTTP URL 无效"));
         return;
     }
 
@@ -46,7 +48,7 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
         m_manager = new QNetworkAccessManager(this);
     const QString method = params.value(DeviceKey::HttpMethod).toString();
     if (method.isEmpty()) {
-        emit executionFinished(command, false, tr("HTTP 方法为空"));
+        emit executionFinished(executionId, command, false, tr("HTTP 方法为空"));
         return;
     }
 
@@ -63,7 +65,7 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
         }
     });
 
-    connect(reply, &QNetworkReply::finished, this, [this, command, reply]() {
+    connect(reply, &QNetworkReply::finished, this, [this, executionId, command, reply]() {
         LOG_INFO("REPLY REQUEST");
         const QVariant status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
         const int httpStatus = status.toInt();
@@ -80,7 +82,7 @@ void HttpCommandExecutor::executeImpl(DeviceCommand *command, const QVariantMap 
 				markFailed(message);
             }
         }
-        emit executionFinished(command, success, message);
+        emit executionFinished(executionId, command, success, message);
     });
     connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
 }

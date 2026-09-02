@@ -8,19 +8,26 @@ Item {
     id: root
 
     property var devices: []
+    property var fences: []
+    property var conditionModel: null
     property var timelineModel: null
+    property var currentTimeline: null
     property Item dialogParent: root
     property bool editable: true
-    property var deviceOptions: []
+    property var locatorOptions: []
+    property var fenceOptions: []
     property var timelineOptions: []
-    property alias ruleModel: triggerRuleModel
+    property var timelineConditions: []
 
-    implicitHeight: triggerRuleModel.count > 0 ? 116 : 72
+    implicitHeight: timelineConditions.length > 0 ? 116 : 72
 
-    function rebuildDeviceOptions() {
+    function rebuildLocatorOptions() {
         var options = []
         for (var index = 0; index < devices.length; ++index) {
             var device = devices[index]
+            if (String(device.deviceType || "") !== qsTr("定位器"))
+                continue
+
             var id = String(device.id || "")
             var name = String(device.name || "").trim()
             options.push({
@@ -28,21 +35,49 @@ Item {
                 "value": id
             })
         }
-        deviceOptions = options
+        locatorOptions = options
+    }
+
+    function rebuildFenceOptions() {
+        var options = []
+        for (var index = 0; index < fences.length; ++index) {
+            var fence = fences[index]
+            var handle = String(fence.handle || "")
+            var name = String(fence.name || "").trim()
+            options.push({
+                "label": name.length > 0 ? name : handle,
+                "value": handle
+            })
+        }
+        fenceOptions = options
     }
 
     function rebuildTimelineOptions() {
         var options = []
+        var sourceTimelineId = currentTimeline ? String(currentTimeline.id || "") : ""
         if (timelineModel) {
             for (var index = 0; index < timelineModel.count; ++index) {
                 var timeline = timelineModel.timelineAt(index)
+                var timelineId = String(timeline.id || "")
+                if (timelineId === sourceTimelineId)
+                    continue
+
                 options.push({
-                    "label": String(timeline.name || timeline.id),
-                    "value": String(timeline.id || "")
+                    "label": String(timeline.name || timelineId),
+                    "value": timelineId
                 })
             }
         }
         timelineOptions = options
+    }
+
+    function rebuildConditions() {
+        var conditions = []
+        if (conditionModel) {
+            for (var index = 0; index < conditionModel.count; ++index)
+                conditions.push(conditionModel.conditionAt(index))
+        }
+        timelineConditions = conditions
     }
 
     function optionLabel(options, value) {
@@ -53,22 +88,30 @@ Item {
         return String(value || "")
     }
 
-    onDevicesChanged: rebuildDeviceOptions()
+    onDevicesChanged: rebuildLocatorOptions()
+    onFencesChanged: rebuildFenceOptions()
+    onConditionModelChanged: rebuildConditions()
     onTimelineModelChanged: rebuildTimelineOptions()
-    Component.onCompleted: {
-        rebuildDeviceOptions()
+    onCurrentTimelineChanged: {
         rebuildTimelineOptions()
+        rebuildConditions()
+    }
+
+    Connections {
+        target: root.conditionModel
+        function onConditionsChanged() { root.rebuildConditions() }
     }
 
     Connections {
         target: root.timelineModel
-        function onTimelinesChanged() {
-            root.rebuildTimelineOptions()
-        }
+        function onTimelinesChanged() { root.rebuildTimelineOptions() }
     }
 
-    ListModel {
-        id: triggerRuleModel
+    Component.onCompleted: {
+        rebuildLocatorOptions()
+        rebuildFenceOptions()
+        rebuildTimelineOptions()
+        rebuildConditions()
     }
 
     Base.AppSurface {
@@ -86,13 +129,13 @@ Item {
                 spacing: 8
 
                 Base.AppText {
-                    text: qsTr("外部触发")
+                    text: qsTr("过点触发")
                     styleRole: UiStyle.TypographyRole.BodyM
                     textTone: UiStyle.TextTone.Primary
                 }
 
                 Base.AppText {
-                    text: qsTr("%1 条规则").arg(triggerRuleModel.count)
+                    text: qsTr("%1 条规则").arg(root.timelineConditions.length)
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                 }
@@ -106,37 +149,42 @@ Item {
                     iconSymbol: "+"
                     size: UiStyle.ButtonSize.Small
                     enabled: root.editable
-                        && root.deviceOptions.length > 0
+                        && root.currentTimeline
+                        && root.conditionModel
+                        && root.locatorOptions.length > 0
+                        && root.fenceOptions.length > 0
                         && root.timelineOptions.length > 0
-                    onClicked: triggerRuleDialog.openForCreate()
+                    onClicked: conditionDialog.openForCreate()
                 }
             }
 
             ListView {
-                id: ruleList
+                id: conditionList
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: triggerRuleModel.count > 0
+                visible: root.timelineConditions.length > 0
                 orientation: ListView.Horizontal
                 spacing: 8
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                model: triggerRuleModel
+                model: root.timelineConditions
 
                 ScrollBar.horizontal: ScrollBar {
                     policy: ScrollBar.AsNeeded
                 }
 
                 delegate: Base.AppCard {
-                    id: ruleCard
+                    id: conditionCard
 
-                    width: Math.min(360, Math.max(280, ruleList.width * 0.45))
-                    height: ruleList.height
+                    readonly property var conditionData: modelData
+
+                    width: Math.min(360, Math.max(280, conditionList.width * 0.45))
+                    height: conditionList.height
                     compact: true
                     animateScale: false
                     enabled: root.editable
-                    onClicked: triggerRuleDialog.openForEdit(index)
+                    onClicked: conditionDialog.openForEdit(conditionData)
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -149,45 +197,47 @@ Item {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: model.sourceDeviceName
-                                    + " · " + model.eventKey
-                                    + " " + model.comparison
-                                    + " " + model.expectedValue
+                                text: root.optionLabel(root.locatorOptions, conditionCard.conditionData.locator)
+                                    + " · " + root.optionLabel(root.fenceOptions, conditionCard.conditionData.fence)
+                                    + " · " + Number(conditionCard.conditionData.heading).toFixed(1) + "°"
                                 styleRole: UiStyle.TypographyRole.BodyS
-                                textTone: model.enabled
-                                    ? UiStyle.TextTone.Primary
-                                    : UiStyle.TextTone.Secondary
+                                textTone: conditionCard.conditionData.touched
+                                    ? UiStyle.TextTone.Accent
+                                    : (conditionCard.conditionData.enabled
+                                        ? UiStyle.TextTone.Primary
+                                        : UiStyle.TextTone.Secondary)
                                 elide: Text.ElideRight
                             }
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: "→ " + model.targetTimelineName + " · " + model.playModeLabel
+                                text: "→ " + root.optionLabel(root.timelineOptions,
+                                                               conditionCard.conditionData.timeline)
                                 styleRole: UiStyle.TypographyRole.BodyS
                                 textTone: UiStyle.TextTone.Accent
                                 elide: Text.ElideRight
                             }
                         }
 
-                        Base.AppToggleControl {
-                            checked: model.enabled
-                            enabled: root.editable
-                            onToggled: triggerRuleModel.setProperty(index, "enabled", checked)
-                        }
-
                         Base.AppButton {
-                            visible: ruleCard.hovered || hovered
+                            opacity: conditionCard.hovered || hovered ? 1 : 0
                             text: qsTr("编辑")
                             size: UiStyle.ButtonSize.Small
-                            onClicked: triggerRuleDialog.openForEdit(index)
+                            onClicked: conditionDialog.openForEdit(conditionCard.conditionData)
                         }
 
                         Base.AppButton {
-                            visible: ruleCard.hovered || hovered
+                            opacity: conditionCard.hovered || hovered ? 1 : 0
                             text: qsTr("删除")
                             size: UiStyle.ButtonSize.Small
                             variant: UiStyle.ButtonVariant.Danger
-                            onClicked: triggerRuleModel.remove(index)
+                            onClicked: root.conditionModel.removeCondition(conditionCard.conditionData)
+                        }
+
+                        Base.AppToggleControl {
+                            checked: conditionCard.conditionData.enabled
+                            enabled: root.editable
+                            onToggled: conditionCard.conditionData.enabled = checked
                         }
                     }
                 }
@@ -196,12 +246,14 @@ Item {
             Base.AppText {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: triggerRuleModel.count === 0
-                text: root.deviceOptions.length === 0
-                    ? qsTr("暂无可用的外部触发设备")
-                    : (root.timelineOptions.length === 0
-                        ? qsTr("暂无可触发的时间线")
-                        : qsTr("暂无规则，外部数据不会随播放头执行"))
+                visible: root.timelineConditions.length === 0
+                text: root.locatorOptions.length === 0
+                    ? qsTr("暂无定位器")
+                    : (root.fenceOptions.length === 0
+                        ? qsTr("暂无栅栏")
+                        : (root.timelineOptions.length === 0
+                            ? qsTr("暂无可触发的其他时间线")
+                            : qsTr("暂无过点触发规则")))
                 styleRole: UiStyle.TypographyRole.BodyS
                 textTone: UiStyle.TextTone.Secondary
                 horizontalAlignment: Text.AlignHCenter
@@ -211,51 +263,52 @@ Item {
     }
 
     Base.AppDialog {
-        id: triggerRuleDialog
+        id: conditionDialog
 
         parent: root.dialogParent
 
-        property int editingIndex: -1
-        property string sourceDeviceId: ""
-        property string eventKey: ""
-        property string comparison: "=="
-        property string expectedValue: ""
+        property var editingCondition: null
+        property string locatorId: ""
+        property string fenceHandle: ""
         property string targetTimelineId: ""
-        property string playMode: "switch"
-        property bool ruleEnabled: true
-        readonly property bool editing: editingIndex >= 0
-        readonly property bool formValid: sourceDeviceId.length > 0
-            && eventKey.trim().length > 0
-            && expectedValue.trim().length > 0
+        property real targetHeading: 0
+        property bool conditionEnabled: true
+        property string errorText: ""
+        readonly property bool editing: editingCondition !== null
+        readonly property bool formValid: root.conditionModel
+            && root.currentTimeline
+            && locatorId.length > 0
+            && fenceHandle.length > 0
             && targetTimelineId.length > 0
 
         function openForCreate() {
-            editingIndex = -1
-            sourceDeviceId = root.deviceOptions.length > 0
-                ? String(root.deviceOptions[0].value)
+            editingCondition = null
+            locatorId = root.locatorOptions.length > 0
+                ? String(root.locatorOptions[0].value)
                 : ""
-            eventKey = ""
-            comparison = "=="
-            expectedValue = ""
+            fenceHandle = root.fenceOptions.length > 0
+                ? String(root.fenceOptions[0].value)
+                : ""
             targetTimelineId = root.timelineOptions.length > 0
                 ? String(root.timelineOptions[0].value)
                 : ""
-            playMode = "switch"
-            ruleEnabled = true
+            targetHeading = 0
+            conditionEnabled = true
+            errorText = ""
             open()
-            Qt.callLater(function() { eventKeyField.forceActiveFocus() })
         }
 
-        function openForEdit(index) {
-            var rule = triggerRuleModel.get(index)
-            editingIndex = index
-            sourceDeviceId = String(rule.sourceDeviceId || "")
-            eventKey = String(rule.eventKey || "")
-            comparison = String(rule.comparison || "==")
-            expectedValue = String(rule.expectedValue || "")
-            targetTimelineId = String(rule.targetTimelineId || "")
-            playMode = String(rule.playMode || "switch")
-            ruleEnabled = rule.enabled
+        function openForEdit(condition) {
+            if (!condition)
+                return
+
+            editingCondition = condition
+            locatorId = String(condition.locator || "")
+            fenceHandle = String(condition.fence || "")
+            targetTimelineId = String(condition.timeline || "")
+            targetHeading = Number(condition.heading || 0)
+            conditionEnabled = condition.enabled
+            errorText = ""
             open()
         }
 
@@ -263,36 +316,40 @@ Item {
             if (!formValid)
                 return
 
-            var rule = {
-                "sourceDeviceId": sourceDeviceId,
-                "sourceDeviceName": root.optionLabel(root.deviceOptions, sourceDeviceId),
-                "eventKey": eventKey.trim(),
-                "comparison": comparison,
-                "expectedValue": expectedValue.trim(),
-                "targetTimelineId": targetTimelineId,
-                "targetTimelineName": root.optionLabel(root.timelineOptions, targetTimelineId),
-                "playMode": playMode,
-                "playModeLabel": root.optionLabel(playModeSelect.options, playMode),
-                "enabled": ruleEnabled
+            var condition = editingCondition
+            var success = editing
+                ? root.conditionModel.updateCondition(condition,
+                                                      locatorId,
+                                                      fenceHandle,
+                                                      targetHeading,
+                                                      targetTimelineId)
+                : (condition = root.conditionModel.addCondition(locatorId,
+                                                                fenceHandle,
+                                                                targetHeading,
+                                                                targetTimelineId)) !== null
+            if (!success) {
+                errorText = qsTr("条件参数无效，请重新选择")
+                return
             }
-            if (editing)
-                triggerRuleModel.set(editingIndex, rule)
-            else
-                triggerRuleModel.append(rule)
+
+            condition.enabled = conditionEnabled
             close()
         }
 
-        width: Math.min(620, Math.max(440, parent ? parent.width - 96 : 560))
-        maximumDialogHeight: Math.min(620, Math.max(400, parent ? parent.height - 96 : 520))
+        width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
+        maximumDialogHeight: Math.min(560, Math.max(360, parent ? parent.height - 96 : 460))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        title: editing ? qsTr("编辑外部触发规则") : qsTr("添加外部触发规则")
-        message: qsTr("设备数据满足条件后触发目标时间线，与播放头时间无关。")
+        title: editing ? qsTr("编辑过点触发") : qsTr("添加过点触发")
+        message: root.currentTimeline
+            ? qsTr("为“%1”添加规则，满足条件后切换到目标时间线。").arg(root.currentTimeline.name)
+            : ""
         rejectText: qsTr("取消")
         acceptText: editing ? qsTr("保存") : qsTr("添加")
         acceptEnabled: root.editable && formValid
         closeOnAccepted: false
         onAccepted: commit()
+        onClosed: editingCondition = null
 
         GridLayout {
             Layout.fillWidth: true
@@ -301,63 +358,45 @@ Item {
             rowSpacing: 10
 
             Base.AppText {
-                text: qsTr("触发设备")
+                text: qsTr("定位器")
                 styleRole: UiStyle.TypographyRole.BodyS
                 textTone: UiStyle.TextTone.Secondary
             }
 
             Base.AppSelect {
                 Layout.fillWidth: true
-                options: root.deviceOptions
-                value: triggerRuleDialog.sourceDeviceId
-                onValueSelected: triggerRuleDialog.sourceDeviceId = String(nextValue || "")
+                options: root.locatorOptions
+                value: conditionDialog.locatorId
+                onValueSelected: conditionDialog.locatorId = String(nextValue || "")
             }
 
             Base.AppText {
-                text: qsTr("数据字段")
+                text: qsTr("栅栏")
                 styleRole: UiStyle.TypographyRole.BodyS
                 textTone: UiStyle.TextTone.Secondary
             }
 
-            Base.AppTextField {
-                id: eventKeyField
-
+            Base.AppSelect {
                 Layout.fillWidth: true
-                text: triggerRuleDialog.eventKey
-                placeholderText: qsTr("例如：regionState")
-                onTextChanged: triggerRuleDialog.eventKey = text
+                options: root.fenceOptions
+                value: conditionDialog.fenceHandle
+                onValueSelected: conditionDialog.fenceHandle = String(nextValue || "")
             }
 
             Base.AppText {
-                text: qsTr("判断条件")
+                text: qsTr("朝向")
                 styleRole: UiStyle.TypographyRole.BodyS
                 textTone: UiStyle.TextTone.Secondary
             }
 
-            RowLayout {
+            Base.AppNumberField {
                 Layout.fillWidth: true
-                spacing: 8
-
-                Base.AppSelect {
-                    Layout.preferredWidth: 100
-                    options: [
-                        { "label": "=", "value": "==" },
-                        { "label": "≠", "value": "!=" },
-                        { "label": ">", "value": ">" },
-                        { "label": "≥", "value": ">=" },
-                        { "label": "<", "value": "<" },
-                        { "label": "≤", "value": "<=" }
-                    ]
-                    value: triggerRuleDialog.comparison
-                    onValueSelected: triggerRuleDialog.comparison = String(nextValue || "==")
-                }
-
-                Base.AppTextField {
-                    Layout.fillWidth: true
-                    text: triggerRuleDialog.expectedValue
-                    placeholderText: qsTr("期望值")
-                    onTextChanged: triggerRuleDialog.expectedValue = text
-                }
+                value: conditionDialog.targetHeading
+                minimum: 0
+                maximum: 359.99
+                decimals: 2
+                suffix: "°"
+                onValueEdited: conditionDialog.targetHeading = nextValue
             }
 
             Base.AppText {
@@ -369,28 +408,29 @@ Item {
             Base.AppSelect {
                 Layout.fillWidth: true
                 options: root.timelineOptions
-                value: triggerRuleDialog.targetTimelineId
-                onValueSelected: triggerRuleDialog.targetTimelineId = String(nextValue || "")
+                value: conditionDialog.targetTimelineId
+                onValueSelected: conditionDialog.targetTimelineId = String(nextValue || "")
             }
 
             Base.AppText {
-                text: qsTr("播放方式")
+                text: qsTr("启用")
                 styleRole: UiStyle.TypographyRole.BodyS
                 textTone: UiStyle.TextTone.Secondary
             }
 
-            Base.AppSelect {
-                id: playModeSelect
-
-                Layout.fillWidth: true
-                options: [
-                    { "label": qsTr("切换播放"), "value": "switch" },
-                    { "label": qsTr("并行播放"), "value": "parallel" },
-                    { "label": qsTr("当前结束后播放"), "value": "queue" }
-                ]
-                value: triggerRuleDialog.playMode
-                onValueSelected: triggerRuleDialog.playMode = String(nextValue || "switch")
+            Base.AppToggleControl {
+                checked: conditionDialog.conditionEnabled
+                onToggled: conditionDialog.conditionEnabled = checked
             }
+        }
+
+        Base.AppText {
+            Layout.fillWidth: true
+            visible: conditionDialog.errorText.length > 0
+            text: conditionDialog.errorText
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Danger
+            elide: Text.ElideRight
         }
     }
 }

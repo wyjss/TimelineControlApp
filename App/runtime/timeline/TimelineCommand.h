@@ -13,9 +13,6 @@ class QDataStream;
 
 
 class DeviceCommand;
-class DeviceModel;
-class TimelineModel;
-
 class TimelineCommand final : public QObject
 {
     Q_OBJECT
@@ -23,10 +20,10 @@ class TimelineCommand final : public QObject
     Q_PROPERTY(qint64 startTimeMs READ startTimeMs WRITE setStartTimeMs NOTIFY startTimeMsChanged FINAL)
     Q_PROPERTY(QString targetDeviceId READ targetDeviceId CONSTANT FINAL)
     Q_PROPERTY(QString commandName READ commandName CONSTANT FINAL)
-    Q_PROPERTY(QVariantMap commandParams READ commandParams WRITE setCommandParams NOTIFY commandParamsChanged FINAL)
+    Q_PROPERTY(QVariantMap executionInputValues READ executionInputValues WRITE setExecutionInputValues NOTIFY executionInputValuesChanged FINAL)
     Q_PROPERTY(DeviceCommand *targetCommand READ targetCommand NOTIFY targetCommandChanged FINAL)
     Q_PROPERTY(bool filteredOut READ filteredOut NOTIFY filteredOutChanged FINAL)
-    Q_PROPERTY(qint64 durationMs READ durationMs NOTIFY commandParamsChanged FINAL)
+    Q_PROPERTY(qint64 durationMs READ durationMs NOTIFY durationMsChanged FINAL)
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString stateText READ stateText NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString stateColor READ stateColor NOTIFY stateChanged FINAL)
@@ -46,7 +43,7 @@ public:
     TimelineCommand(qint64 startTimeMs,
                     const QString &targetDeviceId,
                     const QString &commandName,
-                    const QVariantMap &commandParams,
+                    const QVariantMap &executionInputValues,
                     DeviceCommand *targetCommand,
                     QObject *parent = nullptr);
 
@@ -59,10 +56,11 @@ public:
 
     QString commandName() const;
 
-    QVariantMap commandParams() const;
-    void setCommandParams(const QVariantMap &commandParams);
+    QVariantMap executionInputValues() const;
+    void setExecutionInputValues(const QVariantMap &executionInputValues);
 
     DeviceCommand *targetCommand() const;
+    void setTargetCommand(DeviceCommand *targetCommand);
     bool filteredOut() const;
 
     qint64 durationMs() const;
@@ -80,10 +78,11 @@ public:
 
 signals:
     void startTimeMsChanged();
-    void commandParamsChanged();
+    void executionInputValuesChanged();
     void targetCommandChanged();
     void targetCommandDestroyed();
     void filteredOutChanged();
+    void durationMsChanged();
     void stateChanged();
     void errorMessageChanged();
 
@@ -92,7 +91,7 @@ private:
     qint64 m_startTimeMs = 0;
     QString m_targetDeviceId;
     QString m_commandName;
-    QVariantMap m_commandParams;
+    QVariantMap m_executionInputValues;
     QPointer<DeviceCommand> m_targetCommand;
     State m_state = Idle;
     QString m_errorMessage;
@@ -125,18 +124,14 @@ public:
     Q_INVOKABLE TimelineCommand *addDeviceCommand(qint64 startTimeMs,
                                                                    const QString &targetDeviceId,
                                                                    DeviceCommand *targetCommand,
-                                                                   const QVariantMap &extraParams);
-    Q_INVOKABLE DeviceCommand *createEditDraft(TimelineCommand *command,
-                                                DeviceModel *deviceModel,
-                                                TimelineModel *timelineModel);
-    Q_INVOKABLE void deleteEditDraft(DeviceCommand *draft);
+                                                                   const QVariantMap &executionInputValues);
     Q_INVOKABLE bool updateCommand(TimelineCommand *command,
                                    qint64 startTimeMs,
                                    const QVariantMap &executionInputValues);
     TimelineCommand *addCommand(qint64 startTimeMs,
                                                  const QString &targetDeviceId,
                                                  const QString &commandName,
-                                                 const QVariantMap &commandParams,
+                                                 const QVariantMap &executionInputValues,
                                                  DeviceCommand *targetCommand);
 
     void resetCommands(const QList<TimelineCommand *> &commands);

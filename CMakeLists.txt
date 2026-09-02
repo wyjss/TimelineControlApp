@@ -21,6 +21,7 @@ if(MSVC)
     add_compile_options(/utf-8)
 
     set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -MP  -ZI /openmp")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "$ENV{CXXFLAGS} -MP  -Od -ZI  /openmp")
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
