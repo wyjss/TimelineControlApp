@@ -22,6 +22,7 @@ public:
     ~LocatorViewer() override;
 
     static void initialize();
+    static void quit();
 
     //! 新增或更新二维图片目标，heading 单位为度
     Q_INVOKABLE bool updateTarget(const QString& name,

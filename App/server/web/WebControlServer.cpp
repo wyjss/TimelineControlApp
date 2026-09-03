@@ -2,7 +2,9 @@
 
 #include "../httplib.h"
 #include "../../runtime/TimelineRuntime.h"
+#include "../../runtime/devices/CrossConditionModel.h"
 #include "../../runtime/devices/Device.h"
+#include "../../runtime/devices/DeviceCommand.h"
 #include "../../runtime/devices/DeviceModel.h"
 #include "../../runtime/timeline/Timeline.h"
 #include "../../runtime/timeline/TimelineCommand.h"
@@ -290,14 +292,45 @@ QJsonObject WebControlServer::statusSnapshot() const
             for (TimelineCommand *command : timeline->commandModel()->commands()) {
                 durationMs = qMax(durationMs,
                                   command->startTimeMs() + command->durationMs());
+                QJsonArray executionParameters;
+                if (DeviceCommand *targetCommand = command->targetCommand()) {
+                    const QVariantMap values = command->executionInputValues();
+                    for (const QVariant &fieldValue : targetCommand->executionInputFields()) {
+                        DeviceParamSpec *field = fieldValue.value<DeviceParamSpec *>();
+                        const QVariant value = field ? values.value(field->key()) : QVariant();
+                        if (!value.isValid() || value.isNull() || value.toString().isEmpty())
+                            continue;
+                        executionParameters.append(QJsonObject{
+                            {QStringLiteral("name"), field->label().isEmpty() ? field->key() : field->label()},
+                            {QStringLiteral("value"), QJsonValue::fromVariant(value)}
+                        });
+                    }
+                }
                 commands.append(QJsonObject{
                     {QStringLiteral("id"), command->id()},
                     {QStringLiteral("name"), command->commandName()},
                     {QStringLiteral("deviceId"), command->targetDeviceId()},
                     {QStringLiteral("startTimeMs"), command->startTimeMs()},
                     {QStringLiteral("durationMs"), command->durationMs()},
+                    {QStringLiteral("executionParameters"), executionParameters},
                     {QStringLiteral("state"), commandStateName(command->state())},
                     {QStringLiteral("error"), command->errorMessage()}
+                });
+            }
+
+            QJsonArray triggers;
+            CrossConditionModel *conditionModel = timeline->crossConditionModel();
+            for (int index = 0; index < conditionModel->count(); ++index) {
+                CrossCondition *condition = conditionModel->conditionAt(index);
+                triggers.append(QJsonObject{
+                    {QStringLiteral("id"), condition->id()},
+                    {QStringLiteral("locatorId"), condition->locator()},
+                    {QStringLiteral("fenceId"), condition->fence()},
+                    {QStringLiteral("heading"), condition->heading()},
+                    {QStringLiteral("targetTimelineId"), condition->timeline()},
+                    {QStringLiteral("enabled"), condition->isEnabled()},
+                    {QStringLiteral("active"), condition->isActive()},
+                    {QStringLiteral("touched"), condition->touched()}
                 });
             }
 
@@ -308,7 +341,8 @@ QJsonObject WebControlServer::statusSnapshot() const
                 {QStringLiteral("currentTimeMs"), timeline->currentTimeMs()},
                 {QStringLiteral("durationMs"), durationMs},
                 {QStringLiteral("queuePosition"), playQueue.indexOf(timeline->id())},
-                {QStringLiteral("commands"), commands}
+                {QStringLiteral("commands"), commands},
+                {QStringLiteral("triggers"), triggers}
             });
         }
 
@@ -451,6 +485,10 @@ int WebControlServer::control(const QJsonObject &request,
             accepted = manager->playbackState() != TimelineManager::Stopped;
             if (accepted)
                 manager->stopPlayback();
+        } else if (action == QStringLiteral("trigger")) {
+            accepted = manager->playbackState() == TimelineManager::Running
+                && manager->triggerTimeline(
+                    request.value(QStringLiteral("timelineId")).toString());
         }
     })) {
         response = errorResponse(QStringLiteral("runtime_unavailable"),

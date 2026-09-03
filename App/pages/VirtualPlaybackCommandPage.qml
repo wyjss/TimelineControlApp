@@ -227,13 +227,13 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageTheme.density.panePadding
-        spacing: 12
+        anchors.margins: root.pageTheme.density.panePaddingCompact
+        spacing: root.pageTheme.density.controlGap
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 12
+            spacing: root.pageTheme.density.controlGap
 
             Base.AppSurface {
                 Layout.preferredWidth: 260
@@ -386,7 +386,7 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 12
+                spacing: root.pageTheme.density.controlGap
 
                 Base.AppSurface {
                     Layout.fillWidth: true
@@ -437,7 +437,7 @@ Item {
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    spacing: 12
+                    spacing: root.pageTheme.density.controlGap
 
                     Base.AppSurface {
                         Layout.fillWidth: true

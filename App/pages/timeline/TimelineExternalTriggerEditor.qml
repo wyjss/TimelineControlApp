@@ -3,9 +3,14 @@ import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import UICore.Style 1.0
 import "qrc:/UICore/qml/components/base" as Base
+import "qrc:/UICore/qml/theme" as Theme
 
 Item {
     id: root
+
+    Theme.AppTheme {
+        id: fallbackTheme
+    }
 
     property var devices: []
     property var fences: []
@@ -18,8 +23,14 @@ Item {
     property var fenceOptions: []
     property var timelineOptions: []
     property var timelineConditions: []
+    readonly property QtObject pageTheme: ApplicationWindow.window
+        && ApplicationWindow.window.appTheme
+        ? ApplicationWindow.window.appTheme
+        : fallbackTheme
 
-    implicitHeight: timelineConditions.length > 0 ? 116 : 72
+    implicitHeight: timelineConditions.length > 0
+        ? Math.min(230, 50 + timelineConditions.length * 60)
+        : 72
 
     function rebuildLocatorOptions() {
         var options = []
@@ -164,13 +175,13 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: root.timelineConditions.length > 0
-                orientation: ListView.Horizontal
-                spacing: 8
+                orientation: ListView.Vertical
+                spacing: 6
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.timelineConditions
 
-                ScrollBar.horizontal: ScrollBar {
+                ScrollBar.vertical: ScrollBar {
                     policy: ScrollBar.AsNeeded
                 }
 
@@ -178,9 +189,28 @@ Item {
                     id: conditionCard
 
                     readonly property var conditionData: modelData
+                    readonly property string locatorText: root.optionLabel(
+                        root.locatorOptions, conditionData.locator)
+                    readonly property string fenceText: root.optionLabel(
+                        root.fenceOptions, conditionData.fence)
+                    readonly property string timelineText: root.optionLabel(
+                        root.timelineOptions, conditionData.timeline)
+                    readonly property string statusText: conditionData.touched
+                        ? qsTr("已触发")
+                        : (conditionData.active ? qsTr("待触发") : qsTr("未激活"))
+                    readonly property int statusTextTone: conditionData.touched
+                        ? UiStyle.TextTone.Success
+                        : (conditionData.active
+                            ? UiStyle.TextTone.Accent
+                            : UiStyle.TextTone.Secondary)
+                    readonly property color statusColor: conditionData.touched
+                        ? root.pageTheme.colors.successFill
+                        : (conditionData.active
+                            ? root.pageTheme.colors.highlightFill
+                            : root.pageTheme.colors.subtleText)
 
-                    width: Math.min(360, Math.max(280, conditionList.width * 0.45))
-                    height: conditionList.height
+                    width: conditionList.width
+                    height: 50
                     compact: true
                     animateScale: false
                     enabled: root.editable
@@ -189,55 +219,206 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        spacing: 8
+                        spacing: 6
 
-                        ColumnLayout {
+                        Base.AppText {
+                            Layout.preferredWidth: 24
+                            text: "⚡"
+                            styleRole: UiStyle.TypographyRole.TitleM
+                            textTone: UiStyle.TextTone.Warning
+                            horizontalAlignment: Text.AlignHCenter
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 24
+                            color: root.pageTheme
+                                ? root.pageTheme.colors.border
+                                : "transparent"
+                        }
+
+                        Base.AppText {
+                            Layout.preferredWidth: Math.min(130,
+                                                            Math.max(76,
+                                                                     conditionList.width * 0.13))
+                            text: conditionCard.locatorText
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            overrideWeight: Font.Medium
+                            textTone: conditionCard.conditionData.enabled
+                                ? UiStyle.TextTone.Primary
+                                : UiStyle.TextTone.Secondary
+                            elide: Text.ElideRight
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 24
+                            color: root.pageTheme
+                                ? root.pageTheme.colors.border
+                                : "transparent"
+                        }
+
+                        RowLayout {
                             Layout.fillWidth: true
-                            spacing: 1
+                            Layout.minimumWidth: 120
+                            spacing: 3
 
                             Base.AppText {
-                                Layout.fillWidth: true
-                                text: root.optionLabel(root.locatorOptions, conditionCard.conditionData.locator)
-                                    + " · " + root.optionLabel(root.fenceOptions, conditionCard.conditionData.fence)
-                                    + " · " + Number(conditionCard.conditionData.heading).toFixed(1) + "°"
+                                text: qsTr("经过")
                                 styleRole: UiStyle.TypographyRole.BodyS
-                                textTone: conditionCard.conditionData.touched
-                                    ? UiStyle.TextTone.Accent
-                                    : (conditionCard.conditionData.enabled
-                                        ? UiStyle.TextTone.Primary
-                                        : UiStyle.TextTone.Secondary)
-                                elide: Text.ElideRight
+                                textTone: UiStyle.TextTone.Secondary
                             }
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: "→ " + root.optionLabel(root.timelineOptions,
-                                                               conditionCard.conditionData.timeline)
+                                text: conditionCard.fenceText
                                 styleRole: UiStyle.TypographyRole.BodyS
+                                overrideWeight: Font.Medium
+                                textTone: conditionCard.conditionData.enabled
+                                    ? UiStyle.TextTone.Primary
+                                    : UiStyle.TextTone.Secondary
+                                elide: Text.ElideRight
+                            }
+
+                            Base.AppText {
+                                text: "·"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                            }
+
+                            Base.AppText {
+                                text: qsTr("朝向")
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                            }
+
+                            Base.AppText {
+                                text: qsTr("%1°").arg(Number(
+                                    conditionCard.conditionData.heading).toFixed(1))
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                overrideWeight: Font.Medium
+                                textTone: conditionCard.conditionData.enabled
+                                    ? UiStyle.TextTone.Primary
+                                    : UiStyle.TextTone.Secondary
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 24
+                            color: root.pageTheme
+                                ? root.pageTheme.colors.border
+                                : "transparent"
+                        }
+
+                        RowLayout {
+                            Layout.preferredWidth: Math.min(190,
+                                                            Math.max(140,
+                                                                     conditionList.width * 0.22))
+                            spacing: 7
+
+                            Base.AppText {
+                                text: "→"
+                                styleRole: UiStyle.TypographyRole.TitleM
                                 textTone: UiStyle.TextTone.Accent
+                            }
+
+                            Base.AppSurface {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 28
+                                sizeToContent: false
+                                surfaceTone: UiStyle.SurfaceTone.Success
+                                shapeRole: UiStyle.ShapeRole.Pill
+
+                                Base.AppText {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    text: qsTr("触发 %1").arg(conditionCard.timelineText)
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    overrideWeight: Font.Medium
+                                    textTone: UiStyle.TextTone.Success
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 24
+                            color: root.pageTheme
+                                ? root.pageTheme.colors.border
+                                : "transparent"
+                        }
+
+                        RowLayout {
+                            Layout.preferredWidth: 76
+                            spacing: 5
+
+                            Rectangle {
+                                width: 7
+                                height: 7
+                                radius: width / 2
+                                color: conditionCard.statusColor
+                            }
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: conditionCard.statusText
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: conditionCard.statusTextTone
                                 elide: Text.ElideRight
                             }
                         }
 
-                        Base.AppButton {
-                            opacity: conditionCard.hovered || hovered ? 1 : 0
-                            text: qsTr("编辑")
-                            size: UiStyle.ButtonSize.Small
-                            onClicked: conditionDialog.openForEdit(conditionCard.conditionData)
-                        }
-
-                        Base.AppButton {
-                            opacity: conditionCard.hovered || hovered ? 1 : 0
-                            text: qsTr("删除")
-                            size: UiStyle.ButtonSize.Small
-                            variant: UiStyle.ButtonVariant.Danger
-                            onClicked: root.conditionModel.removeCondition(conditionCard.conditionData)
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 24
+                            color: root.pageTheme
+                                ? root.pageTheme.colors.border
+                                : "transparent"
                         }
 
                         Base.AppToggleControl {
                             checked: conditionCard.conditionData.enabled
                             enabled: root.editable
                             onToggled: conditionCard.conditionData.enabled = checked
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: 1
+                            Layout.preferredHeight: 24
+                            color: root.pageTheme
+                                ? root.pageTheme.colors.border
+                                : "transparent"
+                        }
+
+                        Base.AppButton {
+                            text: "⋮"
+                            size: UiStyle.ButtonSize.Small
+                            minWidth: 28
+                            variant: UiStyle.ButtonVariant.Ghost
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("更多操作")
+                            onClicked: conditionMenu.popup()
+
+                            Menu {
+                                id: conditionMenu
+
+                                MenuItem {
+                                    text: qsTr("编辑")
+                                    onTriggered: conditionDialog.openForEdit(
+                                        conditionCard.conditionData)
+                                }
+
+                                MenuItem {
+                                    text: qsTr("删除")
+                                    onTriggered: root.conditionModel.removeCondition(
+                                        conditionCard.conditionData)
+                                }
+                            }
                         }
                     }
                 }

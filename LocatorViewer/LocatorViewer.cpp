@@ -145,6 +145,11 @@ void LocatorViewer::initialize()
                     "LocatorViewer", 1, 0, "LocatorViewer");
 }
 
+void LocatorViewer::quit()
+{
+    ragis::RagEarth::getInstance()->quitRender();
+}
+
 LocatorViewer::LocatorViewer(QObject* parent)
     : QObject(parent)
     , m_lineCallback(new LocatorViewerLineCallback(this))

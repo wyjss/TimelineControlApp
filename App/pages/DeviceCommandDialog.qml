@@ -19,8 +19,7 @@ Base.AppDialog {
         { "label": qsTr("UDP"), "value": "udp" },
         { "label": qsTr("HTTP"), "value": "http" },
         { "label": qsTr("PC"), "value": "pc" },
-        { "label": qsTr("DMX512"), "value": "dmx512" },
-        { "label": qsTr("OSC"), "value": "osc" }
+        { "label": qsTr("DMX512"), "value": "dmx512" }
     ]
     readonly property var availableProtocolOptions: buildAvailableProtocolOptions()
     readonly property bool commandValid: draftCommand

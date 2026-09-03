@@ -55,7 +55,7 @@ ApplicationWindow {
         ? qsTr("暂停")
         : (timelinePaused
             ? qsTr("继续播放")
-            : (hasQueuedTimelines ? qsTr("播放队列") : qsTr("播放当前节目")))
+            : (hasQueuedTimelines ? qsTr("播放顺序") : qsTr("播放当前节目")))
 
     function playbackDeviceSelected(deviceId) {
         return playbackDeviceIds.indexOf(String(deviceId || "")) >= 0
@@ -118,6 +118,79 @@ ApplicationWindow {
         anchors.fill: parent
         applicationTitle: window.title
         navigationItems: window.shellController ? window.shellController.navigationItems : []
+        sidebar.itemDelegate: Component {
+            Shell.AppRailButton {
+                id: navigationButton
+
+                readonly property string itemKey: String(modelData && modelData.key || "")
+                readonly property string itemLabel: String(modelData && modelData.label || "")
+                readonly property url itemIconSource: modelData && modelData.iconSource !== undefined
+                    ? modelData.iconSource
+                    : ""
+
+                Layout.fillWidth: true
+                buttonSize: shell.sidebar.resolvedTheme.shell.railButtonSize
+                implicitHeight: showText
+                    ? navigationIcon.height + navigationText.implicitHeight
+                        + resolvedTheme.shell.railPadding
+                        + resolvedTheme.density.controlGap
+                    : buttonSize
+                animated: shell.sidebar.animated
+                text: itemLabel
+                showText: shell.sidebar.showItemLabels
+                iconName: String(modelData && modelData.iconName || "")
+                active: itemKey === shell.sidebar.activeItemKey
+                enabled: !modelData || modelData.enabled === undefined || !!modelData.enabled
+                visible: !modelData || modelData.visible === undefined || !!modelData.visible
+                onClicked: {
+                    shell.sidebar.itemActivated(itemKey, modelData)
+                    shell.sidebar.itemTriggered(itemKey)
+                }
+                onDoubleClicked: navigationButton.clicked()
+
+                contentItem: Item {
+                    implicitWidth: navigationButton.buttonSize
+                    implicitHeight: navigationButton.buttonSize
+
+                    Base.AppIcon {
+                        id: navigationIcon
+
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: navigationButton.showText
+                            ? navigationButton.resolvedTheme.shell.railPadding / 2
+                            : Math.round((parent.height - height) / 2)
+                        name: navigationButton.itemIconSource.toString().length > 0
+                            ? ""
+                            : navigationButton.iconName
+                        source: navigationButton.itemIconSource
+                        size: Math.round(navigationButton.buttonSize * 0.6)
+                        color: navigationButton.iconTint
+                        animateColor: navigationButton.animated
+                    }
+
+                    Base.AppText {
+                        id: navigationText
+
+                        anchors.top: navigationIcon.bottom
+                        anchors.topMargin: navigationButton.resolvedTheme.density.controlGap
+                        anchors.left: parent.left
+                        anchors.leftMargin: navigationButton.resolvedTheme.shell.railPadding / 2
+                        anchors.right: parent.right
+                        anchors.rightMargin: navigationButton.resolvedTheme.shell.railPadding / 2
+                        visible: navigationButton.showText
+                        text: navigationButton.text
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        colorOverride: navigationButton.iconTint
+                        animateColor: navigationButton.animated
+                        elide: Text.ElideRight
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
+
+                ToolTip.visible: hovered && !showText
+                ToolTip.text: text
+            }
+        }
         leftPaneDisplayMode: Shell.AppSidebarPane.Hidden
         leftPanelWidth: 320
         canvasInteractionState: window.shellController

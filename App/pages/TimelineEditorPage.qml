@@ -4,7 +4,6 @@ import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/theme" as Theme
-import "../components" as AppComponents
 import "timeline" as Timeline
 
 Item {
@@ -37,6 +36,9 @@ Item {
         ? Math.max(preStartTimelineDurationMs,
                    timelineCommandModel ? timelineCommandModel.realDurationMs : 0)
         : (currentTimeline ? currentTimeline.durationMs : 0)
+    readonly property int overviewDurationMs: timelineCommandModel
+        ? Math.max(0, Number(timelineCommandModel.realDurationMs || 0))
+        : 0
     readonly property int timelineTrackLabelWidth: 224
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
@@ -68,6 +70,7 @@ Item {
         ensureSelectedCommand()
     }
     onDeviceCommandsChanged: ensureSelectedCommand()
+    onSelectedCommandIndexChanged: executionStatusText = ""
 
     Component.onCompleted: {
         ensureSelectedTimelineDevice()
@@ -287,16 +290,16 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageTheme.density.panePadding
+        anchors.margins: root.pageTheme.density.panePaddingCompact
         anchors.topMargin: 0
-        spacing: 14
+        spacing: root.pageTheme.density.controlGap
 
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            columns: root.controlTrackOnly ? 2 : 3
-            columnSpacing: 14
-            rowSpacing: 14
+            columns: root.controlTrackOnly ? 1 : 2
+            columnSpacing: root.pageTheme.density.controlGap
+            rowSpacing: root.pageTheme.density.controlGap
 
             Base.AppSurface {
                 Layout.fillWidth: true
@@ -327,6 +330,70 @@ Item {
                             ToolTip.visible: hovered
                             ToolTip.text: qsTr("关闭控制轨")
                             onClicked: root.closeRequested()
+                        }
+                    }
+
+                    Base.AppSurface {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 48
+                        sizeToContent: false
+                        surfaceTone: UiStyle.SurfaceTone.SectionOverlay
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 6
+                            spacing: 8
+
+                            Base.AppText {
+                                Layout.preferredWidth: 140
+                                text: root.selectedTimelineDevice
+                                    ? qsTr("设备：%1").arg(root.deviceName(
+                                        root.selectedTimelineDevice))
+                                    : qsTr("未选择设备")
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                                elide: Text.ElideRight
+                            }
+
+                            Base.AppSelect {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 140
+                                Layout.maximumWidth: 240
+                                options: root.deviceCommands.map(function(command, index) {
+                                    return {
+                                        "label": root.commandName(command),
+                                        "value": index
+                                    }
+                                })
+                                value: root.selectedCommandIndex
+                                placeholderText: qsTr("选择指令")
+                                popupMinWidth: width
+                                enabled: root.deviceCommands.length > 0
+                                onValueSelected: root.selectCommandIndex(Number(nextValue))
+                            }
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: root.executionStatusText.length > 0
+                                    ? root.executionStatusText
+                                    : qsTr("参数：%1").arg(root.selectedCommand
+                                        ? (root.executionParameterNames(root.selectedCommand)
+                                            || qsTr("无"))
+                                        : qsTr("无"))
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: root.executionStatusText.length > 0
+                                    ? UiStyle.TextTone.Accent
+                                    : UiStyle.TextTone.Info
+                                elide: Text.ElideRight
+                            }
+
+                            Base.AppButton {
+                                text: qsTr("添加到当前时间")
+                                iconName: "workflow"
+                                enabled: root.timelineStopped && root.timelineCommandModel
+                                    && root.selectedTimelineDevice && root.selectedCommand
+                                onClicked: root.addSelectedCommandAtCurrentTime()
+                            }
                         }
                     }
 
@@ -389,177 +456,159 @@ Item {
                             root.selectTimelineCommand(command)
                         }
                     }
-                }
-            }
-
-            Base.AppSurface {
-                Layout.preferredWidth: root.controlTrackOnly ? 300 : 340
-                Layout.fillHeight: true
-                sizeToContent: false
-                surfaceTone: UiStyle.SurfaceTone.Surface
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 14
-                    spacing: 10
-
-                    Base.AppText {
-                        text: qsTr("执行")
-                        styleRole: UiStyle.TypographyRole.SectionTitle
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("指令")
-                            styleRole: UiStyle.TypographyRole.BodyM
-                            textTone: UiStyle.TextTone.Primary
-                            elide: Text.ElideRight
-                        }
-
-                        Base.AppText {
-                            text: qsTr("%1 条").arg(root.deviceCommands.length)
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                        }
-                    }
 
                     Base.AppSurface {
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.minimumHeight: 176
-                        Layout.preferredHeight: 260
+                        Layout.preferredHeight: 44
                         sizeToContent: false
                         surfaceTone: UiStyle.SurfaceTone.SectionOverlay
 
-                        ListView {
-                            id: commandList
-
+                        RowLayout {
                             anchors.fill: parent
-                            anchors.margins: 6
-                            clip: true
-                            boundsBehavior: Flickable.StopAtBounds
-                            spacing: 0
-                            model: root.deviceCommands
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
+                            anchors.margins: 8
+                            spacing: 8
+
+                            Base.AppText {
+                                Layout.preferredWidth: 40
+                                text: qsTr("总览")
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
                             }
 
-                            delegate: Base.AppCard {
-                                id: commandRow
+                            Item {
+                                id: timelineOverview
 
-                                readonly property var commandData: modelData
-                                readonly property bool selected: index === root.selectedCommandIndex
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                clip: true
 
-                                width: commandList.width
-                                height: 40
-                                opacity: commandData && commandData.filteredOut ? 0.46 : 1
-                                text: root.commandName(commandRow.commandData)
-                                surfaceTone: UiStyle.SurfaceTone.Ghost
-                                shapeRole: UiStyle.ShapeRole.Control
-                                padding: 0
-                                checkable: true
-                                checked: selected
-                                selectionTransition: commandCardSelectionTransition
-                                animateScale: false
-                                onClicked: root.selectCommandIndex(index)
-
-                                Behavior on opacity {
-                                    NumberAnimation { duration: 120 }
+                                Rectangle {
+                                    anchors.left: parent.left
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    height: 1
+                                    color: root.pageTheme.colors.border
+                                    opacity: 0.7
                                 }
 
-                                Item {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 40
+                                Repeater {
+                                    model: root.timelineCommands
 
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: 10
-                                        anchors.rightMargin: 8
-                                        anchors.bottomMargin: 1
-                                        spacing: root.pageTheme.density.controlGap
-
-                                        Base.AppText {
-                                            Layout.preferredWidth: 92
-                                            text: root.commandName(commandRow.commandData)
-                                            styleRole: UiStyle.TypographyRole.BodyM
-                                            textTone: commandRow.commandData
-                                                && commandRow.commandData.filteredOut
-                                                ? UiStyle.TextTone.Secondary
-                                                : UiStyle.TextTone.Primary
-                                            elide: Text.ElideRight
+                                    delegate: Item {
+                                        readonly property var commandData: modelData
+                                        readonly property real startRatio: root.overviewDurationMs > 0
+                                            ? Math.max(0, Number(commandData.startTimeMs || 0))
+                                                / root.overviewDurationMs
+                                            : 0
+                                        readonly property real durationRatio: root.overviewDurationMs > 0
+                                            ? Math.max(0, Number(commandData.durationMs || 0))
+                                                / root.overviewDurationMs
+                                            : 0
+                                        readonly property bool instantCommand: durationRatio <= 0
+                                        readonly property color markerColor: {
+                                            var protocol = String(commandData && commandData.targetCommand
+                                                ? commandData.targetCommand.protocol
+                                                : "")
+                                            switch (protocol) {
+                                            case "dmx512": return "#2563eb"
+                                            case "http": return "#0891b2"
+                                            case "pc": return "#16a34a"
+                                            case "serial": return "#d97706"
+                                            default: return "#7c5cff"
+                                            }
                                         }
+                                        readonly property bool selected: String(commandData.id || "")
+                                            === root.selectedTimelineCommandId
 
-                                        Base.AppText {
-                                            Layout.fillWidth: true
-                                            text: root.executionParameterNames(commandRow.commandData)
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: commandRow.commandData
-                                                && commandRow.commandData.filteredOut
-                                                ? UiStyle.TextTone.Secondary
-                                                : UiStyle.TextTone.Info
-                                            elide: Text.ElideRight
-                                        }
+                                        x: Math.min(parent.width - width,
+                                                    Math.round(parent.width * startRatio))
+                                        y: 2 + index % 3 * 9
+                                        width: instantCommand
+                                            ? 10
+                                            : Math.max(10, Math.round(parent.width * durationRatio))
+                                        height: 8
+                                        z: 1
 
-                                        Base.AppText {
-                                            Layout.preferredWidth: 20
-                                            text: commandRow.selected ? "✓" : ""
-                                            styleRole: UiStyle.TypographyRole.BodyS
-                                            textTone: UiStyle.TextTone.Accent
-                                            horizontalAlignment: Text.AlignHCenter
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: parent.instantCommand ? 7 : parent.width
+                                            height: parent.instantCommand ? 7 : 6
+                                            radius: parent.instantCommand ? 2 : 3
+                                            rotation: parent.instantCommand ? 45 : 0
+                                            color: parent.markerColor
+                                            opacity: parent.commandData.filteredOut
+                                                ? 0.36
+                                                : (parent.selected ? 1 : 0.82)
+                                            border.width: parent.selected ? 1 : 0
+                                            border.color: root.pageTheme.colors.inverseText
                                         }
                                     }
+                                }
 
-                                    Rectangle {
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 10
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 8
-                                        anchors.bottom: parent.bottom
-                                        height: 1
-                                        visible: index < root.deviceCommands.length - 1
-                                        color: root.pageTheme.colors.borderOverlay
+                                Rectangle {
+                                    readonly property real startRatio: root.overviewDurationMs > 0
+                                        ? Math.min(root.overviewDurationMs,
+                                                   timelineRuler.visibleStartMs)
+                                            / root.overviewDurationMs
+                                        : 0
+                                    readonly property real endRatio: root.overviewDurationMs > 0
+                                        ? Math.min(root.overviewDurationMs,
+                                                   timelineRuler.visibleEndMs)
+                                            / root.overviewDurationMs
+                                        : 0
+
+                                    x: Math.round(parent.width * startRatio)
+                                    width: Math.max(2, Math.round(parent.width
+                                                                 * (endRatio - startRatio)))
+                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
+                                    visible: root.overviewDurationMs > 0
+                                    color: root.pageTheme.colors.highlightSoft
+                                    border.width: 1
+                                    border.color: root.pageTheme.colors.highlightText
+                                    opacity: 0.7
+                                }
+
+                                Rectangle {
+                                    x: root.overviewDurationMs > 0
+                                        ? Math.round(parent.width * root.timelineCurrentTimeMs
+                                                     / root.overviewDurationMs)
+                                        : 0
+                                    anchors.top: parent.top
+                                    anchors.bottom: parent.bottom
+                                    width: 1
+                                    visible: root.overviewDurationMs > 0
+                                        && x >= 0 && x <= parent.width
+                                    color: root.pageTheme.colors.dangerFill
+                                    z: 2
+                                }
+
+                                MouseArea {
+                                    function seek(positionX) {
+                                        if (!root.timelineStopped
+                                                || root.overviewDurationMs <= 0)
+                                            return
+                                        var timeMs = Math.round(Math.max(0,
+                                            Math.min(width, positionX)) / width
+                                            * root.overviewDurationMs)
+                                        root.setTimelineCurrentTimeMs(timeMs)
+                                        root.positionControlTrackAtTime(timeMs)
+                                    }
+
+                                    anchors.fill: parent
+                                    enabled: root.timelineStopped
+                                    cursorShape: pressed
+                                        ? Qt.SizeHorCursor
+                                        : Qt.PointingHandCursor
+                                    z: 3
+                                    onPressed: seek(mouse.x)
+                                    onPositionChanged: {
+                                        if (pressed)
+                                            seek(mouse.x)
                                     }
                                 }
                             }
                         }
-
-                        AppComponents.SubtleCardSelectionTransition {
-                            id: commandCardSelectionTransition
-
-                            anchors.fill: commandList
-                            clip: true
-                            selectionColor: root.pageTheme.colors.highlightText
-                        }
-
-                        Base.AppText {
-                            anchors.centerIn: parent
-                            visible: root.deviceCommands.length === 0
-                            text: qsTr("暂无指令")
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                        }
-                    }
-
-                    Base.AppButton {
-                        Layout.fillWidth: true
-                        text: qsTr("添加所选")
-                        iconName: "workflow"
-                        enabled: root.timelineStopped && root.timelineCommandModel
-                            && root.selectedTimelineDevice && root.selectedCommand
-                        onClicked: root.addSelectedCommandAtCurrentTime()
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: root.executionStatusText
-                        visible: root.executionStatusText.length > 0
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: UiStyle.TextTone.Accent
-                        elide: Text.ElideRight
                     }
                 }
             }

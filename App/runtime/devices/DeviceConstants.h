@@ -48,8 +48,6 @@ inline const QString HttpMethod = QStringLiteral("httpMethod");
 //inline const QString HttpQueryParams = QStringLiteral("httpQueryParams");
 inline const QString HttpBody = QStringLiteral("httpBody");
 inline const QString ApiPath = QStringLiteral("apiPath");
-inline const QString OscTransProtocol = QStringLiteral("oscTransProtocol");
-inline const QString OscMessage = QStringLiteral("oscMessage");
 inline const QString KeystoneCorrection = QStringLiteral("keystoneCorrection");
 inline const QString SerialPayload = QStringLiteral("serialPayload");
 // @todo 可以代替 SerialPayload/HttpBody ?
@@ -100,7 +98,6 @@ inline const QString Dmx512 = QStringLiteral("dmx512");
 inline const QString Http = QStringLiteral("http");
 inline const QString Udp = QStringLiteral("udp");
 inline const QString Serial = QStringLiteral("serial");
-inline const QString Osc = QStringLiteral("osc");
 inline const QString Pc = QStringLiteral("pc");
 inline const QString Internal = QStringLiteral("internal");
 } // namespace DeviceProtocol

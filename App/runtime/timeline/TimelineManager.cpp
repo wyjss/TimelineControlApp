@@ -3,6 +3,7 @@
 #include "timeline/Timeline.h"
 #include "timeline/TimelineClock.h"
 #include "timeline/TimelineModel.h"
+#include "devices/CrossCondition.h"
 #include "devices/CrossConditionModel.h"
 #include "devices/Device.h"
 #include "devices/DeviceModel.h"
@@ -108,6 +109,49 @@ Timeline *TimelineManager::createTimeline(const QString &name)
                                      name);
     if (timeline)
         setCurrentTimelineId(timeline->id());
+    return timeline;
+}
+
+Timeline *TimelineManager::cloneTimeline(const QString &id, const QString &name)
+{
+    Timeline *source = timelineById(id);
+    const QString normalizedName = name.trimmed();
+    if (!source || normalizedName.isEmpty() || playbackState() != Stopped)
+        return nullptr;
+
+    Timeline *timeline = addTimeline(
+        QStringLiteral("timeline-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)),
+        normalizedName);
+    if (!timeline)
+        return nullptr;
+
+    for (TimelineCommand *command : source->commandModel()->commands()) {
+        if (!timeline->commandModel()->addCommand(command->startTimeMs(),
+                                                   command->targetDeviceId(),
+                                                   command->commandName(),
+                                                   command->executionInputValues(),
+                                                   command->targetCommand())) {
+            removeTimeline(timeline->id());
+            return nullptr;
+        }
+    }
+
+    CrossConditionModel *sourceConditions = source->crossConditionModel();
+    for (int index = 0; index < sourceConditions->count(); ++index) {
+        CrossCondition *condition = sourceConditions->conditionAt(index);
+        CrossCondition *copy = timeline->crossConditionModel()->addCondition(
+            condition->locator(),
+            condition->fence(),
+            condition->heading(),
+            condition->timeline());
+        if (!copy) {
+            removeTimeline(timeline->id());
+            return nullptr;
+        }
+        copy->setEnabled(condition->isEnabled());
+    }
+
+    setCurrentTimelineId(timeline->id());
     return timeline;
 }
 

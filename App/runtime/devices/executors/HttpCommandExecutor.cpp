@@ -11,8 +11,6 @@
 #include <QTimer>
 #include <QUrl>
 
-
-
 HttpCommandExecutor::HttpCommandExecutor(const QString &ip, int port, QObject *parent)
     : DeviceCommandExecutor(parent)
     , m_ip(ip)
@@ -52,7 +50,8 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
         return;
     }
 
-    LOG_INFO("POST REQUEST");
+    LOG_INFO(command->name() << url);
+
     QNetworkReply *reply = method == QStringLiteral("POST")
         ? m_manager->post(request, params.value(DeviceKey::HttpBody).toString().toUtf8())
         : m_manager->get(request);
@@ -66,21 +65,29 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
     });
 
     connect(reply, &QNetworkReply::finished, this, [this, executionId, command, reply]() {
-        LOG_INFO("REPLY REQUEST");
         const QVariant status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
-        const int httpStatus = status.toInt();
-        const bool success = reply->error() == QNetworkReply::NoError
-            && (!status.isValid() || httpStatus < 400);
+        int statusCode = status.isValid() ? status.toInt() : -1;
+        
+        bool success = statusCode >= 200 & statusCode < 400;
+        bool connectFailed = statusCode == -1;
         QString message;
-        if (!success) {
-            message = reply->property("timedOut").toBool()
-                ? tr("HTTP 请求超时")
-                : (reply->error() == QNetworkReply::NoError ? tr("HTTP %1").arg(httpStatus) : reply->errorString());
-            
-            if (reply->error() == QNetworkReply::ConnectionRefusedError) {
-                LOG_ERROR("http连接错误，禁用2000ms" << reply->url());
-				markFailed(message);
+        // 成功
+        if (success) {
+            ;
+		} else {
+            if (reply->property("timedOut").toBool()) {
+                message = "HTTP 请求超时";
+            } else if (statusCode == -1) {
+                message = reply->errorString();
+            } else {
+                message = QString("HTTP %1").arg(statusCode);
+                message += reply->readAll();
             }
+		}
+        
+        if (connectFailed) {
+            LOG_ERROR("http连接错误，禁用2000ms" << reply->url());
+            markFailed(message);
         }
         emit executionFinished(executionId, command, success, message);
     });

@@ -274,25 +274,6 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
-	if (deviceKey == DeviceKey::OscTransProtocol) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("传输协议"),
-										 QString(),
-                                         SelectType,
-                                         SelectEditor);
-        spec->setValue("UDP");
-        spec->setDefaultValue("UDP");
-        spec->setOptions(QVariantList{"UDP", "TCP"});
-		return spec;
-	}
-
-    if (deviceKey == DeviceKey::OscMessage)
-        return new DeviceParamSpec(deviceKey,
-                                   QStringLiteral("OSC消息"),
-                                   QString(),
-                                   StringType,
-                                   TextEditor);
-
     if (deviceKey == DeviceKey::SerialPayload) {
         auto *spec = new DeviceParamSpec(deviceKey,
                                          QStringLiteral("数据内容"),

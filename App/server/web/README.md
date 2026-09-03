@@ -5,11 +5,11 @@
 ## 功能
 
 - 查看当前方案、播控状态、主时钟和节目进度
-- 查看节目库、指令数量、执行状态和节目时长
-- 查看当前节目的指令时间、目标设备、持续时间、状态和错误信息
+- 查看节目库、触发规则状态、指令数量、执行状态和节目时长
+- 查看当前节目的指令时间、目标设备、执行参数、持续时间、状态和错误信息
 - 选择播控设备并与 C++ `TimelineManager::playbackDevices` 双向同步
 - 编排并应用播放队列
-- 开始、暂停、继续、停止播放
+- 开始、暂停、继续、停止播放，并手动触发等待中的节目
 - 查看设备类型与设备上报状态
 - 可选 Bearer 访问令牌；默认仅建议监听本机地址
 
@@ -33,6 +33,6 @@ webControlServer.start(QStringLiteral("0.0.0.0"), 8080);
 - `GET /api/v1/status`：完整播控快照
 - `POST /api/v1/queue`：请求体为 `{ "timelineIds": ["..."] }`
 - `POST /api/v1/playback-devices`：请求体为 `{ "deviceIds": ["..."] }`
-- `POST /api/v1/control`：`action` 为 `start`、`pause`、`resume` 或 `stop`
+- `POST /api/v1/control`：`action` 为 `start`、`pause`、`resume`、`stop` 或 `trigger`；手动触发时同时传入 `timelineId`
 
 启用令牌后，请求需带 `Authorization: Bearer <token>` 或 `X-Control-Token: <token>`。

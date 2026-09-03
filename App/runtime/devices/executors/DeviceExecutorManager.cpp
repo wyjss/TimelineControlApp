@@ -10,6 +10,7 @@
 #include "devices/executors/UdpCommandExecutor.h"
 #include "devices/executors/DmxCommandExecutor.h"
 
+#include "LogMacros.h"
 #include <QMetaObject>
 
 namespace {
@@ -38,7 +39,8 @@ DeviceExecutorManager::DeviceExecutorManager(QObject *parent)
 DeviceExecutorManager::~DeviceExecutorManager()
 {
     m_onlineCheckThread.quit();
-    m_onlineCheckThread.wait();
+    // 不wait，卡太久了
+    //m_onlineCheckThread.wait();
     m_thread.quit();
     m_thread.wait();
 }

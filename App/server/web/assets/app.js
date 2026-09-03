@@ -54,6 +54,15 @@ function commandStateLabel(value) {
     })[value] || "待执行";
 }
 
+function executionParametersText(command) {
+    const parameters = command.executionParameters || [];
+    return parameters.length
+        ? parameters.map(parameter => `${parameter.name}：${typeof parameter.value === "boolean"
+            ? (parameter.value ? "是" : "否")
+            : String(parameter.value)}`).join(" · ")
+        : "无";
+}
+
 function showToast(message, error = false) {
     clearTimeout(state.toastTimer);
     elements.toast.textContent = message;
@@ -95,6 +104,8 @@ function currentTimeline(data) {
 
 function renderTimelineList(data) {
     const editable = data.playbackState === "stopped";
+    const deviceNames = new Map(data.devices.map(device => [device.id, device.name || device.id]));
+    const timelineNames = new Map(data.timelines.map(timeline => [timeline.id, timeline.name || timeline.id]));
     const signature = JSON.stringify([
         editable,
         state.busy,
@@ -103,8 +114,10 @@ function renderTimelineList(data) {
             timeline.id,
             timeline.name,
             timeline.state,
+            timeline.currentTimeMs,
             timeline.durationMs,
-            timeline.commands.map(command => command.state)
+            timeline.commands.map(command => command.state),
+            timeline.triggers
         ])
     ]);
     if (state.renderSignatures.timelines === signature) return;
@@ -114,6 +127,7 @@ function renderTimelineList(data) {
 
     for (const timeline of data.timelines) {
         const selected = state.selectedIds.has(timeline.id);
+        const entry = createElement("div", "timeline-entry");
         const card = createElement("button", `timeline-card${selected ? " selected" : ""}${timeline.state === "running" ? " active" : ""}`);
         card.type = "button";
         card.disabled = !editable || state.busy;
@@ -134,9 +148,44 @@ function renderTimelineList(data) {
         meta.append(createElement("span", "", `${timeline.commands.length} 条指令`));
         const failedCount = timeline.commands.filter(command => command.state === "failed").length;
         meta.append(createElement("span", "", failedCount ? `${failedCount} 条异常` : "指令正常"));
+        const triggers = timeline.triggers || [];
+        if (triggers.length) {
+            const touchedCount = triggers.filter(trigger => trigger.touched).length;
+            meta.append(createElement("span", "", touchedCount
+                ? `${touchedCount}/${triggers.length} 已触发`
+                : `${triggers.length} 条触发`));
+            card.title = triggers.map(trigger => {
+                const status = trigger.touched ? "已触发" : trigger.active
+                    ? "待触发" : trigger.enabled ? "未激活" : "已停用";
+                return `${deviceNames.get(trigger.locatorId) || trigger.locatorId} · ${trigger.fenceId} · ${Number(trigger.heading).toFixed(1)}° → ${timelineNames.get(trigger.targetTimelineId) || trigger.targetTimelineId}（${status}）`;
+            }).join("\n");
+        }
         copy.append(main, meta);
         card.append(copy, createElement("span", "duration", formatTime(timeline.durationMs)));
-        elements["timeline-list"].append(card);
+        const progress = createElement("span", "timeline-progress");
+        const progressFill = createElement("span", "timeline-progress-fill");
+        const progressValue = timeline.state === "completed" ? 100 : timeline.durationMs
+            ? Math.min(100, timeline.currentTimeMs / timeline.durationMs * 100)
+            : 0;
+        progressFill.style.width = `${progressValue}%`;
+        progress.append(progressFill);
+        card.append(progress);
+        entry.append(card);
+        if (timeline.state === "waiting") {
+            const triggerButton = createElement("button", "manual-trigger", "⚡ 触发");
+            triggerButton.type = "button";
+            triggerButton.disabled = state.busy || data.playbackState !== "running";
+            triggerButton.title = data.playbackState === "running"
+                ? `手动触发 ${timeline.name}`
+                : "继续播放后可手动触发";
+            triggerButton.addEventListener("click", () => post(
+                "/api/v1/control",
+                { action: "trigger", timelineId: timeline.id },
+                `已触发 ${timeline.name}`
+            ));
+            entry.append(triggerButton);
+        }
+        elements["timeline-list"].append(entry);
     }
 }
 
@@ -229,6 +278,7 @@ function renderCommands(data, timeline) {
             command.deviceId,
             command.startTimeMs,
             command.durationMs,
+            command.executionParameters,
             command.state,
             command.error
         ]),
@@ -249,11 +299,15 @@ function renderCommands(data, timeline) {
         row.append(createElement("span", "command-time", formatTime(command.startTimeMs)));
         const copy = createElement("span", "command-copy");
         copy.append(createElement("strong", "", command.name || "未命名指令"));
+        const parameters = executionParametersText(command);
+        if (parameters !== "无")
+            copy.append(createElement("small", "command-parameters", `参数：${parameters}`));
         if (command.error) copy.append(createElement("small", "command-error", command.error));
         row.append(copy);
         row.append(createElement("span", "command-device", devices.get(command.deviceId) || command.deviceId || "未指定设备"));
         row.append(createElement("span", "command-duration", command.durationMs ? formatTime(command.durationMs) : "瞬时"));
         row.append(createElement("span", `command-status ${command.state}`, commandStateLabel(command.state)));
+        row.title = `时间：${formatTime(command.startTimeMs)}\n设备：${devices.get(command.deviceId) || command.deviceId || "未指定设备"}\n名称：${command.name || "未命名指令"}\n执行参数：${parameters}\n持续时间：${command.durationMs ? formatTime(command.durationMs) : "瞬时"}\n状态：${commandStateLabel(command.state)}${command.error ? `\n错误：${command.error}` : ""}`;
         elements["command-list"].append(row);
     }
 }

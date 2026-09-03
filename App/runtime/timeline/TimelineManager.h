@@ -48,6 +48,7 @@ public:
 
     // timeline 控制
     Q_INVOKABLE Timeline *createTimeline(const QString &name);
+    Q_INVOKABLE Timeline *cloneTimeline(const QString &id, const QString &name);
     Timeline *addTimeline(const QString &id, const QString &name);
     Q_INVOKABLE bool removeTimeline(const QString &id);
     Q_INVOKABLE bool moveTimeline(int fromIndex, int toIndex);
@@ -55,7 +56,7 @@ public:
 
     // 播控
     Q_INVOKABLE bool waitForTrigger(const QString &id);
-    bool triggerTimeline(const QString &id);
+    Q_INVOKABLE bool triggerTimeline(const QString &id);
     Q_INVOKABLE bool setPlayQueue(const QStringList &timelineIds);
     Q_INVOKABLE bool startPlayback(const QStringList &timelineIds);
     Q_INVOKABLE void pausePlayback();

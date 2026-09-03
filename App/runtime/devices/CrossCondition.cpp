@@ -332,8 +332,9 @@ void CrossCondition::updateLocation(double longitude,
 	if (!crossed && m_timelineManager->currentTimeMs() > 2000) {
 		LOG_ERROR("调试，2秒后启动子时间线" << m_timelineManager->currentTimeMs());
 		setTouched(true);
-		if (m_timelineManager && m_timelineManager->triggerTimeline(m_timeline))
-			setActive(false);
+		if (m_timelineManager)
+			m_timelineManager->triggerTimeline(m_timeline);
+		setActive(false);
 		return;
 	}
 	
@@ -344,8 +345,9 @@ void CrossCondition::updateLocation(double longitude,
 		return;
 	LOG_DEBUG("正常触发！！！");
 	setTouched(true);
-	if (m_timelineManager && m_timelineManager->triggerTimeline(m_timeline))
-		setActive(false);
+	if (m_timelineManager)
+		m_timelineManager->triggerTimeline(m_timeline);
+	setActive(false);
 }
 
 void CrossCondition::setActive(bool active)
@@ -355,7 +357,9 @@ void CrossCondition::setActive(bool active)
 		return;
 
 	m_active = value;
-	resetTracking();
+	m_hasPreviousLocation = false;
+	if (m_active)
+		setTouched(false);
 	emit activeChanged();
 }
 

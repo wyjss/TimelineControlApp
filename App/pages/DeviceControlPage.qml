@@ -176,13 +176,13 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageTheme.density.panePadding
-        spacing: 10
+        anchors.margins: root.pageTheme.density.panePaddingCompact
+        spacing: root.pageTheme.density.controlGap
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 14
+            spacing: root.pageTheme.density.controlGap
 
             Base.AppSurface {
                 Layout.preferredWidth: 300

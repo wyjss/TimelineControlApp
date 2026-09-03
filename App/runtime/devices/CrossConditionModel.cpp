@@ -163,8 +163,10 @@ void CrossConditionModel::deactivate()
 {
 	LOG_INFO("deactivate" << this);
 	for (CrossCondition* condition : items()) {
-		if (condition)
+		if (condition) {
 			condition->setActive(false);
+			condition->setTouched(false);
+		}
 	}
 }
 

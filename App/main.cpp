@@ -22,6 +22,7 @@
 #include "runtime/video/PcTimelinePreviewGenerator.h"
 #include "server/web/WebControlServer.h"
 
+#include "LogMacros.h"
 namespace {
 
 class DeviceIconProvider final : public QQuickImageProvider
@@ -152,5 +153,8 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty())
         return -1;
 
-    return application.exec();
+    auto r = application.exec();
+    LocatorViewer::quit();
+    LOG_INFO("viewer quit");
+    return r;
 }

@@ -422,15 +422,15 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageTheme.density.panePadding
-        spacing: root.pageTheme.density.paneSpacing
+        anchors.margins: root.pageTheme.density.panePaddingCompact
+        spacing: root.pageTheme.density.controlGap
 
         GridLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             columns: 3
-            columnSpacing: root.pageTheme.density.paneSpacing
-            rowSpacing: root.pageTheme.density.paneSpacing
+            columnSpacing: root.pageTheme.density.controlGap
+            rowSpacing: root.pageTheme.density.controlGap
 
             Base.AppSurface {
                 Layout.preferredWidth: 300
@@ -876,7 +876,7 @@ Item {
                 Base.AppScrollPane {
                     anchors.fill: parent
                     anchors.margins: root.pageTheme.density.panePadding
-                    contentSpacing: root.pageTheme.density.paneSpacing
+                    contentSpacing: root.pageTheme.density.controlGap
                     fillContentWidth: true
 
                     Base.AppSurface {
@@ -1174,15 +1174,18 @@ Item {
                                                     }
                                                 }
 
-                                                DeviceFieldForm {
-                                                    visible: commandEntry.inputCount > 0
+                                                Loader {
                                                     Layout.fillWidth: true
-                                                    fields: commandEntry.commandData
-                                                        ? commandEntry.commandData.creationInputFields
-                                                        : []
-                                                    readOnly: true
-                                                    writeBack: true
-                                                    emptyText: qsTr("无创建参数")
+                                                    active: commandEntry.expanded && commandEntry.inputCount > 0
+
+                                                    sourceComponent: DeviceFieldForm {
+                                                        fields: commandEntry.commandData
+                                                            ? commandEntry.commandData.creationInputFields
+                                                            : []
+                                                        readOnly: true
+                                                        writeBack: true
+                                                        emptyText: qsTr("无创建参数")
+                                                    }
                                                 }
                                             }
 

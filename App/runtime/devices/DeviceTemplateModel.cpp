@@ -25,7 +25,6 @@ void DeviceTemplateModel::loadDefaultTemplates()
     appendTemplate(createDefaultDeviceTemplateDmx512());
     appendTemplate(createDefaultDeviceTemplateHttp());
     appendTemplate(createDefaultDeviceTemplateSerial());
-    appendTemplate(createDefaultDeviceTemplateOsc());
     appendTemplate(new Fusion3DeviceTemplate(this));
     appendTemplate(new LocatorDeviceTemplate(m_timelineModel, this));
     appendTemplate(new SerialPowerDeviceTemplate);
@@ -157,29 +156,6 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateSerial()
                               QStringList{DeviceProtocol::Serial},
                               tr("串口协议设备"),
                               specs);
-}
-
-DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateOsc()
-{
-    QList<DeviceParamSpec*> params;
-
-    auto *portSpec = DeviceParamSpec::createForKey(DeviceKey::Port);
-    portSpec->setValue(8000);
-    portSpec->setDefaultValue(8000);
-    params << portSpec;
-
-    params << DeviceParamSpec::createForKey(DeviceKey::OscTransProtocol);
-
-	QList<DeviceCommand*> commands;
-	commands << DeviceCommand::createForProtocol(DeviceProtocol::Osc, nullptr);
-
-
-    return makeDeviceTemplate(tr("OSC协议"),
-                              QString(""),
-                              QStringList{DeviceProtocol::Osc},
-                              tr("OSC协议设备"),
-                              params,
-                              commands);
 }
 
 DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,

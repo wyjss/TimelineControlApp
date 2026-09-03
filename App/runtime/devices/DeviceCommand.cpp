@@ -214,8 +214,6 @@ DeviceCommand* DeviceCommand::createForProtocol(const QString& protocol, QObject
 		return new DeviceCommand_PC(parent);
 	if (value == DeviceProtocol::Serial)
 		return new SerialCommand(parent);
-	if (value == DeviceProtocol::Osc)
-		return new DeviceCommand_Osc(parent);
 	if (value == DeviceProtocol::Dmx512)
 		return new Dmx512Command(parent);
 
@@ -617,13 +615,5 @@ DeviceCommand_PC::DeviceCommand_PC(const QString &name,
     : DeviceCommand_Http(DeviceProtocol::Pc, name, commandType, parent)
 {
     getField(DeviceKey::Port)->setValue(11357);
-}
-
-DeviceCommand_Osc::DeviceCommand_Osc(QObject *parent)
-    : DeviceCommand(DeviceProtocol::Osc, QStringLiteral("OSC指令"), parent)
-{
-    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
-    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
-    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::OscTransProtocol));
-    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::OscMessage));
+	getField(DeviceKey::ApiPath)->setRequired(false);
 }

@@ -58,6 +58,16 @@ Item {
             : 0
     }
 
+    function formatTime(ms) {
+        var totalSeconds = Math.floor(Math.max(0, Number(ms || 0)) / 1000)
+        var hours = Math.floor(totalSeconds / 3600)
+        var minutes = Math.floor(totalSeconds / 60) % 60
+        var seconds = totalSeconds % 60
+        return (hours < 10 ? "0" : "") + hours + ":"
+            + (minutes < 10 ? "0" : "") + minutes + ":"
+            + (seconds < 10 ? "0" : "") + seconds
+    }
+
     function commandFilteredOut(command) {
         if (command && command.filteredOut)
             return true
@@ -139,7 +149,7 @@ Item {
         }
         if (deviceText.length > 0)
             parts.push(deviceText)
-        parts.push(qsTr("%1 ms").arg(commandStartMs(command)))
+        parts.push(formatTime(commandStartMs(command)))
         if (String(command.stateText || "").length > 0)
             parts.push(String(command.stateText))
 

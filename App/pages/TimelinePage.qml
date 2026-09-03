@@ -50,6 +50,17 @@ Item {
         ? timelineManager.playQueue
         : []
     readonly property int queuedTimelineCount: queuedTimelineIds.length
+    readonly property int activeQueueIndex: timelineManager
+        ? timelineManager.playQueueIndex
+        : -1
+    readonly property var primaryRunningTimeline: activeQueueIndex >= 0
+        && activeQueueIndex < queuedTimelineIds.length
+        ? timelineForId(queuedTimelineIds[activeQueueIndex])
+        : null
+    readonly property int runningTimelineCount: countTimelinesInState(2)
+    readonly property int parallelRunningCount: Math.max(0, runningTimelineCount
+        - (primaryRunningTimeline && Number(primaryRunningTimeline.state) === 2 ? 1 : 0))
+    readonly property var queueEditorTimelines: orderedQueueTimelines()
     Connections {
         target: root.timelineModel
         function onTimelinesChanged() {
@@ -66,6 +77,74 @@ Item {
                 items.push(timelineModel.timelineAt(index))
         }
         timelines = items
+    }
+
+    function timelineForId(timelineId) {
+        for (var index = 0; index < timelines.length; ++index) {
+            if (String(timelines[index].id || "") === String(timelineId || ""))
+                return timelines[index]
+        }
+        return null
+    }
+
+    function countTimelinesInState(state) {
+        var count = 0
+        for (var index = 0; index < timelines.length; ++index) {
+            if (Number(timelines[index].state) === state)
+                ++count
+        }
+        return count
+    }
+
+    function orderedQueueTimelines() {
+        var items = []
+        for (var queueIndex = 0; queueIndex < queuedTimelineIds.length; ++queueIndex) {
+            var queuedTimeline = timelineForId(queuedTimelineIds[queueIndex])
+            if (queuedTimeline)
+                items.push(queuedTimeline)
+        }
+        for (var index = 0; index < timelines.length; ++index) {
+            if (queuedTimelineIds.indexOf(String(timelines[index].id || "")) < 0)
+                items.push(timelines[index])
+        }
+        return items
+    }
+
+    function queuePreviewText() {
+        var names = []
+        for (var index = 0; index < queuedTimelineIds.length; ++index) {
+            var queuedTimeline = timelineForId(queuedTimelineIds[index])
+            if (queuedTimeline)
+                names.push(String(queuedTimeline.name || qsTr("未命名时间轴")))
+        }
+        return names.join("  →  ")
+    }
+
+    function toggleTimelineQueued(timelineId) {
+        if (!timelineManager || !timelineStopped)
+            return
+
+        var ids = queuedTimelineIds.slice()
+        var index = ids.indexOf(String(timelineId || ""))
+        if (index >= 0)
+            ids.splice(index, 1)
+        else
+            ids.push(String(timelineId || ""))
+        timelineManager.setPlayQueue(ids)
+    }
+
+    function moveQueuedTimeline(timelineId, offset) {
+        if (!timelineManager || !timelineStopped)
+            return
+
+        var ids = queuedTimelineIds.slice()
+        var from = ids.indexOf(String(timelineId || ""))
+        var to = from + offset
+        if (from < 0 || to < 0 || to >= ids.length)
+            return
+
+        ids.splice(to, 0, ids.splice(from, 1)[0])
+        timelineManager.setPlayQueue(ids)
     }
 
     function createTimeline(name) {
@@ -126,11 +205,12 @@ Item {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: root.pageTheme.density.panePadding
-        spacing: root.pageTheme.density.paneSpacing
+        anchors.margins: root.pageTheme.density.panePaddingCompact
+        spacing: root.pageTheme.density.controlGap
 
         Base.AppSurface {
-            Layout.preferredWidth: 236
+            Layout.minimumWidth: 320
+            Layout.preferredWidth: 360
             Layout.fillHeight: true
             sizeToContent: false
             surfaceTone: UiStyle.SurfaceTone.Surface
@@ -156,12 +236,72 @@ Item {
                     }
                 }
 
+                Base.AppButton {
+                    id: queueEditorButton
+
+                    Layout.fillWidth: true
+                    text: qsTr("播放顺序 · %1 项").arg(root.queuedTimelineCount)
+                    iconName: "workflow"
+                    contentAlignment: "start"
+                    variant: root.queuedTimelineCount > 0
+                        ? UiStyle.ButtonVariant.Tonal
+                        : UiStyle.ButtonVariant.Ghost
+                    onClicked: queueEditorPopup.opened
+                        ? queueEditorPopup.close()
+                        : queueEditorPopup.open()
+                }
+
                 Base.AppText {
                     visible: root.queuedTimelineCount > 0
                     Layout.fillWidth: true
-                    text: qsTr("播放队列 %1 项").arg(root.queuedTimelineCount)
+                    text: root.queuePreviewText()
                     styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Accent
+                    textTone: UiStyle.TextTone.Secondary
+                    elide: Text.ElideRight
+                }
+
+                Base.AppSurface {
+                    visible: root.runningTimelineCount > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: visible ? 42 : 0
+                    sizeToContent: false
+                    surfaceTone: UiStyle.SurfaceTone.SectionOverlay
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        spacing: 7
+
+                        Rectangle {
+                            width: 8
+                            height: 8
+                            radius: 4
+                            color: root.pageTheme.colors.successFill
+                        }
+
+                        Base.AppText {
+                            text: qsTr("正在运行 %1").arg(root.runningTimelineCount)
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Success
+                        }
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: root.primaryRunningTimeline
+                                ? qsTr("主序列：%1").arg(root.primaryRunningTimeline.name)
+                                : qsTr("条件触发运行")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                            elide: Text.ElideRight
+                        }
+
+                        Base.AppBadge {
+                            visible: root.parallelRunningCount > 0
+                            text: qsTr("并行 %1").arg(root.parallelRunningCount)
+                            surfaceTone: UiStyle.SurfaceTone.Info
+                            textTone: UiStyle.TextTone.Info
+                        }
+                    }
                 }
 
                 GridView {
@@ -172,7 +312,7 @@ Item {
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
                     cellWidth: width
-                    cellHeight: 176
+                    cellHeight: 206
                     model: root.timelines.length + 1
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
@@ -191,7 +331,9 @@ Item {
                             anchors.fill: parent
                             visible: !timelineCell.addItem
                             timeline: timelineCell.timeline
+                            displayIndex: index + 1
                             onOpenRequested: root.openTimelineControl(timelineCell.timeline)
+                            onCloneRequested: cloneTimelinePopupLoader.openForTimeline(timelineCell.timeline)
                             onRemoveRequested: removeTimelinePopupLoader.openForTimeline(timelineCell.timeline)
                         }
 
@@ -275,7 +417,8 @@ Item {
 
                 Base.AppSurface {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 124
+                    Layout.preferredHeight: visible ? 124 : 0
+                    visible: !root.controlTrackVisible
                     sizeToContent: false
                     surfaceTone: UiStyle.SurfaceTone.Section
 
@@ -406,6 +549,120 @@ Item {
         }
     }
 
+    Base.AppPopup {
+        id: queueEditorPopup
+
+        parent: root
+        width: Math.min(360, root.width - 24)
+        modal: false
+        showModalOverlay: false
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        onAboutToShow: {
+            var position = queueEditorButton.mapToItem(root,
+                                                       0,
+                                                       queueEditorButton.height + 8)
+            x = position.x
+            y = position.y
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+
+            Base.AppText {
+                Layout.fillWidth: true
+                text: qsTr("播放顺序")
+                styleRole: UiStyle.TypographyRole.SectionTitle
+            }
+
+            Base.AppButton {
+                text: qsTr("清空")
+                size: UiStyle.ButtonSize.Small
+                variant: UiStyle.ButtonVariant.Ghost
+                enabled: root.timelineStopped && root.queuedTimelineCount > 0
+                onClicked: root.timelineManager.setPlayQueue([])
+            }
+        }
+
+        Base.AppText {
+            Layout.fillWidth: true
+            text: qsTr("已选时间轴按编号顺序串行播放；条件触发的时间轴可以并行运行。")
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Secondary
+            wrapMode: Text.Wrap
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: root.pageTheme.colors.border
+        }
+
+        ListView {
+            id: queueEditorList
+
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.min(280,
+                Math.max(44, root.queueEditorTimelines.length * 42))
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            model: root.queueEditorTimelines
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+            }
+
+            delegate: Item {
+                readonly property var timelineData: modelData
+                readonly property string timelineId: String(timelineData.id || "")
+                readonly property int queueIndex: root.queuedTimelineIds.indexOf(timelineId)
+
+                width: queueEditorList.width
+                height: 42
+
+                RowLayout {
+                    anchors.fill: parent
+                    spacing: 6
+
+                    Base.AppBadge {
+                        visible: queueIndex >= 0
+                        Layout.preferredWidth: visible ? implicitWidth : 0
+                        text: String(queueIndex + 1)
+                        surfaceTone: UiStyle.SurfaceTone.Neutral
+                        textTone: UiStyle.TextTone.Neutral
+                    }
+
+                    Base.AppCheckBox {
+                        Layout.fillWidth: true
+                        text: String(timelineData.name || qsTr("未命名时间轴"))
+                        checked: queueIndex >= 0
+                        enabled: root.timelineStopped
+                        onClicked: root.toggleTimelineQueued(timelineId)
+                    }
+
+                    Base.AppButton {
+                        visible: queueIndex >= 0
+                        text: "↑"
+                        size: UiStyle.ButtonSize.Small
+                        minWidth: 28
+                        variant: UiStyle.ButtonVariant.Ghost
+                        enabled: root.timelineStopped && queueIndex > 0
+                        onClicked: root.moveQueuedTimeline(timelineId, -1)
+                    }
+
+                    Base.AppButton {
+                        visible: queueIndex >= 0
+                        text: "↓"
+                        size: UiStyle.ButtonSize.Small
+                        minWidth: 28
+                        variant: UiStyle.ButtonVariant.Ghost
+                        enabled: root.timelineStopped
+                            && queueIndex < root.queuedTimelineCount - 1
+                        onClicked: root.moveQueuedTimeline(timelineId, 1)
+                    }
+                }
+            }
+        }
+    }
+
     Loader {
         id: createTimelinePopupLoader
 
@@ -457,6 +714,67 @@ Item {
             placeholderText: qsTr("时间轴名称")
             onTextChanged: createTimelinePopup.timelineName = text
         }
+            }
+        }
+    }
+
+    Loader {
+        id: cloneTimelinePopupLoader
+
+        active: false
+
+        function openForTimeline(timeline) {
+            active = true
+            item.openForTimeline(timeline)
+        }
+
+        sourceComponent: Component {
+            Base.AppDialog {
+                id: cloneTimelinePopup
+
+                parent: root
+                onClosed: cloneTimelinePopupLoader.active = false
+
+                property var timelineData: null
+                property string timelineName: ""
+
+                function openForTimeline(timeline) {
+                    timelineData = timeline
+                    timelineName = qsTr("%1 副本").arg(timeline ? timeline.name : "")
+                    open()
+                    Qt.callLater(function() {
+                        cloneTimelineNameField.forceActiveFocus()
+                        cloneTimelineNameField.selectAll()
+                    })
+                }
+
+                function commit() {
+                    if (root.timelineManager && timelineData
+                            && root.timelineManager.cloneTimeline(
+                                String(timelineData.id || ""),
+                                timelineName.trim()))
+                        close()
+                }
+
+                width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
+                x: parent ? Math.round((parent.width - width) / 2) : 0
+                y: parent ? Math.round((parent.height - height) / 2) : 0
+                title: qsTr("克隆时间轴")
+                rejectText: qsTr("取消")
+                acceptText: qsTr("克隆")
+                acceptEnabled: root.timelineStopped && timelineName.trim().length > 0
+                initialFocusItem: cloneTimelineNameField
+                closeOnAccepted: false
+                onAccepted: commit()
+
+                Base.AppTextField {
+                    id: cloneTimelineNameField
+
+                    Layout.fillWidth: true
+                    text: cloneTimelinePopup.timelineName
+                    placeholderText: qsTr("时间轴名称")
+                    onTextChanged: cloneTimelinePopup.timelineName = text
+                }
             }
         }
     }

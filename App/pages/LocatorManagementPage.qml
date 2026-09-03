@@ -46,6 +46,7 @@ Item {
     function createFence() {
         pendingFenceHandle = "fence." + Date.now()
         pendingFenceName = qsTr("栅栏 %1").arg((fenceManager ? fenceManager.fences.length : 0) + 1)
+        pendingFenceHandle = pendingFenceName
         viewer.startLineDrawing(pendingFenceHandle)
     }
 
@@ -75,8 +76,8 @@ Item {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        anchors.margins: 12
-        width: Math.min(300, parent.width - 24)
+        anchors.margins: 8
+        width: Math.min(300, parent.width - 16)
         visible: root.managementMode
         color: "#e6202935"
         radius: 8

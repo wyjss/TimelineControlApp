@@ -20,6 +20,7 @@ public:
 		auto* videoFileField = DeviceParamSpec::createForKey(DeviceKey::VideoFile);
 		videoFileField->setRequired(false);
 		addExecutionInputField(videoFileField);
+
 	}
 
 	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override

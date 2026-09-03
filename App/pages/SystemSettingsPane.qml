@@ -26,7 +26,7 @@ Base.AppSurface {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageTheme.density.panePadding
+        anchors.margins: root.pageTheme.density.panePaddingCompact
         spacing: root.pageTheme.density.paneContentSpacing
 
         Base.AppText {

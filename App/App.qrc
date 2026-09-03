@@ -34,5 +34,6 @@
         <file alias="App/assets/icons/dmx512.png">assets/icons/dmx512.png</file>
         <file alias="App/assets/icons/http.png">assets/icons/http.png</file>
         <file alias="App/assets/icons/serial.png">assets/icons/serial.png</file>
+        <file alias="App/assets/icons/串口协议.png">assets/icons/串口协议.png</file>
     </qresource>
 </RCC>

@@ -21,6 +21,7 @@ Item {
     readonly property int count: visibleCommands.length
     readonly property int timeColumnWidth: 92
     readonly property int deviceColumnWidth: showDeviceName ? 112 : 36
+    readonly property int parameterColumnWidth: showDeviceName ? 180 : 112
     readonly property int resultColumnWidth: 32
 
     signal commandSelected(var command)
@@ -72,17 +73,17 @@ Item {
         return text
     }
 
-    function formatTime(ms) {
+    function formatTime(ms, showMilliseconds) {
         var totalMs = Math.max(0, Math.round(Number(ms || 0)))
         var totalSeconds = Math.floor(totalMs / 1000)
         var hours = Math.floor(totalSeconds / 3600)
         var minutes = Math.floor(totalSeconds / 60) % 60
         var seconds = totalSeconds % 60
-        return "%1:%2:%3.%4"
+        return "%1:%2:%3%4"
             .arg(padNumber(hours, 2))
             .arg(padNumber(minutes, 2))
             .arg(padNumber(seconds, 2))
-            .arg(padNumber(totalMs % 1000, 3))
+            .arg(showMilliseconds ? "." + padNumber(totalMs % 1000, 3) : "")
     }
 
     function resultColor(command) {
@@ -92,6 +93,36 @@ Item {
         return command && command.stateColor
             ? String(command.stateColor)
             : root.colorValue("neutralBorder", "#45576b")
+    }
+
+    function executionParameters(command) {
+        var values = command ? command.executionInputValues || {} : {}
+        var fields = command && command.targetCommand
+            ? command.targetCommand.executionInputFields || []
+            : []
+        var parts = []
+        for (var index = 0; index < fields.length; ++index) {
+            var key = String(fields[index].key || "")
+            var value = values[key]
+            if (key.length === 0 || value === undefined || value === null
+                    || String(value).length === 0)
+                continue
+            if (typeof value === "boolean")
+                value = value ? qsTr("是") : qsTr("否")
+            parts.push(String(fields[index].label || key) + "：" + String(value))
+        }
+        return parts.length > 0 ? parts.join(" · ") : qsTr("无")
+    }
+
+    function commandInfo(command) {
+        if (!command)
+            return ""
+        return qsTr("时间：%1\n设备：%2\n名称：%3\n执行参数：%4\n结果：%5")
+            .arg(formatTime(command.startTimeMs, false))
+            .arg(deviceName(command.targetDeviceId))
+            .arg(String(command.commandName || qsTr("指令")))
+            .arg(executionParameters(command))
+            .arg(String(command.stateText || qsTr("待执行")))
     }
 
     ColumnLayout {
@@ -130,6 +161,13 @@ Item {
                 Base.AppText {
                     Layout.fillWidth: true
                     text: qsTr("名称")
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
+                }
+
+                Base.AppText {
+                    Layout.preferredWidth: root.parameterColumnWidth
+                    text: qsTr("执行参数")
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                 }
@@ -175,7 +213,6 @@ Item {
                 readonly property bool selected: String(commandData && commandData.id || "")
                     === root.selectedCommandId
                 readonly property bool filteredOut: root.commandFilteredOut(commandData)
-
                 width: commandList.width
                 height: 40
                 opacity: filteredOut ? 0.46 : 1
@@ -186,6 +223,9 @@ Item {
                 hoverEnabled: true
                 focusPolicy: Qt.StrongFocus
                 onClicked: root.commandSelected(commandData)
+                ToolTip.visible: hovered && !editButton.hovered && !removeButton.hovered
+                ToolTip.delay: 500
+                ToolTip.text: root.commandInfo(commandData)
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120 }
@@ -224,7 +264,7 @@ Item {
                         Layout.preferredWidth: root.timeColumnWidth
                         text: root.formatTime(commandRow.commandData
                             ? commandRow.commandData.startTimeMs
-                            : 0)
+                            : 0, true)
                         styleRole: UiStyle.TypographyRole.BodyS
                         textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight
@@ -244,20 +284,6 @@ Item {
                                 && commandRow.targetDevice.deviceType
                                 ? commandRow.targetDevice.deviceType
                                 : "")
-
-                            MouseArea {
-                                id: typeHover
-
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                acceptedButtons: Qt.NoButton
-                            }
-
-                            ToolTip.visible: typeHover.containsMouse
-                            ToolTip.text: String(commandRow.targetDevice
-                                && commandRow.targetDevice.deviceType
-                                ? commandRow.targetDevice.deviceType
-                                : qsTr("未知类型"))
                         }
 
                         Base.AppText {
@@ -275,59 +301,25 @@ Item {
                         }
                     }
 
-                    RowLayout {
+                    Base.AppText {
                         Layout.fillWidth: true
-                        spacing: 4
+                        text: String(commandRow.commandData
+                            && commandRow.commandData.commandName
+                            ? commandRow.commandData.commandName
+                            : qsTr("指令"))
+                        styleRole: UiStyle.TypographyRole.BodyM
+                        textTone: commandRow.filteredOut
+                            ? UiStyle.TextTone.Secondary
+                            : UiStyle.TextTone.Primary
+                        elide: Text.ElideRight
+                    }
 
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: String(commandRow.commandData && commandRow.commandData.commandName
-                                ? commandRow.commandData.commandName
-                                : qsTr("指令"))
-                            styleRole: UiStyle.TypographyRole.BodyM
-                            textTone: commandRow.filteredOut
-                                ? UiStyle.TextTone.Secondary
-                                : UiStyle.TextTone.Primary
-                            elide: Text.ElideRight
-
-                            MouseArea {
-                                id: nameHover
-
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                acceptedButtons: Qt.NoButton
-                            }
-
-                            ToolTip.visible: nameHover.containsMouse
-                                && commandRow.commandData
-                                && String(commandRow.commandData.commandName || "").length > 0
-                            ToolTip.delay: 700
-                            ToolTip.text: root.deviceName(commandRow.commandData
-                                ? commandRow.commandData.targetDeviceId
-                                : "")
-                        }
-
-                        Base.AppButton {
-                            Layout.preferredWidth: 28
-                            visible: commandRow.hovered && root.editingEnabled
-                            size: UiStyle.ButtonSize.Small
-                            variant: UiStyle.ButtonVariant.Ghost
-                            iconSymbol: "✎"
-                            onClicked: root.editRequested(commandRow.commandData)
-                            ToolTip.visible: hovered
-                            ToolTip.text: qsTr("编辑")
-                        }
-
-                        Base.AppButton {
-                            Layout.preferredWidth: 28
-                            visible: commandRow.hovered && root.editingEnabled
-                            size: UiStyle.ButtonSize.Small
-                            variant: UiStyle.ButtonVariant.Danger
-                            iconSymbol: "×"
-                            onClicked: root.removeRequested(commandRow.commandData)
-                            ToolTip.visible: hovered
-                            ToolTip.text: qsTr("删除")
-                        }
+                    Base.AppText {
+                        Layout.preferredWidth: root.parameterColumnWidth
+                        text: root.executionParameters(commandRow.commandData)
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
+                        elide: Text.ElideRight
                     }
 
                     Item {
@@ -340,22 +332,59 @@ Item {
                             height: 5
                             radius: height / 2
                             color: root.resultColor(commandRow.commandData)
-
-                            MouseArea {
-                                id: resultHover
-
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                acceptedButtons: Qt.NoButton
-                            }
-
-                            ToolTip.visible: resultHover.containsMouse
-                            ToolTip.text: String(commandRow.commandData
-                                && commandRow.commandData.stateText
-                                ? commandRow.commandData.stateText
-                                : qsTr("待执行"))
                         }
                     }
+                }
+
+                Rectangle {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 5
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 66
+                    height: 34
+                    radius: 4
+                    visible: commandRow.hovered && root.editingEnabled
+                    color: root.colorValue("backgroundSurfaceOverlay", "#20262c")
+                    opacity: 0.96
+                    z: 1
+                }
+
+                Base.AppButton {
+                    id: editButton
+
+                    anchors.right: removeButton.left
+                    anchors.rightMargin: 4
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 28
+                    height: 28
+                    minWidth: 28
+                    size: UiStyle.ButtonSize.Small
+                    variant: UiStyle.ButtonVariant.Ghost
+                    iconSymbol: "✎"
+                    visible: commandRow.hovered && root.editingEnabled
+                    z: 2
+                    onClicked: root.editRequested(commandRow.commandData)
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("编辑")
+                }
+
+                Base.AppButton {
+                    id: removeButton
+
+                    anchors.right: parent.right
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 28
+                    height: 28
+                    minWidth: 28
+                    size: UiStyle.ButtonSize.Small
+                    variant: UiStyle.ButtonVariant.Danger
+                    iconSymbol: "×"
+                    visible: commandRow.hovered && root.editingEnabled
+                    z: 2
+                    onClicked: root.removeRequested(commandRow.commandData)
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("删除")
                 }
             }
         }

@@ -4,6 +4,23 @@
 #include "timeline/Timeline.h"
 #include "timeline/TimelineManager.h"
 
+#include <QDir>
+#include <QFileInfo>
+#include <QUrl>
+
+
+namespace {
+
+QUrl iconSource(const QString &fileName)
+{
+    auto f = QStringLiteral("./assets/icons/") + fileName;
+	if (QFile::exists(f) == false) {
+		f = QFileInfo(QString::fromUtf8(__FILE__)).dir().absoluteFilePath(QString("../") + f);
+	}
+    return QUrl::fromLocalFile(f);
+}
+
+}
 
 TimelineShellController::TimelineShellController(QObject *parent)
     : AppShellController(parent)
@@ -11,26 +28,26 @@ TimelineShellController::TimelineShellController(QObject *parent)
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("devices")},
               {QStringLiteral("label"), tr("设备")},
-              {QStringLiteral("iconName"), QStringLiteral("resources")},
+              {QStringLiteral("iconSource"), iconSource(QStringLiteral("设备.svg"))},
               {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/DevicesPage.qml")}
+          },
+          QVariantMap{
+              {QStringLiteral("key"), QStringLiteral("timeline")},
+              {QStringLiteral("label"), tr("时间线")},
+              {QStringLiteral("iconSource"), iconSource(QStringLiteral("节目单.svg"))},
+              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/TimelinePage.qml")}
+          },
+          QVariantMap{
+              {QStringLiteral("key"), QStringLiteral("locator")},
+              {QStringLiteral("label"), tr("地图")},
+              {QStringLiteral("iconSource"), iconSource(QStringLiteral("地图.svg"))},
+              {QStringLiteral("source"), QString()}
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("device-control")},
               {QStringLiteral("label"), tr("设备控制")},
               {QStringLiteral("iconName"), QStringLiteral("background-task")},
               {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceControlPage.qml")}
-          },
-          QVariantMap{
-              {QStringLiteral("key"), QStringLiteral("locator")},
-              {QStringLiteral("label"), tr("定位管理")},
-              {QStringLiteral("iconName"), QStringLiteral("scene")},
-              {QStringLiteral("source"), QString()}
-          },
-          QVariantMap{
-              {QStringLiteral("key"), QStringLiteral("timeline")},
-              {QStringLiteral("label"), tr("时间线")},
-              {QStringLiteral("iconName"), QStringLiteral("workflow")},
-              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/TimelinePage.qml")}
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("virtual-playback")},

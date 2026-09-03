@@ -68,8 +68,19 @@ if(EXISTS "${GLEW_RUNTIME_DLL}")
     )
 endif()
 
+set_target_properties(TimelineControlApp PROPERTIES
+    VS_DEBUGGER_ENVIRONMENT "PATH=\
+D:/Program/third_party/ffmpeg/bin;\
+${CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE};\
+D:/Program/RA/RAGis2/build/output;\
+C:/Qt/Qt5.14.0/5.14.0/msvc2017_64/bin;"
+)
+
+
+
 file(GLOB RAGIS_RUNTIME_DLLS
     "${RAGIS_ROOT}/build/output/RAGis2.dll"
+    "${RAGIS_ROOT}/build/output/RAGis2.pdb"
     "${RAGIS_DEPENDENCY_DIR}/bin/*.dll"
 )
 add_custom_command(TARGET TimelineControlApp POST_BUILD
