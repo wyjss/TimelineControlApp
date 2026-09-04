@@ -83,8 +83,16 @@ file(GLOB RAGIS_RUNTIME_DLLS
     "${RAGIS_ROOT}/build/output/RAGis2.pdb"
     "${RAGIS_DEPENDENCY_DIR}/bin/*.dll"
 )
-add_custom_command(TARGET TimelineControlApp POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${RAGIS_RUNTIME_DLLS}
-        $<TARGET_FILE_DIR:TimelineControlApp>
-)
+if(false)
+    add_custom_command(TARGET TimelineControlApp POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${RAGIS_RUNTIME_DLLS}
+            $<TARGET_FILE_DIR:TimelineControlApp>
+    )
+else()
+    add_custom_command(TARGET TimelineControlApp POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${RAGIS_RUNTIME_DLLS}
+            $<TARGET_FILE_DIR:TimelineControlApp>
+    )
+endif()

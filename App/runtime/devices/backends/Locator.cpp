@@ -16,6 +16,7 @@
 #include <QTcpSocket>
 #include <QDateTime>
 #include <QTimer>
+#include <QVector3D>
 
 namespace {
 
@@ -112,36 +113,6 @@ LocationRecver::LocationRecver()
 		connect(timer, &QTimer::timeout, this, &LocationRecver::checkStatus);
 		timer->start(500);
 							  }, Qt::QueuedConnection);
-
-	quint16 port = 11578;
-	QUdpSocket* sock = new QUdpSocket(this);
-	bool ok = sock->bind(
-		QHostAddress::AnyIPv4,
-		port,
-		QUdpSocket::ShareAddress | QUdpSocket::ReuseAddressHint
-	);
-	if (!ok) {
-		LOG_FATAL("绑定定位器共享地址失败，端口" << port);
-	}
-
-	connect(sock, &QUdpSocket::readyRead,
-			this, [this, sock]() {
-				while (sock->hasPendingDatagrams()) {
-					QByteArray data = sock->receiveDatagram().data();
-
-					auto doc = QJsonDocument::fromJson(data);
-					if (doc.isObject()) {
-						auto o = doc.object();
-						auto address = o["address"].toString();
-						double lon = o["lon"].toDouble();
-						double lat = o["lat"].toDouble();
-						double heading = o["heading"].toDouble();
-
-						LOG_DEBUG("recv location " << address << lon << lat);
-						emit this->locationChanged(address, lon, lat, heading, true);
-					}
-				}
-			});
 }
 
 LocationRecver* LocationRecver::getInstance()
@@ -206,18 +177,30 @@ void LocationRecver::readData()
 	if (data.isEmpty()) {
 		return;
 	}
+	LOG_ERROR(data);
+	auto i = data.lastIndexOf("$");
+	if (i == -1) {
+		return;
+	}
+	data = data.mid(i);
 
 	auto handle = mapSock2Handle(sock);
 	m_map[handle].online = true;
 	m_map[handle].lastTouch = QDateTime::currentMSecsSinceEpoch();
 
-	LOG_DEBUG("解析nmea协议" << data);
-
 	double lon, lat, heading;
 	if (parseRmcPosition(data, lon, lat, heading)) {
+		QVector3D dx((m_map[handle].lon - lon) * 1e7,
+					 (m_map[handle].lat - lat) * 1e7, 
+					 0);
+// 		if (dx.length() < 10) {
+// 			LOG_DEBUG("过滤");
+// 			return;
+// 		}
 		m_map[handle].lon = lon;
 		m_map[handle].lat = lat;
 		m_map[handle].heading = heading;
+		//LOG_DEBUG("recv location " << qSetRealNumberPrecision(10) << lon << lat);
 		emit locationChanged(m_map[handle].ip, lon, lat, heading, true);
 	}
 }
@@ -227,16 +210,18 @@ void LocationRecver::checkStatus()
 
 	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
 		auto sock = itr->sock;
-#if 0
+#if 1
 		if (
 			sock->state() != QTcpSocket::ConnectedState &&
 			sock->state() != QTcpSocket::ConnectingState
 			) {
-			sock->connectToHost(QHostAddress(itr->ip), 12333);
+			sock->connectToHost(QHostAddress(itr->ip), 1121);
+			bool b = sock->waitForConnected();
+			int a = 0;
 		}
 
 		// 5s无数据判定离线
-		if (QDateTime::currentMSecsSinceEpoch() - itr->lastTouch > 5000) {
+		if (QDateTime::currentMSecsSinceEpoch() - itr->lastTouch > 5000 && itr->lon != 0) {
 			emit locationChanged(itr->ip, itr->lon, itr->lat, itr->heading, false);
 		}
 #else// debug
@@ -272,7 +257,6 @@ static double nmeaCoordinateToDegree(const QString& value)
 	const double v = value.toDouble(&ok);
 	if (!ok)
 		return 0.0;
-
 	const int degree = static_cast<int>(v / 100.0);
 	const double minute = v - degree * 100.0;
 
@@ -293,18 +277,30 @@ void* LocationRecver::mapSock2Handle(QTcpSocket* sock)
 
 bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& lat, double& heading)
 {
+	LOG_DEBUG("parse:" << nmea);
 	if (!nmea.startsWith('$'))
 		return false;
+	
 
 	const QStringList fields = nmea.split(',');
 
-	// RMC至少需要到heading字段
-	if (fields.size() < 9)
+	int iLon = -1, iLat = -1, iHeading = -1;
+	bool vaild = false;
+	if (fields[0].endsWith("RMC") == false) {
 		return false;
+		iLon = 1;
+		iLat = 3;
+	} else if (fields[0].endsWith("RMC")) {
+		if (fields.size() < 9 || fields[2] != "A") {
+			return false;
+		}
+		iLon = 5;
+		iLat = 3;
+		iHeading = 8;
+	} else {
+		LOG_ERROR("不支持的协议" << fields[0]);
+	}
 
-	// 兼容 $GPRMC / $GNRMC / $BDRMC 等
-	if (!fields[0].endsWith("RMC"))
-		return false;
 
 	// RMC:
 	// 0  $GNRMC
@@ -317,35 +313,38 @@ bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& 
 	// 7  地面速度 knots
 	// 8  地面航向 degrees
 
-	if (fields[2] != "A")
-		return false;
+// 	if (fields[2] != "A")
+// 		return false;
 
-	if (fields[3].isEmpty() || fields[5].isEmpty())
+	if (fields[iLon].isEmpty() || fields[iLat].isEmpty())
 		return false;
 
 	bool latOk = false;
 	bool lonOk = false;
 
-	fields[3].toDouble(&latOk);
-	fields[5].toDouble(&lonOk);
+	fields[iLat].toDouble(&latOk);
+	fields[iLon].toDouble(&lonOk);
 
 	if (!latOk || !lonOk)
 		return false;
 
-	lat = nmeaCoordinateToDegree(fields[3]);
-	lon = nmeaCoordinateToDegree(fields[5]);
+	lon = nmeaCoordinateToDegree(fields[iLon]);
+	lat = nmeaCoordinateToDegree(fields[iLat]);
 
-	if (fields[4] == "S")
+	if (fields[iLat + 1] == "S")
 		lat = -lat;
 
-	if (fields[6] == "W")
+	if (fields[iLon + 1] == "W")
 		lon = -lon;
 
-	bool headingOk = false;
-	heading = fields[8].toDouble(&headingOk);
-	if (headingOk == false) {
-		heading = 0;
+	heading = 0;
+	if (iHeading != -1) {
+		bool ok;
+		heading = fields[iHeading].toDouble(&ok);
+		if (!ok) {
+			heading = -1;
+		}
 	}
-
+	
 	return true;
 }

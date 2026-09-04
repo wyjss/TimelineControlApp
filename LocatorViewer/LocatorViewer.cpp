@@ -1,5 +1,7 @@
 #include "LocatorViewer.h"
 
+#include "core/LogMacros.h"
+
 #include "ragis/ragis.h"
 #include "ragis/quick/RAGisQuick.h"
 
@@ -192,10 +194,38 @@ bool LocatorViewer::updateTarget(const QString& name,
     if (!view)
         return false;
 
+   // if (!earth->getEntity(name, false)) 
+    {
+        auto vp = earth->getViewpoint()->getViewpoint();
+        vp.eye.x = longitude;
+        vp.eye.y = latitude;
+        vp.eye.z = 0;
+        vp.hpd = {0, -90, 100};
+        RagEarth::getViewpointIns()->setHomeViewpoint(vp);
+    }
     auto entity = earth->getEntity(name, true);
-    entity->setMaxPoseCount(1);
-    entity->updatePose({{longitude, latitude, 0.0}, {heading, 0.0, 0.0}});
+    entity->setMaxPoseCount(5000);
 
+    entity->get<ragis::RagHisTrack>("", true)->setColor(Qt::red);
+    entity->get<ragis::RagHisTrack>("", true)->setType(Track_Line);
+    entity->get<ragis::RagHisTrack>("", true)->setSize(3);
+
+	static double s_longitude = 0;
+	static double s_latitude = 0;
+	static CguVec3 s_world = {0, 0, 0};
+	static CguVec3 s_f_world = {0, 0, 0};
+	CguVec3 curWorld;
+	earth->getView2D()->convLLHToWorld({longitude, latitude, 0},
+									   curWorld);
+    if (s_f_world == CguVec3{0, 0, 0}) {
+        s_f_world = curWorld;
+    }
+    LOG_INFO("移动距离： " << (curWorld - s_world).GetMod() 
+    <<"，原点距离：" << (curWorld - s_f_world).GetMod());
+
+    s_world = curWorld;
+
+    entity->updatePose({{longitude, latitude, 0.0}, {heading, 0.0, 0.0}});
     auto image = entity->get<ragis::RagImage>(QString(), true);
     image->setFileName(imageUrl);
     ragis::AutoTransParam transform;
