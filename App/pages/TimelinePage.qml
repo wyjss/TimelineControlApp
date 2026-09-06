@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/theme" as Theme
 import "timeline" as Timeline
+import "../components" as AppComponents
 
 Item {
     id: root
@@ -30,6 +31,13 @@ Item {
         : null
     property var timelines: []
     property bool controlTrackVisible: false
+    property string commandPanelMode: "device"
+    readonly property var editor: timelineEditorLoader.item
+
+    onControlTrackVisibleChanged: {
+        if (controlTrackVisible)
+            commandPanelMode = "device"
+    }
     readonly property var currentTimeline: timelineManager ? timelineManager.currentTimeline : null
     readonly property var timelineCommandModel: currentTimeline ? currentTimeline.commandModel : null
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands
@@ -209,8 +217,10 @@ Item {
         spacing: root.pageTheme.density.controlGap
 
         Base.AppSurface {
+            visible: !root.controlTrackVisible
             Layout.minimumWidth: 320
-            Layout.preferredWidth: 360
+            Layout.preferredWidth: 340
+            Layout.maximumWidth: 340
             Layout.fillHeight: true
             sizeToContent: false
             surfaceTone: UiStyle.SurfaceTone.Surface
@@ -304,43 +314,25 @@ Item {
                     }
                 }
 
-                GridView {
+                ListView {
                     id: timelineGrid
 
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
-                    cellWidth: width
-                    cellHeight: 206
-                    model: root.timelines.length + 1
+                    model: root.timelines
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
                     }
 
-                    delegate: Item {
-                        id: timelineCell
-
-                        readonly property bool addItem: index === root.timelines.length
-                        readonly property var timeline: addItem ? null : root.timelines[index]
-
-                        width: timelineGrid.cellWidth
-                        height: timelineGrid.cellHeight
-
-                        Timeline.TimelineCard {
-                            anchors.fill: parent
-                            visible: !timelineCell.addItem
-                            timeline: timelineCell.timeline
-                            displayIndex: index + 1
-                            onOpenRequested: root.openTimelineControl(timelineCell.timeline)
-                            onCloneRequested: cloneTimelinePopupLoader.openForTimeline(timelineCell.timeline)
-                            onRemoveRequested: removeTimelinePopupLoader.openForTimeline(timelineCell.timeline)
-                        }
+                    footer: Item {
+                        width: timelineGrid.width
+                        height: 206
 
                         Base.AppCard {
                             anchors.fill: parent
                             anchors.margins: 6
-                            visible: timelineCell.addItem
                             text: qsTr("新建时间轴")
                             checkable: false
                             animateScale: false
@@ -359,24 +351,57 @@ Item {
                             }
                         }
                     }
+
+                    delegate: Item {
+                        id: timelineCell
+
+                        readonly property var timeline: modelData
+
+                        width: timelineGrid.width
+                        height: root.currentTimeline === timeline ? 184 : 136
+
+                        Timeline.TimelineCard {
+                            anchors.fill: parent
+                            timeline: timelineCell.timeline
+                            displayIndex: index + 1
+                            onOpenRequested: root.openTimelineControl(timelineCell.timeline)
+                            onCloneRequested: cloneTimelinePopupLoader.openForTimeline(timelineCell.timeline)
+                            onRemoveRequested: removeTimelinePopupLoader.openForTimeline(timelineCell.timeline)
+                        }
+                    }
                 }
             }
         }
 
         Loader {
             id: timelineEditorLoader
+            objectName: "timelineEditorLoader"
 
             visible: root.controlTrackVisible
             active: true
-            source: "TimelineEditorPage.qml"
+            sourceComponent: Component {
+                TimelineEditorPage {
+                    controlTrackOnly: true
+                    appRuntime: root.appRuntime
+                    timelineManager: root.timelineManager
+                    deviceModel: root.deviceModel
+                }
+            }
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumWidth: visible ? 720 : 0
-            onLoaded: item.controlTrackOnly = true
         }
 
         Connections {
             target: timelineEditorLoader.item
+
+            function onDeviceTrackSelected() {
+                root.commandPanelMode = "device"
+            }
+
+            function onTimelineCommandSelected() {
+                root.commandPanelMode = "timeline"
+            }
 
             function onCloseRequested() {
                 root.controlTrackVisible = false
@@ -387,7 +412,8 @@ Item {
             Layout.fillWidth: !root.controlTrackVisible
             Layout.fillHeight: true
             Layout.minimumWidth: 320
-            Layout.preferredWidth: root.controlTrackVisible ? 400 : 760
+            Layout.preferredWidth: root.controlTrackVisible ? 340 : 760
+            Layout.maximumWidth: root.controlTrackVisible ? 360 : Number.POSITIVE_INFINITY
             sizeToContent: false
             surfaceTone: UiStyle.SurfaceTone.Surface
 
@@ -398,6 +424,200 @@ Item {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    visible: root.controlTrackVisible
+                    spacing: 0
+
+                    Repeater {
+                        model: [qsTr("设备指令"), qsTr("时间轴指令  %1").arg(root.timelineCommands.length)]
+
+                        delegate: Base.AppButton {
+                            objectName: "commandPanelTab_" + index
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            size: UiStyle.ButtonSize.Medium
+                            variant: UiStyle.ButtonVariant.Ghost
+                            text: modelData
+                            checked: root.commandPanelMode === (index === 0 ? "device" : "timeline")
+                            onClicked: root.commandPanelMode = index === 0 ? "device" : "timeline"
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: 2
+                                color: root.pageTheme.colors.highlightFill
+                                visible: parent.checked
+                            }
+                        }
+                    }
+                }
+
+                ColumnLayout {
+                    objectName: "deviceCommandPanel"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: root.controlTrackVisible && root.commandPanelMode === "device"
+                    spacing: 12
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 10
+
+                        AppComponents.DeviceIcon {
+                            size: 32
+                            name: root.editor && root.editor.selectedTimelineDevice
+                                ? String(root.editor.selectedTimelineDevice.deviceType || "") : ""
+                            visible: !!root.editor && !!root.editor.selectedTimelineDevice
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: root.editor && root.editor.selectedTimelineDevice
+                                    ? root.editor.deviceName(root.editor.selectedTimelineDevice)
+                                    : qsTr("未选择设备")
+                                styleRole: UiStyle.TypographyRole.SectionTitle
+                                elide: Text.ElideRight
+                            }
+
+                            Base.AppText {
+                                text: qsTr("当前选中设备 · %1 条可用指令").arg(
+                                    root.editor ? root.editor.deviceCommands.length : 0)
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                            }
+                        }
+                    }
+
+                    Base.AppSurface {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 36
+                        sizeToContent: false
+                        surfaceTone: UiStyle.SurfaceTone.Section
+                        fillOverride: root.pageTheme.colors.highlightSoft
+                        strokeWidth: 0
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.margins: 8
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: qsTr("添加时间")
+                                styleRole: UiStyle.TypographyRole.BodyS
+                            }
+
+                            Base.AppText {
+                                objectName: "commandAddTime"
+                                text: root.editor
+                                    ? root.editor.formatTimelineMs(root.editor.timelineCurrentTimeMs) : "00:00.000"
+                                styleRole: UiStyle.TypographyRole.BodyS
+                            }
+                        }
+                    }
+
+                    ListView {
+                        id: deviceCommandList
+                        objectName: "deviceCommandList"
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        model: root.editor ? root.editor.deviceCommands : []
+                        clip: true
+                        boundsBehavior: Flickable.StopAtBounds
+                        onModelChanged: contentY = 0
+
+                        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                        delegate: Item {
+                            width: deviceCommandList.width
+                            height: 60
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 12
+                                spacing: 10
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    Base.AppText {
+                                        Layout.fillWidth: true
+                                        text: root.editor.commandName(modelData)
+                                        styleRole: UiStyle.TypographyRole.BodyM
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Base.AppText {
+                                        Layout.fillWidth: true
+                                        text: root.editor.executionParameterNames(modelData) || qsTr("无需参数")
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                Base.AppButton {
+                                    objectName: "addDeviceCommand_" + index
+                                    size: UiStyle.ButtonSize.Small
+                                    minWidth: 32
+                                    text: "+"
+                                    variant: UiStyle.ButtonVariant.Primary
+                                    enabled: !!root.editor && root.editor.timelineStopped
+                                        && !!root.editor.timelineCommandModel && !!root.editor.selectedTimelineDevice
+                                    onClicked: {
+                                        root.editor.selectCommandIndex(index)
+                                        root.editor.addSelectedCommandAtCurrentTime()
+                                    }
+                                    onActiveFocusChanged: {
+                                        if (activeFocus)
+                                            deviceCommandList.positionViewAtIndex(index, ListView.Contain)
+                                    }
+                                    ToolTip.visible: hovered
+                                    ToolTip.delay: 400
+                                    ToolTip.text: qsTr("添加 %1\n%2").arg(root.editor.commandName(modelData))
+                                        .arg(root.editor.executionParameterNames(modelData) || qsTr("无需参数"))
+                                }
+                            }
+
+                            Rectangle {
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.bottom: parent.bottom
+                                height: 1
+                                color: root.pageTheme.colors.border
+                                opacity: 0.5
+                            }
+                        }
+
+                        Base.AppText {
+                            anchors.centerIn: parent
+                            visible: deviceCommandList.count === 0
+                            text: root.editor && root.editor.selectedTimelineDevice
+                                ? qsTr("当前设备暂无可用指令") : qsTr("请先选择设备轨道")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
+                    }
+
+                    Base.AppText {
+                        Layout.fillWidth: true
+                        text: root.editor && root.editor.executionStatusText.length > 0
+                            ? root.editor.executionStatusText : qsTr("点击 + 添加指令，需要参数时先配置")
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: root.editor && root.editor.executionStatusText.length > 0
+                            ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
+                        wrapMode: Text.Wrap
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: !root.controlTrackVisible
 
                     Base.AppText {
                         Layout.fillWidth: true
@@ -412,6 +632,14 @@ Item {
                         text: qsTr("%1 条指令").arg(root.timelineCommands.length)
                         styleRole: UiStyle.TypographyRole.BodyS
                         textTone: UiStyle.TextTone.Secondary
+                    }
+
+                    Base.AppButton {
+                        visible: !root.controlTrackVisible
+                        text: qsTr("编辑时间轴")
+                        enabled: !!root.currentTimeline
+                        variant: UiStyle.ButtonVariant.Secondary
+                        onClicked: root.openTimelineControl(root.currentTimeline)
                     }
                 }
 
@@ -501,27 +729,13 @@ Item {
                     }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: qsTr("时间线指令")
-                        styleRole: UiStyle.TypographyRole.BodyM
-                    }
-
-                    Base.AppText {
-                        text: qsTr("%1").arg(verticalCommandList.count)
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: UiStyle.TextTone.Secondary
-                    }
-                }
-
                 Base.AppSurface {
                     Layout.fillWidth: true
+                    visible: !root.controlTrackVisible || root.commandPanelMode === "timeline"
                     Layout.fillHeight: true
                     sizeToContent: false
-                    surfaceTone: UiStyle.SurfaceTone.Section
+                    surfaceTone: UiStyle.SurfaceTone.Ghost
+                    strokeWidth: 0
 
                     Timeline.TimelineCommandVerticalList {
                         id: verticalCommandList

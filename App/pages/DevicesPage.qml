@@ -43,6 +43,9 @@ Item {
         && selectedCommandIndex < selectedDeviceCommands.length
         ? selectedDeviceCommands[selectedCommandIndex]
         : null
+    property string deviceSearchText: ""
+    property string deviceStatusFilter: "all"
+    property bool compactDevices: false
     property string deviceDisplayMode: "template"
     property string selectedTemplateName: deviceTemplates.length > 0 ? String(deviceTemplates[0].name) : ""
     property string selectedDeviceType: deviceTypes.length > 0 ? String(deviceTypes[0]) : ""
@@ -51,9 +54,9 @@ Item {
     readonly property var filteredDevices: buildFilteredDevices()
     readonly property bool selectedDeviceInCurrentView: selectedDevice
         && selectedDevice.id !== undefined
-        && (deviceDisplayMode === "type"
-            ? (selectedDevice.deviceType !== undefined && String(selectedDevice.deviceType) === selectedDeviceType)
-            : (selectedDevice.templateName !== undefined && String(selectedDevice.templateName) === selectedTemplateName))
+        && filteredDevices.some(function(device) {
+            return String(device.id) === String(selectedDevice.id)
+        })
 
     onDeviceTypesChanged: {
         if (selectedDeviceType.length === 0 && deviceTypes.length > 0)
@@ -73,7 +76,7 @@ Item {
         syncTemplateInspector()
         syncCommandInspector()
     }
-    onFilteredDevicesChanged: ensureSelectedDeviceForView()
+    onFilteredDevicesChanged: Qt.callLater(ensureSelectedDeviceForView)
 
     Component.onCompleted: {
         syncTemplateInspector()
@@ -135,9 +138,15 @@ Item {
     }
 
     function buildFilteredDevices() {
+        var query = deviceSearchText.trim().toLowerCase()
         var result = []
         for (var index = 0; index < devices.length; ++index) {
             var device = devices[index]
+            if (query.length > 0
+                    && (String(device.name || "") + " " + deviceAddress(device)).toLowerCase().indexOf(query) < 0)
+                continue
+            if (deviceStatusFilter !== "all" && !!device.online !== (deviceStatusFilter === "online"))
+                continue
             if (deviceDisplayMode === "type") {
                 if (String(device.deviceType || "") === selectedDeviceType)
                     result.push(device)
@@ -433,7 +442,9 @@ Item {
             rowSpacing: root.pageTheme.density.controlGap
 
             Base.AppSurface {
-                Layout.preferredWidth: 300
+                Layout.preferredWidth: 250
+                Layout.minimumWidth: 230
+                Layout.maximumWidth: 250
                 Layout.fillHeight: true
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
@@ -498,7 +509,7 @@ Item {
                                         readonly property bool selected: root.groupSelected(modelData)
 
                                         Layout.fillWidth: true
-                                        Layout.preferredHeight: 82
+                                        Layout.preferredHeight: 68
                                         text: root.groupName(modelData)
                                         compact: true
                                         contentSpacing: 0
@@ -508,6 +519,8 @@ Item {
                                         selectionTransition: groupCardSelectionTransition
                                         animateScale: false
                                         onClicked: root.selectGroup(modelData)
+                                        ToolTip.visible: hovered
+                                        ToolTip.text: root.groupDescription(modelData) + " · " + root.groupFootnote(modelData)
 
                                         RowLayout {
                                             Layout.fillWidth: true
@@ -547,14 +560,6 @@ Item {
                                                 Base.AppText {
                                                     Layout.fillWidth: true
                                                     text: root.groupDescription(modelData)
-                                                    styleRole: UiStyle.TypographyRole.BodyS
-                                                    textTone: UiStyle.TextTone.Secondary
-                                                    elide: Text.ElideRight
-                                                }
-
-                                                Base.AppText {
-                                                    Layout.fillWidth: true
-                                                    text: root.groupFootnote(modelData)
                                                     styleRole: UiStyle.TypographyRole.BodyS
                                                     textTone: UiStyle.TextTone.Secondary
                                                     elide: Text.ElideRight
@@ -605,6 +610,36 @@ Item {
                         }
                     }
 
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: root.pageTheme.density.controlGap
+
+                        Base.AppTextField {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 120
+                            placeholderText: qsTr("搜索名称或地址")
+                            text: root.deviceSearchText
+                            onTextEdited: root.deviceSearchText = text
+                        }
+
+                        Base.AppSelect {
+                            Layout.preferredWidth: 100
+                            options: [
+                                { "label": qsTr("全部"), "value": "all" },
+                                { "label": qsTr("在线"), "value": "online" },
+                                { "label": qsTr("离线"), "value": "offline" }
+                            ]
+                            value: root.deviceStatusFilter
+                            onValueSelected: root.deviceStatusFilter = String(nextValue)
+                        }
+
+                        Base.AppButton {
+                            text: root.compactDevices ? qsTr("卡片") : qsTr("紧凑")
+                            variant: UiStyle.ButtonVariant.Ghost
+                            onClicked: root.compactDevices = !root.compactDevices
+                        }
+                    }
+
                     Base.AppScrollPane {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
@@ -619,27 +654,18 @@ Item {
                                 id: deviceCardFlow
 
                                 readonly property real availableWidth: parent ? parent.width : 0
-                                readonly property real minimumCardWidth: 280
+                                readonly property real minimumCardWidth: 240
                                 readonly property real maximumCardWidth: 320
                                 readonly property int maximumColumnCount: 4
                                 readonly property int itemCount: root.filteredDevices.length
                                 readonly property int fitColumnCount: Math.max(1,
                                     Math.floor((availableWidth + spacing) / (minimumCardWidth + spacing)))
-                                readonly property int columnCount: Math.min(maximumColumnCount,
+                                readonly property int columnCount: root.compactDevices ? 1 : Math.min(maximumColumnCount,
                                     fitColumnCount, Math.max(1, itemCount))
-                                readonly property real cardWidth: Math.min(maximumCardWidth,
+                                readonly property real cardWidth: root.compactDevices ? availableWidth : Math.min(maximumCardWidth,
                                     (availableWidth - spacing * (columnCount - 1)) / columnCount)
-                                readonly property int lastRowCount: itemCount > 0
-                                    ? (itemCount - 1) % columnCount + 1
-                                    : 0
-                                readonly property real lastRowIndent: lastRowCount > 0
-                                    && lastRowCount < columnCount
-                                    ? (width - lastRowCount * cardWidth
-                                       - (lastRowCount - 1) * spacing) / 2
-                                    : 0
-
                                 anchors.top: parent.top
-                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.left: parent.left
                                 width: columnCount * cardWidth + (columnCount - 1) * spacing
                                 spacing: root.pageTheme.density.controlGap
 
@@ -649,13 +675,8 @@ Item {
                                     delegate: Item {
                                         id: deviceCardSlot
 
-                                        readonly property bool startsLastRow: deviceCardFlow.lastRowCount
-                                            < deviceCardFlow.columnCount
-                                            && index === deviceCardFlow.itemCount - deviceCardFlow.lastRowCount
-
                                         width: deviceCardFlow.cardWidth
-                                            + (startsLastRow ? deviceCardFlow.lastRowIndent : 0)
-                                        height: Math.round(deviceCardFlow.cardWidth / 1.4)
+                                        height: root.compactDevices ? 96 : 180
 
                                         Base.AppCard {
                                             id: deviceRow
@@ -676,7 +697,7 @@ Item {
                                         contentSpacing: 0
                                         checkable: true
                                         checked: selected
-                                        emphasizedSelection: true
+                                        emphasizedSelection: false
                                         selectionTransition: deviceCardSelectionTransition
                                         animateScale: false
                                         onClicked: root.selectDevice(modelData.id)
@@ -747,6 +768,7 @@ Item {
                                                     }
 
                                                     Item {
+                                                        visible: !root.compactDevices
                                                         Layout.fillWidth: true
                                                         Layout.fillHeight: true
 
@@ -759,11 +781,12 @@ Item {
 
                                                                 readonly property int columnCount: Math.max(1, deviceRow.screenColumns)
                                                                 readonly property int rowCount: Math.max(1, deviceRow.screenRows)
-                                                                readonly property real maximumWidth: Math.min(180, deviceRow.width - 64)
-                                                                readonly property real cellWidth: Math.min(64,
+                                                                readonly property real maximumWidth: Math.min(150, deviceRow.width - 64)
+                                                                readonly property real cellWidth: Math.max(1, Math.min(48,
+                                                                                                           (48 - spacing * (rowCount - 1)) / rowCount / 0.58,
                                                                                                            (maximumWidth
                                                                                                             - spacing * (columnCount - 1))
-                                                                                                           / columnCount)
+                                                                                                           / columnCount))
 
                                                                 Layout.alignment: Qt.AlignHCenter
                                                                 visible: deviceRow.hasScreenLayout
@@ -806,7 +829,7 @@ Item {
 
                                             Rectangle {
                                                 Layout.fillWidth: true
-                                                Layout.preferredHeight: 40
+                                                Layout.preferredHeight: 32
                                                 color: deviceRow.selected
                                                     ? Qt.darker(root.pageTheme.colors.highlightSoft, 1.14)
                                                     : root.pageTheme.colors.backgroundWindowVariant
@@ -851,15 +874,21 @@ Item {
                             Base.AppText {
                                 anchors.centerIn: parent
                                 visible: root.filteredDevices.length === 0
-                                text: qsTr("暂无设备")
+                                text: root.deviceSearchText.trim().length > 0 || root.deviceStatusFilter !== "all"
+                                    ? qsTr("没有匹配的设备，请调整搜索或状态筛选")
+                                    : qsTr("当前分类暂无设备")
+                                width: parent.width
+                                wrapMode: Text.Wrap
+                                horizontalAlignment: Text.AlignHCenter
                                 styleRole: UiStyle.TypographyRole.BodyM
                                 textTone: UiStyle.TextTone.Secondary
                             }
 
-                            Base.AppCardSelectionTransition {
+                            AppComponents.SubtleCardSelectionTransition {
                                 id: deviceCardSelectionTransition
 
                                 anchors.fill: parent
+                                selectionColor: root.pageTheme.colors.highlightText
                             }
                         }
                     }
@@ -867,7 +896,9 @@ Item {
             }
 
             Base.AppSurface {
-                Layout.preferredWidth: 380
+                Layout.preferredWidth: 340
+                Layout.minimumWidth: 320
+                Layout.maximumWidth: 340
                 Layout.fillHeight: true
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
@@ -923,6 +954,7 @@ Item {
                                 text: qsTr("从模板创建设备")
                                 iconName: "resources"
                                 variant: UiStyle.ButtonVariant.Primary
+                                enabled: !!root.selectedTemplate
                                 onClicked: root.createDeviceFromSelectedTemplate()
                             }
                         }

@@ -72,8 +72,8 @@ set_target_properties(TimelineControlApp PROPERTIES
     VS_DEBUGGER_ENVIRONMENT "PATH=\
 D:/Program/third_party/ffmpeg/bin;\
 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE};\
-D:/Program/RA/RAGis2/build/output;\
-C:/Qt/Qt5.14.0/5.14.0/msvc2017_64/bin;"
+${RAGIS_OUTPUT_DIR};\
+$<TARGET_FILE_DIR:Qt5::Core>;"
 )
 
 

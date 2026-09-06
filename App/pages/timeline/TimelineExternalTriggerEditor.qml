@@ -29,8 +29,8 @@ Item {
         : fallbackTheme
 
     implicitHeight: timelineConditions.length > 0
-        ? Math.min(230, 50 + timelineConditions.length * 60)
-        : 72
+        ? Math.min(194, 50 + timelineConditions.length * 46)
+        : 64
 
     function rebuildLocatorOptions() {
         var options = []
@@ -129,6 +129,7 @@ Item {
         anchors.fill: parent
         sizeToContent: false
         surfaceTone: UiStyle.SurfaceTone.Section
+        strokeWidth: 0
 
         ColumnLayout {
             anchors.fill: parent
@@ -171,12 +172,13 @@ Item {
 
             ListView {
                 id: conditionList
+                objectName: "triggerList"
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 visible: root.timelineConditions.length > 0
                 orientation: ListView.Vertical
-                spacing: 6
+                spacing: 4
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
                 model: root.timelineConditions
@@ -187,6 +189,7 @@ Item {
 
                 delegate: Base.AppCard {
                     id: conditionCard
+                    objectName: "triggerRule"
 
                     readonly property var conditionData: modelData
                     readonly property string locatorText: root.optionLabel(
@@ -210,7 +213,9 @@ Item {
                             : root.pageTheme.colors.subtleText)
 
                     width: conditionList.width
-                    height: 50
+                    height: 42
+                    padding: 4
+                    surfaceTone: UiStyle.SurfaceTone.Ghost
                     compact: true
                     animateScale: false
                     enabled: root.editable
@@ -219,7 +224,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        spacing: 6
+                        spacing: 10
 
                         Base.AppText {
                             Layout.preferredWidth: 24
@@ -229,13 +234,6 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                         }
 
-                        Rectangle {
-                            Layout.preferredWidth: 1
-                            Layout.preferredHeight: 24
-                            color: root.pageTheme
-                                ? root.pageTheme.colors.border
-                                : "transparent"
-                        }
 
                         Base.AppText {
                             Layout.preferredWidth: Math.min(130,
@@ -250,13 +248,6 @@ Item {
                             elide: Text.ElideRight
                         }
 
-                        Rectangle {
-                            Layout.preferredWidth: 1
-                            Layout.preferredHeight: 24
-                            color: root.pageTheme
-                                ? root.pageTheme.colors.border
-                                : "transparent"
-                        }
 
                         RowLayout {
                             Layout.fillWidth: true
@@ -303,13 +294,6 @@ Item {
                             }
                         }
 
-                        Rectangle {
-                            Layout.preferredWidth: 1
-                            Layout.preferredHeight: 24
-                            color: root.pageTheme
-                                ? root.pageTheme.colors.border
-                                : "transparent"
-                        }
 
                         RowLayout {
                             Layout.preferredWidth: Math.min(190,
@@ -327,8 +311,8 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 28
                                 sizeToContent: false
-                                surfaceTone: UiStyle.SurfaceTone.Success
-                                shapeRole: UiStyle.ShapeRole.Pill
+                                surfaceTone: UiStyle.SurfaceTone.Ghost
+                                strokeWidth: 0
 
                                 Base.AppText {
                                     anchors.fill: parent
@@ -337,21 +321,14 @@ Item {
                                     text: qsTr("触发 %1").arg(conditionCard.timelineText)
                                     styleRole: UiStyle.TypographyRole.BodyS
                                     overrideWeight: Font.Medium
-                                    textTone: UiStyle.TextTone.Success
-                                    horizontalAlignment: Text.AlignHCenter
+                                    textTone: UiStyle.TextTone.Primary
+                                    horizontalAlignment: Text.AlignLeft
                                     verticalAlignment: Text.AlignVCenter
                                     elide: Text.ElideRight
                                 }
                             }
                         }
 
-                        Rectangle {
-                            Layout.preferredWidth: 1
-                            Layout.preferredHeight: 24
-                            color: root.pageTheme
-                                ? root.pageTheme.colors.border
-                                : "transparent"
-                        }
 
                         RowLayout {
                             Layout.preferredWidth: 76
@@ -373,29 +350,18 @@ Item {
                             }
                         }
 
-                        Rectangle {
-                            Layout.preferredWidth: 1
-                            Layout.preferredHeight: 24
-                            color: root.pageTheme
-                                ? root.pageTheme.colors.border
-                                : "transparent"
-                        }
 
                         Base.AppToggleControl {
                             checked: conditionCard.conditionData.enabled
                             enabled: root.editable
                             onToggled: conditionCard.conditionData.enabled = checked
+                            ToolTip.visible: hovered
+                            ToolTip.text: qsTr("启用规则；触发状态在左侧单独显示")
                         }
 
-                        Rectangle {
-                            Layout.preferredWidth: 1
-                            Layout.preferredHeight: 24
-                            color: root.pageTheme
-                                ? root.pageTheme.colors.border
-                                : "transparent"
-                        }
 
                         Base.AppButton {
+                            objectName: "triggerMoreButton"
                             text: "⋮"
                             size: UiStyle.ButtonSize.Small
                             minWidth: 28

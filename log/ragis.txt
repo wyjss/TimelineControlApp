@@ -1,0 +1,14 @@
+(ragis)16:44:25:306    Debug: EarthViewer() 
+(ragis)16:44:26:106    Debug: EarthView() 
+(ragis)16:44:26:120    Error: 打开[./gis_cache/host.cache]失败，unable to open database file 
+(ragis)16:44:26:137    Info : QGL CONTEXT: 
+	 QSurfaceFormat(version 4.6, options QFlags<QSurfaceFormat::FormatOption>(DeprecatedFunctions), depthBufferSize 24, redBufferSize 8, greenBufferSize 8, blueBufferSize 8, alphaBufferSize 8, stencilBufferSize 8, samples 0, swapBehavior QSurfaceFormat::DoubleBuffer, swapInterval 1, colorSpace QSurfaceFormat::sRGBColorSpace, profile  QSurfaceFormat::CompatibilityProfile) 
+(ragis)16:44:26:347    Info : [CLM]  view  default2D  load map  default2D 
+(ragis)16:44:26:347    Debug: [CLM]  请求加载 default2D 
+(ragis)16:44:27:114    Debug: [Svr]  lookup server 
+(ragis)16:44:29:106    Debug: [Svr]  lookup server 
+(ragis)16:44:33:106    Debug: [Svr]  lookup server 
+(ragis)16:44:41:106    Debug: [Svr]  lookup server 
+(ragis)16:44:57:106    Debug: [Svr]  lookup server 
+(ragis)16:45:29:105    Debug: [Svr]  lookup server 
+(ragis)16:45:43:995    Info : viewer quit 

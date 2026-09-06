@@ -39,7 +39,7 @@ Item {
     readonly property int overviewDurationMs: timelineCommandModel
         ? Math.max(0, Number(timelineCommandModel.realDurationMs || 0))
         : 0
-    readonly property int timelineTrackLabelWidth: 224
+    readonly property int timelineTrackLabelWidth: 184
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
@@ -62,6 +62,8 @@ Item {
     property string executionStatusText: ""
 
     signal closeRequested()
+    signal deviceTrackSelected()
+    signal timelineCommandSelected()
 
     onDevicesChanged: ensureSelectedTimelineDevice()
     onSelectedTimelineDeviceIdChanged: {
@@ -176,6 +178,7 @@ Item {
             selectTimelineDevice(String(command.targetDeviceId || ""))
         setTimelineCurrentTimeMs(command.startTimeMs)
         positionControlTrackAtTime(command.startTimeMs)
+        timelineCommandSelected()
     }
 
     function editTimelineCommand(command) {
@@ -276,14 +279,16 @@ Item {
     function formatTimelineMs(ms) {
         var totalMs = Math.max(0, Math.round(Number(ms || 0)))
         var totalSeconds = Math.floor(totalMs / 1000)
-        var minutes = Math.floor(totalSeconds / 60)
+        var hours = Math.floor(totalSeconds / 3600)
+        var minutes = Math.floor(totalSeconds / 60) % 60
         var seconds = totalSeconds % 60
         var milliseconds = totalMs % 1000
         var millisecondsText = milliseconds < 10
             ? "00" + milliseconds
             : (milliseconds < 100 ? "0" + milliseconds : String(milliseconds))
-        return qsTr("%1:%2.%3")
-            .arg(minutes)
+        return (hours > 0 ? (hours < 10 ? "0" + hours : hours) + ":" : "")
+            + qsTr("%1:%2.%3")
+            .arg(minutes < 10 ? "0" + minutes : minutes)
             .arg(seconds < 10 ? "0" + seconds : seconds)
             .arg(millisecondsText)
     }
@@ -310,90 +315,30 @@ Item {
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 18
-                    spacing: 12
+                    anchors.margins: 14
+                    spacing: 8
 
                     RowLayout {
                         Layout.fillWidth: true
-
-                        Base.AppText {
-                            Layout.fillWidth: true
-                            text: qsTr("控制轨")
-                            styleRole: UiStyle.TypographyRole.SectionTitle
-                        }
 
                         Base.AppButton {
                             visible: root.controlTrackOnly
                             size: UiStyle.ButtonSize.Small
                             variant: UiStyle.ButtonVariant.Ghost
-                            iconSymbol: "×"
+                            text: qsTr("返回概览")
+                            iconSymbol: "←"
                             ToolTip.visible: hovered
-                            ToolTip.text: qsTr("关闭控制轨")
+                            ToolTip.text: qsTr("关闭控制轨，返回时间轴列表")
                             onClicked: root.closeRequested()
                         }
-                    }
 
-                    Base.AppSurface {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 48
-                        sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.SectionOverlay
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.margins: 6
-                            spacing: 8
-
-                            Base.AppText {
-                                Layout.preferredWidth: 140
-                                text: root.selectedTimelineDevice
-                                    ? qsTr("设备：%1").arg(root.deviceName(
-                                        root.selectedTimelineDevice))
-                                    : qsTr("未选择设备")
-                                styleRole: UiStyle.TypographyRole.BodyS
-                                textTone: UiStyle.TextTone.Secondary
-                                elide: Text.ElideRight
-                            }
-
-                            Base.AppSelect {
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 140
-                                Layout.maximumWidth: 240
-                                options: root.deviceCommands.map(function(command, index) {
-                                    return {
-                                        "label": root.commandName(command),
-                                        "value": index
-                                    }
-                                })
-                                value: root.selectedCommandIndex
-                                placeholderText: qsTr("选择指令")
-                                popupMinWidth: width
-                                enabled: root.deviceCommands.length > 0
-                                onValueSelected: root.selectCommandIndex(Number(nextValue))
-                            }
-
-                            Base.AppText {
-                                Layout.fillWidth: true
-                                text: root.executionStatusText.length > 0
-                                    ? root.executionStatusText
-                                    : qsTr("参数：%1").arg(root.selectedCommand
-                                        ? (root.executionParameterNames(root.selectedCommand)
-                                            || qsTr("无"))
-                                        : qsTr("无"))
-                                styleRole: UiStyle.TypographyRole.BodyS
-                                textTone: root.executionStatusText.length > 0
-                                    ? UiStyle.TextTone.Accent
-                                    : UiStyle.TextTone.Info
-                                elide: Text.ElideRight
-                            }
-
-                            Base.AppButton {
-                                text: qsTr("添加到当前时间")
-                                iconName: "workflow"
-                                enabled: root.timelineStopped && root.timelineCommandModel
-                                    && root.selectedTimelineDevice && root.selectedCommand
-                                onClicked: root.addSelectedCommandAtCurrentTime()
-                            }
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            text: root.controlTrackOnly && root.currentTimeline
+                                ? qsTr("控制轨 · %1").arg(root.currentTimeline.name)
+                                : qsTr("控制轨")
+                            elide: Text.ElideRight
+                            styleRole: UiStyle.TypographyRole.SectionTitle
                         }
                     }
 
@@ -451,6 +396,7 @@ Item {
                         selectedCommandId: root.selectedTimelineCommandId
                         onTrackSelected: function(targetDeviceId) {
                             root.selectTimelineDevice(targetDeviceId)
+                            root.deviceTrackSelected()
                         }
                         onCommandSelected: function(command) {
                             root.selectTimelineCommand(command)
@@ -778,6 +724,7 @@ Item {
 
     Base.AppDialog {
         id: addTimelineCommandPopup
+        objectName: "addTimelineCommandPopup"
 
         parent: root
 

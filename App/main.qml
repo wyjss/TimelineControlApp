@@ -6,7 +6,6 @@ import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml" as Ui
 import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/components/shell" as Shell
-import "qrc:/UICore/qml/components/task" as Task
 import "qrc:/UICore/qml/theme" as Theme
 import "qrc:/TimelineControlApp/App/pages" as Pages
 
@@ -101,16 +100,26 @@ ApplicationWindow {
 
     width: appTheme.metrics.windowWidth
     height: appTheme.metrics.windowHeight
-    minimumWidth: appTheme.metrics.windowMinWidth
-    minimumHeight: appTheme.metrics.windowMinHeight
-    visible: true
+    minimumWidth: Math.min(appTheme.metrics.windowMinWidth, screen.width - 32)
+    minimumHeight: Math.min(appTheme.metrics.windowMinHeight, screen.height - 64)
+    visible: false
     title: appRuntime && appRuntime.settings && appRuntime.settings.applicationName
         ? String(appRuntime.settings.applicationName)
         : qsTr("时间线控制应用")
     color: appTheme.colors.backgroundWindow
-    Component.onCompleted: activateNavigation(shellController
-        ? shellController.activeNavigationKey
-        : "")
+    Component.onCompleted: {
+        var screens = Qt.application.screens
+        for (var index = 0; index < screens.length; ++index) {
+            if (screens[index].virtualX < screen.virtualX)
+                screen = screens[index]
+        }
+        width = Math.min(width, screen.width - 32)
+        height = Math.min(height, screen.height - 64)
+        x = screen.virtualX + Math.round((screen.width - width) / 2)
+        y = screen.virtualY + Math.round((screen.height - height) / 2)
+        activateNavigation(shellController ? shellController.activeNavigationKey : "")
+        visible = true
+    }
 
     Ui.AppShell {
         id: shell
@@ -187,7 +196,7 @@ ApplicationWindow {
                     }
                 }
 
-                ToolTip.visible: hovered && !showText
+                ToolTip.visible: hovered && (!showText || navigationText.truncated)
                 ToolTip.text: text
             }
         }
@@ -225,107 +234,97 @@ ApplicationWindow {
 
         topNavigationBar.content: Component {
             RowLayout {
-                spacing: window.appTheme.density.controlGap
+                spacing: window.appTheme.density.paneSpacing
 
-                Rectangle {
+                RowLayout {
+                    id: playbackControls
+
                     Layout.alignment: Qt.AlignVCenter
-                    implicitWidth: playbackControls.implicitWidth + 12
-                    implicitHeight: 40
-                    radius: 8
-                    color: window.appTheme.colors.backgroundSection
-                    border.width: 1
-                    border.color: window.appTheme.colors.border
+                    spacing: window.appTheme.density.controlGap
 
-                    RowLayout {
-                        id: playbackControls
+                    Rectangle {
+                        Layout.leftMargin: 4
+                        width: 8
+                        height: 8
+                        radius: 4
+                        color: window.timelineRunning
+                            ? window.appTheme.colors.successFill
+                            : (window.timelinePaused
+                                ? window.appTheme.colors.warningFill
+                                : window.appTheme.colors.neutralBorder)
+                    }
 
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        spacing: 6
+                    Base.AppText {
+                        Layout.rightMargin: window.appTheme.density.controlGap
+                        text: window.playbackStateText
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: window.timelineRunning
+                            ? UiStyle.TextTone.Success
+                            : (window.timelinePaused
+                                ? UiStyle.TextTone.Warning
+                                : UiStyle.TextTone.Secondary)
+                    }
 
-                        Rectangle {
-                            Layout.leftMargin: 4
-                            width: 8
-                            height: 8
-                            radius: 4
-                            color: window.timelineRunning
-                                ? window.appTheme.colors.successFill
-                                : (window.timelinePaused
-                                    ? window.appTheme.colors.warningFill
-                                    : window.appTheme.colors.neutralBorder)
+                    Base.AppButton {
+                        id: playbackDeviceButton
+
+                        size: UiStyle.ButtonSize.Medium
+                        variant: window.playbackDeviceCount > 0
+                            ? UiStyle.ButtonVariant.Tonal
+                            : UiStyle.ButtonVariant.Secondary
+                        minWidth: 116
+                        text: window.playbackDeviceCount > 0
+                            ? qsTr("过滤中 · %1 台").arg(window.playbackDeviceCount)
+                            : qsTr("设备过滤")
+                        iconName: "resources"
+                        onClicked: playbackDevicePopup.opened
+                            ? playbackDevicePopup.close()
+                            : playbackDevicePopup.open()
+
+                        ToolTip.visible: hovered
+                        ToolTip.text: window.timelineStopped
+                            ? qsTr("设置参与播放的设备")
+                            : qsTr("播放期间不能修改设备过滤")
+                    }
+
+                    Rectangle {
+                        Layout.leftMargin: 2
+                        Layout.rightMargin: 2
+                        width: 1
+                        height: 20
+                        color: window.appTheme.colors.border
+                    }
+
+                    Base.AppButton {
+                        size: UiStyle.ButtonSize.Medium
+                        variant: UiStyle.ButtonVariant.Primary
+                        minWidth: 144
+                        text: window.playbackActionText
+                        iconName: window.timelineRunning ? "pause" : "play"
+                        enabled: window.timelineRunning
+                            || window.timelinePaused
+                            || (window.timelineManager
+                                && (window.hasQueuedTimelines
+                                    || window.timelineManager.currentTimeline))
+                        onClicked: {
+                            if (window.shellController)
+                                window.shellController.handleUiAction(
+                                    window.timelineRunning ? "timeline.pause" : "timeline.start",
+                                    {}
+                                )
                         }
+                    }
 
-                        Base.AppText {
-                            text: window.playbackStateText
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: window.timelineRunning
-                                ? UiStyle.TextTone.Success
-                                : (window.timelinePaused
-                                    ? UiStyle.TextTone.Warning
-                                    : UiStyle.TextTone.Secondary)
-                        }
-
-                        Base.AppButton {
-                            id: playbackDeviceButton
-
-                            size: UiStyle.ButtonSize.Small
-                            variant: window.playbackDeviceCount > 0
-                                ? UiStyle.ButtonVariant.Danger
-                                : UiStyle.ButtonVariant.Tonal
-                            minWidth: window.playbackDeviceCount > 0 ? 112 : 96
-                            text: window.playbackDeviceCount > 0
-                                ? qsTr("过滤中 · %1 台").arg(window.playbackDeviceCount)
-                                : qsTr("设备过滤")
-                            iconName: "resources"
-                            onClicked: playbackDevicePopup.opened
-                                ? playbackDevicePopup.close()
-                                : playbackDevicePopup.open()
-
-                            ToolTip.visible: hovered
-                            ToolTip.text: window.timelineStopped
-                                ? qsTr("设置参与播放的设备")
-                                : qsTr("播放期间不能修改设备过滤")
-                        }
-
-                        Rectangle {
-                            Layout.leftMargin: 2
-                            Layout.rightMargin: 2
-                            width: 1
-                            height: 20
-                            color: window.appTheme.colors.border
-                        }
-
-                        Base.AppButton {
-                            size: UiStyle.ButtonSize.Small
-                            variant: UiStyle.ButtonVariant.Primary
-                            minWidth: window.timelineRunning || window.timelinePaused ? 88 : 116
-                            text: window.playbackActionText
-                            iconName: window.timelineRunning ? "pause" : "play"
-                            enabled: window.timelineRunning
-                                || window.timelinePaused
-                                || (window.timelineManager
-                                    && (window.hasQueuedTimelines
-                                        || window.timelineManager.currentTimeline))
-                            onClicked: {
-                                if (window.shellController)
-                                    window.shellController.handleUiAction(
-                                        window.timelineRunning ? "timeline.pause" : "timeline.start",
-                                        {}
-                                    )
-                            }
-                        }
-
-                        Base.AppButton {
-                            size: UiStyle.ButtonSize.Small
-                            variant: UiStyle.ButtonVariant.Danger
-                            minWidth: 92
-                            text: qsTr("停止播放")
-                            iconName: "stop"
-                            enabled: !window.timelineStopped
-                            onClicked: {
-                                if (window.shellController)
-                                    window.shellController.handleUiAction("timeline.stop", {})
-                            }
+                    Base.AppButton {
+                        size: UiStyle.ButtonSize.Medium
+                        variant: UiStyle.ButtonVariant.Danger
+                        minWidth: 112
+                        text: qsTr("停止播放")
+                        iconName: "stop"
+                        enabled: !window.timelineStopped
+                        onClicked: {
+                            if (window.shellController)
+                                window.shellController.handleUiAction("timeline.stop", {})
                         }
                     }
                 }
@@ -421,15 +420,16 @@ ApplicationWindow {
                     Layout.rightMargin: 4
                     width: 1
                     height: 24
-                    color: window.appTheme.colors.borderHeaderDivider
+                    color: window.appTheme.colors.controlBorder
                 }
 
                 Base.AppButton {
                     id: plansButton
 
-                    size: UiStyle.ButtonSize.Small
+                    Layout.maximumWidth: 240
+                    size: UiStyle.ButtonSize.Medium
                     variant: UiStyle.ButtonVariant.Secondary
-                    minWidth: 112
+                    minWidth: 128
                     iconName: "workflow"
                     text: window.appRuntime && window.appRuntime.currentPlanName.length > 0
                         ? qsTr("管理工程 · %1").arg(window.appRuntime.currentPlanName)
@@ -443,32 +443,8 @@ ApplicationWindow {
                         : qsTr("保存、另存或加载工程")
                 }
 
-                Base.AppButton {
-                    size: UiStyle.ButtonSize.Small
-                    variant: window.locatorMonitorOpen
-                        ? UiStyle.ButtonVariant.Tonal
-                        : UiStyle.ButtonVariant.Secondary
-                    minWidth: 104
-                    iconName: "scene"
-                    text: qsTr("定位监视")
-                    onClicked: window.locatorMonitorOpen = true
-                }
-
                 Item {
                     Layout.fillWidth: true
-                }
-
-                Base.AppButton {
-                    id: taskButton
-
-                    size: UiStyle.ButtonSize.Small
-                    variant: UiStyle.ButtonVariant.Ghost
-                    iconName: "background-task"
-                    text: window.appRuntime && window.appRuntime.taskManager
-                        && window.appRuntime.taskManager.activeTaskCount > 0
-                        ? String(window.appRuntime.taskManager.activeTaskCount)
-                        : ""
-                    onClicked: taskPopup.opened ? taskPopup.close() : taskPopup.open()
                 }
 
                 Base.AppPopup {
@@ -526,24 +502,6 @@ ApplicationWindow {
                     }
                 }
 
-                Task.AppTaskPanel {
-                    id: taskPopup
-
-                    parent: window.contentItem
-                    anchorItem: taskButton
-                    taskItems: window.appRuntime && window.appRuntime.taskManager
-                        ? window.appRuntime.taskManager.tasks
-                        : []
-                    taskItemCount: window.appRuntime && window.appRuntime.taskManager
-                        ? window.appRuntime.taskManager.taskCount
-                        : 0
-                    activeTaskCount: window.appRuntime && window.appRuntime.taskManager
-                        ? window.appRuntime.taskManager.activeTaskCount
-                        : 0
-                    topBarHeight: shell.topBarHeight
-                    overlayMargin: shell.overlayMargin
-                }
-
                 FileDialog {
                     id: savePlanDialog
 
@@ -570,6 +528,21 @@ ApplicationWindow {
                                 "filePath": fileUrl
                             })
                     }
+                }
+            }
+        }
+
+        topNavigationBar.trailingContent: Component {
+            RowLayout {
+                Base.AppButton {
+                    size: UiStyle.ButtonSize.Medium
+                    variant: window.locatorMonitorOpen
+                        ? UiStyle.ButtonVariant.Tonal
+                        : UiStyle.ButtonVariant.Secondary
+                    minWidth: 116
+                    iconName: "scene"
+                    text: qsTr("定位监视")
+                    onClicked: window.locatorMonitorOpen = true
                 }
             }
         }

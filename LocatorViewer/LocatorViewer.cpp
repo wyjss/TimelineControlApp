@@ -167,7 +167,7 @@ LocatorViewer::LocatorViewer(QObject* parent)
     ragis::Viewpoint vp = {{109.0, 32.7, 0.0}, {0, -90, 4000}};
     earth->getViewpoint()->setHomeViewpoint(vp);
     earth->getViewpoint()->setViewpoint(vp);
-    earth->startRender();
+   // earth->startRender();
     earth->addEventCallback(m_lineCallback);
 }
 

@@ -19,7 +19,8 @@ Item {
     property bool showDeviceName: false
     readonly property var visibleCommands: filterCommands()
     readonly property int count: visibleCommands.length
-    readonly property int timeColumnWidth: 92
+    readonly property bool compact: width < 600
+    readonly property int timeColumnWidth: 100
     readonly property int deviceColumnWidth: showDeviceName ? 112 : 36
     readonly property int parameterColumnWidth: showDeviceName ? 180 : 112
     readonly property int resultColumnWidth: 32
@@ -79,11 +80,9 @@ Item {
         var hours = Math.floor(totalSeconds / 3600)
         var minutes = Math.floor(totalSeconds / 60) % 60
         var seconds = totalSeconds % 60
-        return "%1:%2:%3%4"
-            .arg(padNumber(hours, 2))
-            .arg(padNumber(minutes, 2))
-            .arg(padNumber(seconds, 2))
-            .arg(showMilliseconds ? "." + padNumber(totalMs % 1000, 3) : "")
+        return (hours > 0 ? padNumber(hours, 2) + ":" : "")
+            + padNumber(minutes, 2) + ":" + padNumber(seconds, 2)
+            + (showMilliseconds ? "." + padNumber(totalMs % 1000, 3) : "")
     }
 
     function resultColor(command) {
@@ -118,7 +117,7 @@ Item {
         if (!command)
             return ""
         return qsTr("时间：%1\n设备：%2\n名称：%3\n执行参数：%4\n结果：%5")
-            .arg(formatTime(command.startTimeMs, false))
+            .arg(formatTime(command.startTimeMs, true))
             .arg(deviceName(command.targetDeviceId))
             .arg(String(command.commandName || qsTr("指令")))
             .arg(executionParameters(command))
@@ -149,6 +148,7 @@ Item {
                 }
 
                 Base.AppText {
+                    visible: !root.compact
                     Layout.preferredWidth: root.deviceColumnWidth
                     horizontalAlignment: root.showDeviceName
                         ? Text.AlignLeft
@@ -160,12 +160,13 @@ Item {
 
                 Base.AppText {
                     Layout.fillWidth: true
-                    text: qsTr("名称")
+                    text: root.compact ? qsTr("指令 / 设备") : qsTr("名称")
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                 }
 
                 Base.AppText {
+                    visible: !root.compact
                     Layout.preferredWidth: root.parameterColumnWidth
                     text: qsTr("执行参数")
                     styleRole: UiStyle.TypographyRole.BodyS
@@ -192,6 +193,7 @@ Item {
 
         ListView {
             id: commandList
+            objectName: "timelineCommandList"
 
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -199,6 +201,13 @@ Item {
             boundsBehavior: Flickable.StopAtBounds
             spacing: 0
             model: root.visibleCommands
+            currentIndex: root.visibleCommands.findIndex(function(command) {
+                return String(command && command.id || "") === root.selectedCommandId
+            })
+            onVisibleChanged: {
+                if (visible && currentIndex >= 0)
+                    positionViewAtIndex(currentIndex, ListView.Contain)
+            }
             ScrollBar.vertical: ScrollBar {
                 policy: ScrollBar.AsNeeded
             }
@@ -214,7 +223,7 @@ Item {
                     === root.selectedCommandId
                 readonly property bool filteredOut: root.commandFilteredOut(commandData)
                 width: commandList.width
-                height: 40
+                height: root.compact ? 60 : 40
                 opacity: filteredOut ? 0.46 : 1
                 leftPadding: 10
                 rightPadding: 10
@@ -271,6 +280,7 @@ Item {
                     }
 
                     Item {
+                        visible: !root.compact
                         Layout.preferredWidth: root.deviceColumnWidth
                         Layout.fillHeight: true
 
@@ -301,20 +311,48 @@ Item {
                         }
                     }
 
-                    Base.AppText {
+                    ColumnLayout {
                         Layout.fillWidth: true
-                        text: String(commandRow.commandData
-                            && commandRow.commandData.commandName
-                            ? commandRow.commandData.commandName
-                            : qsTr("指令"))
-                        styleRole: UiStyle.TypographyRole.BodyM
-                        textTone: commandRow.filteredOut
-                            ? UiStyle.TextTone.Secondary
-                            : UiStyle.TextTone.Primary
-                        elide: Text.ElideRight
+                        Layout.minimumWidth: 72
+                        spacing: 4
+
+                        Base.AppText {
+                            objectName: "commandNameLabel"
+                            Layout.fillWidth: true
+                            text: String(commandRow.commandData
+                                && commandRow.commandData.commandName
+                                ? commandRow.commandData.commandName : qsTr("指令"))
+                            styleRole: UiStyle.TypographyRole.BodyM
+                            textTone: commandRow.filteredOut
+                                ? UiStyle.TextTone.Secondary : UiStyle.TextTone.Primary
+                            elide: Text.ElideRight
+                        }
+
+                        RowLayout {
+                            visible: root.compact
+                            Layout.fillWidth: true
+                            spacing: 6
+
+                            AppComponents.DeviceIcon {
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                name: String(commandRow.targetDevice
+                                    && commandRow.targetDevice.deviceType || "")
+                            }
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: root.deviceName(commandRow.commandData
+                                    ? commandRow.commandData.targetDeviceId : "")
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                                elide: Text.ElideRight
+                            }
+                        }
                     }
 
                     Base.AppText {
+                        visible: !root.compact
                         Layout.preferredWidth: root.parameterColumnWidth
                         text: root.executionParameters(commandRow.commandData)
                         styleRole: UiStyle.TypographyRole.BodyS

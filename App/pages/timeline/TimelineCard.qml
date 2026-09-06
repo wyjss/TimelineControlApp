@@ -176,15 +176,6 @@ Item {
             timelineManager.setCurrentTimelineId(timelineId)
     }
 
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 5
-        radius: root.appTheme.shape.sectionRadius
-        color: root.appTheme.colors.scrim
-        opacity: root.current ? 0.52 : 0.28
-        transform: Translate { y: 3 }
-    }
-
     Base.AppCard {
         id: timelineCard
 
@@ -193,9 +184,8 @@ Item {
         text: root.timeline && root.timeline.name
             ? String(root.timeline.name)
             : qsTr("未命名时间轴")
-        surfaceTone: root.current
-            ? UiStyle.SurfaceTone.Highlight
-            : UiStyle.SurfaceTone.Section
+        surfaceTone: UiStyle.SurfaceTone.Section
+        compact: true
         surfaceOpacityScale: 1
         checkable: false
         checked: root.current
@@ -215,15 +205,15 @@ Item {
         ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 11
+            spacing: root.appTheme.density.controlGap
 
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 12
 
                 Base.AppSurface {
-                    Layout.preferredWidth: 42
-                    Layout.preferredHeight: 42
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
                     sizeToContent: false
                     shapeRole: UiStyle.ShapeRole.Control
                     fillOverride: root.stateSoftColor
@@ -232,7 +222,7 @@ Item {
                     Base.AppText {
                         anchors.centerIn: parent
                         text: String(root.displayIndex)
-                        styleRole: UiStyle.TypographyRole.TitleM
+                        styleRole: UiStyle.TypographyRole.SectionTitle
                         colorOverride: root.stateAccentColor
                     }
                 }
@@ -240,8 +230,7 @@ Item {
                 Base.AppText {
                     Layout.fillWidth: true
                     text: timelineCard.text
-                    styleRole: UiStyle.TypographyRole.TitleM
-                    colorOverride: root.stateAccentColor
+                    styleRole: UiStyle.TypographyRole.SectionTitle
                     elide: Text.ElideRight
                 }
 
@@ -260,8 +249,8 @@ Item {
 
                 Base.AppText {
                     text: root.formatTime(root.currentTimeMs)
-                    familyOverride: "Consolas"
-                    overridePixelSize: 20
+                    familyOverride: root.appTheme.typography.familyMono
+                    styleRole: UiStyle.TypographyRole.BodyL
                     overrideWeight: Font.Medium
                     colorOverride: root.running
                         ? root.appTheme.colors.successText
@@ -272,16 +261,16 @@ Item {
 
                 Base.AppText {
                     text: "/"
-                    familyOverride: "Consolas"
-                    overridePixelSize: 15
+                    familyOverride: root.appTheme.typography.familyMono
+                    styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                 }
 
                 Base.AppText {
                     Layout.fillWidth: true
                     text: root.formatTime(root.realDurationMs)
-                    familyOverride: "Consolas"
-                    overridePixelSize: 15
+                    familyOverride: root.appTheme.typography.familyMono
+                    styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                     elide: Text.ElideRight
                 }
@@ -340,9 +329,11 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
                 color: root.appTheme.colors.borderOverlay
+                visible: root.current
             }
 
             RowLayout {
+                visible: root.current
                 Layout.fillWidth: true
                 spacing: 7
 
@@ -416,7 +407,7 @@ Item {
         anchors.fill: timelineCard
         radius: root.appTheme.shape.sectionRadius
         color: "transparent"
-        border.width: root.current ? 2 : 1
+        border.width: 1
         border.color: root.current
             ? root.appTheme.colors.highlightText
             : root.appTheme.colors.controlBorder
