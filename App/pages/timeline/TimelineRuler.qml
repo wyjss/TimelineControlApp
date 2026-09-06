@@ -41,7 +41,7 @@ Item {
     property bool currentTimeDragEnabled: true
     // 拖动时刻线的时间步进，单位毫秒。
     property int currentTimeDragStepMs: 100
-    readonly property real labelWidth: majorTickMs < 1000 ? 96 : 72
+    readonly property real labelWidth: majorTickMs < 1000 ? 96 : 64
 
     readonly property real targetMajorTickSeconds: Math.max(1, baseMajorTickSeconds) * safeTimeScale()
     readonly property real majorTickSeconds: calcRealMajorTickSeconds(baseMajorTickSeconds)
@@ -396,7 +396,7 @@ Item {
             anchors.leftMargin: 12
             anchors.right: parent.right
             anchors.rightMargin: 12
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.top: parent.top
             controlHeight: 32
             contentPaddingX: 0
             contentPaddingY: 0
@@ -426,6 +426,16 @@ Item {
                 event.accepted = true
             }
             Component.onCompleted: root.syncCurrentTimeText()
+        }
+
+        Base.AppText {
+            anchors.left: parent.left
+            anchors.leftMargin: 12
+            anchors.top: currentTimeField.bottom
+            text: qsTr("当前时间")
+            styleRole: UiStyle.TypographyRole.BodyS
+            textTone: UiStyle.TextTone.Secondary
+            visible: parent.height >= 48
         }
     }
 

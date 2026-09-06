@@ -16,9 +16,16 @@ Item {
     property string selectedCommandId: ""
     property real timelineOffsetX: 0
     property int instantCommandMinWidth: 56
-    property int instantCommandMaxWidth: 132
+    property int instantCommandMaxWidth: 160
     readonly property var visibleCommands: filterCommands()
     readonly property int count: visibleCommands.length
+    readonly property int instantLabelHeight: implicitHeight > 48
+        ? Math.min(24, Math.floor((height - 8) / 3)) : 24
+
+    // 密集指令保留三层标签空间，普通轨道使用紧凑高度。
+    implicitHeight: visibleCommands.some(function(command) {
+        return commandDurationMs(command) <= 0 && instantCommandLayout(command).lane !== 1
+    }) ? 80 : 48
 
     signal commandSelected(var command)
 
@@ -250,20 +257,11 @@ Item {
         }
     }
 
-    Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        y: Math.round(parent.height / 2)
-        height: 1
-        color: root.colorValue("border", "#334155")
-        opacity: 0.20
-    }
-
     Base.AppText {
         id: commandMeasureText
 
         visible: false
-        styleRole: UiStyle.TypographyRole.BodyS
+        styleRole: UiStyle.TypographyRole.BodyM
     }
 
     FontMetrics {
@@ -277,6 +275,7 @@ Item {
 
         delegate: Item {
             id: commandBlock
+            objectName: "timelineCommand_" + String(commandData.id || "")
 
             property var commandData: modelData
             readonly property real durationMs: root.commandDurationMs(commandData)
@@ -305,7 +304,7 @@ Item {
             readonly property real anchorX: root.timeToX(root.commandStartMs(commandData))
             readonly property bool instantLabelOnLeft: instantCommand && instantLayout.onLeft
             readonly property real stackOffsetY: instantCommand
-                ? (instantLayout.lane - 1) * 18
+                ? (instantLayout.lane - 1) * root.instantLabelHeight
                 : (stackIndex - (stackCount - 1) / 2) * 8
 
             x: instantCommand
@@ -326,6 +325,7 @@ Item {
 
             MouseArea {
                 id: commandMouse
+                objectName: "timelineCommandHitArea"
 
                 x: commandBlock.instantCommand ? instantCommandPill.x : 0
                 y: commandBlock.instantCommand
@@ -374,10 +374,12 @@ Item {
                 x: commandBlock.instantLabelOnLeft ? 0 : 14
                 y: Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
                 width: parent.width - 14
-                height: 16
+                height: root.instantLabelHeight
                 radius: 4
-                color: commandBlock.commandColor
-                opacity: commandMouse.containsMouse || commandBlock.selected ? 0.96 : 0.84
+                color: Qt.rgba(commandBlock.commandColor.r,
+                               commandBlock.commandColor.g,
+                               commandBlock.commandColor.b,
+                               commandMouse.containsMouse || commandBlock.selected ? 0.42 : 0.24)
                 border.width: commandMouse.containsMouse || commandBlock.selected ? 1 : 0
                 border.color: commandBlock.selected
                     ? root.colorValue("inverseText", "#f8fafc")
@@ -404,10 +406,10 @@ Item {
                 anchors.leftMargin: 7
                 anchors.rightMargin: 7
                 text: commandBlock.displayText
-                styleRole: UiStyle.TypographyRole.BodyS
+                styleRole: UiStyle.TypographyRole.BodyM
                 textTone: commandBlock.filteredOut
                     ? UiStyle.TextTone.Neutral
-                    : UiStyle.TextTone.Inverse
+                    : UiStyle.TextTone.Primary
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
             }

@@ -8,7 +8,7 @@ import "../pages/timeline" as Timeline
 TestCase {
     id: testCase
     name: "PageLayouts"
-    when: testWindow.visible
+    when: windowShown && testWindow.visible
 
     ApplicationWindow {
         id: testWindow
@@ -118,6 +118,15 @@ TestCase {
         trigger.width = 680
         wait(30)
         var ruleList = findChild(trigger, "triggerList")
+        verify(!ruleList.visible)
+        verify(trigger.height <= 48, "Collapsed rules occupy extra track space")
+        var expandButton = findChild(trigger, "triggerExpandButton")
+        verify(expandButton && expandButton.visible)
+        mouseClick(expandButton)
+        trigger.width = 681
+        trigger.width = 680
+        wait(30)
+        verify(ruleList.visible)
         verify(ruleList.contentHeight <= ruleList.height, "Rule list is clipped vertically")
         var rule = findChild(trigger, "triggerRule")
         verify(rule)
@@ -126,6 +135,59 @@ TestCase {
         verify(more)
         var position = more.mapToItem(trigger, 0, 0)
         verify(position.x + more.width <= trigger.width, "Rule controls exceed the panel")
+        mouseClick(expandButton)
+        trigger.width = 681
+        trigger.width = 680
+        wait(30)
+        verify(!ruleList.visible)
+        verify(trigger.height <= 48)
+    }
+
+    Component {
+        id: triggerConditionComponent
+        QtObject {
+            property string locator: "新建定位器"
+            property string fence: "栅栏 1"
+            property string timeline: "时间轴 2"
+            property real heading: 0
+            property bool enabled: true
+            property bool touched: false
+            property bool active: false
+        }
+    }
+
+    function test_triggerExplicitEdit_data() {
+        return [{ tag: "narrow", panelWidth: 680 }, { tag: "wide", panelWidth: 1100 }]
+    }
+
+    function test_triggerExplicitEdit(data) {
+        var trigger = createTemporaryObject(triggerComponent, testWindow.contentItem,
+                                            { width: data.panelWidth, expanded: true,
+                                              dialogParent: testWindow.contentItem })
+        verify(trigger)
+        var condition = createTemporaryObject(triggerConditionComponent, trigger)
+        verify(condition)
+        trigger.timelineConditions = [condition]
+        wait(30)
+        var rule = findChild(trigger, "triggerRule")
+        var dialog = findChild(trigger, "triggerEditDialog")
+        verify(rule && rule.visible && dialog)
+        mouseClick(rule, 80, rule.height / 2)
+        verify(!dialog.visible, "Clicking rule text must not open the editor")
+        mouseClick(rule, rule.width / 2, 2)
+        verify(!dialog.visible, "Clicking rule padding must not open the editor")
+        mouseClick(findChild(rule, "triggerRuleToggle"))
+        compare(condition.enabled, false)
+        verify(!dialog.visible, "Toggling a rule must not open the editor")
+        mouseClick(findChild(rule, "triggerMoreButton"))
+        var menu = findChild(rule, "triggerRuleMenu")
+        tryCompare(menu, "visible", true)
+        verify(!dialog.visible)
+        mouseClick(menu.itemAt(0))
+        tryCompare(dialog, "visible", true)
+        compare(dialog.editingCondition, condition)
+        dialog.close()
+        tryCompare(dialog, "visible", false)
     }
 
     Component {
@@ -190,12 +252,13 @@ TestCase {
         page.timelineManager = { playbackState: 1, currentTimeline: null, timelineModel: null }
         verify(!findChild(host, "addDeviceCommand_2").enabled)
         page.timelineManager = null
-        findChild(host, "commandPanelTab_1").clicked()
+        findChild(host, "commandPanelModeSelector").valueSelected("timeline")
         compare(host.commandPanelMode, "timeline")
         verify(!palette.visible)
         page.deviceTrackSelected()
-        compare(host.commandPanelMode, "device")
-        verify(palette.visible)
+        compare(host.commandPanelMode, "timeline")
+        verify(!palette.visible)
+        findChild(host, "commandPanelModeSelector").valueSelected("device")
         page.selectTimelineCommand({ id: "existing", startTimeMs: 24000 })
         compare(host.commandPanelMode, "timeline")
         compare(page.timelineCommandModel.selectedCommandId, "existing")
@@ -206,6 +269,122 @@ TestCase {
         compare(palette.count, 0)
         compare(page.selectedCommandIndex, -1)
         compare(page.timelineCommandModel.addedCommands.length, 1)
+    }
+
+    function test_commandPanelTabs_data() {
+        return [{ tag: "narrow", pageWidth: 1180 }, { tag: "wide", pageWidth: 1700 }]
+    }
+
+    function test_commandPanelTabs(data) {
+        var host = createTemporaryObject(timelinePageComponent, testWindow.contentItem,
+                                         { width: data.pageWidth, controlTrackVisible: true })
+        verify(host && host.editor)
+        host.deviceModel = testDeviceModel
+        var model = createTemporaryObject(commandModelComponent, host)
+        model.commands = [{ id: "existing", targetDeviceId: "one", commandName: "暂停播放",
+                            startTimeMs: 13800, filteredOut: false }]
+        host.timelineManager = { playbackState: 0, playQueue: [], playQueueIndex: -1,
+                                 currentTimeline: { id: "main", name: "主时间轴", commandModel: model },
+                                 timelineModel: null }
+        wait(30)
+        testWindow.requestActivate()
+        tryCompare(testWindow, "active", true)
+        var selector = findChild(host, "commandPanelModeSelector")
+        verify(selector)
+        var palette = findChild(host, "deviceCommandList")
+        mouseClick(selector, selector.width * 0.75, selector.height / 2)
+        compare(host.commandPanelMode, "timeline")
+        verify(!palette.visible)
+        wait(30)
+        var list = findChild(host, "timelineCommandPanelList")
+        verify(list.visible && list.height > 0)
+        compare(list.count, 1)
+        var deviceTrack = findChild(host, "timelineTrack_two")
+        verify(deviceTrack && deviceTrack.visible)
+        mouseClick(deviceTrack, 80, deviceTrack.mainRowHeight / 2)
+        compare(host.editor.selectedTimelineDeviceId, "two")
+        compare(host.commandPanelMode, "timeline")
+        compare(selector.value, "timeline")
+        verify(list.visible && !palette.visible)
+        var commandLabel = findChild(list, "commandNameLabel")
+        verify(commandLabel.visible)
+        compare(commandLabel.text, "暂停播放")
+        mouseClick(commandLabel)
+        compare(model.selectedCommandId, "existing")
+        mouseClick(selector, selector.width * 0.25, selector.height / 2)
+        compare(host.commandPanelMode, "device")
+        verify(palette.visible)
+        mouseClick(selector, selector.trackInset + selector.segmentWidth + selector.segmentGap + 2,
+                   selector.height / 2)
+        compare(host.commandPanelMode, "timeline")
+        verify(selector.activeFocus)
+        keyClick(Qt.Key_Left)
+        compare(host.commandPanelMode, "device")
+        keyClick(Qt.Key_Right)
+        compare(host.commandPanelMode, "timeline")
+        compare(selector.value, "timeline")
+    }
+
+    Component {
+        id: trackAreaComponent
+        Timeline.TimelineDeviceTrackArea {
+            id: testTracks
+            width: 1000
+            height: 300
+            labelWidth: 200
+            devices: testDeviceModel.devices
+            ruler: Timeline.TimelineRuler {
+                parent: testTracks
+                visible: false
+                width: 1000
+                trackLeftX: 200
+                startTimeX: 220
+                durationMs: 60000
+            }
+        }
+    }
+
+    SignalSpy { id: commandSelectionSpy; signalName: "commandSelected" }
+
+    function test_timelineEventTargets() {
+        var tracks = createTemporaryObject(trackAreaComponent, testWindow.contentItem)
+        verify(tracks)
+        var model = createTemporaryObject(commandModelComponent, tracks)
+        tracks.commandModel = model
+        commandSelectionSpy.target = tracks
+        commandSelectionSpy.clear()
+        var commands = []
+        for (var index = 0; index < 4; ++index)
+            commands.push({ id: "dense" + index, targetDeviceId: "one", commandName: "暂停播放",
+                            startTimeMs: 3000, targetCommand: { protocol: "pc" } })
+        commands.push({ id: "sparse", targetDeviceId: "two", commandName: "停止播放",
+                        startTimeMs: 10000, targetCommand: { protocol: "pc" } })
+        model.commands = commands
+        wait(30)
+        var denseTrack = findChild(tracks, "timelineTrack_one")
+        var sparseTrack = findChild(tracks, "timelineTrack_two")
+        verify(denseTrack.height > sparseTrack.height, "Overlapping events need separate label lanes")
+        var targets = []
+        for (index = 0; index < 3; ++index) {
+            var block = findChild(tracks, "timelineCommand_dense" + index)
+            var hit = findChild(block, "timelineCommandHitArea")
+            verify(block.visible && hit.height >= 24)
+            var position = hit.mapToItem(denseTrack, 0, 0)
+            verify(position.y >= 0 && position.y + hit.height <= denseTrack.height,
+                   "Event label is clipped by the compact track")
+            for (var other = 0; other < targets.length; ++other)
+                verify(position.y + hit.height <= targets[other].top
+                       || position.y >= targets[other].bottom, "Stacked click targets overlap")
+            targets.push({ top: position.y, bottom: position.y + hit.height })
+            mouseClick(hit)
+            compare(commandSelectionSpy.signalArguments[index][0].id, "dense" + index)
+        }
+        verify(!findChild(tracks, "timelineCommand_dense3").visible)
+        compare(findChild(tracks, "timelineCommand_dense2").instantLayout.overflowCount, 1)
+        model.commands = [commands[0], commands[4]]
+        wait(30)
+        compare(denseTrack.height, sparseTrack.height)
+        commandSelectionSpy.target = null
     }
 
     function test_deviceFiltersAndSelection() {
@@ -263,7 +442,9 @@ TestCase {
         }
         verify(editor && editor.item)
         verify(editor.width >= 720, "Editor width: " + editor.width + ", workspace: " + layout.width)
-        editor.item.closeRequested()
+        var backButton = findChild(editor.item, "backToTimelineListButton")
+        verify(backButton && backButton.visible && backButton.enabled)
+        mouseClick(backButton)
         compare(page.controlTrackVisible, false)
         wait(30)
         verify(layout.children[0].visible)

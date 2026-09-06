@@ -17,9 +17,9 @@ Item {
     property var expandedParentTrackIds: ({})
     property string selectedDeviceId: ""
     property string selectedCommandId: ""
-    property int rowHeight: 56
+    property int rowHeight: 48
     property int childRowHeight: 30
-    property int rowSpacing: 4
+    property int rowSpacing: 0
     property int labelWidth: 224
     property int moveAnimationDuration: 220
 
@@ -124,6 +124,18 @@ Item {
         dynamicRoles: true
     }
 
+    Repeater {
+        model: root.ruler ? root.ruler.labelTicks : []
+
+        delegate: Rectangle {
+            x: Math.round(modelData.x)
+            width: 1
+            height: root.height
+            color: root.colorValue("border", "#334155")
+            opacity: 0.28
+        }
+    }
+
     ListView {
         id: trackList
 
@@ -167,6 +179,7 @@ Item {
 
         delegate: Item {
             id: trackRow
+            objectName: "timelineTrack_" + targetDeviceId
 
             readonly property int sourceTrackIndex: index >= 0 && index < trackModel.count
                 ? Number(trackModel.get(index).sourceIndex)
@@ -182,13 +195,14 @@ Item {
             readonly property bool expanded: childTracks.length > 0
                 && root.parentTrackExpanded(targetDeviceId)
 
+            readonly property int mainRowHeight: Math.max(root.rowHeight, trackCommands.implicitHeight)
+
             width: trackList.width
-            height: root.rowHeight + (expanded ? childTracks.length * root.childRowHeight : 0)
+            height: trackRow.mainRowHeight + (expanded ? childTracks.length * root.childRowHeight : 0)
 
             Rectangle {
                 width: parent.width
-                height: root.rowHeight
-                radius: 6
+                height: trackRow.mainRowHeight
                 color: trackMouse.containsMouse
                     ? root.colorValue("backgroundWindowVariant", "#131d28")
                     : "transparent"
@@ -196,10 +210,9 @@ Item {
 
             Rectangle {
                 width: parent.width
-                height: root.rowHeight
-                radius: 6
+                height: trackRow.mainRowHeight
                 color: root.colorValue("highlightSoft", "#162d4a")
-                opacity: trackRow.selected ? 0.48 : 0
+                opacity: trackRow.selected ? 0.28 : 0
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120 }
@@ -207,13 +220,10 @@ Item {
             }
 
             Rectangle {
-                width: parent.width
-                height: root.rowHeight
-                radius: 6
-                color: "transparent"
-                border.width: 1
-                border.color: root.colorValue("highlightText", "#78afff")
-                opacity: trackRow.selected ? 0.62 : 0
+                width: root.labelWidth
+                height: trackRow.mainRowHeight
+                color: root.colorValue("highlightSoft", "#162d4a")
+                opacity: trackRow.selected ? 0.56 : 0
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120 }
@@ -235,7 +245,7 @@ Item {
                 width: 1
                 height: parent.height
                 color: root.colorValue("border", "#334155")
-                opacity: trackRow.selected ? 0 : 0.38
+                opacity: 0.38
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120 }
@@ -245,9 +255,9 @@ Item {
             Rectangle {
                 anchors.left: parent.left
                 anchors.leftMargin: 2
-                y: 9
-                width: 3
-                height: root.rowHeight - 18
+                y: 0
+                width: 2
+                height: trackRow.mainRowHeight
                 radius: 2
                 color: trackRow.selected
                     ? root.colorValue("highlightText", "#78afff")
@@ -259,7 +269,7 @@ Item {
                 id: trackMouse
 
                 width: parent.width
-                height: root.rowHeight
+                height: trackRow.mainRowHeight
                 hoverEnabled: true
                 onClicked: {
                     root.trackSelected(trackRow.targetDeviceId)
@@ -270,7 +280,7 @@ Item {
 
             Base.AppText {
                 x: 10
-                y: Math.round((root.rowHeight - height) / 2)
+                y: Math.round((trackRow.mainRowHeight - height) / 2)
                 visible: trackRow.childTracks.length > 0
                 text: trackRow.expanded ? "▾" : "›"
                 styleRole: UiStyle.TypographyRole.BodyS
@@ -280,7 +290,7 @@ Item {
 
             Row {
                 x: trackRow.childTracks.length > 0 ? 28 : 14
-                y: Math.round((root.rowHeight - height) / 2)
+                y: Math.round((trackRow.mainRowHeight - height) / 2)
                 width: Math.max(80, root.labelWidth - x - 14)
                 spacing: 8
                 opacity: trackRow.filteredOut ? 0.42 : 1
@@ -326,10 +336,12 @@ Item {
             }
 
             TimelineCommandHorizontalList {
+                id: trackCommands
+
                 x: root.labelWidth
                 y: 0
                 width: Math.max(0, parent.width - root.labelWidth)
-                height: root.rowHeight
+                height: trackRow.mainRowHeight
                 clip: true
                 theme: root.theme
                 ruler: root.ruler
@@ -354,7 +366,7 @@ Item {
                     property var childTrackData: modelData || ({})
 
                     x: 0
-                    y: root.rowHeight + index * root.childRowHeight
+                    y: trackRow.mainRowHeight + index * root.childRowHeight
                     width: trackRow.width
                     height: root.childRowHeight
                     opacity: trackRow.filteredOut ? 0.42 : 1

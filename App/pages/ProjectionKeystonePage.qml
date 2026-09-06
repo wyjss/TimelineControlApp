@@ -324,6 +324,7 @@ Item {
             spacing: root.pageTheme.density.controlGap
 
             Base.AppButton {
+                raised: true
                 text: qsTr("返回")
                 iconSymbol: "↶"
                 onClicked: root.leavePage()
@@ -352,6 +353,7 @@ Item {
             }
 
             Base.AppButton {
+                raised: true
                 text: qsTr("保存")
                 iconName: "resources"
                 enabled: !!root.selectedPc
@@ -764,6 +766,7 @@ Item {
                     }
 
                     Base.AppButton {
+                        raised: true
                         Layout.fillWidth: true
                         text: qsTr("重置当前屏幕")
                         iconSymbol: "↶"
@@ -772,6 +775,7 @@ Item {
                     }
 
                     Base.AppButton {
+                        raised: true
                         Layout.fillWidth: true
                         text: qsTr("重置当前 PC")
                         iconName: "layer-config"

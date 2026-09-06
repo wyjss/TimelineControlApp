@@ -268,6 +268,7 @@ ApplicationWindow {
                     Base.AppButton {
                         id: playbackDeviceButton
 
+                        raised: variant === UiStyle.ButtonVariant.Secondary
                         size: UiStyle.ButtonSize.Medium
                         variant: window.playbackDeviceCount > 0
                             ? UiStyle.ButtonVariant.Tonal
@@ -426,6 +427,7 @@ ApplicationWindow {
                 Base.AppButton {
                     id: plansButton
 
+                    raised: true
                     Layout.maximumWidth: 240
                     size: UiStyle.ButtonSize.Medium
                     variant: UiStyle.ButtonVariant.Secondary
@@ -467,6 +469,7 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
+                        raised: true
                         Layout.fillWidth: true
                         text: qsTr("保存")
                         enabled: window.timelineStopped
@@ -482,6 +485,7 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
+                        raised: true
                         Layout.fillWidth: true
                         text: qsTr("另存为")
                         enabled: window.timelineStopped
@@ -492,6 +496,7 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
+                        raised: true
                         Layout.fillWidth: true
                         text: qsTr("加载")
                         enabled: window.timelineStopped
@@ -535,6 +540,7 @@ ApplicationWindow {
         topNavigationBar.trailingContent: Component {
             RowLayout {
                 Base.AppButton {
+                    raised: variant === UiStyle.ButtonVariant.Secondary
                     size: UiStyle.ButtonSize.Medium
                     variant: window.locatorMonitorOpen
                         ? UiStyle.ButtonVariant.Tonal

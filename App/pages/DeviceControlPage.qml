@@ -212,6 +212,7 @@ Item {
                         }
 
                         Base.AppButton {
+                            raised: true
                             size: UiStyle.ButtonSize.Small
                             text: qsTr("新建")
                             onClicked: groupEditorPopupLoader.openForCreate()
@@ -308,6 +309,7 @@ Item {
                         spacing: 8
 
                         Base.AppButton {
+                            raised: true
                             Layout.fillWidth: true
                             text: qsTr("重命名")
                             enabled: root.selectedGroupId.length > 0
@@ -375,6 +377,7 @@ Item {
                         }
 
                         Base.AppButton {
+                            raised: true
                             text: root.editingMembers ? qsTr("完成") : qsTr("管理成员")
                             enabled: root.selectedGroupId.length > 0
                             highlighted: root.editingMembers

@@ -19,18 +19,20 @@ Item {
     property var currentTimeline: null
     property Item dialogParent: root
     property bool editable: true
+    property bool expanded: false
     property var locatorOptions: []
     property var fenceOptions: []
     property var timelineOptions: []
     property var timelineConditions: []
+    readonly property var summaryCondition: timelineConditions.length > 0 ? timelineConditions[0] : null
     readonly property QtObject pageTheme: ApplicationWindow.window
         && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
 
-    implicitHeight: timelineConditions.length > 0
+    implicitHeight: expanded && timelineConditions.length > 0
         ? Math.min(194, 50 + timelineConditions.length * 46)
-        : 64
+        : 48
 
     function rebuildLocatorOptions() {
         var options = []
@@ -104,6 +106,7 @@ Item {
     onConditionModelChanged: rebuildConditions()
     onTimelineModelChanged: rebuildTimelineOptions()
     onCurrentTimelineChanged: {
+        expanded = false
         rebuildTimelineOptions()
         rebuildConditions()
     }
@@ -152,11 +155,60 @@ Item {
                     textTone: UiStyle.TextTone.Secondary
                 }
 
-                Item {
+                Base.AppText {
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    Layout.preferredWidth: 0
+                    text: root.expanded ? "" : (root.summaryCondition
+                        ? qsTr("%1 · 经过 %2 → %3")
+                            .arg(root.optionLabel(root.locatorOptions, root.summaryCondition.locator))
+                            .arg(root.optionLabel(root.fenceOptions, root.summaryCondition.fence))
+                            .arg(root.optionLabel(root.timelineOptions, root.summaryCondition.timeline))
+                        : (root.locatorOptions.length === 0
+                            ? qsTr("暂无定位器")
+                            : (root.fenceOptions.length === 0
+                                ? qsTr("暂无栅栏")
+                                : (root.timelineOptions.length === 0
+                                    ? qsTr("暂无可触发的其他时间线")
+                                    : qsTr("暂无过点触发规则")))))
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
+                    elide: Text.ElideRight
+                }
+
+                Base.AppText {
+                    visible: !root.expanded && root.timelineConditions.length === 1 && root.width >= 900
+                    text: root.summaryCondition
+                        ? (root.summaryCondition.touched ? qsTr("已触发")
+                            : (root.summaryCondition.active ? qsTr("待触发") : qsTr("未激活")))
+                        : ""
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: root.summaryCondition && root.summaryCondition.touched
+                        ? UiStyle.TextTone.Success
+                        : (root.summaryCondition && root.summaryCondition.active
+                            ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary)
+                }
+
+                Base.AppToggleControl {
+                    visible: !root.expanded && root.timelineConditions.length === 1 && root.width >= 900
+                    checked: root.summaryCondition ? root.summaryCondition.enabled : false
+                    enabled: root.editable
+                    onToggled: root.summaryCondition.enabled = checked
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("启用规则；触发状态在左侧单独显示")
                 }
 
                 Base.AppButton {
+                    objectName: "triggerExpandButton"
+                    visible: root.timelineConditions.length > 0
+                    text: root.expanded ? qsTr("收起") : qsTr("展开")
+                    size: UiStyle.ButtonSize.Small
+                    variant: UiStyle.ButtonVariant.Ghost
+                    onClicked: root.expanded = !root.expanded
+                }
+
+                Base.AppButton {
+                    raised: true
                     text: qsTr("添加规则")
                     iconSymbol: "+"
                     size: UiStyle.ButtonSize.Small
@@ -176,7 +228,7 @@ Item {
 
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                visible: root.timelineConditions.length > 0
+                visible: root.expanded && root.timelineConditions.length > 0
                 orientation: ListView.Vertical
                 spacing: 4
                 clip: true
@@ -187,7 +239,7 @@ Item {
                     policy: ScrollBar.AsNeeded
                 }
 
-                delegate: Base.AppCard {
+                delegate: Base.AppSurface {
                     id: conditionCard
                     objectName: "triggerRule"
 
@@ -216,14 +268,12 @@ Item {
                     height: 42
                     padding: 4
                     surfaceTone: UiStyle.SurfaceTone.Ghost
-                    compact: true
-                    animateScale: false
+                    sizeToContent: false
+                    strokeWidth: 0
                     enabled: root.editable
-                    onClicked: conditionDialog.openForEdit(conditionData)
 
                     RowLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
+                        anchors.fill: parent
                         spacing: 10
 
                         Base.AppText {
@@ -352,6 +402,7 @@ Item {
 
 
                         Base.AppToggleControl {
+                            objectName: "triggerRuleToggle"
                             checked: conditionCard.conditionData.enabled
                             enabled: root.editable
                             onToggled: conditionCard.conditionData.enabled = checked
@@ -372,6 +423,7 @@ Item {
 
                             Menu {
                                 id: conditionMenu
+                                objectName: "triggerRuleMenu"
 
                                 MenuItem {
                                     text: qsTr("编辑")
@@ -390,27 +442,12 @@ Item {
                 }
             }
 
-            Base.AppText {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                visible: root.timelineConditions.length === 0
-                text: root.locatorOptions.length === 0
-                    ? qsTr("暂无定位器")
-                    : (root.fenceOptions.length === 0
-                        ? qsTr("暂无栅栏")
-                        : (root.timelineOptions.length === 0
-                            ? qsTr("暂无可触发的其他时间线")
-                            : qsTr("暂无过点触发规则")))
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-            }
         }
     }
 
     Base.AppDialog {
         id: conditionDialog
+        objectName: "triggerEditDialog"
 
         parent: root.dialogParent
 

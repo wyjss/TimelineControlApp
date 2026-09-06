@@ -850,6 +850,7 @@ Item {
             }
 
             Base.AppButton {
+                raised: true
                 text: qsTr("新建")
                 iconName: "scene"
                 onClicked: root.createPlan()
@@ -894,6 +895,7 @@ Item {
                         }
 
                         Base.AppButton {
+                            raised: true
                             text: qsTr("添加")
                             iconName: "scene"
                             onClicked: root.addCapture()
@@ -1056,12 +1058,14 @@ Item {
                             spacing: 8
 
                             Base.AppButton {
+                                raised: true
                                 text: qsTr("打开视频")
                                 iconName: "resources"
                                 onClicked: videoFileDialog.open()
                             }
 
                             Base.AppButton {
+                                raised: true
                                 text: root.videoPlaying ? qsTr("暂停") : qsTr("播放")
                                 iconSymbol: root.videoPlaying ? "||" : ">"
                                 enabled: root.hasVideoSource
@@ -1069,6 +1073,7 @@ Item {
                             }
 
                             Base.AppButton {
+                                raised: true
                                 text: qsTr("停止")
                                 iconSymbol: "[]"
                                 enabled: root.hasVideoSource

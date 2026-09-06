@@ -984,6 +984,7 @@ Item {
                                 }
 
                                 Base.AppButton {
+                                    raised: true
                                     text: qsTr("编辑")
                                     enabled: root.selectedDeviceInCurrentView
                                     onClicked: root.requestEditSelectedDevice()
@@ -1049,6 +1050,7 @@ Item {
                                 }
 
                                 Base.AppButton {
+                                    raised: true
                                     text: qsTr("添加")
                                     iconName: "workflow"
                                     enabled: root.selectedDeviceInCurrentView

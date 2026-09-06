@@ -395,10 +395,6 @@ Item {
         Connections {
             target: timelineEditorLoader.item
 
-            function onDeviceTrackSelected() {
-                root.commandPanelMode = "device"
-            }
-
             function onTimelineCommandSelected() {
                 root.commandPanelMode = "timeline"
             }
@@ -422,33 +418,17 @@ Item {
                 anchors.margins: 12
                 spacing: 10
 
-                RowLayout {
+                Base.AppSegmentedControl {
+                    objectName: "commandPanelModeSelector"
                     Layout.fillWidth: true
                     visible: root.controlTrackVisible
-                    spacing: 0
-
-                    Repeater {
-                        model: [qsTr("设备指令"), qsTr("时间轴指令  %1").arg(root.timelineCommands.length)]
-
-                        delegate: Base.AppButton {
-                            objectName: "commandPanelTab_" + index
-                            Layout.fillWidth: true
-                            Layout.preferredWidth: 1
-                            size: UiStyle.ButtonSize.Medium
-                            variant: UiStyle.ButtonVariant.Ghost
-                            text: modelData
-                            checked: root.commandPanelMode === (index === 0 ? "device" : "timeline")
-                            onClicked: root.commandPanelMode = index === 0 ? "device" : "timeline"
-
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: 2
-                                color: root.pageTheme.colors.highlightFill
-                                visible: parent.checked
-                            }
-                        }
+                    options: [
+                        { "label": qsTr("设备指令"), "value": "device" },
+                        { "label": qsTr("时间轴指令"), "value": "timeline" }
+                    ]
+                    value: root.commandPanelMode
+                    onValueSelected: function(nextValue) {
+                        root.commandPanelMode = String(nextValue)
                     }
                 }
 
@@ -497,7 +477,6 @@ Item {
                         Layout.preferredHeight: 36
                         sizeToContent: false
                         surfaceTone: UiStyle.SurfaceTone.Section
-                        fillOverride: root.pageTheme.colors.highlightSoft
                         strokeWidth: 0
 
                         RowLayout {
@@ -506,7 +485,7 @@ Item {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: qsTr("添加时间")
+                                text: qsTr("插入位置")
                                 styleRole: UiStyle.TypographyRole.BodyS
                             }
 
@@ -563,10 +542,11 @@ Item {
 
                                 Base.AppButton {
                                     objectName: "addDeviceCommand_" + index
+                                    raised: true
                                     size: UiStyle.ButtonSize.Small
                                     minWidth: 32
                                     text: "+"
-                                    variant: UiStyle.ButtonVariant.Primary
+                                    variant: UiStyle.ButtonVariant.Secondary
                                     enabled: !!root.editor && root.editor.timelineStopped
                                         && !!root.editor.timelineCommandModel && !!root.editor.selectedTimelineDevice
                                     onClicked: {
@@ -609,8 +589,7 @@ Item {
                         text: root.editor && root.editor.executionStatusText.length > 0
                             ? root.editor.executionStatusText : qsTr("点击 + 添加指令，需要参数时先配置")
                         styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: root.editor && root.editor.executionStatusText.length > 0
-                            ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
+                        textTone: UiStyle.TextTone.Secondary
                         wrapMode: Text.Wrap
                     }
                 }
@@ -635,6 +614,7 @@ Item {
                     }
 
                     Base.AppButton {
+                        raised: true
                         visible: !root.controlTrackVisible
                         text: qsTr("编辑时间轴")
                         enabled: !!root.currentTimeline
@@ -739,6 +719,7 @@ Item {
 
                     Timeline.TimelineCommandVerticalList {
                         id: verticalCommandList
+                        objectName: "timelineCommandPanelList"
 
                         anchors.fill: parent
                         theme: root.pageTheme

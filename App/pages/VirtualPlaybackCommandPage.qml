@@ -329,6 +329,7 @@ Item {
                         }
 
                         Base.AppButton {
+                            raised: true
                             text: qsTr("新增")
                             iconName: "workflow"
                             enabled: root.selectedPcId.length > 0
@@ -620,6 +621,7 @@ Item {
                                 }
 
                                 Base.AppButton {
+                                    raised: true
                                     text: qsTr("添加")
                                     iconName: "scene"
                                     enabled: root.selectedCommand !== null

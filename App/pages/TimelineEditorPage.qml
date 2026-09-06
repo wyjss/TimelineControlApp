@@ -39,7 +39,7 @@ Item {
     readonly property int overviewDurationMs: timelineCommandModel
         ? Math.max(0, Number(timelineCommandModel.realDurationMs || 0))
         : 0
-    readonly property int timelineTrackLabelWidth: 184
+    readonly property int timelineTrackLabelWidth: 200
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
@@ -165,7 +165,7 @@ Item {
                                               String(targetDevice.id || ""),
                                               targetCommand,
                                               executionValues || {})
-        executionStatusText = qsTr("已在 %2 ms 添加 %1").arg(commandName(targetCommand)).arg(startTimeMs)
+        executionStatusText = qsTr("已在 %2 添加 %1").arg(commandName(targetCommand)).arg(formatTimelineMs(startTimeMs))
     }
 
     function selectTimelineCommand(command) {
@@ -295,7 +295,7 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: root.pageTheme.density.panePaddingCompact
+        anchors.margins: root.controlTrackOnly ? 0 : root.pageTheme.density.panePaddingCompact
         anchors.topMargin: 0
         spacing: root.pageTheme.density.controlGap
 
@@ -316,16 +316,19 @@ Item {
                 ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 14
-                    spacing: 8
+                    spacing: 6
 
                     RowLayout {
                         Layout.fillWidth: true
+                        spacing: root.pageTheme.density.panePadding
 
                         Base.AppButton {
+                            objectName: "backToTimelineListButton"
+                            raised: true
                             visible: root.controlTrackOnly
-                            size: UiStyle.ButtonSize.Small
-                            variant: UiStyle.ButtonVariant.Ghost
-                            text: qsTr("返回概览")
+                            size: UiStyle.ButtonSize.Medium
+                            variant: UiStyle.ButtonVariant.Secondary
+                            text: qsTr("返回时间轴列表")
                             iconSymbol: "←"
                             ToolTip.visible: hovered
                             ToolTip.text: qsTr("关闭控制轨，返回时间轴列表")
@@ -360,7 +363,7 @@ Item {
                         id: timelineRuler
 
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 44
+                        Layout.preferredHeight: 52
                         durationMs: root.timelineDurationMs
                         currentTimeMs: root.timelineCurrentTimeMs
                         scrollX: root.timelineScrollX
@@ -407,7 +410,8 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 44
                         sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.SectionOverlay
+                        surfaceTone: UiStyle.SurfaceTone.Ghost
+                        strokeWidth: 0
 
                         RowLayout {
                             anchors.fill: parent
@@ -509,10 +513,10 @@ Item {
                                     anchors.top: parent.top
                                     anchors.bottom: parent.bottom
                                     visible: root.overviewDurationMs > 0
-                                    color: root.pageTheme.colors.highlightSoft
+                                    color: "transparent"
                                     border.width: 1
                                     border.color: root.pageTheme.colors.highlightText
-                                    opacity: 0.7
+                                    opacity: 0.45
                                 }
 
                                 Rectangle {
