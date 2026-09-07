@@ -131,8 +131,8 @@ Item {
             x: Math.round(modelData.x)
             width: 1
             height: root.height
-            color: root.colorValue("border", "#334155")
-            opacity: 0.28
+            color: root.colorValue("subtleText", "#94a3b8")
+            opacity: 0.08
         }
     }
 
@@ -203,16 +203,26 @@ Item {
             Rectangle {
                 width: parent.width
                 height: trackRow.mainRowHeight
-                color: trackMouse.containsMouse
-                    ? root.colorValue("backgroundWindowVariant", "#131d28")
-                    : "transparent"
+                color: root.colorValue("subtleText", "#94a3b8")
+                opacity: index % 2 === 1 ? 0.045 : 0
             }
 
             Rectangle {
                 width: parent.width
                 height: trackRow.mainRowHeight
-                color: root.colorValue("highlightSoft", "#162d4a")
-                opacity: trackRow.selected ? 0.28 : 0
+                color: root.colorValue("inverseText", "#f8fafc")
+                opacity: trackMouse.containsMouse ? 0.04 : 0
+
+                Behavior on opacity {
+                    NumberAnimation { duration: 120 }
+                }
+            }
+
+            Rectangle {
+                width: parent.width
+                height: trackRow.mainRowHeight
+                color: root.colorValue("highlightFill", "#2f6feb")
+                opacity: trackRow.selected ? 0.14 : 0
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120 }
@@ -222,8 +232,8 @@ Item {
             Rectangle {
                 width: root.labelWidth
                 height: trackRow.mainRowHeight
-                color: root.colorValue("highlightSoft", "#162d4a")
-                opacity: trackRow.selected ? 0.56 : 0
+                color: root.colorValue("highlightFill", "#2f6feb")
+                opacity: trackRow.selected ? 0.22 : 0
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120 }
@@ -235,8 +245,8 @@ Item {
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 height: 1
-                color: root.colorValue("border", "#334155")
-                opacity: 0.16
+                color: root.colorValue("subtleText", "#94a3b8")
+                opacity: 0.08
             }
 
             Rectangle {
@@ -244,12 +254,8 @@ Item {
                 y: 0
                 width: 1
                 height: parent.height
-                color: root.colorValue("border", "#334155")
-                opacity: 0.38
-
-                Behavior on opacity {
-                    NumberAnimation { duration: 120 }
-                }
+                color: root.colorValue("subtleText", "#94a3b8")
+                opacity: 0.12
             }
 
             Rectangle {
@@ -259,10 +265,8 @@ Item {
                 width: 2
                 height: trackRow.mainRowHeight
                 radius: 2
-                color: trackRow.selected
-                    ? root.colorValue("highlightText", "#78afff")
-                    : root.colorValue("border", "#334155")
-                opacity: trackRow.selected ? 1 : (trackMouse.containsMouse ? 0.45 : 0.16)
+                color: root.colorValue("highlightText", "#78afff")
+                opacity: trackRow.selected ? 1 : 0
             }
 
             MouseArea {
@@ -377,16 +381,16 @@ Item {
 
                     Rectangle {
                         anchors.fill: parent
-                        color: root.colorValue("backgroundSection", "#172033")
-                        opacity: 0.28
+                        color: root.colorValue("backgroundWindow", "#12161a")
+                        opacity: 0.20
                     }
 
                     Rectangle {
                         x: root.labelWidth
                         width: 1
                         height: parent.height
-                        color: root.colorValue("border", "#334155")
-                        opacity: 0.38
+                        color: root.colorValue("subtleText", "#94a3b8")
+                        opacity: 0.12
                     }
 
                     Rectangle {
@@ -394,8 +398,8 @@ Item {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         height: 1
-                        color: root.colorValue("border", "#334155")
-                        opacity: 0.12
+                        color: root.colorValue("subtleText", "#94a3b8")
+                        opacity: 0.06
                     }
 
                     Rectangle {
@@ -476,7 +480,7 @@ Item {
         width: 1
         height: parent.height
         color: root.colorValue("dangerFill", "#f85149")
-        opacity: 0.58
+        opacity: 0.90
         visible: ruler && x >= root.labelWidth && x <= parent.width
         z: 10
     }

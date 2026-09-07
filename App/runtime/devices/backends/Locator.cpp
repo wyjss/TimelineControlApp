@@ -164,7 +164,7 @@ void LocationRecver::removeLocator(QObject* handle)
 	}
 }
 
-void LocationRecver::readData()
+void LocationRecver::readData() 
 {
 	auto sock = dynamic_cast<QTcpSocket*>(sender());
 	auto size = sock->bytesAvailable();
@@ -210,14 +210,13 @@ void LocationRecver::checkStatus()
 
 	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
 		auto sock = itr->sock;
-#if 1
+#if 0
 		if (
 			sock->state() != QTcpSocket::ConnectedState &&
 			sock->state() != QTcpSocket::ConnectingState
 			) {
 			sock->connectToHost(QHostAddress(itr->ip), 1121);
-			bool b = sock->waitForConnected();
-			int a = 0;
+			LOG_DEBUG("reconnect ti host " << itr->ip);
 		}
 
 		// 5s无数据判定离线
