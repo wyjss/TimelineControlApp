@@ -328,27 +328,16 @@ Item {
 
                     footer: Item {
                         width: timelineGrid.width
-                        height: 206
+                        height: 56
 
-                        Base.AppCard {
+                        Base.AppButton {
                             anchors.fill: parent
                             anchors.margins: 6
                             text: qsTr("新建时间轴")
-                            checkable: false
-                            animateScale: false
+                            iconSymbol: "+"
+                            variant: UiStyle.ButtonVariant.Secondary
                             enabled: root.timelineStopped
                             onClicked: createTimelinePopupLoader.openForCreate()
-
-                            Base.AppText {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                horizontalAlignment: Text.AlignHCenter
-                                verticalAlignment: Text.AlignVCenter
-                                wrapMode: Text.Wrap
-                                text: "+"
-                                styleRole: UiStyle.TypographyRole.TitleL
-                                textTone: UiStyle.TextTone.Accent
-                            }
                         }
                     }
 
@@ -494,6 +483,8 @@ Item {
                                 text: root.editor
                                     ? root.editor.formatTimelineMs(root.editor.timelineCurrentTimeMs) : "00:00.000"
                                 styleRole: UiStyle.TypographyRole.BodyS
+                                overrideWeight: root.pageTheme.typography.weightStrong
+                                textTone: UiStyle.TextTone.Accent
                             }
                         }
                     }
@@ -504,6 +495,7 @@ Item {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         model: root.editor ? root.editor.deviceCommands : []
+                        spacing: 4
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
                         onModelChanged: contentY = 0
@@ -512,12 +504,21 @@ Item {
 
                         delegate: Item {
                             width: deviceCommandList.width
-                            height: 60
+                            height: 56
+
+                            HoverHandler { id: commandRowHover }
+
+                            Rectangle {
+                                anchors.fill: parent
+                                radius: root.pageTheme.shape.controlRadius
+                                color: root.pageTheme.colors.backgroundSection
+                                opacity: commandRowHover.hovered ? 0.9 : 0.55
+                            }
 
                             RowLayout {
                                 anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 12
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 8
                                 spacing: 10
 
                                 ColumnLayout {
@@ -528,6 +529,7 @@ Item {
                                         Layout.fillWidth: true
                                         text: root.editor.commandName(modelData)
                                         styleRole: UiStyle.TypographyRole.BodyM
+                                        overrideWeight: root.pageTheme.typography.weightStrong
                                         elide: Text.ElideRight
                                     }
 
@@ -564,14 +566,6 @@ Item {
                                 }
                             }
 
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.bottom: parent.bottom
-                                height: 1
-                                color: root.pageTheme.colors.border
-                                opacity: 0.5
-                            }
                         }
 
                         Base.AppText {

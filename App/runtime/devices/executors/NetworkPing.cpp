@@ -1,4 +1,7 @@
 #include "devices/executors/NetworkPing.h"
+
+#include <LogMacros.h>
+
 #include <QByteArray>
 #include <QHostAddress>
 #include <QHostInfo>
@@ -29,6 +32,9 @@ void NetworkPing::checkOnline(const QStringList &deviceIds,
                               const QString &ip,
                               quint16 tcpPort)
 {
+    if (m_quit) {
+        return;
+    }
     bool online = false;
     if (tcpPort) {
         QTcpSocket socket;
@@ -40,8 +46,14 @@ void NetworkPing::checkOnline(const QStringList &deviceIds,
         online = ping(ip, 1000);
     }
 
-    for (const QString &deviceId : deviceIds)
-        emit onlineChecked(deviceId, online);
+    for (const QString& deviceId : deviceIds) {
+		emit onlineChecked(deviceId, online);
+    }
+}
+
+void NetworkPing::quit()
+{
+    m_quit = true;
 }
 
 QString NetworkPing::resolveIPv4(const QString& host)

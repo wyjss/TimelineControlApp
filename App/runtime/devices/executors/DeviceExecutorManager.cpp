@@ -38,9 +38,10 @@ DeviceExecutorManager::DeviceExecutorManager(QObject *parent)
 
 DeviceExecutorManager::~DeviceExecutorManager()
 {
+    m_networkPing->quit();
     m_onlineCheckThread.quit();
     // 不wait，卡太久了
-    //m_onlineCheckThread.wait();
+    m_onlineCheckThread.wait();
     m_thread.quit();
     m_thread.wait();
 }

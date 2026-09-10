@@ -123,22 +123,16 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .master-time strong { font: 700 clamp(20px, 3vw, 31px)/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: -.04em; }
 
 .progress-track {
-    overflow: hidden;
-    height: 7px;
-    margin-top: 32px;
-    border-radius: 999px;
-    background: #242e3a;
+    display: block;
+    width: 100%;
+    height: 28px;
+    margin: 22px 0 0;
+    accent-color: var(--green);
+    cursor: pointer;
 }
 
-.progress-track span {
-    display: block;
-    width: 0;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, var(--green-strong), var(--green));
-    box-shadow: 0 0 20px rgba(66, 230, 164, .5);
-    transition: width .35s linear;
-}
+.progress-track:disabled { cursor: default; }
+.progress-track:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; }
 
 .progress-meta { justify-content: space-between; margin-top: 10px; color: var(--muted); font: 600 11px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .transport { justify-content: center; gap: 10px; margin-top: 28px; }

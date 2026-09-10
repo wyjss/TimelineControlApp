@@ -44,6 +44,9 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
     QNetworkRequest request(url);
     if (!m_manager)
         m_manager = new QNetworkAccessManager(this);
+    //! ！！！禁止删除
+    m_manager->setNetworkAccessible(QNetworkAccessManager::Accessible);
+
     const QString method = params.value(DeviceKey::HttpMethod).toString();
     if (method.isEmpty()) {
         emit executionFinished(executionId, command, false, tr("HTTP 方法为空"));

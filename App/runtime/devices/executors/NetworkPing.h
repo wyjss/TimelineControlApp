@@ -15,10 +15,13 @@ public slots:
     void checkOnline(const QStringList &deviceIds,
                      const QString &ip,
                      quint16 tcpPort = 0);
-
+public:
+    void quit();
 signals:
     void onlineChecked(const QString &deviceId, bool online);
 
+private:
+    bool m_quit = false;
 private:
     /**
      * @brief Ping 一个 IPv4 地址或主机名

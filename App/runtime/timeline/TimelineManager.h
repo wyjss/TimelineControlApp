@@ -58,7 +58,7 @@ public:
     Q_INVOKABLE bool waitForTrigger(const QString &id);
     Q_INVOKABLE bool triggerTimeline(const QString &id);
     Q_INVOKABLE bool setPlayQueue(const QStringList &timelineIds);
-    Q_INVOKABLE bool startPlayback(const QStringList &timelineIds);
+    Q_INVOKABLE bool startPlayback(const QStringList &timelineIds, qint64 startTimeMs = 0);
     Q_INVOKABLE void pausePlayback();
     Q_INVOKABLE void resumePlayback();
     Q_INVOKABLE void stopPlayback();
@@ -78,7 +78,7 @@ signals:
     void commandTriggered(Timeline *timeline, TimelineCommand *command);
     void playbackDevicesChanged(QStringList);
 private:
-    bool startTimeline(const QString &id);
+    bool startTimeline(const QString &id, qint64 startTimeMs = 0);
     void updateTimeline(Timeline *timeline, qint64 clockTimeMs);
     void handleTimelineCompleted(Timeline *timeline);
     bool hasRunningTimeline() const;

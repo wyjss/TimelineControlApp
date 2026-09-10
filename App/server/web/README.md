@@ -10,6 +10,7 @@
 - 选择播控设备并与 C++ `TimelineManager::playbackDevices` 双向同步
 - 编排并应用播放队列
 - 开始、暂停、继续、停止播放，并手动触发等待中的节目
+- 停止时拖动进度条选择队列第一条节目的起播时间，之前的指令跳过，后续节目从 0 开始
 - 查看设备类型与设备上报状态
 - 可选 Bearer 访问令牌；默认仅建议监听本机地址
 
@@ -33,6 +34,6 @@ webControlServer.start(QStringLiteral("0.0.0.0"), 8080);
 - `GET /api/v1/status`：完整播控快照
 - `POST /api/v1/queue`：请求体为 `{ "timelineIds": ["..."] }`
 - `POST /api/v1/playback-devices`：请求体为 `{ "deviceIds": ["..."] }`
-- `POST /api/v1/control`：`action` 为 `start`、`pause`、`resume`、`stop` 或 `trigger`；手动触发时同时传入 `timelineId`
+- `POST /api/v1/control`：`action` 为 `start`、`pause`、`resume`、`stop` 或 `trigger`；手动触发时同时传入 `timelineId`；`start` 可传入 `startTimeMs`（毫秒，默认 0）和 `timelineIds`
 
 启用令牌后，请求需带 `Authorization: Bearer <token>` 或 `X-Control-Token: <token>`。

@@ -59,10 +59,11 @@ public:
 
 		auto* playField = new DeviceParamSpec(QStringLiteral("play"),
 											  QStringLiteral("立即播放"),
-											  true,
+											  false,
 											  DeviceParamSpec::BoolType,
-											  DeviceParamSpec::AutoEditor,
+											  DeviceParamSpec::ChoiceEditor,
 											  this);
+		playField->setOptions({"false", "true"});
 		playField->setRequired(true);
 		addExecutionInputField(playField);
 
@@ -84,7 +85,7 @@ public:
 		query.addQueryItem("url", url);
 		query.addQueryItem("play", executionInputValues.value("play", true).toString());
 		query.addQueryItem("rect", executionInputValues[DeviceKey::Rect].toString());
-		query.addQueryItem("canvasSize", QString("%1x%2").arg(w).arg(h));
+		//query.addQueryItem("canvasSize", QString("%1x%2").arg(w).arg(h));
 
 		QString api = QString("/video/open?") + query.toString();
 		params[DeviceKey::Name] = this->name() + "-" + url;
@@ -191,12 +192,14 @@ PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
 					DeviceType::PC,
 					QStringList{DeviceProtocol::Pc, DeviceProtocol::Http},
 					"电脑设备",
-					{DeviceParamSpec::createForKey(DeviceKey::VirtualScreenWidth),
-					 DeviceParamSpec::createForKey(DeviceKey::VirtualScreenHeight),
-					 DeviceParamSpec::createForKey(DeviceKey::ScreenWidth),
-					 DeviceParamSpec::createForKey(DeviceKey::ScreenHeight),
-					 DeviceParamSpec::createForKey(DeviceKey::ScreenColumns),
-					 DeviceParamSpec::createForKey(DeviceKey::ScreenRows)},
+					{
+						//DeviceParamSpec::createForKey(DeviceKey::VirtualScreenWidth),
+						//DeviceParamSpec::createForKey(DeviceKey::VirtualScreenHeight),
+						DeviceParamSpec::createForKey(DeviceKey::ScreenWidth),
+						DeviceParamSpec::createForKey(DeviceKey::ScreenHeight),
+						DeviceParamSpec::createForKey(DeviceKey::ScreenColumns),
+						DeviceParamSpec::createForKey(DeviceKey::ScreenRows)
+					},
 					{},
 					parent
 	)

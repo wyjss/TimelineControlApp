@@ -20,6 +20,7 @@ ApplicationWindow {
     property var shellController: appRuntime && appRuntime.shell
         ? appRuntime.shell
         : null
+    property int timelineStartTimeMs: 0
     property bool timelineEditing: false
     property bool locatorMonitorOpen: false
     readonly property bool locatorManagementActive: shell.activeNavigationKey === "locator"
@@ -84,8 +85,6 @@ ApplicationWindow {
         for (var index = 0; index < items.length; ++index) {
             var item = items[index]
             if (String(item.key) === String(key)) {
-                if (String(key) === "locator")
-                    locatorMonitorOpen = true
                 shell.hideLeftPane()
                 shell.activeNavigationKey = String(key)
                 shell.canvasDelegateSource = String(item.source || "")
@@ -311,7 +310,7 @@ ApplicationWindow {
                             if (window.shellController)
                                 window.shellController.handleUiAction(
                                     window.timelineRunning ? "timeline.pause" : "timeline.start",
-                                    {}
+                                    { startTimeMs: window.timelineStartTimeMs }
                                 )
                         }
                     }

@@ -16,7 +16,7 @@ Item {
     property string selectedCommandId: ""
     property real timelineOffsetX: 0
     property int instantCommandMinWidth: 56
-    property int instantCommandMaxWidth: 160
+    property int instantCommandMaxWidth: 180
     readonly property var visibleCommands: filterCommands()
     readonly property int count: visibleCommands.length
     readonly property int instantLabelHeight: implicitHeight > 48
@@ -139,7 +139,7 @@ Item {
         var text = String(command && command.commandName ? command.commandName : qsTr("指令"))
         return Math.min(instantCommandMaxWidth,
                         Math.max(instantCommandMinWidth,
-                                 Math.ceil(commandFontMetrics.advanceWidth(text)) + 28))
+                                 Math.ceil(commandFontMetrics.advanceWidth(text)) + 32))
     }
 
     function commandInfo(command) {
@@ -379,7 +379,7 @@ Item {
                 color: Qt.rgba(commandBlock.commandColor.r,
                                commandBlock.commandColor.g,
                                commandBlock.commandColor.b,
-                               commandMouse.containsMouse || commandBlock.selected ? 0.42 : 0.24)
+                               commandBlock.selected ? 0.42 : (commandMouse.containsMouse ? 0.34 : 0.24))
                 border.width: commandMouse.containsMouse || commandBlock.selected ? 1 : 0
                 border.color: commandBlock.selected
                     ? root.colorValue("inverseText", "#f8fafc")
@@ -388,7 +388,7 @@ Item {
 
             Rectangle {
                 visible: commandBlock.instantCommand
-                width: commandMouse.containsMouse || commandBlock.selected ? 10 : 8
+                width: 8
                 height: width
                 x: (commandBlock.instantLabelOnLeft ? parent.width - 6 : 6) - width / 2
                 y: Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
@@ -403,8 +403,8 @@ Item {
             Base.AppText {
                 visible: commandBlock.instantCommand
                 anchors.fill: instantCommandPill
-                anchors.leftMargin: 7
-                anchors.rightMargin: 7
+                anchors.leftMargin: 9
+                anchors.rightMargin: 9
                 text: commandBlock.displayText
                 styleRole: UiStyle.TypographyRole.BodyM
                 textTone: commandBlock.filteredOut
@@ -419,17 +419,20 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: commandBlock.stackOffsetY
                 width: parent.width
-                height: commandMouse.containsMouse || commandBlock.selected ? 26 : 24
-                radius: height / 2
-                color: commandBlock.commandColor
-                opacity: commandMouse.containsMouse || commandBlock.selected ? 0.96 : 0.86
+                height: 24
+                radius: 4
+                color: Qt.rgba(commandBlock.commandColor.r,
+                               commandBlock.commandColor.g,
+                               commandBlock.commandColor.b,
+                               commandBlock.selected ? 0.52 : (commandMouse.containsMouse ? 0.42 : 0.30))
                 border.width: commandMouse.containsMouse || commandBlock.selected
                     || Number(commandBlock.commandData && commandBlock.commandData.state !== undefined
                         ? commandBlock.commandData.state
                         : 0) !== 0
                     ? 1
                     : 0
-                border.color: commandBlock.stateColor
+                border.color: commandBlock.selected
+                    ? root.colorValue("inverseText", "#f8fafc") : commandBlock.stateColor
             }
 
             Rectangle {
@@ -438,7 +441,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 anchors.verticalCenterOffset: commandBlock.stackOffsetY
                 width: 2
-                height: 28
+                height: 24
                 radius: 1
                 color: root.colorValue("inverseText", "#f8fafc")
                 opacity: 0.62
@@ -453,7 +456,7 @@ Item {
                 anchors.leftMargin: 10
                 anchors.rightMargin: 8
                 text: commandBlock.commandText
-                styleRole: UiStyle.TypographyRole.BodyS
+                styleRole: UiStyle.TypographyRole.BodyM
                 textTone: commandBlock.filteredOut
                     ? UiStyle.TextTone.Neutral
                     : UiStyle.TextTone.Inverse

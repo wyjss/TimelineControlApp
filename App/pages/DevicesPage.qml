@@ -448,7 +448,6 @@ Item {
                 Layout.fillHeight: true
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
-                borderOverride: root.pageTheme.colors.borderOverlay
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -587,7 +586,6 @@ Item {
                 Layout.minimumWidth: 420
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
-                borderOverride: root.pageTheme.colors.borderOverlay
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -634,9 +632,12 @@ Item {
                         }
 
                         Base.AppButton {
-                            text: root.compactDevices ? qsTr("卡片") : qsTr("紧凑")
-                            variant: UiStyle.ButtonVariant.Ghost
+                            text: qsTr("紧凑")
+                            variant: root.compactDevices
+                                ? UiStyle.ButtonVariant.Tonal : UiStyle.ButtonVariant.Ghost
                             onClicked: root.compactDevices = !root.compactDevices
+                            ToolTip.visible: hovered
+                            ToolTip.text: root.compactDevices ? qsTr("切换为卡片视图") : qsTr("切换为紧凑视图")
                         }
                     }
 
@@ -701,6 +702,10 @@ Item {
                                         selectionTransition: deviceCardSelectionTransition
                                         animateScale: false
                                         onClicked: root.selectDevice(modelData.id)
+                                        ToolTip.visible: hovered
+                                        ToolTip.delay: 600
+                                        ToolTip.text: String(modelData.name || "") + "\n"
+                                            + root.deviceAddress(modelData) + " · " + root.deviceProtocols(modelData)
 
                                         Behavior on opacity {
                                             NumberAnimation { duration: 120 }
@@ -745,24 +750,7 @@ Item {
                                                             Layout.fillWidth: true
                                                             text: modelData.name
                                                             styleRole: UiStyle.TypographyRole.BodyM
-                                                            elide: Text.ElideRight
-                                                        }
-
-                                                        Rectangle {
-                                                            Layout.preferredWidth: 8
-                                                            Layout.preferredHeight: 8
-                                                            radius: 4
-                                                            color: deviceRow.online
-                                                                ? root.pageTheme.colors.successFill
-                                                                : root.pageTheme.colors.dangerFill
-                                                        }
-
-                                                        Base.AppText {
-                                                            text: deviceRow.online ? qsTr("在线") : qsTr("离线")
-                                                            styleRole: UiStyle.TypographyRole.BodyS
-                                                            textTone: deviceRow.online
-                                                                ? UiStyle.TextTone.Success
-                                                                : UiStyle.TextTone.Danger
+                                                            overrideWeight: root.pageTheme.typography.weightStrong
                                                             elide: Text.ElideRight
                                                         }
                                                     }
@@ -830,9 +818,7 @@ Item {
                                             Rectangle {
                                                 Layout.fillWidth: true
                                                 Layout.preferredHeight: 32
-                                                color: deviceRow.selected
-                                                    ? Qt.darker(root.pageTheme.colors.highlightSoft, 1.14)
-                                                    : root.pageTheme.colors.backgroundWindowVariant
+                                                color: "transparent"
 
                                                 Rectangle {
                                                     anchors.left: parent.left
@@ -856,12 +842,20 @@ Item {
                                                         elide: Text.ElideRight
                                                     }
 
+                                                    Rectangle {
+                                                        Layout.preferredWidth: 6
+                                                        Layout.preferredHeight: 6
+                                                        radius: 3
+                                                        color: deviceRow.online
+                                                            ? root.pageTheme.colors.successFill
+                                                            : root.pageTheme.colors.dangerFill
+                                                    }
+
                                                     Base.AppText {
-                                                        Layout.maximumWidth: parent.width / 2
-                                                        text: root.deviceProtocols(modelData).replace(/, /g, " · ")
+                                                        text: deviceRow.online ? qsTr("在线") : qsTr("离线")
                                                         styleRole: UiStyle.TypographyRole.BodyS
-                                                        textTone: UiStyle.TextTone.Secondary
-                                                        elide: Text.ElideRight
+                                                        textTone: deviceRow.online
+                                                            ? UiStyle.TextTone.Success : UiStyle.TextTone.Secondary
                                                     }
                                                 }
                                             }
@@ -902,7 +896,6 @@ Item {
                 Layout.fillHeight: true
                 sizeToContent: false
                 surfaceTone: UiStyle.SurfaceTone.Surface
-                borderOverride: root.pageTheme.colors.borderOverlay
 
                 Base.AppScrollPane {
                     anchors.fill: parent
@@ -914,8 +907,7 @@ Item {
                         Layout.fillWidth: true
                         sizeToContent: true
                         surfaceTone: UiStyle.SurfaceTone.Section
-                        strokeWidth: 1
-                        borderOverride: root.pageTheme.colors.borderOverlay
+                        strokeWidth: 0
                         padding: root.pageTheme.density.panePaddingCompact
 
                         ColumnLayout {
@@ -964,8 +956,7 @@ Item {
                         Layout.fillWidth: true
                         sizeToContent: true
                         surfaceTone: UiStyle.SurfaceTone.Section
-                        strokeWidth: 1
-                        borderOverride: root.pageTheme.colors.borderOverlay
+                        strokeWidth: 0
                         padding: root.pageTheme.density.panePaddingCompact
 
                         ColumnLayout {
@@ -985,6 +976,7 @@ Item {
 
                                 Base.AppButton {
                                     raised: true
+                                    size: UiStyle.ButtonSize.Small
                                     text: qsTr("编辑")
                                     enabled: root.selectedDeviceInCurrentView
                                     onClicked: root.requestEditSelectedDevice()
@@ -992,6 +984,7 @@ Item {
 
                                 Base.AppButton {
                                     variant: UiStyle.ButtonVariant.Danger
+                                    size: UiStyle.ButtonSize.Small
                                     text: qsTr("删除")
                                     enabled: root.selectedDeviceInCurrentView
                                     onClicked: root.requestRemoveSelectedDevice()
@@ -1011,8 +1004,7 @@ Item {
                         Layout.fillWidth: true
                         sizeToContent: true
                         surfaceTone: UiStyle.SurfaceTone.Section
-                        strokeWidth: 1
-                        borderOverride: root.pageTheme.colors.borderOverlay
+                        strokeWidth: 0
                         padding: root.pageTheme.density.panePaddingCompact
 
                         ColumnLayout {
@@ -1030,27 +1022,16 @@ Item {
                                     elide: Text.ElideRight
                                 }
 
-                                Base.AppSurface {
+                                Base.AppText {
                                     visible: root.selectedDeviceInCurrentView
-                                    Layout.preferredHeight: 28
-                                    sizeToContent: true
-                                    surfaceTone: UiStyle.SurfaceTone.Ghost
-                                    shapeRole: UiStyle.ShapeRole.Pill
-                                    strokeWidth: 1
-                                    borderOverride: root.pageTheme.colors.borderOverlay
-                                    padding: 10
-
-                                    Base.AppText {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: qsTr("%1 条指令").arg(root.selectedDeviceCommands.length)
-                                        styleRole: UiStyle.TypographyRole.BodyS
-                                        textTone: UiStyle.TextTone.Accent
-                                        elide: Text.ElideRight
-                                    }
+                                    text: String(root.selectedDeviceCommands.length)
+                                    styleRole: UiStyle.TypographyRole.BodyS
+                                    textTone: UiStyle.TextTone.Secondary
                                 }
 
                                 Base.AppButton {
                                     raised: true
+                                    size: UiStyle.ButtonSize.Small
                                     text: qsTr("添加")
                                     iconName: "workflow"
                                     enabled: root.selectedDeviceInCurrentView
@@ -1105,7 +1086,7 @@ Item {
                                                 id: commandRow
 
                                                 Layout.fillWidth: true
-                                                Layout.preferredHeight: 40
+                                                Layout.preferredHeight: 56
                                                 text: root.commandName(commandEntry.commandData)
                                                 padding: 0
                                                 surfaceTone: UiStyle.SurfaceTone.Ghost
@@ -1115,10 +1096,13 @@ Item {
                                                 selectionTransition: commandCardSelectionTransition
                                                 animateScale: false
                                                 onClicked: root.selectCommandIndex(index)
+                                                ToolTip.visible: hovered
+                                                ToolTip.delay: 600
+                                                ToolTip.text: text + "\n" + (commandEntry.executionParametersText || qsTr("无需参数"))
 
                                                 Item {
                                                     Layout.fillWidth: true
-                                                    Layout.preferredHeight: 40
+                                                    Layout.preferredHeight: 56
 
                                                     RowLayout {
                                                         anchors.fill: parent
@@ -1126,19 +1110,25 @@ Item {
                                                         anchors.rightMargin: 6
                                                         spacing: root.pageTheme.density.controlGap
 
-                                                        Base.AppText {
-                                                            Layout.preferredWidth: 88
-                                                            text: root.commandName(commandEntry.commandData)
-                                                            styleRole: UiStyle.TypographyRole.BodyM
-                                                            elide: Text.ElideRight
-                                                        }
-
-                                                        Base.AppText {
+                                                        ColumnLayout {
                                                             Layout.fillWidth: true
-                                                            text: commandEntry.executionParametersText
-                                                            styleRole: UiStyle.TypographyRole.BodyS
-                                                            textTone: UiStyle.TextTone.Info
-                                                            elide: Text.ElideRight
+                                                            spacing: 3
+
+                                                            Base.AppText {
+                                                                Layout.fillWidth: true
+                                                                text: root.commandName(commandEntry.commandData)
+                                                                styleRole: UiStyle.TypographyRole.BodyM
+                                                                overrideWeight: root.pageTheme.typography.weightStrong
+                                                                elide: Text.ElideRight
+                                                            }
+
+                                                            Base.AppText {
+                                                                Layout.fillWidth: true
+                                                                text: commandEntry.executionParametersText || qsTr("无需参数")
+                                                                styleRole: UiStyle.TypographyRole.BodyS
+                                                                textTone: UiStyle.TextTone.Secondary
+                                                                elide: Text.ElideRight
+                                                            }
                                                         }
 
                                                         Base.AppButton {

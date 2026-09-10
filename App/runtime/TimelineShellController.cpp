@@ -100,7 +100,7 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
             QStringList timelineIds = timelineManager->playQueue();
             if (timelineIds.isEmpty() && timelineManager->currentTimeline())
                 timelineIds.append(timelineManager->currentTimeline()->id());
-            timelineManager->startPlayback(timelineIds);
+            timelineManager->startPlayback(timelineIds, payload.value(QStringLiteral("startTimeMs")).toLongLong());
         }
     } else if (actionId == QStringLiteral("timeline.pause")) {
         timelineManager->pausePlayback();

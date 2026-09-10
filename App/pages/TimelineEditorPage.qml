@@ -53,6 +53,19 @@ Item {
         ? fallbackTimelineCurrentTimeMs
         : currentTimeline.currentTimeMs
     property int fallbackTimelineCurrentTimeMs: 0
+
+    Binding {
+        Component.onCompleted: target = root.ApplicationWindow.window
+            && ("timelineStartTimeMs" in root.ApplicationWindow.window)
+            ? root.ApplicationWindow.window : null
+        property: "timelineStartTimeMs"
+        value: root.timelineStopped ? root.fallbackTimelineCurrentTimeMs : 0
+        Component.onDestruction: {
+            if (target)
+                target.timelineStartTimeMs = 0
+        }
+    }
+
     property real timelineScrollX: 0
     property real timelineTimeScale: 1.0
     property string selectedTimelineDeviceId: ""
@@ -324,12 +337,12 @@ Item {
 
                         Base.AppButton {
                             objectName: "backToTimelineListButton"
-                            raised: true
                             visible: root.controlTrackOnly
-                            size: UiStyle.ButtonSize.Medium
-                            variant: UiStyle.ButtonVariant.Secondary
-                            text: qsTr("返回时间轴列表")
+                            size: UiStyle.ButtonSize.Small
+                            minWidth: 32
+                            variant: UiStyle.ButtonVariant.Ghost
                             iconSymbol: "←"
+                            Accessible.name: qsTr("返回时间轴列表")
                             ToolTip.visible: hovered
                             ToolTip.text: qsTr("关闭控制轨，返回时间轴列表")
                             onClicked: root.closeRequested()

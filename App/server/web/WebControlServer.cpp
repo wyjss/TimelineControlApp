@@ -472,7 +472,7 @@ int WebControlServer::control(const QJsonObject &request,
             if (ids.isEmpty())
                 ids = manager->playQueue();
             accepted = manager->playbackState() == TimelineManager::Stopped
-                && manager->startPlayback(ids);
+                && manager->startPlayback(ids, request.value(QStringLiteral("startTimeMs")).toVariant().toLongLong());
         } else if (action == QStringLiteral("pause")) {
             accepted = manager->playbackState() == TimelineManager::Running;
             if (accepted)

@@ -595,6 +595,10 @@ void TimelineCommandModel::readFromStream(QDataStream &stream)
         commands.append(command);
     }
 
+    qSort(commands.begin(), commands.end(), [](TimelineCommand* l, TimelineCommand* r)->bool {
+        return l->startTimeMs() < r->startTimeMs();
+    });
+
     QString selectedCommandId;
     if (stream.status() == QDataStream::Ok)
         stream >> selectedCommandId;

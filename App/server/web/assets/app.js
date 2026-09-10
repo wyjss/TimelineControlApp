@@ -1,6 +1,6 @@
 const elements = Object.fromEntries([
     "plan-name", "clock", "connection", "playback-label", "playback-dot",
-    "now-title", "now-summary", "master-time", "progress-fill", "elapsed-time",
+    "now-title", "now-summary", "master-time", "timeline-seek", "elapsed-time",
     "remaining-time", "stop-button", "primary-button", "primary-icon", "primary-label",
     "refresh-button", "selection-count", "apply-queue-button", "timeline-list",
     "empty-timelines", "queue-count", "queue-list", "empty-queue", "device-count",
@@ -12,6 +12,8 @@ const state = {
     data: null,
     selectedIds: new Set(),
     selectionDirty: false,
+    startTimelineId: null,
+    startTimeMs: 0,
     busy: false,
     refreshing: false,
     connected: false,
@@ -19,12 +21,13 @@ const state = {
     renderSignatures: {}
 };
 
-function formatTime(milliseconds) {
+function formatTime(milliseconds, showMilliseconds = false) {
     const totalSeconds = Math.max(0, Math.floor(Number(milliseconds || 0) / 1000));
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor(totalSeconds % 3600 / 60);
     const seconds = totalSeconds % 60;
-    return [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
+    const time = [hours, minutes, seconds].map(value => String(value).padStart(2, "0")).join(":");
+    return showMilliseconds ? time + "." + String(Math.max(0, Math.floor(milliseconds || 0)) % 1000).padStart(3, "0") : time;
 }
 
 function createElement(tag, className, text) {
@@ -92,6 +95,11 @@ async function api(path, options = {}) {
 }
 
 function currentTimeline(data) {
+    if (data.playbackState === "stopped") {
+        const firstId = state.selectedIds.values().next().value;
+        const first = data.timelines.find(item => item.id === firstId);
+        if (first) return first;
+    }
     return (data.queueIndex >= 0
         ? data.timelines.find(item => item.queuePosition === data.queueIndex)
         : null)
@@ -267,7 +275,7 @@ function renderCommands(data, timeline) {
     const devices = new Map(data.devices.map(device => [device.id, device.name || device.id]));
     const selectedIds = data.playbackDevices || [];
     const nextCommand = commands.find(command => command.state === "idle"
-        && command.startTimeMs >= (timeline?.currentTimeMs || 0));
+        && command.startTimeMs >= (data.playbackState === "stopped" ? state.startTimeMs : timeline?.currentTimeMs || 0));
     const signature = JSON.stringify([
         timeline?.id,
         timeline?.name,
@@ -319,24 +327,30 @@ function render(data) {
 
     const timeline = currentTimeline(data);
     const playback = data.playbackState;
-    const currentTime = timeline?.currentTimeMs || 0;
+    const stopped = playback === "stopped";
     const duration = timeline?.durationMs || 0;
-    const progress = duration ? Math.min(100, currentTime / duration * 100) : 0;
+    if (state.startTimelineId !== timeline?.id || !stopped) state.startTimeMs = 0;
+    state.startTimelineId = timeline?.id;
+    state.startTimeMs = Math.min(state.startTimeMs, duration);
+    const currentTime = stopped ? state.startTimeMs : timeline?.currentTimeMs || 0;
+    const queuePosition = stopped ? [...state.selectedIds].indexOf(timeline?.id) : timeline?.queuePosition;
 
     elements["plan-name"].textContent = data.planName || "未命名方案";
     elements["playback-label"].textContent = stateLabel(playback);
     elements["playback-dot"].style.color = playback === "running" ? "var(--green)" : playback === "paused" ? "var(--amber)" : "var(--muted)";
     elements["now-title"].textContent = timeline?.name || "等待选择节目";
     elements["now-summary"].textContent = timeline
-        ? `${timeline.queuePosition >= 0 ? `队列第 ${timeline.queuePosition + 1} 项` : "当前节目"} · ${timeline.commands.length} 条设备指令`
+        ? `${queuePosition >= 0 ? `队列第 ${queuePosition + 1} 项` : "当前节目"} · ${timeline.commands.length} 条设备指令`
         : "从节目库中选择并编排播放队列";
     elements["master-time"].textContent = formatTime(data.currentTimeMs);
-    elements["progress-fill"].style.width = `${progress}%`;
-    elements["elapsed-time"].textContent = formatTime(currentTime);
+    elements["timeline-seek"].max = duration;
+    elements["timeline-seek"].value = currentTime;
+    elements["timeline-seek"].disabled = state.busy || !stopped || !duration || !state.selectedIds.size;
+    elements["timeline-seek"].setAttribute("aria-valuetext", formatTime(currentTime, true));
+    elements["elapsed-time"].textContent = formatTime(currentTime, true);
     elements["remaining-time"].textContent = `剩余 ${formatTime(Math.max(0, duration - currentTime))}`;
 
     const paused = playback === "paused";
-    const stopped = playback === "stopped";
     elements["primary-icon"].textContent = paused ? "▶" : stopped ? "▶" : "Ⅱ";
     elements["primary-label"].textContent = paused ? "继续播放" : stopped ? "开始播放" : "暂停播放";
     elements["primary-button"].disabled = state.busy || (stopped && state.selectedIds.size === 0);
@@ -387,6 +401,12 @@ async function post(path, body, successMessage, syncQueue = false) {
     }
 }
 
+elements["timeline-seek"].addEventListener("input", () => {
+    if (state.busy || state.data?.playbackState !== "stopped") return;
+    state.startTimeMs = Number(elements["timeline-seek"].value);
+    render(state.data);
+});
+
 elements["apply-queue-button"].addEventListener("click", () =>
     post("/api/v1/queue", { timelineIds: [...state.selectedIds] }, "播放队列已更新", true));
 
@@ -394,7 +414,10 @@ elements["primary-button"].addEventListener("click", () => {
     const playback = state.data?.playbackState;
     const action = playback === "paused" ? "resume" : playback === "running" ? "pause" : "start";
     const body = { action };
-    if (action === "start") body.timelineIds = [...state.selectedIds];
+    if (action === "start") {
+        body.timelineIds = [...state.selectedIds];
+        body.startTimeMs = state.startTimeMs;
+    }
     post("/api/v1/control", body, action === "pause" ? "播放已暂停" : "播控状态已更新", action === "start");
 });
 

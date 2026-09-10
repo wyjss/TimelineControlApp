@@ -36,9 +36,9 @@
                 </div>
             </div>
 
-            <div class="progress-track" aria-label="当前节目进度">
-                <span id="progress-fill"></span>
-            </div>
+            <input id="timeline-seek" class="progress-track" type="range"
+                   min="0" max="0" step="100" value="0" aria-label="起播时间"
+                   title="停止时拖动选择起播时间，再点击开始播放" disabled>
             <div class="progress-meta">
                 <span id="elapsed-time">00:00:00</span>
                 <span id="remaining-time">剩余 00:00:00</span>

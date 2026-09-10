@@ -231,7 +231,7 @@ bool TimelineManager::triggerTimeline(const QString &id)
     return startTimeline(id);
 }
 
-bool TimelineManager::startTimeline(const QString &id)
+bool TimelineManager::startTimeline(const QString &id, qint64 startTimeMs)
 {
     Timeline *timeline = timelineById(id);
     if (!timeline)
@@ -240,7 +240,7 @@ bool TimelineManager::startTimeline(const QString &id)
     if (m_clock->state() != TimelineClock::Running)
         m_clock->start();
     const qint64 clockTimeMs = m_clock->currentTimeMs();
-    timeline->start(clockTimeMs);
+    timeline->start(clockTimeMs, startTimeMs);
     timeline->crossConditionModel()->activate();
     updateTimeline(timeline, clockTimeMs);
     return true;
@@ -269,7 +269,7 @@ bool TimelineManager::setPlayQueue(const QStringList &timelineIds)
     return true;
 }
 
-bool TimelineManager::startPlayback(const QStringList &timelineIds)
+bool TimelineManager::startPlayback(const QStringList &timelineIds, qint64 startTimeMs)
 {
     QStringList playQueue;
     playQueue.reserve(timelineIds.size());
@@ -296,7 +296,7 @@ bool TimelineManager::startPlayback(const QStringList &timelineIds)
         timeline->stop();
         timeline->waitForTrigger();
     }
-    return startTimeline(m_playQueue.constFirst());
+    return startTimeline(m_playQueue.constFirst(), startTimeMs);
 }
 
 void TimelineManager::pausePlayback()

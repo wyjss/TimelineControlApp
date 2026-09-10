@@ -50,7 +50,7 @@ public:
 
     // mgr驱动
     void waitForTrigger();
-    void start(qint64 masterTimeMs);
+    void start(qint64 masterTimeMs, qint64 startTimeMs = 0);
     void stop();
     QList<TimelineCommand *> updateTime(qint64 masterTimeMs);
 

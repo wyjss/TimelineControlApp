@@ -78,7 +78,7 @@ void Timeline::waitForTrigger()
     emit stateChanged(m_state);
 }
 
-void Timeline::start(qint64 masterTimeMs)
+void Timeline::start(qint64 masterTimeMs, qint64 startTimeMs)
 {
     if (m_state == Running)
         return;
@@ -89,6 +89,7 @@ void Timeline::start(qint64 masterTimeMs)
         return left->startTimeMs() < right->startTimeMs();
     });
     m_nextCommandIndex = 0;
+    startTimeMs = qMax<qint64>(0, startTimeMs);
 
     // 重置指令并计算durationMs
     qint64 durationMs = 0;
@@ -96,17 +97,19 @@ void Timeline::start(qint64 masterTimeMs)
         durationMs = qMax(durationMs,
                           command->startTimeMs() + command->durationMs());
         command->setErrorMessage(QString());
-        command->setState(TimelineCommand::Idle);
+        command->setState(command->startTimeMs() < startTimeMs
+                              ? TimelineCommand::Skipped : TimelineCommand::Idle);
     }
     setDurationMs(durationMs);
+    startTimeMs = qMin(startTimeMs, m_durationMs);
 
-    const qint64 relativeStartTimeMs = qMax<qint64>(0, masterTimeMs);
+    const qint64 relativeStartTimeMs = qMax<qint64>(0, masterTimeMs) - startTimeMs;
     if (m_relativeStartTimeMs != relativeStartTimeMs) {
         m_relativeStartTimeMs = relativeStartTimeMs;
         emit relativeStartTimeMsChanged();
     }
-    if (m_currentTimeMs != 0) {
-        m_currentTimeMs = 0;
+    if (m_currentTimeMs != startTimeMs) {
+        m_currentTimeMs = startTimeMs;
         emit currentTimeMsChanged(m_currentTimeMs);
     }
     m_state = Running;

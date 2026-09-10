@@ -39,6 +39,7 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
 
     m_deviceTemplateModel->loadDefaultTemplates();
 
+#if 0
     QVariantMap pc1x1Config;
     pc1x1Config.insert(DeviceKey::Ip, QStringLiteral("127.0.0.1"));
     pc1x1Config.insert(DeviceKey::ScreenWidth, 1920);
@@ -129,7 +130,7 @@ DeviceManager::DeviceManager(DeviceModel *deviceModel,
 
     if (m_deviceModel && defaultDevice)
         m_deviceModel->setCurrentDeviceId(defaultDevice->id());
-
+#endif
     if (m_deviceModel) {
         connect(m_deviceModel, &DeviceModel::deviceAdded,
                 this, [this](Device *device) {
