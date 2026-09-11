@@ -28,6 +28,7 @@
         <file alias="App/pages/timeline/TimelineDeviceTrackArea.qml">pages/timeline/TimelineDeviceTrackArea.qml</file>
         <file alias="App/pages/timeline/TimelineExternalTriggerEditor.qml">pages/timeline/TimelineExternalTriggerEditor.qml</file>
         <file alias="App/pages/timeline/TimelineCard.qml">pages/timeline/TimelineCard.qml</file>
+        <file alias="App/pages/timeline/TimelinePlayQueue.qml">pages/timeline/TimelinePlayQueue.qml</file>
         <file alias="App/pages/timeline/TimelineRuler.qml">pages/timeline/TimelineRuler.qml</file>
         <file alias="App/assets/icons/定位器.png">assets/icons/定位器.png</file>
         <file alias="App/assets/icons/分布式融合器3.0.png">assets/icons/分布式融合器3.0.png</file>

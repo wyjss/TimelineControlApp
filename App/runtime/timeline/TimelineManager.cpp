@@ -7,6 +7,9 @@
 #include "devices/CrossConditionModel.h"
 #include "devices/Device.h"
 #include "devices/DeviceModel.h"
+#include "devices/DeviceConstants.h"
+
+#include "LogMacros.h"
 
 #include <QDataStream>
 #include <QUuid>
@@ -15,7 +18,7 @@
 namespace {
 
 constexpr quint32 kTimelineManagerMagic = 0x544C4D47;
-constexpr qint32 kTimelineManagerVersion = 2;
+constexpr qint32 kTimelineManagerVersion = 3;
 } // namespace
 
 TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
@@ -66,6 +69,16 @@ TimelineModel *TimelineManager::timelineModel() const
 Timeline *TimelineManager::currentTimeline() const
 {
     return m_timelineModel->itemAt(m_timelineModel->selectedIndex());
+}
+
+Timeline *TimelineManager::playbackTimeline() const
+{
+    return m_playbackTimeline;
+}
+
+bool TimelineManager::queuePlayback() const
+{
+    return m_queuePlayback;
 }
 
 TimelineManager::PlaybackState TimelineManager::playbackState() const
@@ -181,8 +194,9 @@ bool TimelineManager::removeTimeline(const QString &id)
     if (index < 0)
         return false;
 
-    if (m_playQueue.contains(timeline->id())) {
+    if (timeline == m_playbackTimeline || m_playQueue.contains(timeline->id()))
         stopPlayback();
+    if (m_playQueue.contains(timeline->id())) {
         m_playQueue.removeAll(timeline->id());
         emit playQueueChanged();
     }
@@ -269,6 +283,18 @@ bool TimelineManager::setPlayQueue(const QStringList &timelineIds)
     return true;
 }
 
+bool TimelineManager::startCurrentPlayback(qint64 startTimeMs)
+{
+    Timeline *timeline = currentTimeline();
+    if (!timeline)
+        return false;
+
+    stopPlayback();
+    m_playbackTimeline = timeline;
+    emit playbackChanged();
+    return startTimeline(timeline->id(), startTimeMs);
+}
+
 bool TimelineManager::startPlayback(const QStringList &timelineIds, qint64 startTimeMs)
 {
     QStringList playQueue;
@@ -291,6 +317,9 @@ bool TimelineManager::startPlayback(const QStringList &timelineIds, qint64 start
     }
     m_playQueueIndex = 0;
     emit playQueueIndexChanged(m_playQueueIndex);
+    m_queuePlayback = true;
+    m_playbackTimeline = timelineById(m_playQueue.constFirst());
+    emit playbackChanged();
     for (const QString &id : m_playQueue) {
         Timeline *timeline = timelineById(id);
         timeline->stop();
@@ -301,19 +330,44 @@ bool TimelineManager::startPlayback(const QStringList &timelineIds, qint64 start
 
 void TimelineManager::pausePlayback()
 {
-    if (m_clock->state() == TimelineClock::Running) {
-		m_clock->pause();
+    LOG_INFO("pausePlayback");
+    if (m_clock->state() != TimelineClock::Running)
+        return;
+
+    m_clock->pause();
+    if (!m_deviceModel)
+        return;
+
+    for (auto dev : m_deviceModel->items()) {
+        if (dev->filteredOut())
+            continue;
+        if (auto cmd = dev->commandByName(DeviceKey::SystemPause))
+            emit deviceCommandTriggered(cmd);
     }
 }
 
 void TimelineManager::resumePlayback()
 {
-    if (m_clock->state() == TimelineClock::Paused)
-        m_clock->start();
+    LOG_INFO("resumePlayback");
+    if (m_clock->state() != TimelineClock::Paused)
+        return;
+
+    m_clock->start();
+    if (!m_deviceModel)
+        return;
+
+    for (auto dev : m_deviceModel->items()) {
+        if (dev->filteredOut())
+            continue;
+        if (auto cmd = dev->commandByName(DeviceKey::SystemResume))
+            emit deviceCommandTriggered(cmd);
+    }
 }
 
-void TimelineManager::stopPlayback()
+void TimelineManager::stopPlayback(bool notifyDevices)
 {
+    LOG_INFO("stopPlayback");
+    notifyDevices = notifyDevices && m_clock->state() != TimelineClock::Stopped;
     for (Timeline *timeline : m_timelineModel->items())
         timeline->stop();
     if (m_playQueueIndex != -1) {
@@ -321,6 +375,21 @@ void TimelineManager::stopPlayback()
         emit playQueueIndexChanged(m_playQueueIndex);
     }
     m_clock->stop();
+    if (m_playbackTimeline || m_queuePlayback) {
+        m_playbackTimeline = nullptr;
+        m_queuePlayback = false;
+        emit playbackChanged();
+    }
+
+    if (!notifyDevices || !m_deviceModel)
+        return;
+
+    for (auto dev : m_deviceModel->items()) {
+        if (dev->filteredOut())
+            continue;
+        if (auto cmd = dev->commandByName(DeviceKey::SystemStop))
+            emit deviceCommandTriggered(cmd);
+    }
 }
 
 void TimelineManager::setPlaybackDevices(const QStringList& ids)
@@ -364,6 +433,7 @@ void TimelineManager::writeToStream(QDataStream &stream) const
            << timelines.size();
     for (Timeline *timeline : timelines)
         timeline->writeToStream(stream);
+    stream << m_playQueue;
 }
 
 bool TimelineManager::readFromStream(QDataStream &stream)
@@ -403,6 +473,18 @@ bool TimelineManager::readFromStream(QDataStream &stream)
         timelineIds.append(timeline->id());
     }
 
+    QStringList playQueue;
+    if (version >= 3)
+        stream >> playQueue;
+    for (const QString &id : playQueue) {
+        if (!timelineIds.contains(id) || playQueue.count(id) > 1)
+            stream.setStatus(QDataStream::ReadCorruptData);
+    }
+    if (stream.status() != QDataStream::Ok) {
+        qDeleteAll(timelines);
+        return false;
+    }
+
     int currentTimelineIndex = -1;
     for (int index = 0; index < timelines.size(); ++index) {
         if (timelines.at(index)->id() == currentTimelineId) {
@@ -416,12 +498,8 @@ bool TimelineManager::readFromStream(QDataStream &stream)
         return false;
     }
 
-    stopPlayback();
+    stopPlayback(false);
     setPlaybackDevices({});
-    if (!m_playQueue.isEmpty()) {
-        m_playQueue.clear();
-        emit playQueueChanged();
-    }
     const QList<Timeline *> oldTimelines = m_timelineModel->items();
     if (!m_timelineModel->resetTimelines(timelines)) {
         qDeleteAll(timelines);
@@ -430,6 +508,10 @@ bool TimelineManager::readFromStream(QDataStream &stream)
     }
     qDeleteAll(oldTimelines);
     m_timelineModel->setSelectedIndex(currentTimelineIndex);
+    if (m_playQueue != playQueue) {
+        m_playQueue = playQueue;
+        emit playQueueChanged();
+    }
     if (m_deviceModel) {
         for (Device *device : m_deviceModel->items())
             bindCommandsForDevice(device);
@@ -481,12 +563,16 @@ void TimelineManager::handleTimelineCompleted(Timeline *timeline)
         ++m_playQueueIndex;
         if (m_playQueueIndex < m_playQueue.size()) {
             emit playQueueIndexChanged(m_playQueueIndex);
+            m_playbackTimeline = timelineById(m_playQueue.at(m_playQueueIndex));
+            emit playbackChanged();
             startTimeline(m_playQueue.at(m_playQueueIndex));
             return;
         }
 
         m_playQueueIndex = -1;
         emit playQueueIndexChanged(m_playQueueIndex);
+        m_playbackTimeline = nullptr;
+        emit playbackChanged();
     }
     if (!hasRunningTimeline())
         m_clock->setState(TimelineClock::Completed);

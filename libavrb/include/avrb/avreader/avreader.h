@@ -36,6 +36,13 @@ struct AVREADERWRITER_EXPORT AVReaderOptions
 	//! 转发地址，对打开的输入二次编码输出
 	//! 本地文件地址/网络流地址
 	std::string forwardingAddress;
+	//! 转发输出分辨率
+	//! -1：默认
+	int forwardingOutW = -1;
+	int forwardingOutH = -1;
+	//! forwarding输出参数
+	//! -1，默认，0关闭，1开启
+	int aud = -1;
 
 	//! desktop 采集参数，仅 avPath 为 "desktop" 时生效。
 	std::string title;
@@ -91,11 +98,14 @@ public:
 
 	bool open(const AVReaderOptions& options);
 	bool play();
+	//bool resume() { return play(); }
 	bool pause();
 	bool speed(double speed = 1.0);
 	bool seek(double timeSeconds);
 	bool quit(unsigned long timeoutMS = 3000);
-	bool isRunning() const;
+	bool isStopped() const;
+	// 是否处于暂停状态，仅在!isStopped有效
+	bool isPaused() const;
 	bool getOutputInfo(AVReaderOutputInfo& info) const;
 
 	PixelTool::AVFramePixelDataPtr takeVideoFrame();

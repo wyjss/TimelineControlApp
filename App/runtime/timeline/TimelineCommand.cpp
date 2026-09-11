@@ -91,6 +91,15 @@ void TimelineCommand::setExecutionInputValues(const QVariantMap &executionInputV
         return;
 
     m_executionInputValues = executionInputValues;
+    if (m_executionInputValues.contains(DeviceKey::Rect)) {
+        LOG_WARN("存在废弃兼容字段Rect");
+        auto strs = m_executionInputValues[DeviceKey::Rect].toString().split(",");
+        m_executionInputValues[DeviceKey::VideoWindowX] = strs[0].toInt();
+        m_executionInputValues[DeviceKey::VideoWindowY] = strs[1].toInt();
+        m_executionInputValues[DeviceKey::VideoWindowW] = strs[2].toInt();
+        m_executionInputValues[DeviceKey::VideoWindowH] = strs[3].toInt();
+        m_executionInputValues.remove(DeviceKey::Rect);
+    }
     emit executionInputValuesChanged();
     emit durationMsChanged();
 }

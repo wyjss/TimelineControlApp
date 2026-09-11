@@ -172,8 +172,9 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .count-badge { display: grid; min-width: 27px; height: 27px; padding: 0 8px; place-items: center; border: 1px solid var(--border); border-radius: 9px; color: var(--muted); font-size: 11px; }
 
 .timeline-list { display: grid; gap: 9px; }
-.timeline-entry { display: flex; align-items: stretch; gap: 8px; }
+.timeline-entry { display: grid; gap: 8px; }
 .timeline-card {
+    position: relative;
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr) auto;
     align-items: center;
@@ -190,8 +191,12 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
     transition: border-color .18s ease, background .18s ease, transform .18s ease;
 }
 
-.timeline-entry .timeline-card { flex: 1; width: auto; min-width: 0; }
+.timeline-entry .timeline-card { min-width: 0; }
+.timeline-card.queued { padding-top: 29px; }
+.queue-corner { position: absolute; top: 0; right: 0; padding: 3px 8px; border-radius: 0 11px 0 7px; color: #fff; background: #2f6feb; font-size: 11px; }
+.queue-toggle, .manual-trigger { justify-self: end; }
 .manual-trigger {
+    min-height: 32px;
     min-width: 72px;
     border: 1px solid rgba(246, 200, 95, .35);
     border-radius: 12px;
@@ -210,8 +215,8 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .timeline-card.active { box-shadow: inset 3px 0 var(--green); }
 .timeline-card:disabled { cursor: default; }
 
-.queue-check { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid #3a4655; border-radius: 7px; color: transparent; font-size: 11px; font-weight: 900; }
-.timeline-card.selected .queue-check { color: #07100c; border-color: var(--green); background: var(--green); }
+.selection-mark { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid #3a4655; border-radius: 50%; color: transparent; font-size: 11px; font-weight: 900; }
+.timeline-card.selected .selection-mark { color: #07100c; border-color: var(--green); background: var(--green); }
 .timeline-copy { min-width: 0; }
 .timeline-main { justify-content: space-between; gap: 12px; }
 .timeline-name { overflow: hidden; margin: 0; font-size: 14px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
@@ -221,14 +226,19 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .timeline-progress { grid-column: 2 / -1; overflow: hidden; height: 3px; border-radius: 999px; background: #242e3a; }
 .timeline-progress-fill { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--green); transition: width .35s linear; }
 
-.state-chip { padding: 5px 8px; border-radius: 7px; color: var(--muted); background: rgba(132, 145, 163, .1); font-size: 10px; font-weight: 750; }
+.state-chip { flex-shrink: 0; padding: 5px 8px; border-radius: 7px; color: var(--muted); background: rgba(132, 145, 163, .1); font-size: 10px; font-weight: 750; }
 .state-chip.running { color: var(--green); background: rgba(66, 230, 164, .1); }
 .state-chip.waiting { color: var(--blue); background: rgba(106, 168, 255, .1); }
 .state-chip.completed { color: var(--amber); background: rgba(246, 200, 95, .1); }
 
 .side-stack { display: grid; align-content: start; gap: 20px; }
 .queue-list, .device-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
-.queue-row { gap: 11px; min-height: 44px; padding: 8px 10px; border-radius: 9px; color: #c7d0dc; background: rgba(255, 255, 255, .022); font-size: 12px; }
+.queue-list { max-height: 300px; overflow-y: auto; }
+.queue-transport { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.queue-transport .button { min-width: 0; min-height: 34px; padding: 0 10px; font-size: 12px; }
+.queue-row { flex-wrap: wrap; gap: 8px; min-height: 44px; padding: 8px 10px; border-radius: 9px; color: #c7d0dc; background: rgba(255, 255, 255, .022); font-size: 12px; }
+.queue-row-actions { display: flex; flex-basis: 100%; justify-content: flex-end; gap: 4px; }
+.queue-row-actions .text-button { padding: 4px 9px; }
 .queue-row.active { color: var(--text); background: rgba(66, 230, 164, .08); }
 .queue-index { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); font: 700 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .queue-row.active .queue-index { color: #07100c; border-color: var(--green); background: var(--green); }

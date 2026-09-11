@@ -17,6 +17,9 @@
 #include <QDateTime>
 #include <QTimer>
 #include <QVector3D>
+#include <QFile>
+#include <QDir>
+#include <QDateTime>
 
 namespace {
 
@@ -177,7 +180,7 @@ void LocationRecver::readData()
 	if (data.isEmpty()) {
 		return;
 	}
-	LOG_ERROR(data);
+	//LOG_ERROR(data);
 	auto i = data.lastIndexOf("$");
 	if (i == -1) {
 		return;
@@ -210,7 +213,7 @@ void LocationRecver::checkStatus()
 
 	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
 		auto sock = itr->sock;
-#if 0
+#if 1
 		if (
 			sock->state() != QTcpSocket::ConnectedState &&
 			sock->state() != QTcpSocket::ConnectingState
@@ -298,6 +301,7 @@ bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& 
 		iHeading = 8;
 	} else {
 		LOG_ERROR("不支持的协议" << fields[0]);
+		return false;
 	}
 
 
@@ -345,5 +349,25 @@ bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& 
 		}
 	}
 	
-	return true;
+	if (!m_recordFile) {
+		LOG_MARK_DEBUG_CODE("定位记录");
+		QDir().mkpath("./temp_locationRecords");
+		QString recordFilePath =
+			QString("./temp_locationRecords/%1.txt").
+			arg(QDateTime::currentDateTime().toString("yyyy-MM-dd-hh-mm-ss"));
+		m_recordFile = new QFile(recordFilePath);
+		m_recordFile->open(QIODevice::WriteOnly | QIODevice::Text);
+	}
+
+
+	{
+		auto str = QString("%1,%2,%3").arg(QString::number(lon, 'g', 10))
+			.arg(QString::number(lat, 'g', 10))
+			.arg(QString::number(heading, 'g', 10)).toLatin1();
+		m_recordFile->write(str);
+		m_recordFile->write("\n");
+		m_recordFile->flush();
+	}
+	
+		return true;
 }

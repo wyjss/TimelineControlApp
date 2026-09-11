@@ -33,7 +33,7 @@
 namespace {
 
 constexpr quint32 kTimelinePlanMagic = 0x544C504E;
-constexpr qint32 kTimelinePlanVersion = 5;
+constexpr qint32 kTimelinePlanVersion = 6;
 
 } // namespace
 
@@ -91,6 +91,11 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     connect(m_timelineManager, &TimelineManager::commandTriggered,
             this, [this](Timeline *, TimelineCommand *timelineCommand) {
         executeTimelineCommand(timelineCommand);
+    });
+    connect(m_timelineManager, &TimelineManager::deviceCommandTriggered,
+            this, [this](DeviceCommand *command) {
+        m_deviceExecutorManager->execute(
+            QUuid::createUuid().toString(QUuid::WithoutBraces), command);
     });
     connect(m_timelineManager, &TimelineManager::playbackStateChanged,
             this, [this](TimelineManager::PlaybackState state) {
@@ -247,7 +252,7 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
     stream >> magic >> version;
     if (stream.status() != QDataStream::Ok
         || magic != kTimelinePlanMagic
-        || (version != 2 && version != 3 && version != kTimelinePlanVersion)) {
+        || (version != 2 && version != 3 && version != 5 && version != kTimelinePlanVersion)) {
         stream.setStatus(QDataStream::ReadCorruptData);
         return;
     }

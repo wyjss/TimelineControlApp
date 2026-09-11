@@ -62,7 +62,16 @@ inline const QString ScreenWidth = QStringLiteral("screenWidth");
 inline const QString SerialPort = QStringLiteral("serialPort");
 inline const QString Videos = QStringLiteral("videos");
 inline const QString VideoFile = QStringLiteral("videoFile");
+
+// 已废弃，用VideoWindow*代替。
+// @todo 目前只用来做兼容，后期删除
 inline const QString Rect = QStringLiteral("rect");
+// 播放窗口rect（在虚拟屏幕内）
+// 替代Rect
+inline const QString VideoWindowX = "videoWindowX";
+inline const QString VideoWindowY = "videoWindowY";
+inline const QString VideoWindowW = "videoWindowW";
+inline const QString VideoWindowH = "videoWindowH";
 
 // 定位器坐标，VMap["lon" "lat"]
 inline const QString Location = QStringLiteral("location");
@@ -83,8 +92,15 @@ inline const QString CommandPlayVideo = QStringLiteral("playVideo");
 inline const QString CommandPauseVideo = QStringLiteral("pauseVideo");
 inline const QString CommandStopVideo = QStringLiteral("closeVideo");
 inline const QString CommandClosePlayer = QStringLiteral("closePlayer");
-inline const QString CommandPlayDomeVideo = QStringLiteral("playDomeVideo");
-inline const QString CommandVirtualPlayback = QStringLiteral("virtualPlayback");
+//inline const QString CommandPlayDomeVideo = QStringLiteral("playDomeVideo");
+//inline const QString CommandVirtualPlayback = QStringLiteral("virtualPlayback");
+
+
+//////////////////////////////////////////////////////////////////////////
+// 系统控制指令，为了兼容外部创建，只用作名称
+inline const QString SystemPause = QStringLiteral("系统暂停");
+inline const QString SystemResume = QStringLiteral("系统恢复");
+inline const QString SystemStop = QStringLiteral("系统停止");
 } // namespace DeviceKey
 
 namespace DeviceConstants {

@@ -14,6 +14,7 @@ Item {
     signal openRequested()
     signal cloneRequested()
     signal removeRequested()
+    signal queueRequested()
 
     Theme.AppTheme {
         id: fallbackTheme
@@ -24,7 +25,7 @@ Item {
         ? ApplicationWindow.window.appTheme
         : fallbackTheme
     readonly property var appRuntime: typeof app !== "undefined" ? app : null
-    readonly property var timelineManager: appRuntime && appRuntime.timelineManager
+    property var timelineManager: appRuntime && appRuntime.timelineManager
         ? appRuntime.timelineManager
         : null
     readonly property var timelineModel: timelineManager ? timelineManager.timelineModel : null
@@ -35,6 +36,8 @@ Item {
     readonly property string timelineId: timeline ? String(timeline.id || "") : ""
     readonly property bool current: timelineManager && timelineManager.currentTimeline === timeline
     readonly property bool stopped: !timelineManager || timelineManager.playbackState === 0
+    readonly property bool queued: timelineManager && timelineManager.playQueue
+        ? timelineManager.playQueue.indexOf(timelineId) >= 0 : false
     readonly property bool waiting: timeline && timeline.state === 1
     readonly property bool running: timeline && timeline.state === 2
     readonly property bool completed: timeline && timeline.state === 3
@@ -186,6 +189,7 @@ Item {
             : qsTr("未命名时间轴")
         surfaceTone: UiStyle.SurfaceTone.Section
         compact: true
+        topPadding: root.queued ? queueBadge.height + 4 : padding
         surfaceOpacityScale: 1
         checkable: false
         checked: root.current
@@ -240,6 +244,15 @@ Item {
                     textTone: root.stateTextTone()
                     shapeRole: UiStyle.ShapeRole.Control
                     strokeWidth: 1
+                }
+
+                Base.AppButton {
+                    objectName: "addTimelineToQueue_" + root.timelineId
+                    visible: root.current && root.stopped
+                    text: root.queued ? qsTr("移除队列") : qsTr("加入队列")
+                    size: UiStyle.ButtonSize.Small
+                    variant: UiStyle.ButtonVariant.Tonal
+                    onClicked: root.queueRequested()
                 }
             }
 
@@ -399,6 +412,43 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    Rectangle {
+        id: queueBadge
+        objectName: "timelineQueueBadge_" + root.timelineId
+        anchors.top: timelineCard.top
+        anchors.right: timelineCard.right
+        anchors.topMargin: 1
+        anchors.rightMargin: 1
+        z: 2
+        visible: root.queued
+        width: queueBadgeText.implicitWidth + 14
+        height: 20
+        radius: root.appTheme.shape.sectionRadius
+        color: root.appTheme.colors.highlightFill
+        Accessible.role: Accessible.StaticText
+        Accessible.name: qsTr("已加入播放队列")
+
+        Rectangle {
+            width: parent.radius
+            height: width
+            color: parent.color
+        }
+        Rectangle {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            width: parent.radius
+            height: width
+            color: parent.color
+        }
+        Base.AppText {
+            id: queueBadgeText
+            anchors.centerIn: parent
+            text: "☷ " + qsTr("队列")
+            styleRole: UiStyle.TypographyRole.BodyS
+            colorOverride: root.appTheme.colors.inverseText
         }
     }
 

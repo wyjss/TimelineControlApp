@@ -23,6 +23,7 @@ Base.AppDialog {
     ]
     readonly property var availableProtocolOptions: buildAvailableProtocolOptions()
     readonly property bool commandValid: draftCommand
+        && (!editing || editingCommand.editable)
         && creationFieldForm.valid
         && firstInvalidReason().length === 0
 
@@ -46,7 +47,7 @@ Base.AppDialog {
     }
 
     function openForCommand(nextDevice, nextCommand) {
-        if (!nextDevice || !nextCommand)
+        if (!nextDevice || !nextCommand || !nextCommand.editable)
             return
 
         open()
@@ -188,6 +189,7 @@ Base.AppDialog {
 
         applyFieldValues(draftCommand.creationInputFields || [], creationValues)
         var command = draftCommand
+        command.setEditable(true)
         if (!device.commitCommandDraft(command))
             return
 

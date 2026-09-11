@@ -364,6 +364,10 @@ QJsonObject WebControlServer::statusSnapshot() const
             {QStringLiteral("currentTimelineId"), manager->currentTimeline()
                 ? manager->currentTimeline()->id()
                 : QString()},
+            {QStringLiteral("playbackTimelineId"), manager->playbackTimeline()
+                ? manager->playbackTimeline()->id()
+                : QString()},
+            {QStringLiteral("queuePlayback"), manager->queuePlayback()},
             {QStringLiteral("queueIndex"), manager->playQueueIndex()},
             {QStringLiteral("playQueue"), QJsonArray::fromStringList(playQueue)},
             {QStringLiteral("playbackDevices"),
@@ -465,24 +469,40 @@ int WebControlServer::control(const QJsonObject &request,
     bool accepted = false;
     if (!invokeRuntime([&accepted, action, request](TimelineRuntime *runtime) {
         TimelineManager *manager = runtime->timelineManager();
-        if (action == QStringLiteral("start")) {
+        const bool canStart = manager->playbackState() == TimelineManager::Stopped
+            || manager->playbackState() == TimelineManager::Completed;
+        const QString source = request.value(QStringLiteral("source")).toString();
+        const bool sourceMatches = source.isEmpty()
+            || (source == QStringLiteral("queue") && manager->queuePlayback())
+            || (source == QStringLiteral("current") && !manager->queuePlayback());
+        if (action == QStringLiteral("select")) {
+            accepted = manager->setCurrentTimelineId(request.value(QStringLiteral("timelineId")).toString());
+        } else if (action == QStringLiteral("start-current")) {
+            accepted = canStart;
+            if (accepted && request.contains(QStringLiteral("timelineId")))
+                accepted = manager->setCurrentTimelineId(request.value(QStringLiteral("timelineId")).toString());
+            if (accepted)
+                accepted = manager->startCurrentPlayback(request.value(QStringLiteral("startTimeMs")).toVariant().toLongLong());
+        } else if (action == QStringLiteral("start-queue")) {
+            accepted = canStart && manager->startPlayback(manager->playQueue());
+        } else if (action == QStringLiteral("start")) {
             QStringList ids;
             for (const QJsonValue &value : request.value(QStringLiteral("timelineIds")).toArray())
                 ids.append(value.toString());
             if (ids.isEmpty())
                 ids = manager->playQueue();
-            accepted = manager->playbackState() == TimelineManager::Stopped
+            accepted = canStart
                 && manager->startPlayback(ids, request.value(QStringLiteral("startTimeMs")).toVariant().toLongLong());
         } else if (action == QStringLiteral("pause")) {
-            accepted = manager->playbackState() == TimelineManager::Running;
+            accepted = sourceMatches && manager->playbackState() == TimelineManager::Running;
             if (accepted)
                 manager->pausePlayback();
         } else if (action == QStringLiteral("resume")) {
-            accepted = manager->playbackState() == TimelineManager::Paused;
+            accepted = sourceMatches && manager->playbackState() == TimelineManager::Paused;
             if (accepted)
                 manager->resumePlayback();
         } else if (action == QStringLiteral("stop")) {
-            accepted = manager->playbackState() != TimelineManager::Stopped;
+            accepted = sourceMatches && manager->playbackState() != TimelineManager::Stopped;
             if (accepted)
                 manager->stopPlayback();
         } else if (action == QStringLiteral("trigger")) {
@@ -497,7 +517,7 @@ int WebControlServer::control(const QJsonObject &request,
     }
     if (!accepted) {
         response = errorResponse(QStringLiteral("control_rejected"),
-                                 QStringLiteral("当前状态无法执行该播控操作"));
+                                 QStringLiteral("当前状态或播放来源不支持该操作"));
         return 409;
     }
 

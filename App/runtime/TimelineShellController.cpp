@@ -93,17 +93,16 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
         if (timelineManager->playbackState() == TimelineManager::Stopped)
             runtime->loadPlanFromFile(payload.value(QStringLiteral("filePath")).toString());
     } else if (actionId == QStringLiteral("timeline.start")) {
-        if (timelineManager->playbackState() == TimelineManager::Paused)
+        if (timelineManager->playbackState() == TimelineManager::Paused
+            && !timelineManager->queuePlayback())
             timelineManager->resumePlayback();
         else if (timelineManager->playbackState() == TimelineManager::Stopped
                  || timelineManager->playbackState() == TimelineManager::Completed) {
-            QStringList timelineIds = timelineManager->playQueue();
-            if (timelineIds.isEmpty() && timelineManager->currentTimeline())
-                timelineIds.append(timelineManager->currentTimeline()->id());
-            timelineManager->startPlayback(timelineIds, payload.value(QStringLiteral("startTimeMs")).toLongLong());
+            timelineManager->startCurrentPlayback(payload.value(QStringLiteral("startTimeMs")).toLongLong());
         }
     } else if (actionId == QStringLiteral("timeline.pause")) {
-        timelineManager->pausePlayback();
+        if (!timelineManager->queuePlayback())
+            timelineManager->pausePlayback();
     } else if (actionId == QStringLiteral("timeline.stop")) {
         timelineManager->stopPlayback();
     }

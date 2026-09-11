@@ -2,8 +2,10 @@
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
 
+#include "LogMacros.h"
 #include <QUrl>
 #include <QUrlQuery>
+#include <QRect>
 
 class _VideoControlCommand : public DeviceCommand_PC
 {
@@ -55,7 +57,11 @@ public:
 						   parent)
 	{
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoFile));
-		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::Rect));
+		//addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::Rect));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowX));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowY));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowW));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowH));
 
 		auto* playField = new DeviceParamSpec(QStringLiteral("play"),
 											  QStringLiteral("立即播放"),
@@ -77,14 +83,18 @@ public:
 			url = url.replace("$", DeviceConstants::LocalVideoPrefix);
 		}
 
-
+		auto sVideoRect = QString("%1,%2,%3,%4")
+			.arg(params[DeviceKey::VideoWindowX].toInt())
+			.arg(params[DeviceKey::VideoWindowY].toInt())
+			.arg(params[DeviceKey::VideoWindowW].toInt())
+			.arg(params[DeviceKey::VideoWindowH].toInt());
 		int w = params[DeviceKey::VirtualScreenWidth].toInt();
 		int h = params[DeviceKey::VirtualScreenHeight].toInt();
 		QUrlQuery query;
 		query.addQueryItem("mode", "virtual");
 		query.addQueryItem("url", url);
 		query.addQueryItem("play", executionInputValues.value("play", true).toString());
-		query.addQueryItem("rect", executionInputValues[DeviceKey::Rect].toString());
+		query.addQueryItem("rect", sVideoRect);
 		//query.addQueryItem("canvasSize", QString("%1x%2").arg(w).arg(h));
 
 		QString api = QString("/video/open?") + query.toString();
@@ -144,48 +154,50 @@ public:
 	}
 };
 
-class PlayDomeVideoCommand final : public DeviceCommand_PC
-{
-public:
-	explicit PlayDomeVideoCommand(QObject* parent)
-		: DeviceCommand_PC(QStringLiteral("播放全景视频"),
-						   DeviceKey::CommandPlayDomeVideo,
-						   parent)
-	{
-		auto* videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
-												   QStringLiteral("视频文件"),
-												   QString(),
-												   DeviceParamSpec::StringType,
-												   DeviceParamSpec::TextEditor,
-												   this);
-		videoFileField->setRequired(true);
-		addExecutionInputField(videoFileField);
-	}
+//class PlayDomeVideoCommand final : public DeviceCommand_PC
+//{
+//public:
+//	explicit PlayDomeVideoCommand(QObject* parent)
+//		: DeviceCommand_PC(QStringLiteral("播放全景视频"),
+//						   DeviceKey::CommandPlayDomeVideo,
+//						   parent)
+//	{
+//		auto* videoFileField = new DeviceParamSpec(QStringLiteral("videoFile"),
+//												   QStringLiteral("视频文件"),
+//												   QString(),
+//												   DeviceParamSpec::StringType,
+//												   DeviceParamSpec::TextEditor,
+//												   this);
+//		videoFileField->setRequired(true);
+//		addExecutionInputField(videoFileField);
+//	}
+//
+//	QVariantMap resolvedParams(const QVariantMap& executionInputValues) const override
+//	{
+//		QVariantMap params = DeviceCommand::resolvedParams(executionInputValues);
+//		const QString videoFile = executionInputValues.value(QStringLiteral("videoFile")).toString().trimmed();
+//		if (!videoFile.isEmpty()) {
+//			params.insert(DeviceKey::ApiPath,
+//						  QStringLiteral("/video/play?mode=dome&url=")
+//						  + QString::fromLatin1(QUrl::toPercentEncoding(videoFile)));
+//		}
+//		return params;
+//	}
+//};
 
-	QVariantMap resolvedParams(const QVariantMap& executionInputValues) const override
-	{
-		QVariantMap params = DeviceCommand::resolvedParams(executionInputValues);
-		const QString videoFile = executionInputValues.value(QStringLiteral("videoFile")).toString().trimmed();
-		if (!videoFile.isEmpty()) {
-			params.insert(DeviceKey::ApiPath,
-						  QStringLiteral("/video/play?mode=dome&url=")
-						  + QString::fromLatin1(QUrl::toPercentEncoding(videoFile)));
-		}
-		return params;
-	}
-};
+//class VirtualPlaybackCommand final : public DeviceCommand_PC
+//{
+//public:
+//	explicit VirtualPlaybackCommand(QObject* parent)
+//		: DeviceCommand_PC(QStringLiteral("虚拟播放"),
+//						   DeviceKey::CommandVirtualPlayback,
+//						   parent)
+//	{
+//		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Videos));
+//	}
+//};
 
-class VirtualPlaybackCommand final : public DeviceCommand_PC
-{
-public:
-	explicit VirtualPlaybackCommand(QObject* parent)
-		: DeviceCommand_PC(QStringLiteral("虚拟播放"),
-						   DeviceKey::CommandVirtualPlayback,
-						   parent)
-	{
-		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Videos));
-	}
-};
+
 
 PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
 	:DeviceTemplate("电脑",
@@ -226,7 +238,22 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(new PauseVideoCommand(device));
 	device->appendCommand(new StopVideoCommand(device));
 	device->appendCommand(new ClosePlayerCommand(device));
-	device->appendCommand(new PlayDomeVideoCommand(device));
+	//device->appendCommand(new PlayDomeVideoCommand(device));
+
+	// 系统
+	auto _createSystemCommand = [](const QString& name, const QString& url) {
+		auto cmd = new DeviceCommand_PC();
+		cmd->setName(name);
+		cmd->getField(DeviceKey::ApiPath)->setValue(url);
+		return cmd;
+	};
+	device->appendCommand(
+		_createSystemCommand(DeviceKey::SystemPause, "/video/systemPause"));
+	device->appendCommand(
+		_createSystemCommand(DeviceKey::SystemResume, "/video/systemResume"));
+	device->appendCommand(
+		_createSystemCommand(DeviceKey::SystemStop, "/video/systemStop"));
+	
 
 	return device;
 }
@@ -244,9 +271,9 @@ DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
 		return new StopVideoCommand(parent);
 	if (commandType == DeviceKey::CommandClosePlayer)
 		return new ClosePlayerCommand(parent);
-	if (commandType == DeviceKey::CommandPlayDomeVideo)
-		return new PlayDomeVideoCommand(parent);
-	if (commandType == DeviceKey::CommandVirtualPlayback)
-		return new VirtualPlaybackCommand(parent);
+// 	if (commandType == DeviceKey::CommandPlayDomeVideo)
+// 		return new PlayDomeVideoCommand(parent);
+// 	if (commandType == DeviceKey::CommandVirtualPlayback)
+// 		return new VirtualPlaybackCommand(parent);
 	return nullptr;
 }

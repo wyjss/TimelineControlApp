@@ -218,7 +218,7 @@ Item {
     }
 
     function editCommand(command) {
-        if (!selectedDeviceInCurrentView || !selectedDevice || !command)
+        if (!selectedDeviceInCurrentView || !selectedDevice || !command || !command.editable)
             return
 
         addCommandPopupLoader.openForCommand(selectedDevice, command)
@@ -1187,6 +1187,7 @@ Item {
                                                         size: UiStyle.ButtonSize.Small
                                                         variant: UiStyle.ButtonVariant.Ghost
                                                         text: qsTr("编辑")
+                                                        visible: commandEntry.commandData && commandEntry.commandData.editable
                                                         onClicked: root.editCommand(commandEntry.commandData)
                                                     }
 

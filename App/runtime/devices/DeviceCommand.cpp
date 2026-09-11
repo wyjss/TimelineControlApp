@@ -302,6 +302,20 @@ bool DeviceCommand::filteredOut() const
     return m_device && m_device->filteredOut();
 }
 
+bool DeviceCommand::editable() const
+{
+    return m_editable;
+}
+
+void DeviceCommand::setEditable(bool editable)
+{
+    if (m_editable == editable)
+        return;
+
+    m_editable = editable;
+    emit editableChanged();
+}
+
 void DeviceCommand::setDevice(Device *device)
 {
 	if (m_device == device)
@@ -352,6 +366,7 @@ QJsonObject DeviceCommand::toJson() const
     QJsonObject json;
 
     json.insert(QString::fromLatin1(kProtocolKey), protocol());
+    json.insert(QStringLiteral("editable"), editable());
     if (!commandType().isEmpty())
         json.insert(DeviceKey::CommandType, commandType());
     if (!m_stringTemplateKey.isEmpty())
@@ -415,6 +430,7 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
             field->setValue(executionInputFields.value(field->key()).toVariant());
     }
 
+    setEditable(json.value(QStringLiteral("editable")).toBool());
     return true;
 }
 

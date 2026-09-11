@@ -37,8 +37,7 @@ ApplicationWindow {
     readonly property bool timelineRunning: timelineManager && timelineManager.playbackState === 1
     readonly property bool timelinePaused: timelineManager && timelineManager.playbackState === 2
     readonly property bool timelineCompleted: timelineManager && timelineManager.playbackState === 3
-    readonly property bool hasQueuedTimelines: timelineManager
-        && timelineManager.playQueue.length > 0
+    readonly property bool queuePlayback: timelineManager && timelineManager.queuePlayback
     readonly property var availablePlaybackDevices: appRuntime && appRuntime.deviceModel
         ? appRuntime.deviceModel.devices
         : []
@@ -51,11 +50,11 @@ ApplicationWindow {
         : (timelinePaused
             ? qsTr("已暂停")
             : (timelineCompleted ? qsTr("已完成") : qsTr("待播放")))
-    readonly property string playbackActionText: timelineRunning
+    readonly property string playbackActionText: !queuePlayback && timelineRunning
         ? qsTr("暂停")
-        : (timelinePaused
+        : (!queuePlayback && timelinePaused
             ? qsTr("继续播放")
-            : (hasQueuedTimelines ? qsTr("播放顺序") : qsTr("播放当前节目")))
+            : qsTr("播放当前节目"))
 
     function playbackDeviceSelected(deviceId) {
         return playbackDeviceIds.indexOf(String(deviceId || "")) >= 0
@@ -296,16 +295,15 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
+                        objectName: "currentTimelinePlayButton"
                         size: UiStyle.ButtonSize.Medium
                         variant: UiStyle.ButtonVariant.Primary
                         minWidth: 144
                         text: window.playbackActionText
-                        iconName: window.timelineRunning ? "pause" : "play"
-                        enabled: window.timelineRunning
-                            || window.timelinePaused
-                            || (window.timelineManager
-                                && (window.hasQueuedTimelines
-                                    || window.timelineManager.currentTimeline))
+                        iconName: !window.queuePlayback && window.timelineRunning ? "pause" : "play"
+                        enabled: window.timelineManager
+                            && window.timelineManager.currentTimeline
+                            && (!window.queuePlayback || window.timelineStopped || window.timelineCompleted)
                         onClicked: {
                             if (window.shellController)
                                 window.shellController.handleUiAction(

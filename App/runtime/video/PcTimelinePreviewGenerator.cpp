@@ -313,7 +313,16 @@ PcTimelinePreviewGenerator::videoStatesAt(qint64 timeMs, const QSize &canvasSize
                 if (states.at(index).source == source)
                     states.removeAt(index);
             }
+#if 0
             const QRect rect = videoRect(input.value(DeviceKey::Rect), canvasSize);
+#else // 兼容
+            QStringList temps;
+            temps << input.value(DeviceKey::VideoWindowX).toString();
+            temps << input.value(DeviceKey::VideoWindowY).toString();
+            temps << input.value(DeviceKey::VideoWindowH).toString();
+            temps << input.value(DeviceKey::VideoWindowX).toString();
+            const QRect rect = videoRect(temps.join(","), canvasSize);
+#endif
             if (!rect.isEmpty())
                 states.append(VideoState{source, rect, 0, eventTimeMs, input.value(QStringLiteral("play"), true).toBool()});
             continue;

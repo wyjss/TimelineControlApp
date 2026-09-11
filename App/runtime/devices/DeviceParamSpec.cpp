@@ -431,13 +431,50 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		return spec;
 	}
 
-	if (deviceKey == DeviceKey::Rect) {
+// 	if (deviceKey == DeviceKey::Rect) {
+// 		auto* spec = new DeviceParamSpec(deviceKey,
+// 										 QStringLiteral("目标矩形（x,y,w,h）"),
+// 										 "",
+// 										 StringType,
+// 										 TextEditor);
+// 		spec->setPattern(DevicePattern::Rect);
+// 		return spec;
+// 	}
+
+	if (deviceKey == DeviceKey::VideoWindowX) {
 		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("目标矩形（x,y,w,h）"),
-										 "",
-										 StringType,
-										 TextEditor);
-		spec->setPattern(DevicePattern::Rect);
+										 QStringLiteral("视频窗口起点x坐标"),
+										 0,
+										 IntType,
+										 AutoEditor);
+		return spec;
+	}
+	if (deviceKey == DeviceKey::VideoWindowY) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频窗口起点y坐标"),
+										 0,
+										 IntType,
+										 AutoEditor);
+		return spec;
+	}
+	if (deviceKey == DeviceKey::VideoWindowW) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频窗口宽度"),
+										 1920,
+										 IntType,
+										 AutoEditor);
+		spec->setMinimum(1);
+		spec->setMaximum(9999);
+		return spec;
+	}
+	if (deviceKey == DeviceKey::VideoWindowH) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频窗口高度"),
+										 1080,
+										 IntType,
+										 AutoEditor);
+		spec->setMinimum(1);
+        spec->setMaximum(9999);
 		return spec;
 	}
 

@@ -11,6 +11,7 @@ class TimelineCommand;
 class TimelineClock;
 class TimelineModel;
 class Device;
+class DeviceCommand;
 class DeviceModel;
 
 // 时间线管理器
@@ -20,6 +21,8 @@ class TimelineManager final : public QObject
     Q_OBJECT
     Q_PROPERTY(TimelineModel *timelineModel READ timelineModel CONSTANT FINAL)
     Q_PROPERTY(Timeline *currentTimeline READ currentTimeline NOTIFY currentTimelineChanged FINAL)
+    Q_PROPERTY(Timeline *playbackTimeline READ playbackTimeline NOTIFY playbackChanged FINAL)
+    Q_PROPERTY(bool queuePlayback READ queuePlayback NOTIFY playbackChanged FINAL)
     Q_PROPERTY(PlaybackState playbackState READ playbackState NOTIFY playbackStateChanged FINAL)
     Q_PROPERTY(qint64 currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged FINAL)
     Q_PROPERTY(QStringList playQueue READ playQueue NOTIFY playQueueChanged FINAL)
@@ -40,6 +43,8 @@ public:
     // 查询
     TimelineModel *timelineModel() const;
     Timeline *currentTimeline() const;
+    Timeline *playbackTimeline() const;
+    bool queuePlayback() const;
     PlaybackState playbackState() const;
     qint64 currentTimeMs() const;
     Timeline *timelineById(const QString &id) const;
@@ -58,10 +63,11 @@ public:
     Q_INVOKABLE bool waitForTrigger(const QString &id);
     Q_INVOKABLE bool triggerTimeline(const QString &id);
     Q_INVOKABLE bool setPlayQueue(const QStringList &timelineIds);
+    Q_INVOKABLE bool startCurrentPlayback(qint64 startTimeMs = 0);
     Q_INVOKABLE bool startPlayback(const QStringList &timelineIds, qint64 startTimeMs = 0);
     Q_INVOKABLE void pausePlayback();
     Q_INVOKABLE void resumePlayback();
-    Q_INVOKABLE void stopPlayback();
+    Q_INVOKABLE void stopPlayback(bool notifyDevices = true);
 
     // 播控-过滤
     void setPlaybackDevices(const QStringList& ids);
@@ -71,11 +77,13 @@ public:
     bool readFromStream(QDataStream &stream);
 signals:
     void currentTimelineChanged(Timeline *timeline);
+    void playbackChanged();
     void playbackStateChanged(PlaybackState state);
     void currentTimeMsChanged(qint64 currentTimeMs);
     void playQueueChanged();
     void playQueueIndexChanged(int index);
     void commandTriggered(Timeline *timeline, TimelineCommand *command);
+    void deviceCommandTriggered(DeviceCommand *command);
     void playbackDevicesChanged(QStringList);
 private:
     bool startTimeline(const QString &id, qint64 startTimeMs = 0);
@@ -87,6 +95,8 @@ private:
     TimelineClock *m_clock = nullptr;
     TimelineModel *m_timelineModel = nullptr;
     DeviceModel *m_deviceModel = nullptr;
+    Timeline *m_playbackTimeline = nullptr;
+    bool m_queuePlayback = false;
     QStringList m_playQueue;
     int m_playQueueIndex = -1;
     QStringList m_playbackDevices;

@@ -28,7 +28,7 @@
                 <div>
                     <p class="eyebrow"><span id="playback-dot"></span><span id="playback-label">停止</span></p>
                     <h1 id="now-title">等待选择节目</h1>
-                    <p id="now-summary" class="muted">从节目库中选择并编排播放队列</p>
+                    <p id="now-summary" class="muted">从节目库中选择节目，可单独播放或加入队列</p>
                 </div>
                 <div class="master-time">
                     <span>主时钟</span>
@@ -38,7 +38,7 @@
 
             <input id="timeline-seek" class="progress-track" type="range"
                    min="0" max="0" step="100" value="0" aria-label="起播时间"
-                   title="停止时拖动选择起播时间，再点击开始播放" disabled>
+                   title="停止时拖动选择起播时间，再点击播放当前节目" disabled>
             <div class="progress-meta">
                 <span id="elapsed-time">00:00:00</span>
                 <span id="remaining-time">剩余 00:00:00</span>
@@ -46,7 +46,7 @@
 
             <div class="transport" aria-label="播控操作">
                 <button id="stop-button" class="button danger" type="button"><span>■</span>停止</button>
-                <button id="primary-button" class="button primary" type="button"><span id="primary-icon">▶</span><span id="primary-label">开始播放</span></button>
+                <button id="primary-button" class="button primary" type="button"><span id="primary-icon">▶</span><span id="primary-label">播放当前节目</span></button>
                 <button id="refresh-button" class="button ghost" type="button">↻ 刷新</button>
             </div>
         </section>
@@ -59,8 +59,7 @@
                         <h2 id="library-title">节目库</h2>
                     </div>
                     <div class="queue-actions">
-                        <span id="selection-count">已选 0 个</span>
-                        <button id="apply-queue-button" class="text-button" type="button">应用队列</button>
+                        <span id="selection-count">0 个节目</span>
                     </div>
                 </div>
                 <div id="timeline-list" class="timeline-list"></div>
@@ -104,16 +103,21 @@
                     <div id="empty-devices" class="empty-state">当前方案中没有设备</div>
                 </section>
 
-                <section class="panel queue-panel" aria-labelledby="queue-title">
+                <section id="queue-panel" class="panel queue-panel" aria-labelledby="queue-title" hidden>
                     <div class="section-heading compact">
                         <div>
                             <p class="eyebrow">PLAY QUEUE</p>
                             <h2 id="queue-title">播放队列</h2>
+                            <p id="queue-status" class="section-caption">待播放</p>
                         </div>
                         <span id="queue-count" class="count-badge">0</span>
                     </div>
+                    <div class="queue-transport" aria-label="队列播控">
+                        <button id="queue-play-button" class="button primary" type="button">播放队列</button>
+                        <button id="queue-stop-button" class="button" type="button">停止</button>
+                        <button id="clear-queue-button" class="text-button" type="button">清空</button>
+                    </div>
                     <ol id="queue-list" class="queue-list"></ol>
-                    <div id="empty-queue" class="empty-state">点击节目加入队列</div>
                 </section>
             </aside>
         </div>

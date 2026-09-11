@@ -4,6 +4,7 @@
 #include "devices/DeviceTemplate.h"
 
 class QTcpSocket;
+class QFile;
 
 class TimelineModel;
 
@@ -52,5 +53,6 @@ private:
 	};
 	QMap<void*, Data> m_map;
 
+	QFile* m_recordFile = nullptr;
 	
 };

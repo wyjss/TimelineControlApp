@@ -102,7 +102,7 @@ void FfmpegVideoFrameItem::play()
     if (m_source.isEmpty())
         return;
 
-    if ((!m_reader || !m_reader->isRunning()) && !openCurrentSource())
+    if ((!m_reader || m_reader->isStopped()) && !openCurrentSource())
         return;
 
     if (m_durationMs > 0 && m_positionMs >= m_durationMs)
@@ -139,7 +139,7 @@ void FfmpegVideoFrameItem::seek(qint64 positionMs)
     if (m_source.isEmpty())
         return;
 
-    if ((!m_reader || !m_reader->isRunning()) && !openCurrentSource())
+    if ((!m_reader || m_reader->isStopped()) && !openCurrentSource())
         return;
 
     const qint64 upperBound = m_durationMs > 0 ? m_durationMs : positionMs;
@@ -176,7 +176,7 @@ void FfmpegVideoFrameItem::advanceFrame()
     if (frameUpdated)
         m_pendingFrame = false;
 
-    if (!m_reader->isRunning()) {
+    if (m_reader->isStopped()) {
         if (m_playing) {
             if (m_durationMs > 0)
                 setPositionValue(m_durationMs);

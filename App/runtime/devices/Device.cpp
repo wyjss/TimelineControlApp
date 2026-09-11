@@ -5,6 +5,7 @@
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceTemplate.h"
 
+#include "LogMacros.h"
 #include <QDataStream>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -437,6 +438,7 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
     for (int index = 0; index < commandCount; ++index) {
         QByteArray commandData;
         stream >> commandData;
+      
         if (stream.status() != QDataStream::Ok)
             break;
 
