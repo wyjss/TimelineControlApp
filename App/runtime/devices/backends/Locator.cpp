@@ -213,7 +213,7 @@ void LocationRecver::checkStatus()
 
 	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
 		auto sock = itr->sock;
-#if 1
+#if 0
 		if (
 			sock->state() != QTcpSocket::ConnectedState &&
 			sock->state() != QTcpSocket::ConnectingState
@@ -227,10 +227,16 @@ void LocationRecver::checkStatus()
 			emit locationChanged(itr->ip, itr->lon, itr->lat, itr->heading, false);
 		}
 #else// debug
+
+		static int s_i = 0;
+		++s_i;
+		if (s_i > 6) {
+			return;
+		}
 		//bool online = rand() % 2 == 0;
 		bool online = true;
-		double lon = 109.0 + rand() % 1000 / 1000'000.0;
-		double lat = 32.7 + rand() % 1000 / 1000'000.0;
+		double lon = 109.022 + rand() % 1000 / 1000'000.0;
+		double lat = 32.7056 + rand() % 1000 / 1000'000.0;
 		double heading = rand() % 360;
 
 		LOG_MARK_DEBUG_CODE("发送随机测试数据");

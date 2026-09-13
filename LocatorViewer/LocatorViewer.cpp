@@ -277,7 +277,7 @@ bool LocatorViewer::drawLine(const QString& name,
 {
     if (name.isEmpty())
         return false;
-
+    LOG_DEBUG((startLongitude + endLongitude) / 2 << (startLatitude + endLatitude) / 2);
     auto earth = ragis::RagEarth::getInstance();
     auto view = earth->getView2D();
     if (!view)

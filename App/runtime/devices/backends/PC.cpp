@@ -62,6 +62,10 @@ public:
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowY));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowW));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowH));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoSrcX));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoSrcY));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoSrcW));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoSrcH));
 
 		auto* playField = new DeviceParamSpec(QStringLiteral("play"),
 											  QStringLiteral("立即播放"),

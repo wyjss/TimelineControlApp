@@ -478,6 +478,43 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		return spec;
 	}
 
+	if (deviceKey == DeviceKey::VideoSrcX) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+			QStringLiteral("视频源起点x坐标"),
+			0,
+			IntType,
+			AutoEditor);
+		return spec;
+	}
+	if (deviceKey == DeviceKey::VideoSrcY) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+			QStringLiteral("视频源起点y坐标"),
+			0,
+			IntType,
+			AutoEditor);
+		return spec;
+	}
+	if (deviceKey == DeviceKey::VideoSrcW) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+			QStringLiteral("视频源宽度"),
+			0,
+			IntType,
+			AutoEditor);
+		spec->setMinimum(0);
+		spec->setMaximum(9999);
+		return spec;
+	}
+	if (deviceKey == DeviceKey::VideoSrcH) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+			QStringLiteral("视频源高度"),
+			0,
+			IntType,
+			AutoEditor);
+		spec->setMinimum(0);
+		spec->setMaximum(9999);
+		return spec;
+	}
+
 	if (deviceKey == DeviceKey::Location) {
         QVariantMap vm;
         vm["lon"] = 0;

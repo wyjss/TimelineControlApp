@@ -73,6 +73,11 @@ inline const QString VideoWindowY = "videoWindowY";
 inline const QString VideoWindowW = "videoWindowW";
 inline const QString VideoWindowH = "videoWindowH";
 
+inline const QString VideoSrcX = "videoSrcX";
+inline const QString VideoSrcY = "videoSrcY";
+inline const QString VideoSrcW = "videoSrcW";
+inline const QString VideoSrcH = "videoSrcH";
+
 // 定位器坐标，VMap["lon" "lat"]
 inline const QString Location = QStringLiteral("location");
 

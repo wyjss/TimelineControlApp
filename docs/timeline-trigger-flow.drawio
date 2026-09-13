@@ -1,0 +1,263 @@
+<mxfile host="app.diagrams.net" type="device" compressed="false">
+  <diagram id="timeline-trigger-flow" name="时间线与过点联动">
+    <mxGraphModel dx="1800" dy="1540" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1540" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="时间线指令与过点联动" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=35;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="34" width="1100" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="到时执行设备指令 · 过点触发其他节目 · 多条时间线并行推进" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="72" y="91" width="1260" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="logical-label" value="逻辑流程示意" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1500" y="46" width="230" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="execution-heading" value="01  时间线上的指令如何执行" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=24;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="154" width="900" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="start" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;节目启动&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;手动 / 队列 / 过点联动&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF2FD;strokeColor=#8CACD1;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="100" y="225" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="clock" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;时间线推进&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;相对节目起点计时&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="225" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="due-command" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;到时触发指令&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;目标设备 + 动作 + 参数&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF2FD;strokeColor=#8CACD1;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="760" y="225" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="execute" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;下发设备执行&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;各类执行节点&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="225" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="result" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;记录执行结果&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;成功 / 失败&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="225" width="280" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="execution-0" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="start" target="clock">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="execution-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="clock" target="due-command">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="execution-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="due-command" target="execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="execution-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="execute" target="result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="execution-note" value="各条指令按自己的编排时刻触发；后续指令不以等待前一条执行结果为前提。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="102" y="333" width="1500" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="timeline-panel" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F8FC;strokeColor=#CCD9E7;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="395" width="1660" height="635" as="geometry" />
+        </mxCell>
+        <mxCell id="timeline-heading" value="02  过点触发其他节目" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=24;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="413" width="650" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="timeline-subheading" value="示例：P1 启动节目 B，P2 启动节目 C" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="419" width="650" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="timeline-a" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#346DAD;strokeWidth=3;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="555" as="sourcePoint" />
+            <mxPoint x="1690" y="555" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="timeline-b" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#346DAD;strokeWidth=3;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="860" y="735" as="sourcePoint" />
+            <mxPoint x="1270" y="735" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="timeline-c" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#346DAD;strokeWidth=3;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1360" y="915" as="sourcePoint" />
+            <mxPoint x="1690" y="915" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="lane-a-title" value="节目 A" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=24;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="105" y="513" width="210" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-a-note" value="当前运行节目" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="105" y="554" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-b-title" value="节目 B" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=24;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="105" y="693" width="210" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-b-note" value="由 P1 触发启动" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="105" y="734" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-c-title" value="节目 C" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=24;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="105" y="873" width="210" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-c-note" value="由 P2 触发启动" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="105" y="914" width="240" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="a1" value="&lt;div style=&quot;font-size:20px;font-weight:600;line-height:1.4;&quot;&gt;指令 A1&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;加载媒体&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=20;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="350" y="520" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="a2" value="&lt;div style=&quot;font-size:20px;font-weight:600;line-height:1.4;&quot;&gt;指令 A2&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;开始播放&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=20;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="555" y="520" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="a3" value="&lt;div style=&quot;font-size:20px;font-weight:600;line-height:1.4;&quot;&gt;指令 A3&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;结束播放&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=20;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="520" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" value="&lt;div style=&quot;font-size:19px;font-weight:600;line-height:1.4;&quot;&gt;指令 B1&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;动作 1&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=19;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="800" y="700" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" value="&lt;div style=&quot;font-size:19px;font-weight:600;line-height:1.4;&quot;&gt;指令 B2&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;动作 2&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=19;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="950" y="700" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" value="&lt;div style=&quot;font-size:19px;font-weight:600;line-height:1.4;&quot;&gt;指令 B3&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;动作 3&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=19;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="700" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" value="&lt;div style=&quot;font-size:19px;font-weight:600;line-height:1.4;&quot;&gt;指令 C1&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;动作 1&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=19;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="880" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="&lt;div style=&quot;font-size:19px;font-weight:600;line-height:1.4;&quot;&gt;指令 C2&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;动作 2&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=19;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="880" width="120" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" style="ellipse;html=1;fillColor=#EDF8F3;strokeColor=#20856D;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="850" y="545" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" style="ellipse;html=1;fillColor=#EDF8F3;strokeColor=#20856D;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1350" y="545" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-label" value="过点 P1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=20;fontColor=#20856D;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="477" width="160" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-label" value="过点 P2" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=20;fontColor=#20856D;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="477" width="160" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-triggers-b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p1" target="b1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-triggers-c" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="p2" target="c1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-target-label" value="触发节目 B" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="882" y="630" width="220" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-target-label" value="触发节目 C" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1382" y="792" width="220" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="a-running-note" value="节目 A 继续推进" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#346DAD;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="595" width="290" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="a-origin" value="相对时间 0" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="345" y="596" width="150" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="b-origin" value="相对时间 0" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="785" y="779" width="150" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="c-origin" value="相对时间 0" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1285" y="958" width="150" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="waiting-b" value="等待触发" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="360" y="714" width="365" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="waiting-c" value="等待触发" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="360" y="894" width="775" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="waiting-b-line" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#8C96A4;strokeWidth=2;endArrow=none;endFill=1;endSize=8;dashed=1;dashPattern=6 4;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="760" as="sourcePoint" />
+            <mxPoint x="755" y="760" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="waiting-c-line" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#8C96A4;strokeWidth=2;endArrow=none;endFill=1;endSize=8;dashed=1;dashPattern=6 4;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="940" as="sourcePoint" />
+            <mxPoint x="1240" y="940" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="timeline-explanation" value="绿色标记是实际过点事件，不是预设时间指令；目标节目从自身 0 时刻开始，源节目继续运行。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="105" y="992" width="1510" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="rule-panel" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F7FAF8;strokeColor=#CFDDD6;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1070" width="1660" height="370" as="geometry" />
+        </mxCell>
+        <mxCell id="rule-heading" value="03  过点事件如何转为节目触发" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=24;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1088" width="1200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="rules-enabled" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;启用联动规则&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;源节目运行 / 目标节目等待&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1180" width="270" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="position" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;接收定位数据&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;位置 / 航向 / 在线状态&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="1180" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="crossing-check" style="rhombus;html=1;fillColor=#EAF5EE;strokeColor=#91BBAE;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="755" y="1155" width="250" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="crossing-check-title" value="过点且方向匹配？" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=19;fontColor=#20856D;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="785" y="1193" width="190" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="crossing-check-subtitle" value="按已配置规则判断" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="800" y="1231" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="trigger-program" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;触发目标节目&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;等待 → 运行&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDF8F3;strokeColor=#91BBAE;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="1180" width="270" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="target-time" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;独立时间线执行&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;相对 0 起播 / 到时执行指令&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDF8F3;strokeColor=#91BBAE;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="1180" width="280" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="rule-to-position" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="rules-enabled" target="position">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="position-to-check" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="position" target="crossing-check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="check-to-trigger" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="crossing-check" target="trigger-program">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="yes-label" value="满足" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1005" y="1194" width="65" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="trigger-to-target-time" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="trigger-program" target="target-time">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wait-next-position" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="880" y="1305" as="sourcePoint" />
+            <mxPoint x="560" y="1280" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="880" y="1370" />
+              <mxPoint x="560" y="1370" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="not-crossed-label" value="不满足：继续监听" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#20856D;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="600" y="1330" width="280" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="once-note" value="每条规则本轮触发一次。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1072" y="1322" width="590" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="running-target-note" value="目标节目运行中不重复启动。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1072" y="1356" width="590" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="crossing-definition" value="过点：运动轨迹跨越指定触发线 / 围栏，并符合设定方向；规则监听随源节目启动而启用。" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="103" y="1394" width="1550" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-time" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=none;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="1490" as="sourcePoint" />
+            <mxPoint x="152" y="1490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-time-text" value="时间线 / 设备指令" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="170" y="1475" width="280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-trigger" style="edgeStyle=none;noEdgeStyle=1;rounded=0;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=none;endFill=1;endSize=8;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="470" y="1490" as="sourcePoint" />
+            <mxPoint x="522" y="1490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend-trigger-text" value="位置事件 / 节目联动" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1475" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="footnote" value="顺序与并行关系示意 · 非等比例时间轴" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1120" y="1475" width="580" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

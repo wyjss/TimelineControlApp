@@ -1,0 +1,169 @@
+<mxfile host="app.diagrams.net" type="device" compressed="false">
+  <diagram id="master-control-architecture" name="总控架构">
+    <mxGraphModel dx="1700" dy="1160" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1160" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="总控控制架构" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=34;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="35" width="900" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="集中编排 · 统一调度 · 节点执行 · 位置联动" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="72" y="90" width="900" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="design-label" value="逻辑架构设计" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1400" y="48" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="core-boundary" value="" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F8FC;strokeColor=#CCD9E7;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="285" width="1560" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="core-heading" value="总控系统" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=23;fontColor=#18324F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="105" y="302" width="330" height="38" as="geometry" />
+        </mxCell>
+        <mxCell id="operator" value="&lt;div style=&quot;font-size:24px;font-weight:600;line-height:1.4;&quot;&gt;总控操作台&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;节目编排 / 播放控制 / 状态监视&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF2FD;strokeColor=#8CACD1;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=24;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="590" y="140" width="520" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="program" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;节目与方案管理&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;节目编排 / 素材关联 / 方案保存&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="110" y="362" width="390" height="106" as="geometry" />
+        </mxCell>
+        <mxCell id="scheduler" value="&lt;div style=&quot;font-size:25px;font-weight:600;line-height:1.4;&quot;&gt;统一控制调度&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;时间线执行 / 场景切换 / 条件触发&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#E6F0FC;strokeColor=#8CACD1;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=25;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="610" y="350" width="480" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="device-manager" value="&lt;div style=&quot;font-size:22px;font-weight:600;line-height:1.4;&quot;&gt;设备与状态管理&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;节点配置 / 在线检测 / 状态汇聚&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=22;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="362" width="390" height="106" as="geometry" />
+        </mxCell>
+        <mxCell id="communications" value="&lt;div style=&quot;font-size:23px;font-weight:600;line-height:1.4;&quot;&gt;节点通信与协议适配&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;控制指令下发 / 执行结果反馈 / 位置事件上报&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EAF2FD;strokeColor=#8CACD1;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=23;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="110" y="604" width="1480" height="88" as="geometry" />
+        </mxCell>
+        <mxCell id="pc" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;PC 播放节点&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;视频播放与输出&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="125" y="805" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="fusion" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;融合节点&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;融合画面与播单控制&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="375" y="805" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="http-device" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;网络设备&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;通用设备控制&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="625" y="805" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="serial-proxy" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;串口代理节点&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;网络指令转串口&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="875" y="805" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="dmx-adapter" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;DMX 适配节点&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;DMX 通道控制&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8C96A4;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;dashed=1;dashPattern=6 4;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="805" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="locator" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;定位采集节点&lt;/div&gt;&lt;div style=&quot;font-size:16px;color:#596B7F;line-height:1.7;&quot;&gt;位置与航向上报&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EDF8F3;strokeColor=#91BBAE;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1375" y="805" width="200" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="serial-endpoint" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;串口设备&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CAD5E2;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="875" y="1000" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="dmx-endpoint" value="&lt;div style=&quot;font-size:21px;font-weight:600;line-height:1.4;&quot;&gt;DMX 协议设备&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8C96A4;strokeWidth=1.5;fontFamily=Microsoft YaHei;fontColor=#18324F;fontSize=21;spacing=12;dashed=1;dashPattern=6 4;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="1000" width="200" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="operator-control" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;startSize=8;" edge="1" parent="1" source="operator" target="scheduler">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="operator-control-label" value="操作指令 / 运行状态" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#346DAD;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="870" y="244" width="320" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="program-data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="program" target="scheduler">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="program-data-label" value="方案 / 节目" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#346DAD;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="500" y="379" width="110" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="device-data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;startArrow=block;startFill=1;startSize=8;" edge="1" parent="1" source="scheduler" target="device-manager">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="device-data-label" value="目标 / 状态" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#346DAD;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="379" width="110" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="dispatch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;startSize=8;" edge="1" parent="1" source="scheduler" target="communications">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dispatch-label" value="调度指令 / 节点反馈 / 联动事件" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#346DAD;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="872" y="546" width="390" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="link-pc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.0777027027027027;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;startSize=8;" edge="1" parent="1" source="communications" target="pc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-pc" value="HTTP" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#346DAD;fontStyle=1;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="155" y="745" width="140" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="link-fusion" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.24662162162162163;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="communications" target="fusion">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-fusion" value="UDP" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#346DAD;fontStyle=1;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="405" y="745" width="140" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="link-http-device" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.4155405405405405;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;startSize=8;" edge="1" parent="1" source="communications" target="http-device">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-http-device" value="HTTP" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#346DAD;fontStyle=1;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="655" y="745" width="140" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="link-serial-proxy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5844594594594594;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;startSize=8;" edge="1" parent="1" source="communications" target="serial-proxy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-serial-proxy" value="HTTP" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#346DAD;fontStyle=1;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="905" y="745" width="140" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="link-dmx" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8C96A4;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.7533783783783784;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="communications" target="dmx-adapter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-dmx" value="适配器接口" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="723" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-dmx-status" value="预留" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=15;fontColor=#596B7F;fontStyle=0;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="754" width="130" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="location-feedback" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#20856D;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.9222972972972973;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="locator" target="communications">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-locator" value="TCP" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=18;fontColor=#20856D;fontStyle=1;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1405" y="745" width="140" height="29" as="geometry" />
+        </mxCell>
+        <mxCell id="serial-forward" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#346DAD;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;startArrow=block;startFill=1;startSize=8;" edge="1" parent="1" source="serial-proxy" target="serial-endpoint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-serial" value="串口" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#346DAD;fontStyle=0;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="995" y="937" width="100" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="dmx-forward" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8C96A4;strokeWidth=2;endArrow=block;endFill=1;endSize=8;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dmx-adapter" target="dmx-endpoint">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="protocol-dmx512" value="DMX512" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=17;fontColor=#596B7F;fontStyle=0;fillColor=#FFFFFF;labelBackgroundColor=#FFFFFF;" vertex="1" parent="1">
+          <mxGeometry x="1245" y="937" width="120" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="control-legend" style="endArrow=block;html=1;strokeColor=#346DAD;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="1120" as="sourcePoint" />
+            <mxPoint x="162" y="1120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="control-legend-label" value="控制 / 响应" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="176" y="1105" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="location-legend" style="endArrow=block;html=1;strokeColor=#20856D;strokeWidth=2;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="1120" as="sourcePoint" />
+            <mxPoint x="412" y="1120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="location-legend-label" value="位置上报" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="426" y="1105" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="reserved-legend" style="endArrow=block;html=1;strokeColor=#8C96A4;strokeWidth=2;dashed=1;dashPattern=6 4;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="610" y="1120" as="sourcePoint" />
+            <mxPoint x="662" y="1120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="reserved-legend-label" value="预留链路" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="676" y="1105" width="160" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="footer" value="节点可按项目规模部署多个实例" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Microsoft YaHei;fontSize=16;fontColor=#596B7F;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="1105" width="540" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

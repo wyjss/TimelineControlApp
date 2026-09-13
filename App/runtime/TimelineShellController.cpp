@@ -57,7 +57,7 @@ TimelineShellController::TimelineShellController(QObject *parent)
           },
           QVariantMap{
               {QStringLiteral("key"), QStringLiteral("projection")},
-              {QStringLiteral("label"), tr("投影")},
+              {QStringLiteral("label"), tr("加载视频")},
               {QStringLiteral("iconName"), QStringLiteral("scene")},
               {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/ProjectionPage.qml")}
           },

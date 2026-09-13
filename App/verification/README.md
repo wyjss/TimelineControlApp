@@ -9,7 +9,7 @@ $env:PATH = 'C:/Qt/5.15.2/msvc2019_64/bin;' + $env:PATH
 $env:QT_QPA_PLATFORM = 'offscreen'
 $env:QT_QUICK_BACKEND = 'software'
 $env:QT_QPA_FONTDIR = 'C:/Windows/Fonts'
-& build/uicore-ui-review/verification/Release/UICoreQmlTests.exe -input App/verification -o build/ui-pages-tests.txt,txt
+& build/uicore-ui-review/verification/Release/UICoreQmlTests.exe -import App/verification/imports -input App/verification -o build/ui-pages-tests.txt,txt
 ctest --test-dir build/uicore-ui-review -C Release --output-on-failure
 ```
 
@@ -22,3 +22,5 @@ Qt 路径按本机安装位置调整。测试覆盖名称与地址搜索、在�
 2026-09-06：Qt 5.15.2 / MSVC 2019 Release 下页面测试 15 项（含初始化与清理）通过，UICore 的 3 项 CTest 通过。相同环境的 UICore Standalone 在修改前后均有 28 条既有绑定循环，0 条递归布局、0 条 QML 加载或类型错误；不将该启动检查记录为通过。
 
 网页播控回归执行 `node App/verification/tst_WebPlayback.cjs`，无需启动 HTTP 服务或设备后端。覆盖所选节目与实际主节目分离、单播与队列控制、完成后重播、请求来源、空队列隐藏，以及操作后的旧轮询响应不会覆盖新状态。
+
+加载视频编辑器检查见 `tst_VideoCommandEditor.qml`：覆盖页面内的指令添加、删除至空状态、跨时间线切换、独立参数保存、搜索、矩形拖动缩放、数值边界和 1000 / 1180 / 1700 宽度布局。`imports/TimelineControl/Media` 仅为测试提供视频控件替身，检查预览源与裁剪区域的关联，不解码视频、不修改真实时间线或方案文件。首版编辑器使用页面内示例数据，保存仅在当前页面实例内生效。
