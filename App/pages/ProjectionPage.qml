@@ -1,6 +1,5 @@
 import QtQuick 2.14
 import QtQuick.Controls 2.14
-import QtQuick.Dialogs 1.3
 import QtQuick.Layouts 1.14
 import UICore.Style 1.0
 import TimelineControl.Media 1.0 as Media
@@ -17,38 +16,101 @@ Item {
         ? ApplicationWindow.window.appTheme : fallbackTheme
     property var appRuntime: typeof app !== "undefined" ? app : null
 
-    // 首版仅保存页面内的编辑状态，尚未接入 TimelineCommand。
-    property var timelines: [
-        { "label": qsTr("主展厅 · 日常演示"), "value": "main" },
-        { "label": qsTr("主展厅 · 迎宾演示"), "value": "welcome" }
-    ]
-    property var pcDevices: [
-        { "id": "pc-01", "name": qsTr("PC-01 · 主屏"), "address": "192.168.1.101", "width": 3840, "height": 2160 },
-        { "id": "pc-02", "name": qsTr("PC-02 · 侧屏"), "address": "192.168.1.102", "width": 1920, "height": 1080 }
-    ]
-    property var commandItems: [
-        { "id": "command-1", "timelineId": "main", "pcId": "pc-01", "name": qsTr("开场视频"), "startTimeMs": 5000, "play": true },
-        { "id": "command-2", "timelineId": "main", "pcId": "pc-01", "name": qsTr("循环背景"), "startTimeMs": 90000, "play": true },
-        { "id": "command-3", "timelineId": "main", "pcId": "pc-02", "name": qsTr("欢迎画面"), "startTimeMs": 5000, "play": true },
-        { "id": "command-4", "timelineId": "main", "pcId": "pc-02", "name": qsTr("片尾画面"), "startTimeMs": 180000, "play": false },
-        { "id": "command-5", "timelineId": "welcome", "pcId": "pc-01", "name": qsTr("迎宾视频"), "startTimeMs": 0, "play": true }
-    ]
-    property string selectedTimelineId: "main"
-    property string selectedCommandId: "command-1"
-    property int nextCommandIndex: 6
+    readonly property var timelineManager: appRuntime ? appRuntime.timelineManager : null
+    readonly property var timelineModel: timelineManager ? timelineManager.timelineModel : null
+    readonly property var currentTimeline: timelineManager ? timelineManager.currentTimeline : null
+    readonly property var commandModel: currentTimeline ? currentTimeline.commandModel : null
+    readonly property var deviceModel: appRuntime ? appRuntime.deviceModel : null
+    readonly property bool editingEnabled: !!currentTimeline && timelineManager.playbackState === 0
+        && currentTimeline.state === 0
+    readonly property var timelines: {
+        var result = []
+        if (timelineModel) {
+            for (var i = 0; i < timelineModel.count; ++i) {
+                var timeline = timelineModel.timelineAt(i)
+                result.push({ "label": timeline.name, "value": timeline.id })
+            }
+        }
+        return result
+    }
+    readonly property var pcDevices: {
+        var result = []
+        var devices = deviceModel ? deviceModel.devices : []
+        for (var i = 0; i < devices.length; ++i) {
+            var device = devices[i]
+            if (device.deviceType !== "电脑" && device.templateName !== "电脑"
+                    && device.supportedProtocols.indexOf("pc") < 0)
+                continue
+            var config = device.configValues
+            var loadCommand = null
+            var commands = device.commands
+            for (var j = 0; j < commands.length; ++j) {
+                if (commands[j].commandType === "openVideo") {
+                    loadCommand = commands[j]
+                    break
+                }
+            }
+            result.push({ "id": device.id, "name": device.name, "address": config.ip || "",
+                "width": Math.max(1, Number(config.screenWidth || 1920)) * Math.max(1, Number(config.screenColumns || 1)),
+                "height": Math.max(1, Number(config.screenHeight || 1080)) * Math.max(1, Number(config.screenRows || 1)),
+                "loadCommand": loadCommand })
+        }
+        return result
+    }
+    property var videoSizes: ({})
+    property string statusText: ""
+    readonly property string selectedTimelineId: currentTimeline ? currentTimeline.id : ""
+    readonly property string selectedCommandId: selectedCommand ? selectedCommand.id : ""
     property string searchText: ""
     property var videoItem: null
     property var sourceEditor: null
     property var outputEditor: null
-    readonly property var timelineCommands: commandItems.filter(function(command) {
-        return command.timelineId === root.selectedTimelineId
-    })
+    readonly property var timelineCommands: {
+        var result = []
+        var commands = commandModel ? commandModel.commands : []
+        for (var i = 0; i < commands.length; ++i) {
+            var command = commands[i]
+            if (!command.targetCommand || command.targetCommand.commandType !== "openVideo"
+                    || !pcDevices.some(function(pc) { return pc.id === command.targetDeviceId }))
+                continue
+            var values = {}
+            var videoOptions = []
+            var fields = command.targetCommand.executionInputFields
+            for (var j = 0; j < fields.length; ++j) {
+                values[fields[j].key] = fields[j].value
+                if (fields[j].key === "videoFile")
+                    videoOptions = fields[j].options
+            }
+            Object.assign(values, command.executionInputValues)
+            if (values.rect) {
+                var rect = String(values.rect).split(",")
+                if (rect.length === 4) {
+                    values.videoWindowX = Number(rect[0])
+                    values.videoWindowY = Number(rect[1])
+                    values.videoWindowW = Number(rect[2])
+                    values.videoWindowH = Number(rect[3])
+                }
+            }
+            var play = command.executionInputValues.play !== undefined ? command.executionInputValues.play : true
+            var videoOption = videoOptions.filter(function(option) {
+                return option && typeof option === "object" && String(option.value) === String(values.videoFile)
+            })[0]
+            result.push(Object.assign(values, {
+                "id": command.id, "command": command, "pcId": command.targetDeviceId,
+                "name": command.commandName,
+                "videoOptions": videoOptions, "videoName": videoOption ? String(videoOption.label) : videoName(values.videoFile),
+                "startTimeMs": command.startTimeMs,
+                "play": play === true || play === "true" || play === 1
+            }))
+        }
+        return result
+    }
     readonly property var selectedCommand: {
         for (var i = 0; i < timelineCommands.length; ++i) {
-            if (timelineCommands[i].id === selectedCommandId)
+            if (commandModel && timelineCommands[i].id === commandModel.selectedCommandId)
                 return timelineCommands[i]
         }
-        return null
+        return timelineCommands.length ? timelineCommands[0] : null
     }
     readonly property var selectedPc: {
         for (var i = 0; i < pcDevices.length; ++i) {
@@ -57,15 +119,12 @@ Item {
         }
         return null
     }
-    readonly property string timelineName: {
-        for (var i = 0; i < timelines.length; ++i) {
-            if (timelines[i].value === selectedTimelineId)
-                return timelines[i].label
-        }
-        return ""
-    }
-    readonly property int videoWidth: selectedCommand ? selectedCommand.videoWidth || 1920 : 1920
-    readonly property int videoHeight: selectedCommand ? selectedCommand.videoHeight || 1080 : 1080
+    readonly property string timelineName: currentTimeline ? currentTimeline.name : ""
+    readonly property var videoSize: selectedCommand ? videoSizes[selectedCommand.videoFile] : null
+    readonly property int videoWidth: videoSize ? videoSize.width
+        : Math.max(1920, selectedCommand ? Number(selectedCommand.videoSrcX || 0) + Number(selectedCommand.videoSrcW || 0) : 0)
+    readonly property int videoHeight: videoSize ? videoSize.height
+        : Math.max(1080, selectedCommand ? Number(selectedCommand.videoSrcY || 0) + Number(selectedCommand.videoSrcH || 0) : 0)
     readonly property int canvasWidth: selectedPc ? selectedPc.width : 1920
     readonly property int canvasHeight: selectedPc ? selectedPc.height : 1080
     readonly property var sourceRect: ({
@@ -75,18 +134,18 @@ Item {
         "h": selectedCommand ? selectedCommand.videoSrcH || videoHeight : videoHeight
     })
     readonly property var outputRect: ({
-        "x": selectedCommand && selectedCommand.videoWindowX !== undefined ? selectedCommand.videoWindowX : Math.round(canvasWidth / 4),
-        "y": selectedCommand && selectedCommand.videoWindowY !== undefined ? selectedCommand.videoWindowY : Math.round(canvasHeight / 4),
-        "w": selectedCommand ? selectedCommand.videoWindowW || Math.round(canvasWidth / 2) : 960,
-        "h": selectedCommand ? selectedCommand.videoWindowH || Math.round(canvasHeight / 2) : 540
+        "x": selectedCommand ? Number(selectedCommand.videoWindowX || 0) : 0,
+        "y": selectedCommand ? Number(selectedCommand.videoWindowY || 0) : 0,
+        "w": selectedCommand ? Number(selectedCommand.videoWindowW || 1920) : 1920,
+        "h": selectedCommand ? Number(selectedCommand.videoWindowH || 1080) : 1080
     })
 
     onSelectedTimelineIdChanged: {
         searchText = ""
-        var commands = commandItems.filter(function(command) { return command.timelineId === root.selectedTimelineId })
-        selectedCommandId = commands.length ? commands[0].id : ""
+        statusText = ""
     }
     onSelectedCommandIdChanged: {
+        statusText = ""
         if (videoItem)
             videoItem.pause()
         if (sourceEditor)
@@ -94,60 +153,82 @@ Item {
         if (outputEditor)
             outputEditor.cancelPreview()
     }
-    Component.onCompleted: {
-        if (appRuntime && appRuntime.settings) {
-            var source = String(appRuntime.settings.value("projectionVideoSource", "")).trim()
-            if (source.length)
-                updateCommand({ "videoFile": source })
-        }
-    }
 
     function commandsForPc(pc) {
         var query = searchText.trim().toLowerCase()
         return timelineCommands.filter(function(command) {
             return command.pcId === pc.id && (!query
-                || (pc.name + " " + pc.address + " " + command.name + " "
+                || (pc.name + " " + pc.address + " " + command.name + " " + command.videoName + " "
                     + (command.videoFile || "")).toLowerCase().indexOf(query) >= 0)
         }).sort(function(left, right) { return left.startTimeMs - right.startTimeMs })
     }
 
     function updateCommand(values) {
-        if (!selectedCommand)
+        if (!editingEnabled || !selectedCommand || !commandModel)
             return
+        var item = selectedCommand
         var changed = false
         for (var key in values)
-            changed = changed || selectedCommand[key] !== values[key]
+            changed = changed || item[key] !== values[key]
         if (!changed)
             return
-        var next = commandItems.slice()
-        var index = next.indexOf(selectedCommand)
-        next[index] = Object.assign({}, selectedCommand, { "dirty": true }, values)
-        commandItems = next
+        var parameters = Object.assign({}, item.command.executionInputValues)
+        if (parameters.rect !== undefined) {
+            delete parameters.rect
+            parameters.videoWindowX = item.videoWindowX
+            parameters.videoWindowY = item.videoWindowY
+            parameters.videoWindowW = item.videoWindowW
+            parameters.videoWindowH = item.videoWindowH
+        }
+        Object.assign(parameters, values)
+        delete parameters.startTimeMs
+        if (!commandModel.updateCommand(item.command,
+                values.startTimeMs !== undefined ? values.startTimeMs : item.startTimeMs, parameters)) {
+            statusText = qsTr("自动同步失败，指令可能已被删除")
+            return
+        }
+        statusText = qsTr("已自动同步时间线；方案文件请通过全局保存")
     }
 
     function addCommand(pcId) {
         root.forceActiveFocus()
-        searchText = ""
-        var command = {
-            "id": "command-" + nextCommandIndex++, "timelineId": selectedTimelineId,
-            "pcId": pcId, "name": qsTr("加载视频 %1").arg(nextCommandIndex - 1),
-            "startTimeMs": 0, "play": false, "dirty": true
+        if (!editingEnabled || !commandModel)
+            return
+        var pc = pcDevices.filter(function(device) { return device.id === pcId })[0]
+        if (!pc || !pc.loadCommand)
+            return
+        var values = {}
+        var fields = pc.loadCommand.executionInputFields
+        for (var i = 0; i < fields.length; ++i)
+            values[fields[i].key] = fields[i].value
+        values.play = false
+        var command = commandModel.addDeviceCommand(0, pc.id, pc.loadCommand, values)
+        if (!command) {
+            statusText = qsTr("添加指令失败")
+            return
         }
-        commandItems = commandItems.concat([command])
-        selectedCommandId = command.id
+        searchText = ""
+        commandModel.selectedCommandId = command.id
+        statusText = qsTr("已添加指令，请选择视频")
+    }
+
+    function selectCommand(commandId) {
+        // 失焦提交可能重建指令项，切换逻辑保留在页面中。
+        root.forceActiveFocus()
+        if (commandModel)
+            commandModel.selectedCommandId = commandId
     }
 
     function removeCommand(commandId) {
         root.forceActiveFocus()
-        var row = 0
-        for (var i = 0; i < timelineCommands.length; ++i) {
-            if (timelineCommands[i].id === commandId)
-                row = i
+        if (!editingEnabled || !commandModel)
+            return
+        var item = timelineCommands.filter(function(command) { return command.id === commandId })[0]
+        if (!item || !commandModel.removeCommand(item.command)) {
+            statusText = qsTr("删除指令失败")
+            return
         }
-        commandItems = commandItems.filter(function(command) { return command.id !== commandId })
-        if (selectedCommandId === commandId)
-            selectedCommandId = timelineCommands.length
-                ? timelineCommands[Math.min(row, timelineCommands.length - 1)].id : ""
+        statusText = ""
     }
 
     function setRectangle(source, values) {
@@ -177,28 +258,85 @@ Item {
             + ("00" + ms % 1000).slice(-3)
     }
 
-    FileDialog {
-        id: videoFileDialog
-        title: qsTr("选择视频")
-        selectExisting: true
-        nameFilters: [qsTr("视频文件 (*.mp4 *.mov *.mkv *.avi *.wmv *.webm *.m4v)"), qsTr("所有文件 (*)")]
-        onAccepted: root.updateCommand({
-            "videoFile": fileUrl.toString(), "videoWidth": 1920, "videoHeight": 1080,
-            "videoSrcX": 0, "videoSrcY": 0, "videoSrcW": 0, "videoSrcH": 0
-        })
+    function videoName(value) {
+        var name = String(value || "").replace(/^\$/, "").split(/[\\/]/).pop()
+        try {
+            name = decodeURIComponent(name)
+        } catch (error) {}
+        return name || qsTr("未选择视频")
+    }
+
+    Menu {
+        id: commandMenu
+        objectName: "videoCommandActions_" + commandId
+        property string commandId: ""
+
+        function openForCommand(id) {
+            root.forceActiveFocus()
+            commandId = id
+            popup()
+        }
+
+        MenuItem {
+            objectName: "cloneVideoCommandAction"
+            text: qsTr("克隆到…")
+            enabled: root.editingEnabled
+            onTriggered: cloneDialog.openForCommand(commandMenu.commandId)
+        }
+        MenuItem {
+            text: qsTr("删除指令")
+            enabled: root.editingEnabled
+            onTriggered: root.removeCommand(commandMenu.commandId)
+        }
+    }
+
+    VideoCommandCloneDialog {
+        id: cloneDialog
+        parent: root
+        timelineManager: root.timelineManager
+        pcDevices: root.pcDevices
+        onCommandCloned: {
+            var commandId = command.id
+            var pcId = command.targetDeviceId
+            root.searchText = ""
+            root.commandModel.selectedCommandId = commandId
+            root.statusText = qsTr("已克隆到 %1；方案文件请通过全局保存").arg(root.selectedPc.name)
+            for (var j = 0; j < pcGroupRepeater.count; ++j) {
+                if (pcGroupRepeater.itemAt(j).pc.id === pcId)
+                    pcGroupRepeater.itemAt(j).expanded = true
+            }
+            Qt.callLater(function() {
+                if (root.selectedCommandId !== commandId)
+                    return
+                for (var i = 0; i < pcGroupRepeater.count; ++i) {
+                    var group = pcGroupRepeater.itemAt(i)
+                    if (group.pc.id !== pcId)
+                        continue
+                    group.commandRows.parent.forceLayout()
+                    group.forceLayout()
+                    pcGroups.forceLayout()
+                    var index = group.commands.findIndex(function(item) { return item.id === commandId })
+                    var row = group.commandRows.itemAt(index)
+                    if (row)
+                        commandScroll.contentY = Math.max(0, Math.min(row.mapToItem(pcGroups, 0, 0).y,
+                            commandScroll.contentHeight - commandScroll.height))
+                }
+            })
+        }
     }
 
     Component {
         id: videoPlayer
         Media.FfmpegVideoFrameItem {
-            source: root.selectedCommand ? root.selectedCommand.videoFile || "" : ""
+            source: root.selectedCommand && root.selectedCommand.videoFile
+                ? root.selectedCommand.command.targetCommand.resolvedParams({ "videoFile": root.selectedCommand.videoFile }).videoFile
+                : ""
             onVideoSizeChanged: {
                 if (root.selectedCommand && root.selectedCommand.videoFile
-                        && source.toString() === String(root.selectedCommand.videoFile)
                         && videoSize.width > 0 && videoSize.height > 0) {
-                    root.updateCommand({ "videoWidth": videoSize.width, "videoHeight": videoSize.height,
-                                         "dirty": !!root.selectedCommand.dirty })
-                    root.setRectangle(true, root.sourceRect)
+                    var sizes = Object.assign({}, root.videoSizes)
+                    sizes[root.selectedCommand.videoFile] = { "width": videoSize.width, "height": videoSize.height }
+                    root.videoSizes = sizes
                 }
             }
         }
@@ -210,33 +348,72 @@ Item {
         spacing: 16
 
         Base.AppSurface {
-            Layout.preferredWidth: root.width < 1200 ? 256 : 280
+            id: commandNavigation
+            objectName: "videoCommandNavigation"
+            Layout.preferredWidth: root.width < 1200 ? 280 : 304
             Layout.fillHeight: true
             sizeToContent: false
+            readonly property color selectionFill: Qt.tint(root.pageTheme.colors.backgroundSection,
+                Qt.rgba(root.pageTheme.colors.highlightText.r, root.pageTheme.colors.highlightText.g,
+                        root.pageTheme.colors.highlightText.b, 0.10))
 
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 14
-                spacing: 12
+                anchors.margins: root.pageTheme.density.panePadding
+                spacing: root.pageTheme.density.paneSpacing
 
-                Base.AppText {
-                    text: qsTr("时间线")
-                    styleRole: UiStyle.TypographyRole.SectionTitle
+                RowLayout {
+                    spacing: root.pageTheme.density.controlGap
+                    Base.AppIcon {
+                        name: "workflow"
+                        color: root.pageTheme.colors.subtleText
+                    }
+                    Base.AppText {
+                        text: qsTr("指令导航")
+                        styleRole: UiStyle.TypographyRole.SectionTitle
+                    }
                 }
                 Base.AppSelect {
+                    id: timelineSelect
                     objectName: "videoTimelineSelect"
                     Layout.fillWidth: true
+                    controlHeight: root.pageTheme.density.controlHeightMd + root.pageTheme.density.panePadding
+                    optionHeight: root.pageTheme.density.controlHeightMd
                     options: root.timelines
                     value: root.selectedTimelineId
+                    enabled: root.timelines.length > 0
+                    contentItem: Column {
+                        leftPadding: timelineSelect.contentPaddingX
+                        rightPadding: timelineSelect.contentPaddingX + timelineSelect.indicatorWidth
+                        topPadding: root.pageTheme.density.controlGap
+                        spacing: root.pageTheme.density.controlGap / 2
+                        Base.AppText {
+                            text: qsTr("当前时间线")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
+                        Base.AppText {
+                            width: parent.width - parent.leftPadding - parent.rightPadding
+                            text: timelineSelect.currentLabel || qsTr("暂无时间线")
+                            styleRole: UiStyle.TypographyRole.BodyM
+                            elide: Text.ElideRight
+                        }
+                    }
                     onValueSelected: {
                         root.forceActiveFocus()
-                        root.selectedTimelineId = String(nextValue)
+                        if (root.timelineManager)
+                            root.timelineManager.setCurrentTimelineId(String(nextValue))
                     }
                 }
                 Base.AppTextField {
                     objectName: "videoCommandSearch"
                     Layout.fillWidth: true
-                    placeholderText: qsTr("搜索指令或设备")
+                    placeholderText: qsTr("搜索设备或指令")
+                    leadingContent: Base.AppIcon {
+                        anchors.verticalCenter: parent.verticalCenter
+                        source: "../assets/icons/video-navigation-search.svg"
+                        color: root.pageTheme.colors.subtleText
+                    }
                     text: root.searchText
                     onTextEdited: root.searchText = text
                 }
@@ -244,12 +421,19 @@ Item {
                     Layout.fillWidth: true
                     Base.AppText {
                         Layout.fillWidth: true
-                        text: qsTr("加载视频指令")
-                        styleRole: UiStyle.TypographyRole.BodyM
-                    }
-                    Base.AppText {
-                        text: String(root.timelineCommands.length)
+                        text: qsTr("设备与指令")
+                        styleRole: UiStyle.TypographyRole.BodyS
                         textTone: UiStyle.TextTone.Secondary
+                    }
+                    Base.AppButton {
+                        objectName: "toggleVideoGroups"
+                        text: qsTr("全部折叠")
+                        size: UiStyle.ButtonSize.Small
+                        variant: UiStyle.ButtonVariant.Ghost
+                        onClicked: {
+                            for (var i = 0; i < pcGroupRepeater.count; ++i)
+                                pcGroupRepeater.itemAt(i).expanded = false
+                        }
                     }
                 }
                 Flickable {
@@ -265,39 +449,72 @@ Item {
                     Column {
                         id: pcGroups
                         width: parent.width
-                        spacing: 16
+                        spacing: root.pageTheme.density.paneSpacing
 
                         Repeater {
-                            model: root.pcDevices
+                            id: pcGroupRepeater
+                            model: root.currentTimeline ? root.pcDevices : []
                             delegate: Column {
                                 id: pcGroup
                                 width: pcGroups.width
-                                spacing: 6
+                                spacing: root.pageTheme.density.controlGap / 2
                                 property var pc: modelData
+                                property alias commandRows: commandRepeater
                                 property bool expanded: true
                                 readonly property var commands: root.commandsForPc(pc)
 
-                                Rectangle {
-                                    width: parent.width
-                                    height: 1
-                                    color: root.pageTheme.colors.borderOverlay
-                                }
                                 RowLayout {
                                     width: parent.width
                                     spacing: 4
                                     Base.AppButton {
+                                        id: deviceButton
                                         objectName: "videoPcGroup_" + pcGroup.pc.id
                                         Layout.fillWidth: true
-                                        contentAlignment: "left"
+                                        Layout.minimumWidth: 0
+                                        implicitWidth: 0
+                                        size: UiStyle.ButtonSize.Small
+                                        variant: UiStyle.ButtonVariant.Ghost
+                                        animateScale: false
                                         text: pcGroup.pc.name
-                                        iconSymbol: pcGroup.expanded ? "⌄" : "›"
+                                        contentItem: RowLayout {
+                                            spacing: root.pageTheme.density.controlGap
+                                            Base.AppIcon {
+                                                size: root.pageTheme.metrics.iconSizeSm
+                                                symbol: "›"
+                                                rotation: pcGroup.expanded ? 90 : 0
+                                                color: root.pageTheme.colors.subtleText
+                                            }
+                                            Base.AppIcon {
+                                                source: "../assets/icons/电脑.png"
+                                                tintSource: false
+                                            }
+                                            Base.AppText {
+                                                Layout.fillWidth: true
+                                                Layout.minimumWidth: 0
+                                                text: deviceButton.text
+                                                styleRole: UiStyle.TypographyRole.BodyM
+                                                overrideWeight: root.pageTheme.typography.weightStrong
+                                                elide: Text.ElideRight
+                                            }
+                                            Base.AppBadge {
+                                                text: String(pcGroup.commands.length)
+                                                implicitHeight: root.pageTheme.density.controlHeightSm - root.pageTheme.density.controlGap
+                                                leftPadding: root.pageTheme.density.controlGap
+                                                rightPadding: leftPadding
+                                            }
+                                        }
                                         onClicked: pcGroup.expanded = !pcGroup.expanded
+                                        ToolTip.visible: hovered
+                                        ToolTip.text: text
                                     }
                                     Base.AppButton {
                                         objectName: "addVideoCommand_" + pcGroup.pc.id
-                                        text: qsTr("添加")
-                                        iconSymbol: "+"
-                                        enabled: root.selectedTimelineId.length > 0
+                                        text: "+"
+                                        size: UiStyle.ButtonSize.Small
+                                        variant: UiStyle.ButtonVariant.Ghost
+                                        Layout.preferredWidth: root.pageTheme.density.controlHeightSm
+                                        Accessible.name: qsTr("为 %1 添加加载视频指令").arg(pcGroup.pc.name)
+                                        enabled: root.editingEnabled && !!pcGroup.pc.loadCommand
                                         onClicked: {
                                             pcGroup.expanded = true
                                             root.addCommand(pcGroup.pc.id)
@@ -305,48 +522,123 @@ Item {
                                                 commandScroll.contentHeight - commandScroll.height))
                                         }
                                         ToolTip.visible: hovered
-                                        ToolTip.text: qsTr("为 %1 添加加载视频指令").arg(pcGroup.pc.name)
+                                        ToolTip.text: pcGroup.pc.loadCommand ? Accessible.name : qsTr("设备未配置加载视频指令")
                                     }
-                                }
-                                Base.AppText {
-                                    x: 12
-                                    text: pcGroup.pc.address
-                                    styleRole: UiStyle.TypographyRole.BodyS
-                                    textTone: UiStyle.TextTone.Secondary
                                 }
                                 Column {
                                     width: parent.width
                                     visible: pcGroup.expanded
-                                    spacing: 6
+                                    spacing: 0
                                     Repeater {
+                                        id: commandRepeater
                                         model: pcGroup.commands
-                                        delegate: Base.AppCard {
-                                            objectName: "videoCommand_" + modelData.id
+                                        delegate: Item {
+                                            id: commandRow
                                             width: parent.width
-                                            height: 66
+                                            height: root.pageTheme.density.controlHeightLg + root.pageTheme.density.panePadding
                                             property var command: modelData
-                                            text: command.name
-                                            checkable: true
-                                            checked: command.id === root.selectedCommandId
-                                            emphasizedSelection: true
-                                            padding: 10
-                                            contentSpacing: 5
-                                            onClicked: {
-                                                root.forceActiveFocus()
-                                                root.selectedCommandId = command.id
+                                            Rectangle {
+                                                x: root.pageTheme.metrics.iconSizeSm / 2
+                                                width: root.pageTheme.density.dividerThickness
+                                                height: index === pcGroup.commands.length - 1 ? parent.height / 2 : parent.height
+                                                color: root.pageTheme.colors.controlBorder
+                                                opacity: 0.5
                                             }
-                                            Base.AppText {
-                                                Layout.fillWidth: true
-                                                text: command.name + (command.dirty ? " ·" : "")
-                                                elide: Text.ElideRight
-                                                styleRole: UiStyle.TypographyRole.BodyM
+                                            Rectangle {
+                                                x: root.pageTheme.metrics.iconSizeSm / 2
+                                                y: parent.height / 2
+                                                width: root.pageTheme.density.controlGap
+                                                height: root.pageTheme.density.dividerThickness
+                                                color: root.pageTheme.colors.controlBorder
+                                                opacity: 0.5
                                             }
-                                            Base.AppText {
-                                                Layout.fillWidth: true
-                                                text: root.formatTime(command.startTimeMs) + qsTr(" · 加载视频")
-                                                elide: Text.ElideRight
-                                                styleRole: UiStyle.TypographyRole.BodyS
-                                                textTone: UiStyle.TextTone.Secondary
+                                            AbstractButton {
+                                                id: commandCard
+                                                objectName: "videoCommand_" + commandRow.command.id
+                                                x: root.pageTheme.density.paneSpacing * 2
+                                                y: root.pageTheme.density.dividerThickness * 2
+                                                width: parent.width - x
+                                                height: parent.height - y * 2
+                                                text: commandRow.command.videoName
+                                                checkable: true
+                                                autoExclusive: true
+                                                checked: commandRow.command.id === root.selectedCommandId
+                                                focusPolicy: Qt.TabFocus
+                                                hoverEnabled: true
+                                                padding: root.pageTheme.density.controlGap
+                                                topPadding: root.pageTheme.density.controlGap / 2
+                                                bottomPadding: topPadding
+                                                rightPadding: commandMenuButton.width + padding
+                                                background: Rectangle {
+                                                    radius: root.pageTheme.shape.controlRadius
+                                                    color: commandCard.checked
+                                                        ? (commandCard.hovered ? Qt.lighter(commandNavigation.selectionFill, 1.12) : commandNavigation.selectionFill)
+                                                        : (commandCard.hovered ? root.pageTheme.colors.backgroundSectionOverlay : "transparent")
+                                                    border.width: commandCard.visualFocus ? root.pageTheme.density.dividerThickness : 0
+                                                    border.color: root.pageTheme.colors.highlightText
+                                                    Rectangle {
+                                                        anchors.left: parent.left
+                                                        anchors.top: parent.top
+                                                        anchors.bottom: parent.bottom
+                                                        anchors.topMargin: root.pageTheme.density.controlGap
+                                                        anchors.bottomMargin: root.pageTheme.density.controlGap
+                                                        width: root.pageTheme.density.dividerThickness * 2
+                                                        radius: width / 2
+                                                        color: root.pageTheme.colors.highlightText
+                                                        visible: commandCard.checked
+                                                    }
+                                                }
+                                                onClicked: root.selectCommand(commandRow.command.id)
+                                                contentItem: RowLayout {
+                                                    spacing: root.pageTheme.density.controlGap
+                                                    Base.AppIcon {
+                                                        source: "../assets/icons/video-navigation-command.svg"
+                                                        color: commandCard.checked ? root.pageTheme.colors.neutralText : root.pageTheme.colors.subtleText
+                                                    }
+                                                    ColumnLayout {
+                                                        Layout.fillWidth: true
+                                                        Layout.minimumWidth: 0
+                                                        spacing: root.pageTheme.density.controlGap / 2
+                                                        Base.AppText {
+                                                            Layout.fillWidth: true
+                                                            text: commandCard.text
+                                                            elide: Text.ElideRight
+                                                            styleRole: UiStyle.TypographyRole.BodyM
+                                                        }
+                                                        Base.AppText {
+                                                            Layout.fillWidth: true
+                                                            text: root.formatTime(commandRow.command.startTimeMs)
+                                                            elide: Text.ElideRight
+                                                            styleRole: UiStyle.TypographyRole.BodyS
+                                                            colorOverride: commandCard.checked ? root.pageTheme.colors.neutralText : root.pageTheme.colors.subtleText
+                                                        }
+                                                    }
+                                                }
+                                                ToolTip.visible: hovered
+                                                ToolTip.text: text
+                                            }
+                                            AbstractButton {
+                                                id: commandMenuButton
+                                                objectName: "videoCommandMenu_" + commandRow.command.id
+                                                anchors.right: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: root.pageTheme.density.controlHeightSm
+                                                height: width
+                                                focusPolicy: Qt.TabFocus
+                                                hoverEnabled: true
+                                                text: "⋯"
+                                                Accessible.name: qsTr("%1 的指令操作").arg(commandCard.text)
+                                                onClicked: commandMenu.openForCommand(commandRow.command.id)
+                                                contentItem: Base.AppText {
+                                                    text: commandMenuButton.text
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    verticalAlignment: Text.AlignVCenter
+                                                }
+                                                background: Rectangle {
+                                                    radius: root.pageTheme.shape.controlRadius
+                                                    color: commandMenuButton.hovered || commandMenuButton.visualFocus
+                                                        ? root.pageTheme.colors.backgroundSectionOverlay : "transparent"
+                                                }
                                             }
                                         }
                                     }
@@ -354,7 +646,8 @@ Item {
                                         width: parent.width
                                         height: visible ? 40 : 0
                                         visible: pcGroup.commands.length === 0
-                                        text: root.searchText.length ? qsTr("无匹配指令") : qsTr("暂无指令，点击上方添加")
+                                        text: root.searchText.length ? qsTr("无匹配指令")
+                                            : (pcGroup.pc.loadCommand ? qsTr("暂无指令，点击 + 添加") : qsTr("设备未配置加载视频指令"))
                                         horizontalAlignment: Text.AlignHCenter
                                         verticalAlignment: Text.AlignVCenter
                                         styleRole: UiStyle.TypographyRole.BodyS
@@ -363,7 +656,26 @@ Item {
                                 }
                             }
                         }
+                        Base.AppText {
+                            width: parent.width
+                            visible: !root.currentTimeline || root.pcDevices.length === 0
+                            text: !root.currentTimeline ? qsTr("请先在时间线页面创建时间线")
+                                : qsTr("请先在设备页面添加 PC 设备")
+                            wrapMode: Text.WordWrap
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                        }
                     }
+                }
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: root.pageTheme.density.dividerThickness
+                    color: root.pageTheme.colors.borderOverlay
+                }
+                Base.AppText {
+                    text: qsTr("%1 台设备 · %2 条指令").arg(root.pcDevices.length).arg(root.timelineCommands.length)
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
         }
@@ -421,24 +733,15 @@ Item {
                                 objectName: "deleteVideoCommand"
                                 text: qsTr("删除指令")
                                 variant: UiStyle.ButtonVariant.Danger
-                                enabled: root.selectedCommand !== null
+                                enabled: root.editingEnabled && root.selectedCommand !== null
                                 onClicked: root.removeCommand(root.selectedCommandId)
                             }
                             Base.AppButton {
                                 text: qsTr("返回时间线")
                                 onClicked: {
+                                    root.forceActiveFocus()
                                     if (root.appRuntime && root.appRuntime.shell)
                                         root.appRuntime.shell.activeNavigationKey = "timeline"
-                                }
-                            }
-                            Base.AppButton {
-                                objectName: "saveVideoCommand"
-                                text: qsTr("保存修改")
-                                variant: UiStyle.ButtonVariant.Primary
-                                enabled: root.selectedCommand !== null
-                                onClicked: {
-                                    root.forceActiveFocus()
-                                    root.updateCommand({ "dirty": false })
                                 }
                             }
                         }
@@ -449,7 +752,7 @@ Item {
                         Layout.preferredHeight: commandInfo.implicitHeight + 24
                         sizeToContent: false
                         surfaceTone: UiStyle.SurfaceTone.Section
-                        enabled: root.selectedCommand !== null
+                        enabled: root.editingEnabled && root.selectedCommand !== null
 
                         GridLayout {
                             id: commandInfo
@@ -458,17 +761,23 @@ Item {
                             columns: editorContent.width < 820 ? 2 : 3
                             columnSpacing: 16
                             rowSpacing: 10
-                            Base.AppTextField {
-                                objectName: "videoCommandName"
+                            Base.AppSelect {
+                                objectName: "videoFileSelect"
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 120
-                                text: root.selectedCommand ? root.selectedCommand.name : ""
-                                placeholderText: qsTr("指令名称")
-                                onEditingFinished: {
-                                    if (text.trim().length)
-                                        root.updateCommand({ "name": text.trim() })
-                                    else
-                                        text = Qt.binding(function() { return root.selectedCommand ? root.selectedCommand.name : "" })
+                                options: root.selectedCommand ? root.selectedCommand.videoOptions : []
+                                value: root.selectedCommand ? root.selectedCommand.videoFile || "" : ""
+                                placeholderText: value ? String(value)
+                                    : (optionCount ? qsTr("选择视频") : qsTr("暂无可选视频"))
+                                enabled: optionCount > 0
+                                onValueSelected: {
+                                    root.forceActiveFocus()
+                                    if (String(nextValue) !== String(value)) {
+                                        root.updateCommand({
+                                            "videoFile": String(nextValue),
+                                            "videoSrcX": 0, "videoSrcY": 0, "videoSrcW": 0, "videoSrcH": 0
+                                        })
+                                    }
                                 }
                             }
                             RowLayout {
@@ -518,6 +827,7 @@ Item {
                         columnSpacing: 16
                         rowSpacing: 16
                         visible: root.selectedCommand !== null
+                        enabled: root.editingEnabled
 
                         Repeater {
                             model: 2
@@ -556,21 +866,7 @@ Item {
                                                 elide: Text.ElideRight
                                             }
                                         }
-                                        Base.AppButton {
-                                            visible: panel.isSource
-                                            text: qsTr("选择视频")
-                                            onClicked: videoFileDialog.open()
-                                        }
                                     }
-                                    Base.AppTextField {
-                                        Layout.fillWidth: true
-                                        readOnly: true
-                                        text: panel.isSource
-                                            ? (root.selectedCommand && root.selectedCommand.videoFile
-                                                ? decodeURIComponent(root.selectedCommand.videoFile.split("/").pop()) : qsTr("未选择视频"))
-                                            : (root.selectedPc ? root.selectedPc.name : "")
-                                    }
-
                                     Item {
                                         id: canvasHost
                                         Layout.fillWidth: true
@@ -656,6 +952,7 @@ Item {
                                                 selected: true
                                                 fillOpacity: panel.isSource ? 0 : 0.06
                                                 handleFill: root.pageTheme.colors.backgroundCanvas
+                                                onSelectionRequested: root.forceActiveFocus()
                                                 onGeometryCommitted: root.setRectangle(panel.isSource, {
                                                     "x": committedX * panel.pixelWidth, "y": committedY * panel.pixelHeight,
                                                     "w": committedW * panel.pixelWidth, "h": committedH * panel.pixelHeight
@@ -760,6 +1057,18 @@ Item {
                                                 "y": (panel.pixelHeight - panel.geometry.h) / 2
                                             })
                                         }
+                                        Base.AppButton {
+                                            objectName: panel.isSource ? "" : "correctVideoOutputAspect"
+                                            visible: !panel.isSource
+                                            text: qsTr("修正比例")
+                                            enabled: root.sourceRect.w > 0 && root.sourceRect.h > 0
+                                            onClicked: {
+                                                root.forceActiveFocus()
+                                                var ratio = root.sourceRect.w / root.sourceRect.h
+                                                var nextWidth = Math.min(root.outputRect.w, root.canvasWidth, root.canvasHeight * ratio)
+                                                root.setRectangle(false, { "w": nextWidth, "h": nextWidth / ratio })
+                                            }
+                                        }
                                         Item { Layout.fillWidth: true }
                                         Base.AppText {
                                             text: qsTr("适应画布")
@@ -778,17 +1087,22 @@ Item {
                 Layout.fillWidth: true
                 Base.AppText {
                     Layout.fillWidth: true
-                    text: root.selectedCommand && root.selectedPc
-                        ? qsTr("正在编辑：%1 / %2").arg(root.selectedPc.name).arg(root.selectedCommand.name)
-                        : qsTr("未选择指令")
+                    text: root.statusText || (root.currentTimeline && !root.editingEnabled
+                        ? qsTr("时间线运行或暂停中，停止后可编辑")
+                        : (root.selectedCommand && root.selectedPc
+                            ? qsTr("正在编辑：%1 / %2").arg(root.selectedPc.name).arg(root.selectedCommand.name)
+                            : qsTr("未选择指令")))
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                     elide: Text.ElideRight
+                    ToolTip.visible: statusHover.containsMouse
+                    ToolTip.text: text
+                    MouseArea { id: statusHover; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
                 }
                 Base.AppText {
-                    text: root.selectedCommand ? (root.selectedCommand.dirty ? qsTr("已修改") : qsTr("已保存")) : ""
+                    text: root.selectedCommand ? qsTr("自动同步时间线") : ""
                     styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: root.selectedCommand && root.selectedCommand.dirty ? UiStyle.TextTone.Accent : UiStyle.TextTone.Secondary
+                    textTone: UiStyle.TextTone.Secondary
                 }
             }
         }

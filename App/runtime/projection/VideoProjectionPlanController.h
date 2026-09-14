@@ -174,9 +174,6 @@ private:
     QVariantMap planToMap(const VideoProjectionPlan &plan, int index) const;
     QVariantMap captureToMap(const VideoProjectionCapture &capture, int index) const;
     QVariantMap mappingToMap(const VideoProjectionMapping &mapping, int index) const;
-    QVariantMap rectToMap(const QRect &rect) const;
-    QVariantMap sizeToMap(const QSize &size) const;
-    QRect boundedRect(int x, int y, int width, int height, const QSize &bounds) const;
     QString defaultCaptureName(int index) const;
     void touchCurrentPlan();
     void refreshTargetPcIds(VideoProjectionPlan &plan);

@@ -1,4 +1,5 @@
 #include "projection/VideoProjectionPlanController.h"
+#include "utils.h"
 
 #include <QDataStream>
 
@@ -285,7 +286,7 @@ void VideoProjectionPlanController::setVideoSize(int width, int height)
 
     plan->videoSize = size;
     for (VideoProjectionCapture &capture : plan->captures)
-        capture.rect = boundedRect(capture.rect.x(), capture.rect.y(), capture.rect.width(), capture.rect.height(), size);
+        capture.rect = Utils::boundedRect(capture.rect, size);
 
     touchCurrentPlan();
     refreshCurrentPlanRow();
@@ -306,7 +307,7 @@ int VideoProjectionPlanController::addCapture(const QString &name)
 
     VideoProjectionCapture capture;
     capture.name = name.trimmed().isEmpty() ? defaultCaptureName(index) : name.trimmed();
-    capture.rect = boundedRect(offset, offset, width, height, videoSize);
+    capture.rect = Utils::boundedRect(QRect(offset, offset, width, height), videoSize);
 
     plan->captures.append(capture);
     touchCurrentPlan();
@@ -372,7 +373,7 @@ void VideoProjectionPlanController::setCaptureRect(int index, int x, int y, int 
     if (!plan || index < 0 || index >= plan->captures.size())
         return;
 
-    const QRect rect = boundedRect(x, y, width, height, plan->videoSize);
+    const QRect rect = Utils::boundedRect(QRect(x, y, width, height), plan->videoSize);
     if (plan->captures.at(index).rect == rect)
         return;
 
@@ -411,7 +412,7 @@ int VideoProjectionPlanController::addMapping(int captureIndex,
     const QSize screenSize(qMax(1, screenWidth), qMax(1, screenHeight));
     const int tileWidth = qMax(1, totalSize.width() / columns);
     const int tileHeight = qMax(1, totalSize.height() / rows);
-    const QRect outputRect = boundedRect(x, y, width, height, totalSize);
+    const QRect outputRect = Utils::boundedRect(QRect(x, y, width, height), totalSize);
 
     VideoProjectionMapping mapping;
     mapping.captureIndex = captureIndex;
@@ -517,7 +518,7 @@ void VideoProjectionPlanController::setMappingRect(int index, int x, int y, int 
         return;
 
     VideoProjectionMapping &mapping = plan->mappings[index];
-    const QRect rect = boundedRect(x, y, width, height, mapping.screenTotalSize);
+    const QRect rect = Utils::boundedRect(QRect(x, y, width, height), mapping.screenTotalSize);
     if (mapping.outputRect == rect)
         return;
 
@@ -551,6 +552,8 @@ QVariantMap VideoProjectionPlanController::planToMap(const VideoProjectionPlan &
     for (int mappingIndex = 0; mappingIndex < plan.mappings.size(); ++mappingIndex)
         mappings.append(mappingToMap(plan.mappings.at(mappingIndex), mappingIndex));
 
+    QVariantMap videoSize;
+    Utils::sizeToMap(plan.videoSize, videoSize);
     return QVariantMap{
         {QStringLiteral("index"), index},
         {QStringLiteral("selected"), index == m_currentPlanIndex},
@@ -558,7 +561,7 @@ QVariantMap VideoProjectionPlanController::planToMap(const VideoProjectionPlan &
         {QStringLiteral("projectionWindowId"), plan.projectionWindowId},
         {QStringLiteral("targetPcIds"), plan.targetPcIds},
         {QStringLiteral("videoSource"), plan.videoSource},
-        {QStringLiteral("videoSize"), sizeToMap(plan.videoSize)},
+        {QStringLiteral("videoSize"), videoSize},
         {QStringLiteral("videoWidth"), plan.videoSize.width()},
         {QStringLiteral("videoHeight"), plan.videoSize.height()},
         {QStringLiteral("captures"), captures},
@@ -570,63 +573,34 @@ QVariantMap VideoProjectionPlanController::planToMap(const VideoProjectionPlan &
 
 QVariantMap VideoProjectionPlanController::captureToMap(const VideoProjectionCapture &capture, int index) const
 {
-    return QVariantMap{
-        {QStringLiteral("index"), index},
-        {QStringLiteral("name"), capture.name},
-        {QStringLiteral("rect"), rectToMap(capture.rect)},
-        {QStringLiteral("x"), capture.rect.x()},
-        {QStringLiteral("y"), capture.rect.y()},
-        {QStringLiteral("w"), capture.rect.width()},
-        {QStringLiteral("h"), capture.rect.height()}
-    };
+    QVariantMap rect;
+    Utils::rectToMap(capture.rect, rect);
+    QVariantMap result = rect;
+    result["index"] = index;
+    result["name"] = capture.name;
+    result["rect"] = rect;
+    return result;
 }
 
 QVariantMap VideoProjectionPlanController::mappingToMap(const VideoProjectionMapping &mapping, int index) const
 {
-    return QVariantMap{
-        {QStringLiteral("index"), index},
-        {QStringLiteral("captureIndex"), mapping.captureIndex},
-        {QStringLiteral("pcId"), mapping.pcId},
-        {QStringLiteral("outputRect"), rectToMap(mapping.outputRect)},
-        {QStringLiteral("x"), mapping.outputRect.x()},
-        {QStringLiteral("y"), mapping.outputRect.y()},
-        {QStringLiteral("w"), mapping.outputRect.width()},
-        {QStringLiteral("h"), mapping.outputRect.height()},
-        {QStringLiteral("screenTotalSize"), sizeToMap(mapping.screenTotalSize)},
-        {QStringLiteral("screenResolution"), sizeToMap(mapping.screenResolution)},
-        {QStringLiteral("screenLayout"), sizeToMap(mapping.screenLayout)},
-        {QStringLiteral("screenColumn"), mapping.screenColumn},
-        {QStringLiteral("screenRow"), mapping.screenRow}
-    };
-}
+    QVariantMap rect, screenTotalSize, screenResolution, screenLayout;
+    Utils::rectToMap(mapping.outputRect, rect);
+    Utils::sizeToMap(mapping.screenTotalSize, screenTotalSize);
+    Utils::sizeToMap(mapping.screenResolution, screenResolution);
+    Utils::sizeToMap(mapping.screenLayout, screenLayout);
 
-QVariantMap VideoProjectionPlanController::rectToMap(const QRect &rect) const
-{
-    return QVariantMap{
-        {QStringLiteral("x"), rect.x()},
-        {QStringLiteral("y"), rect.y()},
-        {QStringLiteral("w"), rect.width()},
-        {QStringLiteral("h"), rect.height()}
-    };
-}
-
-QVariantMap VideoProjectionPlanController::sizeToMap(const QSize &size) const
-{
-    return QVariantMap{
-        {QStringLiteral("width"), size.width()},
-        {QStringLiteral("height"), size.height()}
-    };
-}
-
-QRect VideoProjectionPlanController::boundedRect(int x, int y, int width, int height, const QSize &bounds) const
-{
-    const int boundedWidth = qMax(1, bounds.width());
-    const int boundedHeight = qMax(1, bounds.height());
-    const int rectWidth = qBound(1, width, boundedWidth);
-    const int rectHeight = qBound(1, height, boundedHeight);
-    const int rectX = qBound(0, x, boundedWidth - rectWidth);
-    const int rectY = qBound(0, y, boundedHeight - rectHeight);
-    return QRect(rectX, rectY, rectWidth, rectHeight);
+    QVariantMap result = rect;
+    result["index"] = index;
+    result["captureIndex"] = mapping.captureIndex;
+    result["pcId"] = mapping.pcId;
+    result["outputRect"] = rect;
+    result["screenTotalSize"] = screenTotalSize;
+    result["screenResolution"] = screenResolution;
+    result["screenLayout"] = screenLayout;
+    result["screenColumn"] = mapping.screenColumn;
+    result["screenRow"] = mapping.screenRow;
+    return result;
 }
 
 QString VideoProjectionPlanController::defaultCaptureName(int index) const

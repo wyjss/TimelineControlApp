@@ -41,7 +41,7 @@ void DmxCommandExecutor::executeImpl(const QString &executionId,
 
     for (int i = 0; i < bitStrs.size(); ++i) {
         int targetBit = bitStart + bitOffset + i;
-        int8_t value = bitStrs[i].toInt();
+        int value = bitStrs[i].toInt();
 
         if (targetBit >= 512) {
             emit executionFinished(executionId, command, false, "目标bit超出512范围");

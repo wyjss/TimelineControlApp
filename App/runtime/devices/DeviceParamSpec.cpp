@@ -2,9 +2,9 @@
 #include "devices/DeviceConstants.h"
 #include "timeline/Timeline.h"
 #include "timeline/TimelineModel.h"
+#include "utils.h"
 #include <QColor>
 #include <QRegularExpression>
-#include <QDir>
 
 DeviceParamSpec::DeviceParamSpec(QObject *parent)
     : BaseField(parent)
@@ -244,12 +244,8 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                          QStringLiteral("GET"),
                                          SelectType,
                                          SelectEditor);
-        spec->setOptions(QVariantList{
-            QVariantMap{{QStringLiteral("label"), QStringLiteral("GET")},
-                        {QStringLiteral("value"), QStringLiteral("GET")}},
-            QVariantMap{{QStringLiteral("label"), QStringLiteral("POST")},
-                        {QStringLiteral("value"), QStringLiteral("POST")}}
-        });
+        spec->setOptions({Utils::makeOption("GET", "GET"),
+                          Utils::makeOption("POST", "POST")});
         return spec;
     }
 
@@ -417,17 +413,7 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 										 SelectEditor);
 		spec->setRequired(true);
 		spec->setReadOnly(false);
-        // @todo read video dir
-        static QVariantList s_videos = []()->QVariantList {
-            QVariantList videos;
-            QDir dir(DeviceConstants::LocalVideoPrefix);
-            auto infos = dir.entryInfoList({"*.mp4", "*.avi"});
-            for (const auto& info : infos) {
-                videos.push_back(QString("$") + info.fileName());
-            }
-            return videos;
-        }();
-        spec->setOptions(s_videos);
+        spec->setOptions(Utils::getVideoOptions());
 		return spec;
 	}
 
@@ -544,10 +530,7 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 				for (int index = 0; index < timelineModel->count(); ++index) {
 					const Timeline *timeline = timelineModel->timelineAt(index);
 					if (timeline) {
-						options.append(QVariantMap{
-							{QStringLiteral("label"), timeline->name()},
-							{QStringLiteral("value"), timeline->id()}
-						});
+						options.append(Utils::makeOption(timeline->name(), timeline->id()));
 					}
 				}
 				spec->setOptions(options);

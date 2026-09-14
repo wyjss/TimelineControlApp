@@ -3,6 +3,7 @@
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
+#include "utils.h"
 
 #define LC "[TimelineCommand] "
 #include "LogMacros.h"
@@ -93,11 +94,13 @@ void TimelineCommand::setExecutionInputValues(const QVariantMap &executionInputV
     m_executionInputValues = executionInputValues;
     if (m_executionInputValues.contains(DeviceKey::Rect)) {
         LOG_WARN("存在废弃兼容字段Rect");
-        auto strs = m_executionInputValues[DeviceKey::Rect].toString().split(",");
-        m_executionInputValues[DeviceKey::VideoWindowX] = strs[0].toInt();
-        m_executionInputValues[DeviceKey::VideoWindowY] = strs[1].toInt();
-        m_executionInputValues[DeviceKey::VideoWindowW] = strs[2].toInt();
-        m_executionInputValues[DeviceKey::VideoWindowH] = strs[3].toInt();
+        QRect rect;
+        if (Utils::rectFromString(m_executionInputValues[DeviceKey::Rect].toString(), rect)) {
+			m_executionInputValues[DeviceKey::VideoWindowX] = rect.x();
+			m_executionInputValues[DeviceKey::VideoWindowY] = rect.y();
+			m_executionInputValues[DeviceKey::VideoWindowW] = rect.width();
+			m_executionInputValues[DeviceKey::VideoWindowH] = rect.height();
+        }
         m_executionInputValues.remove(DeviceKey::Rect);
     }
     emit executionInputValuesChanged();
@@ -360,9 +363,7 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
             continue;
 
         const QVariantMap input = command->executionInputValues();
-        QString source = input.value(DeviceKey::VideoFile).toString().trimmed();
-        if (source.startsWith(QLatin1Char('$')))
-            source = DeviceConstants::LocalVideoPrefix + source.mid(1);
+        QString source = Utils::getVideoRealSource(input.value(DeviceKey::VideoFile).toString());
 
         ParentTrackState &parentState = parentStates[command->targetDeviceId()];
         const qint64 eventTimeMs = command->startTimeMs();
@@ -669,7 +670,25 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
         emitCommandChanged(command);
     };
 
-    connect(command, &TimelineCommand::startTimeMsChanged, this, notifyDurationChanged);
+	connect(command, &TimelineCommand::startTimeMsChanged, this,
+			[this, command, notifyDurationChanged]() {
+
+                // 重排检测
+				const int from = indexOfCommand(command);
+                int to = from;
+                while (to > 0 && commandAt(to - 1)->startTimeMs() > command->startTimeMs()) {
+                    to--;
+                }
+				while (to < items().size() - 1 && commandAt(to + 1)->startTimeMs() < command->startTimeMs()) {
+                    to++;
+				}
+
+                if (to != from) {
+                    moveItem(from, to);
+                }
+				emit notifyDurationChanged();
+			});
+
     connect(command, &TimelineCommand::durationMsChanged, this, notifyDurationChanged);
     connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {
         removeCommand(command);

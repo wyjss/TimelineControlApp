@@ -65,7 +65,7 @@ public:
 	QJsonObject toJson() const;
 	bool loadFromJson(const QJsonObject& json);
 
-	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const;
+	Q_INVOKABLE virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const;
 
     void addCreationInputField(DeviceParamSpec *field);
     void addExecutionInputField(DeviceParamSpec *field);

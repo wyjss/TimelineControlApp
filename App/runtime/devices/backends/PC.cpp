@@ -1,6 +1,7 @@
 #include "devices/backends/PC.h"
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
+#include "utils.h"
 
 #include "LogMacros.h"
 #include <QUrl>
@@ -29,10 +30,7 @@ public:
 	{
 		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
 		QString api = m_api;
-		QString url = executionInputValues.value("videoFile", "").toString();
-		if (!url.isEmpty() && url.startsWith("$")) {
-			url = url.replace("$", DeviceConstants::LocalVideoPrefix);
-		}
+		QString url = Utils::getVideoRealSource(executionInputValues.value(DeviceKey::VideoFile).toString());
 		if (!url.isEmpty()) {
 			QUrl qurl(api);
 			QUrlQuery query(qurl);
@@ -82,16 +80,19 @@ public:
 	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
 	{
 		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
-		QString url = executionInputValues.value("videoFile", "").toString();
-		if (url.startsWith("$")) {
-			url = url.replace("$", DeviceConstants::LocalVideoPrefix);
-		}
+		QString url = Utils::getVideoRealSource(executionInputValues.value(DeviceKey::VideoFile).toString());
+		params[DeviceKey::VideoFile] = url;
 
-		auto sVideoRect = QString("%1,%2,%3,%4")
-			.arg(params[DeviceKey::VideoWindowX].toInt())
-			.arg(params[DeviceKey::VideoWindowY].toInt())
-			.arg(params[DeviceKey::VideoWindowW].toInt())
-			.arg(params[DeviceKey::VideoWindowH].toInt());
+		QString sVideoRect, sVideoSrcRect;
+		Utils::rectToString(QRect(params[DeviceKey::VideoWindowX].toInt(),
+			params[DeviceKey::VideoWindowY].toInt(),
+			params[DeviceKey::VideoWindowW].toInt(),
+			params[DeviceKey::VideoWindowH].toInt()), sVideoRect);
+		Utils::rectToString(QRect(params[DeviceKey::VideoSrcX].toInt(),
+			params[DeviceKey::VideoSrcY].toInt(),
+			params[DeviceKey::VideoSrcW].toInt(),
+			params[DeviceKey::VideoSrcH].toInt()), sVideoSrcRect);
+
 		int w = params[DeviceKey::VirtualScreenWidth].toInt();
 		int h = params[DeviceKey::VirtualScreenHeight].toInt();
 		QUrlQuery query;
@@ -99,6 +100,7 @@ public:
 		query.addQueryItem("url", url);
 		query.addQueryItem("play", executionInputValues.value("play", true).toString());
 		query.addQueryItem("rect", sVideoRect);
+		query.addQueryItem("srcRect", sVideoSrcRect);
 		//query.addQueryItem("canvasSize", QString("%1x%2").arg(w).arg(h));
 
 		QString api = QString("/video/open?") + query.toString();
@@ -209,8 +211,8 @@ PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
 					QStringList{DeviceProtocol::Pc, DeviceProtocol::Http},
 					"电脑设备",
 					{
-						//DeviceParamSpec::createForKey(DeviceKey::VirtualScreenWidth),
-						//DeviceParamSpec::createForKey(DeviceKey::VirtualScreenHeight),
+						DeviceParamSpec::createForKey(DeviceKey::VirtualScreenWidth),
+						DeviceParamSpec::createForKey(DeviceKey::VirtualScreenHeight),
 						DeviceParamSpec::createForKey(DeviceKey::ScreenWidth),
 						DeviceParamSpec::createForKey(DeviceKey::ScreenHeight),
 						DeviceParamSpec::createForKey(DeviceKey::ScreenColumns),

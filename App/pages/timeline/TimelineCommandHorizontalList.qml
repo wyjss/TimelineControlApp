@@ -14,6 +14,7 @@ Item {
     property var devices: []
     property string deviceIdFilter: ""
     property string selectedCommandId: ""
+    property bool editingEnabled: false
     property real timelineOffsetX: 0
     property int instantCommandMinWidth: 56
     property int instantCommandMaxWidth: 180
@@ -28,6 +29,7 @@ Item {
     }) ? 80 : 48
 
     signal commandSelected(var command)
+    signal commandMoveRequested(var command, real startTimeMs)
 
     function colorValue(name, fallback) {
         return theme && theme.colors && theme.colors[name] !== undefined
@@ -290,7 +292,7 @@ Item {
             readonly property string commandText: String(commandData && commandData.commandName
                 ? commandData.commandName
                 : qsTr("指令"))
-            readonly property bool selected: String(commandData && commandData.id || "")
+            readonly property bool selected: commandMouse.previewing || String(commandData && commandData.id || "")
                 === root.selectedCommandId
             readonly property int stackIndex: root.commandStackIndex(commandData)
             readonly property int stackCount: root.commandStackCount(commandData)
@@ -298,10 +300,12 @@ Item {
                 ? root.instantCommandLayout(commandData)
                 : ({ "lane": 1, "visible": true, "overflowCount": 0, "onLeft": false, "width": 0 })
             readonly property bool overflowCommand: instantCommand && instantLayout.overflowCount > 0
-            readonly property string displayText: overflowCommand
+            readonly property string displayText: overflowCommand && !commandMouse.previewing
                 ? commandText + " +" + String(instantLayout.overflowCount)
                 : commandText
-            readonly property real anchorX: root.timeToX(root.commandStartMs(commandData))
+            // 拖动只预览时间位置，保留原标签排布，松开后再提交模型。
+            readonly property real anchorX: root.timeToX(commandMouse.previewing
+                ? commandMouse.previewStartTimeMs : root.commandStartMs(commandData))
             readonly property bool instantLabelOnLeft: instantCommand && instantLayout.onLeft
             readonly property real stackOffsetY: instantCommand
                 ? (instantLayout.lane - 1) * root.instantLabelHeight
@@ -315,8 +319,8 @@ Item {
                 ? instantLayout.width
                 : Math.max(40, root.durationToWidth(durationMs))
             height: root.height
-            z: selected ? 3 : (commandMouse.containsMouse ? 2 : 1)
-            visible: instantLayout.visible && x + width > 0 && x < root.width
+            z: commandMouse.previewing ? 4 : (selected ? 3 : (commandMouse.containsMouse ? 2 : 1))
+            visible: commandMouse.previewing || (instantLayout.visible && x + width > 0 && x < root.width)
             opacity: filteredOut ? 0.48 : 1
 
             Behavior on opacity {
@@ -327,23 +331,104 @@ Item {
                 id: commandMouse
                 objectName: "timelineCommandHitArea"
 
+                property bool dragArmed: false
+                property bool dragged: false
+                property bool dragCanceled: false
+                property real pressX: 0
+                property real pressStartTimeMs: 0
+                property real pressScrollX: 0
+                property real pressPixelsPerSecond: 1
+                property real pressWidth: 0
+                property real previewStartTimeMs: 0
+                readonly property bool previewing: dragArmed && dragged
+                readonly property bool dragContextValid: root.editingEnabled && visible && activeFocus
+                    && (!root.ApplicationWindow.window || root.ApplicationWindow.window.active)
+                    && root.ruler && root.ruler.scrollX === pressScrollX
+                    && root.ruler.safePixelsPerSecond === pressPixelsPerSecond
+                    && root.width === pressWidth
+                    && root.commandStartMs(commandBlock.commandData) === pressStartTimeMs
+
+                function cancelDrag() {
+                    if (dragArmed) {
+                        dragCanceled = true
+                        dragArmed = false
+                    }
+                }
+
+                onDragContextValidChanged: if (!dragContextValid) cancelDrag()
+                onCanceled: cancelDrag()
+                Keys.onPressed: {
+                    if (event.key === Qt.Key_Escape && dragArmed) {
+                        cancelDrag()
+                        event.accepted = true
+                    }
+                }
+                Keys.onReleased: {
+                    if (event.key === Qt.Key_Control && dragArmed) {
+                        cancelDrag()
+                        event.accepted = true
+                    }
+                }
+
                 x: commandBlock.instantCommand ? instantCommandPill.x : 0
                 y: commandBlock.instantCommand
                     ? instantCommandPill.y
                     : Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
                 width: commandBlock.instantCommand ? instantCommandPill.width : parent.width
                 height: commandBlock.instantCommand ? instantCommandPill.height : 26
+                acceptedButtons: Qt.LeftButton
                 hoverEnabled: true
-                ToolTip.visible: containsMouse
-                ToolTip.delay: 500
-                ToolTip.text: commandBlock.overflowCommand
+                preventStealing: dragArmed
+                cursorShape: dragArmed ? Qt.SizeHorCursor : Qt.ArrowCursor
+                ToolTip.visible: previewing || containsMouse
+                ToolTip.delay: previewing ? 0 : 500
+                ToolTip.text: previewing
+                    ? root.formatTime(previewStartTimeMs) + "." + ("00" + previewStartTimeMs % 1000).slice(-3)
+                    : commandBlock.overflowCommand
                     ? commandBlock.instantLayout.mergedCommands.map(function(command) {
                         return "• " + root.commandInfo(command)
                     }).join("\n")
                     : root.commandInfo(commandBlock.commandData)
+                onPressed: {
+                    dragged = false
+                    dragCanceled = false
+                    if (!root.editingEnabled || !root.ruler || !(mouse.modifiers & Qt.ControlModifier))
+                        return
+
+                    pressX = mapToItem(root, mouse.x, mouse.y).x
+                    pressStartTimeMs = root.commandStartMs(commandBlock.commandData)
+                    previewStartTimeMs = pressStartTimeMs
+                    pressScrollX = root.ruler.scrollX
+                    pressPixelsPerSecond = root.ruler.safePixelsPerSecond
+                    pressWidth = root.width
+                    forceActiveFocus()
+                    dragArmed = dragContextValid
+                }
+                onPositionChanged: {
+                    if (!dragArmed)
+                        return
+
+                    var deltaX = mapToItem(root, mouse.x, mouse.y).x - pressX
+                    if (!dragged && Math.abs(deltaX) < Qt.styleHints.startDragDistance)
+                        return
+                    dragged = true
+                    previewStartTimeMs = Math.max(0, Math.min(root.ruler.durationMs,
+                        Math.round(pressStartTimeMs + deltaX / pressPixelsPerSecond * 1000)))
+                }
+                onReleased: {
+                    var moveRequested = previewing && dragContextValid
+                        && (mouse.modifiers & Qt.ControlModifier)
+                    var deltaX = mapToItem(root, mouse.x, mouse.y).x - pressX
+                    var nextStartTimeMs = moveRequested ? Math.max(0, Math.min(root.ruler.durationMs,
+                        Math.round(pressStartTimeMs + deltaX / pressPixelsPerSecond * 1000))) : pressStartTimeMs
+                    dragArmed = false
+                    if (moveRequested)
+                        root.commandMoveRequested(commandBlock.commandData, nextStartTimeMs)
+                }
                 onClicked: {
                     mouse.accepted = true
-                    root.commandSelected(commandBlock.commandData)
+                    if (!dragged && !dragCanceled)
+                        root.commandSelected(commandBlock.commandData)
                 }
             }
 

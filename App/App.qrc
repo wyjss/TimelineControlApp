@@ -4,6 +4,8 @@
         <file alias="App/components/DeviceIcon.qml">components/DeviceIcon.qml</file>
         <file alias="App/components/SubtleCardSelectionTransition.qml">components/SubtleCardSelectionTransition.qml</file>
         <file alias="App/assets/icons/missing.png">assets/icons/missing.png</file>
+        <file alias="App/assets/icons/video-navigation-command.svg">assets/icons/video-navigation-command.svg</file>
+        <file alias="App/assets/icons/video-navigation-search.svg">assets/icons/video-navigation-search.svg</file>
         <file alias="App/assets/icons/灯光.png">assets/icons/灯光.png</file>
         <file alias="App/assets/icons/电脑.png">assets/icons/电脑.png</file>
         <file alias="App/assets/icons/投影机.png">assets/icons/投影机.png</file>
@@ -19,6 +21,7 @@
         <file alias="App/pages/ProjectionEditableRect.qml">pages/ProjectionEditableRect.qml</file>
         <file alias="App/pages/ProjectionKeystonePage.qml">pages/ProjectionKeystonePage.qml</file>
         <file alias="App/pages/ProjectionPage.qml">pages/ProjectionPage.qml</file>
+        <file alias="App/pages/VideoCommandCloneDialog.qml">pages/VideoCommandCloneDialog.qml</file>
         <file alias="App/pages/SystemSettingsPane.qml">pages/SystemSettingsPane.qml</file>
         <file alias="App/pages/TimelineEditorPage.qml">pages/TimelineEditorPage.qml</file>
         <file alias="App/pages/TimelinePage.qml">pages/TimelinePage.qml</file>

@@ -2,21 +2,9 @@
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceTemplate.h"
 #include "devices/DeviceTemplateModel.h"
+#include "utils.h"
 #include <QDataStream>
 #include <QVariantMap>
-
-namespace {
-
-QVariantMap option(const QString &label, const QString &value)
-{
-    return QVariantMap{
-        {QStringLiteral("label"), label},
-        {QStringLiteral("value"), value}
-    };
-}
-
-} // namespace
-
 
 DeviceModel::DeviceModel(QObject *parent)
     : TypedListModel<Device *>(parent)
@@ -177,7 +165,7 @@ QVariantList DeviceModel::deviceOptionsForDeviceType(const QString &deviceType) 
         if (!address.isEmpty())
             label = QStringLiteral("%1 (%2)").arg(label, address);
 
-        result.append(option(label, device->id()));
+        result.append(Utils::makeOption(label, device->id()));
     }
 
     return result;

@@ -22,7 +22,7 @@ Item {
     readonly property bool compact: width < 600
     readonly property int timeColumnWidth: 100
     readonly property int deviceColumnWidth: showDeviceName ? 112 : 36
-    readonly property int parameterColumnWidth: showDeviceName ? 180 : 112
+    readonly property int nameColumnWidth: 180
     readonly property int resultColumnWidth: 32
 
     signal commandSelected(var command)
@@ -159,7 +159,8 @@ Item {
                 }
 
                 Base.AppText {
-                    Layout.fillWidth: true
+                    Layout.fillWidth: root.compact
+                    Layout.preferredWidth: root.nameColumnWidth
                     text: root.compact ? qsTr("指令 / 设备") : qsTr("名称")
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
@@ -167,7 +168,7 @@ Item {
 
                 Base.AppText {
                     visible: !root.compact
-                    Layout.preferredWidth: root.parameterColumnWidth
+                    Layout.fillWidth: true
                     text: qsTr("执行参数")
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
@@ -312,7 +313,8 @@ Item {
                     }
 
                     ColumnLayout {
-                        Layout.fillWidth: true
+                        Layout.fillWidth: root.compact
+                        Layout.preferredWidth: root.nameColumnWidth
                         Layout.minimumWidth: 72
                         spacing: 4
 
@@ -353,7 +355,7 @@ Item {
 
                     Base.AppText {
                         visible: !root.compact
-                        Layout.preferredWidth: root.parameterColumnWidth
+                        Layout.fillWidth: true
                         text: root.executionParameters(commandRow.commandData)
                         styleRole: UiStyle.TypographyRole.BodyS
                         textTone: UiStyle.TextTone.Secondary

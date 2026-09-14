@@ -181,7 +181,7 @@ Item {
         executionStatusText = qsTr("已在 %2 添加 %1").arg(commandName(targetCommand)).arg(formatTimelineMs(startTimeMs))
     }
 
-    function selectTimelineCommand(command) {
+    function selectTimelineCommand(command, positionView) {
         if (!command)
             return
 
@@ -189,8 +189,10 @@ Item {
             timelineCommandModel.selectedCommandId = String(command.id || "")
         if (String(command.targetDeviceId || "").length > 0)
             selectTimelineDevice(String(command.targetDeviceId || ""))
-        setTimelineCurrentTimeMs(command.startTimeMs)
-        positionControlTrackAtTime(command.startTimeMs)
+        if (positionView !== false) {
+            setTimelineCurrentTimeMs(command.startTimeMs)
+            positionControlTrackAtTime(command.startTimeMs)
+        }
         timelineCommandSelected()
     }
 
@@ -410,12 +412,22 @@ Item {
                         labelWidth: root.timelineTrackLabelWidth
                         selectedDeviceId: root.selectedTimelineDeviceId
                         selectedCommandId: root.selectedTimelineCommandId
+                        editingEnabled: root.timelineStopped
                         onTrackSelected: function(targetDeviceId) {
                             root.selectTimelineDevice(targetDeviceId)
                             root.deviceTrackSelected()
                         }
                         onCommandSelected: function(command) {
                             root.selectTimelineCommand(command)
+                        }
+                        onCommandMoveRequested: function(command, startTimeMs) {
+                            if (!root.timelineStopped || !root.timelineCommandModel || !command)
+                                return
+                            if (startTimeMs !== Number(command.startTimeMs)
+                                    && !root.timelineCommandModel.updateCommand(command, startTimeMs,
+                                                                               command.executionInputValues))
+                                return
+                            root.selectTimelineCommand(command, false)
                         }
                     }
 

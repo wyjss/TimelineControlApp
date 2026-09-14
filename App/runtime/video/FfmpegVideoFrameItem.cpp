@@ -217,7 +217,12 @@ bool FfmpegVideoFrameItem::openCurrentSource()
 
     m_reader = std::move(reader);
     updateOutputInfo();
-    m_pendingFrame = false;
+    if (!m_reader->seek(0.0)) {
+        setErrorString(tr("AVReader 首帧读取失败。"));
+        return false;
+    }
+    m_pendingFrame = true;
+    m_timer.start();
     return true;
 }
 

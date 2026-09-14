@@ -13,37 +13,12 @@
 #include "timeline/Timeline.h"
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
+#include "utils.h"
 
 
 namespace {
 
 const QString kTimelineDrawerKey = QStringLiteral("timeline");
-
-QString videoSource(const QVariant &value)
-{
-    QString source = value.toString().trimmed();
-    if (source.startsWith(QLatin1Char('$')))
-        source = DeviceConstants::LocalVideoPrefix + source.mid(1);
-    return source;
-}
-
-QRect videoRect(const QVariant &value, const QSize &canvasSize)
-{
-    const QStringList parts = value.toString().split(QLatin1Char(','));
-    if (parts.size() != 4)
-        return QRect();
-
-    int values[4];
-    for (int index = 0; index < 4; ++index) {
-        bool ok = false;
-        values[index] = parts.at(index).trimmed().toInt(&ok);
-        if (!ok)
-            return QRect();
-    }
-
-    return QRect(values[0], values[1], values[2], values[3])
-        .intersected(QRect(QPoint(), canvasSize));
-}
 
 } // namespace
 
@@ -303,7 +278,7 @@ PcTimelinePreviewGenerator::videoStatesAt(qint64 timeMs, const QSize &canvasSize
 
         const QString commandType = targetCommand->commandType();
         const QVariantMap input = command->executionInputValues();
-        const QString source = videoSource(input.value(DeviceKey::VideoFile));
+        const QString source = Utils::getVideoRealSource(input.value(DeviceKey::VideoFile).toString());
         const qint64 eventTimeMs = command->startTimeMs();
 
         if (commandType == QStringLiteral("openVideo")) {
@@ -313,16 +288,11 @@ PcTimelinePreviewGenerator::videoStatesAt(qint64 timeMs, const QSize &canvasSize
                 if (states.at(index).source == source)
                     states.removeAt(index);
             }
-#if 0
-            const QRect rect = videoRect(input.value(DeviceKey::Rect), canvasSize);
-#else // 兼容
-            QStringList temps;
-            temps << input.value(DeviceKey::VideoWindowX).toString();
-            temps << input.value(DeviceKey::VideoWindowY).toString();
-            temps << input.value(DeviceKey::VideoWindowH).toString();
-            temps << input.value(DeviceKey::VideoWindowX).toString();
-            const QRect rect = videoRect(temps.join(","), canvasSize);
-#endif
+            QRect rect(input.value(DeviceKey::VideoWindowX).toInt(),
+                       input.value(DeviceKey::VideoWindowY).toInt(),
+                       input.value(DeviceKey::VideoWindowW).toInt(),
+                       input.value(DeviceKey::VideoWindowH).toInt());
+            rect = rect.intersected(QRect(QPoint(), canvasSize));
             if (!rect.isEmpty())
                 states.append(VideoState{source, rect, 0, eventTimeMs, input.value(QStringLiteral("play"), true).toBool()});
             continue;
