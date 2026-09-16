@@ -394,17 +394,6 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		return param;
 	}
 
-	if (deviceKey == DeviceKey::Videos) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("视频"),
-										 QVariantList(),
-										 VariantType,
-										 CustomEditor);
-		spec->setRequired(false);
-		spec->setReadOnly(true);
-		return spec;
-	}
-
 	if (deviceKey == DeviceKey::VideoFile) {
 		auto* spec = new DeviceParamSpec(deviceKey,
 										 QStringLiteral("视频文件"),
@@ -417,15 +406,19 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		return spec;
 	}
 
-// 	if (deviceKey == DeviceKey::Rect) {
-// 		auto* spec = new DeviceParamSpec(deviceKey,
-// 										 QStringLiteral("目标矩形（x,y,w,h）"),
-// 										 "",
-// 										 StringType,
-// 										 TextEditor);
-// 		spec->setPattern(DevicePattern::Rect);
-// 		return spec;
-// 	}
+	if (deviceKey == DeviceKey::VideoTimeSec) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频起始时间(秒)"),
+										 "",
+										 DoubleType,
+										 AutoEditor);
+		spec->setRequired(false);
+        spec->setMinimum(0);
+        spec->setMaximum(60 * 60 * 6);
+        spec->setValue(0);
+        spec->setDefaultValue(9.5);
+		return spec;
+	}
 
 	if (deviceKey == DeviceKey::VideoWindowX) {
 		auto* spec = new DeviceParamSpec(deviceKey,

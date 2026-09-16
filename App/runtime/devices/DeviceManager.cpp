@@ -16,9 +16,8 @@ namespace {
 
 bool isTemplateOnlyDeviceType(const QString &deviceType)
 {
-    const QString normalizedDeviceType = deviceType.trimmed();
-    return normalizedDeviceType.compare(DeviceType::PC, Qt::CaseInsensitive) == 0
-        || normalizedDeviceType.compare(DeviceType::Dmx512Adapter, Qt::CaseInsensitive) == 0;
+    return deviceType.compare(DeviceType::PC, Qt::CaseInsensitive) == 0
+        || deviceType.compare(DeviceType::Dmx512Adapter, Qt::CaseInsensitive) == 0;
 }
 
 } // namespace
@@ -216,16 +215,16 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
     const QString resolvedDeviceType = templateDeviceType.isEmpty()
         ? deviceType.trimmed()
         : templateDeviceType;
-    const QString resolvedDeviceName = deviceName.trimmed().isEmpty()
-        ? tr("新建%1").arg(selectedTemplate->name())
-        : deviceName.trimmed();
+    QString resolvedDeviceName = deviceName.trimmed();
+    if (resolvedDeviceName.isEmpty())
+        resolvedDeviceName = tr("新建%1").arg(selectedTemplate->name());
 
     if (!validateDeviceCreation(resolvedDeviceType, resolvedDeviceName, selectedTemplate->name()).isEmpty())
         return false;
 
     QVariantMap resolvedConfigValues = defaultConfigValues(selectedTemplate);
     for (auto it = configValues.cbegin(); it != configValues.cend(); ++it) {
-        if (!it.key().trimmed().isEmpty())
+        if (!it.key().isEmpty())
             resolvedConfigValues.insert(it.key(), it.value());
     }
 
@@ -269,9 +268,9 @@ bool DeviceManager::updateDevice(Device *device,
     if (!validateDeviceUpdate(device, deviceName).isEmpty())
         return false;
 
-    device->setName(deviceName.trimmed());
+    device->setName(deviceName);
     for (auto it = configValues.cbegin(); it != configValues.cend(); ++it) {
-        if (!it.key().trimmed().isEmpty())
+        if (!it.key().isEmpty())
             device->setParamValue(it.key(), it.value());
     }
     return true;

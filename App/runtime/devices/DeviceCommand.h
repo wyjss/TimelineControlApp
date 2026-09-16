@@ -92,7 +92,6 @@ private:
     friend class Device;
 
     void setDevice(Device *device);
-    void emitFieldChanged();
     void updateParamFromDevice();
 
     // 创建时需要输入的参数
@@ -122,6 +121,7 @@ private:
 //        const QVariantMap& executionInputValues = QVariantMap()) const override;
 //};
 
+// 内部指令，可能执行各种特定操作
 class DeviceCommand_Internal : public DeviceCommand
 {
 public:
@@ -134,7 +134,20 @@ protected:
 					  QObject* parent);
 };
 
+// 串口
+class DeviceCommand_Serial final : public DeviceCommand
+{
+public:
+	explicit DeviceCommand_Serial(QObject* parent)
+		: DeviceCommand(DeviceProtocol::Serial, QStringLiteral("串口指令"), parent)
+	{
+		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPort));
+		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::BaudRate));
+		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPayload));
+	}
+};
 
+// UDP
 class DeviceCommand_Udp : public DeviceCommand
 {
 public:
@@ -147,6 +160,7 @@ protected:
 					   QObject* parent);
 };
 
+// HTTP
 class DeviceCommand_Http : public DeviceCommand
 {
 public:
@@ -159,6 +173,7 @@ protected:
                        QObject *parent);
 };
 
+// PC，封装内部http
 class DeviceCommand_PC : public DeviceCommand_Http
 {
 public:

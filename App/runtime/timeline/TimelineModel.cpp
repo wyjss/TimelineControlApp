@@ -20,9 +20,8 @@ Timeline *TimelineModel::timelineAt(int index) const
 
 Timeline *TimelineModel::timelineById(const QString &id) const
 {
-    const QString normalizedId = id.trimmed();
     for (Timeline *timeline : items()) {
-        if (timeline->id() == normalizedId)
+        if (timeline->id() == id)
             return timeline;
     }
     return nullptr;

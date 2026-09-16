@@ -24,9 +24,10 @@ bool FenceManager::upsertFence(const QString &handle,
     if (value.isEmpty())
         return false;
 
+    const QString fenceName = name.trimmed();
     const QVariantMap fence{
         {QStringLiteral("handle"), value},
-        {QStringLiteral("name"), name.trimmed().isEmpty() ? value : name.trimmed()},
+        {QStringLiteral("name"), fenceName.isEmpty() ? value : fenceName},
         {QStringLiteral("startLongitude"), startLongitude},
         {QStringLiteral("startLatitude"), startLatitude},
         {QStringLiteral("endLongitude"), endLongitude},

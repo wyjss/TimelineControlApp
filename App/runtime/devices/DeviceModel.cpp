@@ -71,14 +71,13 @@ int DeviceModel::indexOfDevice(Device *device) const
 
 int DeviceModel::indexOfDeviceId(const QString &deviceId) const
 {
-    const QString normalizedDeviceId = deviceId.trimmed();
-    if (normalizedDeviceId.isEmpty())
+    if (deviceId.isEmpty())
         return -1;
 
     const QList<Device *> currentItems = items();
     for (int row = 0; row < currentItems.size(); ++row) {
         Device *device = currentItems.at(row);
-        if (device && device->id() == normalizedDeviceId)
+        if (device && device->id() == deviceId)
             return row;
     }
 
@@ -90,7 +89,7 @@ bool DeviceModel::deviceMatchesDeviceType(const Device *device, const QString &d
     if (!device)
         return false;
 
-    return device->deviceType().trimmed() == deviceType.trimmed();
+    return device->deviceType().trimmed() == deviceType;
 }
 
 bool DeviceModel::hasDeviceName(const QString &deviceType,
@@ -98,8 +97,7 @@ bool DeviceModel::hasDeviceName(const QString &deviceType,
                                 const QString &excludedDeviceId) const
 {
     const QString normalizedDeviceType = deviceType.trimmed();
-    const QString normalizedDeviceName = deviceName.trimmed();
-    if (normalizedDeviceType.isEmpty() || normalizedDeviceName.isEmpty())
+    if (normalizedDeviceType.isEmpty() || deviceName.isEmpty())
         return false;
 
     const QList<Device *> currentItems = items();
@@ -110,7 +108,7 @@ bool DeviceModel::hasDeviceName(const QString &deviceType,
         if (!deviceMatchesDeviceType(device, normalizedDeviceType))
             continue;
 
-        if (device->name().trimmed().compare(normalizedDeviceName, Qt::CaseInsensitive) == 0)
+        if (device->name().trimmed().compare(deviceName, Qt::CaseInsensitive) == 0)
             return true;
     }
 

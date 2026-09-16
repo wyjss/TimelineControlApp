@@ -99,17 +99,17 @@ DeviceParamSpec *fieldFromJson(const QJsonObject &json,
     return field;
 }
 
-class SerialCommand final : public DeviceCommand
-{
-public:
-    explicit SerialCommand(QObject *parent)
-        : DeviceCommand(DeviceProtocol::Serial, QStringLiteral("串口指令"), parent)
-    {
-        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPort));
-        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::BaudRate));
-        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPayload));
-    }
-};
+// class SerialCommand final : public DeviceCommand
+// {
+// public:
+//     explicit SerialCommand(QObject *parent)
+//         : DeviceCommand(DeviceProtocol::Serial, QStringLiteral("串口指令"), parent)
+//     {
+//         addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPort));
+//         addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::BaudRate));
+//         addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPayload));
+//     }
+// };
 
 class Dmx512Command final : public DeviceCommand
 {
@@ -213,7 +213,7 @@ DeviceCommand* DeviceCommand::createForProtocol(const QString& protocol, QObject
 	if (value == DeviceProtocol::Pc)
 		return new DeviceCommand_PC(parent);
 	if (value == DeviceProtocol::Serial)
-		return new SerialCommand(parent);
+		return new DeviceCommand_Serial(parent);
 	if (value == DeviceProtocol::Dmx512)
 		return new Dmx512Command(parent);
 
@@ -504,7 +504,9 @@ void DeviceCommand::addCreationInputField(DeviceParamSpec *field)
 
     m_creationInputFields.append(field);
 
-    connect(field, &DeviceParamSpec::valueChanged, this, &DeviceCommand::emitFieldChanged);
+    connect(field, &DeviceParamSpec::valueChanged, this, [this, field]() {
+        emit fieldChanged(field);
+    });
 }
 
 void DeviceCommand::addExecutionInputField(DeviceParamSpec *field)
@@ -546,11 +548,6 @@ QVariantList DeviceCommand::executionInputFields() const
     for (DeviceParamSpec *field : m_executionInputFields)
         result.append(QVariant::fromValue(field));
     return result;
-}
-
-void DeviceCommand::emitFieldChanged()
-{
-    emit fieldChanged(qobject_cast<DeviceParamSpec *>(sender()));
 }
 
 void DeviceCommand::updateParamFromDevice()

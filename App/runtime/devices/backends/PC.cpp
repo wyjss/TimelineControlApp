@@ -55,7 +55,7 @@ public:
 						   parent)
 	{
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoFile));
-		//addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::Rect));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoTimeSec));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowX));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowY));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowW));
@@ -101,6 +101,7 @@ public:
 		query.addQueryItem("play", executionInputValues.value("play", true).toString());
 		query.addQueryItem("rect", sVideoRect);
 		query.addQueryItem("srcRect", sVideoSrcRect);
+		query.addQueryItem("sec", executionInputValues.value(DeviceKey::VideoTimeSec, 0).toString());
 		//query.addQueryItem("canvasSize", QString("%1x%2").arg(w).arg(h));
 
 		QString api = QString("/video/open?") + query.toString();
@@ -191,18 +192,6 @@ public:
 //	}
 //};
 
-//class VirtualPlaybackCommand final : public DeviceCommand_PC
-//{
-//public:
-//	explicit VirtualPlaybackCommand(QObject* parent)
-//		: DeviceCommand_PC(QStringLiteral("虚拟播放"),
-//						   DeviceKey::CommandVirtualPlayback,
-//						   parent)
-//	{
-//		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Videos));
-//	}
-//};
-
 
 
 PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
@@ -279,7 +268,5 @@ DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
 		return new ClosePlayerCommand(parent);
 // 	if (commandType == DeviceKey::CommandPlayDomeVideo)
 // 		return new PlayDomeVideoCommand(parent);
-// 	if (commandType == DeviceKey::CommandVirtualPlayback)
-// 		return new VirtualPlaybackCommand(parent);
 	return nullptr;
 }

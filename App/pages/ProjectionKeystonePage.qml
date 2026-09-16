@@ -10,7 +10,6 @@ Item {
 
     focus: true
 
-    property string initialPcId: ""
     property string selectedPcId: ""
     property int selectedScreenIndex: 0
     property int keystoneRevision: 0
@@ -37,10 +36,7 @@ Item {
     readonly property int totalScreenWidth: selectedScreenWidth * screenColumns
     readonly property int totalScreenHeight: selectedScreenHeight * screenRows
 
-    signal backRequested()
-
     onPcDevicesChanged: ensureSelectedPc()
-    onInitialPcIdChanged: ensureSelectedPc()
     onSelectedPcIdChanged: {
         selectedPc = selectedPcForId(selectedPcId)
         keystoneRevision += 1
@@ -60,15 +56,6 @@ Item {
             return pageTheme.colors[name]
 
         return fallback
-    }
-
-    function leavePage() {
-        if (root.appRuntime && root.appRuntime.shell) {
-            root.appRuntime.shell.activeNavigationKey = "projection"
-            return
-        }
-
-        root.backRequested()
     }
 
     function clamp(value, minimum, maximum) {
@@ -109,8 +96,7 @@ Item {
             return
         }
 
-        var preferred = initialPcId.length > 0 ? initialPcId : selectedPcId
-        var selected = selectedPcForId(preferred)
+        var selected = selectedPcForId(selectedPcId)
         selectedPcId = String(selected.id || "")
         selectedPc = selected
         var count = Math.max(1,
@@ -294,10 +280,6 @@ Item {
         statusText = qsTr("已重置当前 PC")
     }
 
-    function simulatedSave() {
-        statusText = qsTr("校正数据已写入当前 PC 设备")
-    }
-
     function cornerLabel(index) {
         if (index === 0)
             return qsTr("左上")
@@ -327,7 +309,10 @@ Item {
                 raised: true
                 text: qsTr("返回")
                 iconSymbol: "↶"
-                onClicked: root.leavePage()
+                onClicked: {
+                    if (root.appRuntime && root.appRuntime.shell)
+                        root.appRuntime.shell.activeNavigationKey = "projection"
+                }
             }
 
             Base.AppText {
@@ -357,7 +342,7 @@ Item {
                 text: qsTr("保存")
                 iconName: "resources"
                 enabled: !!root.selectedPc
-                onClicked: root.simulatedSave()
+                onClicked: root.statusText = qsTr("校正数据已写入当前 PC 设备")
             }
         }
 

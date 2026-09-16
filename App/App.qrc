@@ -11,7 +11,6 @@
         <file alias="App/assets/icons/投影机.png">assets/icons/投影机.png</file>
         <file alias="App/assets/icons/音响.png">assets/icons/音响.png</file>
         <file alias="App/pages/DevicesPage.qml">pages/DevicesPage.qml</file>
-        <file alias="App/pages/DeviceControlPage.qml">pages/DeviceControlPage.qml</file>
         <file alias="App/pages/DeviceCommandDialog.qml">pages/DeviceCommandDialog.qml</file>
         <file alias="App/pages/DeviceFieldForm.qml">pages/DeviceFieldForm.qml</file>
         <file alias="App/pages/DeviceProfilePairField.qml">pages/DeviceProfilePairField.qml</file>
@@ -25,7 +24,6 @@
         <file alias="App/pages/SystemSettingsPane.qml">pages/SystemSettingsPane.qml</file>
         <file alias="App/pages/TimelineEditorPage.qml">pages/TimelineEditorPage.qml</file>
         <file alias="App/pages/TimelinePage.qml">pages/TimelinePage.qml</file>
-        <file alias="App/pages/VirtualPlaybackCommandPage.qml">pages/VirtualPlaybackCommandPage.qml</file>
         <file alias="App/pages/timeline/TimelineCommandHorizontalList.qml">pages/timeline/TimelineCommandHorizontalList.qml</file>
         <file alias="App/pages/timeline/TimelineCommandVerticalList.qml">pages/timeline/TimelineCommandVerticalList.qml</file>
         <file alias="App/pages/timeline/TimelineDeviceTrackArea.qml">pages/timeline/TimelineDeviceTrackArea.qml</file>

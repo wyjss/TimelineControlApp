@@ -37,16 +37,6 @@ Base.AppDialog {
         Object.assign(values, sourceCommand.executionInputValues)
         if (sourceCommand.executionInputValues.play === undefined)
             values.play = true
-        if (values.rect) {
-            var rect = String(values.rect).split(",")
-            if (rect.length === 4) {
-                values.videoWindowX = Number(rect[0])
-                values.videoWindowY = Number(rect[1])
-                values.videoWindowW = Number(rect[2])
-                values.videoWindowH = Number(rect[3])
-            }
-        }
-        delete values.rect
         return values
     }
     readonly property var videoOptions: {

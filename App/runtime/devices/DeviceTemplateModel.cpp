@@ -53,11 +53,6 @@ DeviceTemplate *DeviceTemplateModel::templateByName(const QString &templateName)
     return templateAt(row);
 }
 
-int DeviceTemplateModel::indexOfTemplate(DeviceTemplate *deviceTemplate) const
-{
-    return deviceTemplate ? indexOfItem(deviceTemplate) : -1;
-}
-
 int DeviceTemplateModel::indexOfTemplateName(const QString &templateName) const
 {
     const QString normalizedTemplateName = templateName.trimmed();
@@ -77,7 +72,7 @@ int DeviceTemplateModel::indexOfTemplateName(const QString &templateName) const
 void DeviceTemplateModel::appendTemplate(DeviceTemplate *deviceTemplate)
 {
     if (!deviceTemplate
-        || indexOfTemplate(deviceTemplate) >= 0
+        || indexOfItem(deviceTemplate) >= 0
         || indexOfTemplateName(deviceTemplate->name()) >= 0) {
         return;
     }

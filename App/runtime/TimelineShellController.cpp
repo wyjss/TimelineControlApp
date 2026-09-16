@@ -44,18 +44,6 @@ TimelineShellController::TimelineShellController(QObject *parent)
               {QStringLiteral("source"), QString()}
           },
           QVariantMap{
-              {QStringLiteral("key"), QStringLiteral("device-control")},
-              {QStringLiteral("label"), tr("设备控制")},
-              {QStringLiteral("iconName"), QStringLiteral("background-task")},
-              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/DeviceControlPage.qml")}
-          },
-          QVariantMap{
-              {QStringLiteral("key"), QStringLiteral("virtual-playback")},
-              {QStringLiteral("label"), tr("虚拟播放")},
-              {QStringLiteral("iconName"), QStringLiteral("scene")},
-              {QStringLiteral("source"), QStringLiteral("qrc:/TimelineControlApp/App/pages/VirtualPlaybackCommandPage.qml")}
-          },
-          QVariantMap{
               {QStringLiteral("key"), QStringLiteral("projection")},
               {QStringLiteral("label"), tr("加载视频")},
               {QStringLiteral("iconName"), QStringLiteral("scene")},

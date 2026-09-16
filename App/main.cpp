@@ -5,7 +5,6 @@
 #include <QQmlContext>
 #include <QQuickImageProvider>
 #include <QQuickStyle>
-#include <QStringList>
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include <qqml.h>
@@ -94,24 +93,6 @@ int main(int argc, char *argv[])
     //QRect virtualGeometry = QGuiApplication::primaryScreen()->virtualGeometry();
     //qDebug() << virtualGeometry;
    // exit(0);
-    QString projectionVideoSource;
-    const QStringList arguments = application.arguments();
-    for (int index = 1; index < arguments.size(); ++index) {
-        const QString argument = arguments.at(index);
-        if (argument == QStringLiteral("--projection-video") && index + 1 < arguments.size()) {
-            projectionVideoSource = arguments.at(++index);
-        } else if (argument.startsWith(QStringLiteral("--projection-video="))) {
-            projectionVideoSource = argument.mid(QStringLiteral("--projection-video=").size());
-        }
-    }
-
-    if (!projectionVideoSource.isEmpty()) {
-        const QUrl sourceUrl(projectionVideoSource);
-        const QFileInfo sourceFileInfo(projectionVideoSource);
-        if (sourceFileInfo.isAbsolute() || !sourceUrl.isValid() || sourceUrl.scheme().isEmpty())
-            projectionVideoSource = QUrl::fromLocalFile(QFileInfo(projectionVideoSource).absoluteFilePath()).toString();
-    }
-
     TimelineRuntime runtime;
     WebControlServer webControlServer(
         &runtime,
@@ -127,8 +108,7 @@ int main(int argc, char *argv[])
     runtime.settings()->setLocale(QStringLiteral("zh_CN"));
     runtime.settings()->setThemeMode(QStringLiteral("dark"));
     runtime.settings()->setValues(QVariantMap{
-        {QStringLiteral("canvasDelegateSource"), QString()},
-        {QStringLiteral("projectionVideoSource"), projectionVideoSource}
+        {QStringLiteral("canvasDelegateSource"), QString()}
     });
 
     qmlRegisterType<FfmpegVideoFrameItem>("TimelineControl.Media", 1, 0, "FfmpegVideoFrameItem");

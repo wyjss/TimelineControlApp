@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QAbstractItemModel>
 #include <QDateTime>
 #include <QObject>
 #include <QRect>
@@ -8,11 +7,8 @@
 #include <QString>
 #include <QStringList>
 #include <QUrl>
-#include <QVariantList>
-#include <QVariantMap>
 #include <QVector>
 
-#include "models/VariantListModel.h"
 
 class QDataStream;
 
@@ -70,126 +66,17 @@ struct VideoProjectionPlan
     QDateTime updatedAt;
 };
 
-//! 实例由 TimelineRuntime 创建并管理。
-//! 视频投影方案控制器，负责保存方案数据并向 QML 暴露列表模型。
+//! 兼容旧方案文件的投影数据读写与设备删除清理。
 class VideoProjectionPlanController final : public QObject
 {
-    Q_OBJECT
-    //! 视频投影方案列表模型，modelData/value 为 QVariantMap。
-    Q_PROPERTY(QAbstractItemModel *planModel READ planModel CONSTANT FINAL)
-    //! 当前方案的取景列表模型，modelData/value 为 QVariantMap。
-    Q_PROPERTY(QAbstractItemModel *captureModel READ captureModel CONSTANT FINAL)
-    //! 当前方案的映射列表模型，modelData/value 为 QVariantMap。
-    Q_PROPERTY(QAbstractItemModel *mappingModel READ mappingModel CONSTANT FINAL)
-    //! 当前选中的方案索引。
-    Q_PROPERTY(int currentPlanIndex READ currentPlanIndex WRITE setCurrentPlanIndex NOTIFY currentPlanChanged FINAL)
-
 public:
-    explicit VideoProjectionPlanController(QObject *parent = nullptr);
-
-    //! 返回所有视频投影方案的 QML 列表模型。
-    QAbstractItemModel *planModel() const;
-    //! 返回当前方案的取景列表模型。
-    QAbstractItemModel *captureModel() const;
-    //! 返回当前方案的映射列表模型。
-    QAbstractItemModel *mappingModel() const;
-
-    //! 当前选中的方案索引，-1 表示未选中。
-    int currentPlanIndex() const;
-    //! 切换当前方案，并刷新当前方案相关模型。
-    void setCurrentPlanIndex(int index);
-
-    //! 返回所有方案的内部数据，供 C++ 侧直接读取。
-    const QVector<VideoProjectionPlan> &planItems() const;
-    //! 返回当前方案的可修改指针；无当前方案时返回 nullptr。
-    VideoProjectionPlan *currentPlan();
-    //! 返回当前方案的只读指针；无当前方案时返回 nullptr。
-    const VideoProjectionPlan *currentPlan() const;
+    using QObject::QObject;
 
     void writeToStream(QDataStream &stream) const;
     void readFromStream(QDataStream &stream);
-
-    //! 创建一个新方案并切换为当前方案，返回新方案索引。
-    Q_INVOKABLE int createPlan(const QString &name = QString());
-    //! 返回指定方案的 QVariantMap 数据。
-    Q_INVOKABLE QVariantMap planAt(int index) const;
-    //! 返回当前方案的 QVariantMap 数据。
-    Q_INVOKABLE QVariantMap currentPlanData() const;
-    //! 修改当前方案名称。
-    Q_INVOKABLE void setCurrentPlanName(const QString &name);
-    //! 修改当前方案关联的投影窗口 id。
-    Q_INVOKABLE void setProjectionWindowId(const QString &windowId);
-    //! 修改当前方案的视频源地址。
-    Q_INVOKABLE void setVideoSource(const QUrl &source);
-    //! 修改当前方案的视频像素尺寸。
-    Q_INVOKABLE void setVideoSize(int width, int height);
-
-    //! 添加一个取景区域，返回新增取景索引。
-    Q_INVOKABLE int addCapture(const QString &name = QString());
-    //! 删除指定取景，并同步删除或修正相关映射。
-    Q_INVOKABLE void removeCapture(int index);
-    //! 返回指定取景的 QVariantMap 数据。
-    Q_INVOKABLE QVariantMap captureAt(int index) const;
-    //! 修改取景名称。
-    Q_INVOKABLE void setCaptureName(int index, const QString &name);
-    //! 修改取景矩形，坐标为视频像素坐标。
-    Q_INVOKABLE void setCaptureRect(int index, int x, int y, int width, int height);
-
-    //! 添加映射关系；同一个取景已有映射时会先移除旧映射。
-    Q_INVOKABLE int addMapping(int captureIndex,
-                               const QString &pcId,
-                               int x,
-                               int y,
-                               int width,
-                               int height,
-                               int totalScreenWidth,
-                               int totalScreenHeight,
-                               int screenColumns,
-                               int screenRows,
-                               int screenWidth,
-                               int screenHeight);
-    //! 删除指定映射。
-    Q_INVOKABLE void removeMapping(int index);
-    //! 返回指定映射的 QVariantMap 数据。
-    Q_INVOKABLE QVariantMap mappingAt(int index) const;
-    //! 返回指定取景对应的映射；不存在时返回空 map。
-    Q_INVOKABLE QVariantMap mappingForCapture(int captureIndex) const;
-    //! 返回指定 PC 设备上的映射数量。
-    Q_INVOKABLE int mappingCountForPc(const QString &pcId) const;
-    Q_INVOKABLE void removeMappingsForPc(const QString &pcId);
-    //! 修改映射输出矩形，坐标为目标 PC 总屏幕像素坐标。
-    Q_INVOKABLE void setMappingRect(int index, int x, int y, int width, int height);
-
-private slots:
-   // void removeCommand();
-signals:
-    //! 当前方案索引变化时发出。
-    void currentPlanChanged();
+    void removeMappingsForPc(const QString &pcId);
 
 private:
-    QString defaultPlanName() const;
-    QVariantList planValues() const;
-    QVariantList captureValues() const;
-    QVariantList mappingValues() const;
-    QVariantMap planToMap(const VideoProjectionPlan &plan, int index) const;
-    QVariantMap captureToMap(const VideoProjectionCapture &capture, int index) const;
-    QVariantMap mappingToMap(const VideoProjectionMapping &mapping, int index) const;
-    QString defaultCaptureName(int index) const;
-    void touchCurrentPlan();
-    void refreshTargetPcIds(VideoProjectionPlan &plan);
-    void refreshPlanModel();
-    void refreshCurrentPlanRow();
-    void refreshCurrentPlanModels();
-
     QVector<VideoProjectionPlan> m_plans;
-    VariantListModel m_planModel;
-    VariantListModel m_captureModel;
-    VariantListModel m_mappingModel;
     int m_currentPlanIndex = -1;
 };
-
-
-Q_DECLARE_METATYPE(VideoProjectionCapture)
-Q_DECLARE_METATYPE(VideoProjectionMapping)
-Q_DECLARE_METATYPE(VideoProjectionPlan)
-Q_DECLARE_METATYPE(VideoProjectionPlanController *)

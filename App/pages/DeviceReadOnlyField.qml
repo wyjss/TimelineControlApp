@@ -13,9 +13,11 @@ Item {
     property var fieldData: ({})
     readonly property string labelText: fieldData && fieldData.label !== undefined ? String(fieldData.label) : ""
     readonly property string subtitleText: fieldData && fieldData.subtitle !== undefined ? String(fieldData.subtitle) : ""
-    readonly property string valueText: fieldData && fieldData.value !== undefined && fieldData.value !== null
-        ? String(fieldData.value)
-        : ""
+    readonly property string valueText: {
+        var value = fieldData && fieldData.value !== undefined && fieldData.value !== null
+            ? String(fieldData.value) : ""
+        return value.trim().length > 0 ? value : qsTr("空")
+    }
 
     width: parent ? parent.width : 0
     implicitHeight: contentRow.implicitHeight + 1

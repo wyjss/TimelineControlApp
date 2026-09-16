@@ -76,8 +76,6 @@ public:
     Q_INVOKABLE bool commitCommandDraft(DeviceCommand *command);
     Q_INVOKABLE DeviceCommand *createCommand(const QString &protocol = QString(),
                                                               const QString &name = QString());
-    Q_INVOKABLE DeviceCommand *createCommandForType(const QString &commandType,
-                                                     const QString &name = QString());
     DeviceCommand *createCommandFromJson(const QJsonObject &json,
                                          QObject *parent = nullptr,
                                          TimelineModel *timelineModel = nullptr) const;

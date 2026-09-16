@@ -20,18 +20,6 @@ namespace {
 const char *kDurationMsKey = "durationMs";
 const char *kExecutionInputValuesKey = "__executionInputValues";
 
-QString createTimelineCommandId()
-{
-    return QStringLiteral("timeline-command-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-}
-
-qint64 variantInt64(const QVariantMap &map, const QString &key, qint64 fallback)
-{
-    bool ok = false;
-    const qint64 value = map.value(key).toLongLong(&ok);
-    return ok ? value : fallback;
-}
-
 } // namespace
 
 
@@ -42,12 +30,12 @@ TimelineCommand::TimelineCommand(qint64 startTimeMs,
                                  DeviceCommand *targetCommand,
                                  QObject *parent)
     : QObject(parent)
-    , m_id(createTimelineCommandId())
+    , m_id(QStringLiteral("timeline-command-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)))
     , m_startTimeMs(qMax<qint64>(0, startTimeMs))
     , m_targetDeviceId(targetDeviceId.trimmed())
     , m_commandName(commandName)
-    , m_executionInputValues(executionInputValues)
 {
+    setExecutionInputValues(executionInputValues);
     setTargetCommand(targetCommand);
 }
 
@@ -152,7 +140,7 @@ qint64 TimelineCommand::durationMs() const
     const QVariantMap params = m_targetCommand
         ? m_targetCommand->resolvedParams(m_executionInputValues)
         : m_executionInputValues;
-    return qMax<qint64>(0, variantInt64(params, QString::fromLatin1(kDurationMsKey), 0));
+    return qMax<qint64>(0, params.value(kDurationMsKey).toLongLong());
 }
 
 TimelineCommand::State TimelineCommand::state() const

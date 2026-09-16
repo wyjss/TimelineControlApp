@@ -3,7 +3,6 @@
 #include <cmath>
 
 #include <QDir>
-#include <QFile>
 #include <QFileInfo>
 #include <QPainter>
 
@@ -18,12 +17,6 @@ qint64 secondsToMilliseconds(double seconds)
         return 0;
 
     return static_cast<qint64>(std::llround(seconds * 1000.0));
-}
-
-std::string readerPathFromQString(const QString &path)
-{
-    const QByteArray encodedPath = QFile::encodeName(path);
-    return std::string(encodedPath.constData(), static_cast<size_t>(encodedPath.size()));
 }
 
 } // namespace
@@ -204,7 +197,7 @@ bool FfmpegVideoFrameItem::openCurrentSource()
 
     auto reader = std::make_unique<AVReader>();
     AVReaderOptions options;
-    options.avPath = readerPathFromQString(path);
+    options.avPath = path.toUtf8().toStdString();
     options.hw = true;
     options.loop = false;
     options.outputVideoFrame = true;

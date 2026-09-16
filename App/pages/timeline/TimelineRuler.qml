@@ -24,13 +24,13 @@ Item {
     // 基础大刻度时间间隔，单位秒。
     property int baseMajorTickSeconds: 5
     // 基础小刻度像素间隔。
-    property real minorTickPixelSpacing: 16
+    property real minorTickPixelSpacing: 24
     // 每个大刻度包含的小刻度数量。
     property int minorTicksPerMajor: 5
     // 时间缩放值；值越大，单位时间占用的像素越少。
     property real timeScale: 1.0
     // 最小时间缩放值。
-    property real minTimeScale: 1.0
+    property real minTimeScale: 0.1
     // 最大时间缩放值，根据时长和可用宽度自动计算。
     readonly property real maxTimeScale: calcMaxTimeScale()
     // 滚轮缩放步进；值越大，单次滚轮缩放越明显。
@@ -503,7 +503,8 @@ Item {
                 return
             }
 
-            var anchorX = root.resolvedTrackLeftX + (root.width - root.resolvedTrackLeftX) / 2
+            // 使用本次滚轮事件的位置，避免鼠标指向的时刻在缩放中漂移。
+            var anchorX = wheel.x
             var anchorTimeSeconds = (root.scrollX + anchorX - root.resolvedStartTimeX) / root.safePixelsPerSecond
             var nextPixelsPerSecond = root.safePixelsPerSecond * previousScale / nextScale
             var nextContentWidth = Math.max(root.width,

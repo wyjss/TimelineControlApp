@@ -5,7 +5,6 @@
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
 #include "devices/CrossConditionModel.h"
-#include "devices/DeviceInspectorFormProvider.h"
 #include "devices/DeviceManager.h"
 #include "devices/DeviceModel.h"
 #include "devices/Device.h"
@@ -18,7 +17,6 @@
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
 #include "timeline/TimelineModel.h"
-#include <UICore/Forms/AppForm.h>
 
 #include <QDataStream>
 #include <QDir>
@@ -58,16 +56,11 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
 	m_deviceTemplateModel = (new DeviceTemplateModel(m_timelineManager->timelineModel(), this));
 	m_deviceExecutorManager = (new DeviceExecutorManager(this));
 	m_deviceManager = (new DeviceManager(m_deviceModel, m_deviceTemplateModel, m_deviceExecutorManager, this));
-	m_deviceInspectorFormProvider = (new DeviceInspectorFormProvider(m_deviceModel,
-																  m_deviceTemplateModel,
-																  this));
 	m_videoProjectionPlanController = (new VideoProjectionPlanController(this));
 
     qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
     qRegisterMetaType<Device *>("Device*");
     qRegisterMetaType<DeviceTemplate *>("DeviceTemplate*");
-    qRegisterMetaType<DeviceInspectorFormProvider *>("DeviceInspectorFormProvider*");
-    qRegisterMetaType<UICore::AppForm *>("UICore::AppForm*");
     qRegisterMetaType<UICore::TaskManager *>("UICore::TaskManager*");
     qRegisterMetaType<DeviceManager *>("DeviceManager*");
     qRegisterMetaType<DeviceModel *>("DeviceModel*");
@@ -75,7 +68,6 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<CrossCondition *>("CrossCondition*");
     qRegisterMetaType<CrossConditionModel *>("CrossConditionModel*");
     qRegisterMetaType<FenceManager *>("FenceManager*");
-    qRegisterMetaType<VideoProjectionPlanController *>("VideoProjectionPlanController*");
     qRegisterMetaType<Timeline *>("Timeline*");
     qRegisterMetaType<TimelineCommand *>("TimelineCommand*");
     qRegisterMetaType<TimelineCommandModel *>("TimelineCommandModel*");
@@ -205,19 +197,9 @@ DeviceTemplateModel *TimelineRuntime::deviceTemplateModel() const
     return m_deviceTemplateModel;
 }
 
-DeviceInspectorFormProvider *TimelineRuntime::deviceInspectorFormProvider() const
-{
-    return m_deviceInspectorFormProvider;
-}
-
 FenceManager *TimelineRuntime::fenceManager() const
 {
     return m_fenceManager;
-}
-
-VideoProjectionPlanController *TimelineRuntime::videoProjectionPlanController() const
-{
-    return m_videoProjectionPlanController;
 }
 
 TimelineManager *TimelineRuntime::timelineManager() const

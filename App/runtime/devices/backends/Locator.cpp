@@ -226,7 +226,7 @@ void LocationRecver::checkStatus()
 		if (QDateTime::currentMSecsSinceEpoch() - itr->lastTouch > 5000 && itr->lon != 0) {
 			emit locationChanged(itr->ip, itr->lon, itr->lat, itr->heading, false);
 		}
-#else// debug
+#else// debug，暂时保留
 
 		static int s_i = 0;
 		++s_i;

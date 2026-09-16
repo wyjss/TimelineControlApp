@@ -51,8 +51,8 @@ Item {
                 }
             }
             result.push({ "id": device.id, "name": device.name, "address": config.ip || "",
-                "width": Math.max(1, Number(config.screenWidth || 1920)) * Math.max(1, Number(config.screenColumns || 1)),
-                "height": Math.max(1, Number(config.screenHeight || 1080)) * Math.max(1, Number(config.screenRows || 1)),
+                "width": Math.max(1, Number(config.virtualScreenWidth || 1920)),
+                "height": Math.max(1, Number(config.virtualScreenHeight || 1080)),
                 "loadCommand": loadCommand })
         }
         return result
@@ -82,15 +82,6 @@ Item {
                     videoOptions = fields[j].options
             }
             Object.assign(values, command.executionInputValues)
-            if (values.rect) {
-                var rect = String(values.rect).split(",")
-                if (rect.length === 4) {
-                    values.videoWindowX = Number(rect[0])
-                    values.videoWindowY = Number(rect[1])
-                    values.videoWindowW = Number(rect[2])
-                    values.videoWindowH = Number(rect[3])
-                }
-            }
             var play = command.executionInputValues.play !== undefined ? command.executionInputValues.play : true
             var videoOption = videoOptions.filter(function(option) {
                 return option && typeof option === "object" && String(option.value) === String(values.videoFile)
@@ -173,13 +164,6 @@ Item {
         if (!changed)
             return
         var parameters = Object.assign({}, item.command.executionInputValues)
-        if (parameters.rect !== undefined) {
-            delete parameters.rect
-            parameters.videoWindowX = item.videoWindowX
-            parameters.videoWindowY = item.videoWindowY
-            parameters.videoWindowW = item.videoWindowW
-            parameters.videoWindowH = item.videoWindowH
-        }
         Object.assign(parameters, values)
         delete parameters.startTimeMs
         if (!commandModel.updateCommand(item.command,
@@ -938,6 +922,25 @@ Item {
                                                     root.sourceEditor.visualRectW * root.videoItem.width,
                                                     root.sourceEditor.visualRectH * root.videoItem.height) : Qt.rect(0, 0, 1, 1)
                                                 live: true
+                                            }
+                                            Repeater {
+                                                // 参考框使用完整指令列表，避免左侧搜索影响画布。
+                                                model: !panel.isSource && root.selectedCommand
+                                                    ? root.timelineCommands.filter(function(command) {
+                                                        return command.pcId === root.selectedCommand.pcId
+                                                            && command.startTimeMs <= root.selectedCommand.startTimeMs
+                                                            && command.id !== root.selectedCommandId
+                                                    }) : []
+                                                delegate: Rectangle {
+                                                    objectName: "videoOutputReference_" + modelData.id
+                                                    x: Math.round(Number(modelData.videoWindowX || 0) / panel.pixelWidth * parent.width)
+                                                    y: Math.round(Number(modelData.videoWindowY || 0) / panel.pixelHeight * parent.height)
+                                                    width: Math.max(1, Math.round(Number(modelData.videoWindowW || 1920) / panel.pixelWidth * parent.width))
+                                                    height: Math.max(1, Math.round(Number(modelData.videoWindowH || 1080) / panel.pixelHeight * parent.height))
+                                                    color: "transparent"
+                                                    border.color: "#e9b44c"
+                                                    border.width: 2
+                                                }
                                             }
                                             ProjectionEditableRect {
                                                 id: editableRect

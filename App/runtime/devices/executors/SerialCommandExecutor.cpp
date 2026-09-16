@@ -33,9 +33,8 @@ void SerialCommandExecutor::executeImpl(const QString &executionId,
                                         DeviceCommand *command,
                                         const QVariantMap &params)
 {
-    const QStringList parts = params.value(DeviceKey::SerialPayload).toString().simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
-    QByteArray bytes;
-    bytes.reserve(parts.size());
+    QString payload = params.value(DeviceKey::SerialPayload).toString().simplified();
+    const QStringList parts = payload.split(QLatin1Char(' '), Qt::SkipEmptyParts);
     for (const QString &part : parts) {
         bool ok = false;
         const int value = part.toInt(&ok, 16);
@@ -43,9 +42,8 @@ void SerialCommandExecutor::executeImpl(const QString &executionId,
             emit executionFinished(executionId, command, false, tr("串口数据必须是十六进制字节"));
             return;
         }
-        bytes.append(static_cast<char>(value));
     }
-    bytes = params.value(DeviceKey::SerialPayload).toString().simplified().remove(' ').toLatin1();
+    const QByteArray bytes = payload.remove(' ').toLatin1();
     if (bytes.isEmpty()) {
         emit executionFinished(executionId, command, false, tr("串口数据不能为空"));
         return;

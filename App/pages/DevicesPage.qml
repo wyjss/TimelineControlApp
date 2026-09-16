@@ -3,7 +3,6 @@ import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import "qrc:/UICore/qml/components/base" as Base
-import "qrc:/UICore/qml/components/form" as Form
 import "qrc:/UICore/qml/theme" as Theme
 import "../components" as AppComponents
 
@@ -23,9 +22,6 @@ Item {
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     property var deviceTemplateModel: appRuntime && appRuntime.deviceTemplateModel ? appRuntime.deviceTemplateModel : null
-    property var deviceInspectorFormProvider: appRuntime && appRuntime.deviceInspectorFormProvider
-        ? appRuntime.deviceInspectorFormProvider
-        : null
 
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceTemplates: deviceTemplateModel ? deviceTemplateModel.templates : []
@@ -39,10 +35,6 @@ Item {
         : []
     property int selectedCommandIndex: -1
     property int expandedCommandIndex: -1
-    readonly property var selectedCommand: selectedCommandIndex >= 0
-        && selectedCommandIndex < selectedDeviceCommands.length
-        ? selectedDeviceCommands[selectedCommandIndex]
-        : null
     property string deviceSearchText: ""
     property string deviceStatusFilter: "all"
     property bool compactDevices: false
@@ -63,7 +55,6 @@ Item {
             selectedDeviceType = String(deviceTypes[0])
     }
 
-    onSelectedTemplateNameChanged: syncTemplateInspector()
     onSelectedDeviceChanged: {
         selectedCommandIndex = -1
         expandedCommandIndex = -1
@@ -71,17 +62,9 @@ Item {
     }
     onSelectedDeviceCommandsChanged: ensureSelectedCommandForDevice()
     onSelectedDeviceInCurrentViewChanged: ensureSelectedCommandForDevice()
-    onSelectedCommandIndexChanged: syncCommandInspector()
-    onDeviceInspectorFormProviderChanged: {
-        syncTemplateInspector()
-        syncCommandInspector()
-    }
     onFilteredDevicesChanged: Qt.callLater(ensureSelectedDeviceForView)
 
-    Component.onCompleted: {
-        syncTemplateInspector()
-        ensureSelectedCommandForDevice()
-    }
+    Component.onCompleted: ensureSelectedCommandForDevice()
 
     function objectValue(object, field, fallback) {
         if (!object || object[field] === undefined || object[field] === null)
@@ -173,11 +156,6 @@ Item {
         selectedTemplateName = normalizedTemplateName
     }
 
-    function syncTemplateInspector() {
-        if (deviceInspectorFormProvider)
-            deviceInspectorFormProvider.inspectTemplate(selectedTemplateName)
-    }
-
     function ensureSelectedCommandForDevice() {
         var commands = selectedDeviceCommands || []
         var nextIndex = selectedCommandIndex
@@ -188,16 +166,9 @@ Item {
 
         if (selectedCommandIndex !== nextIndex)
             selectedCommandIndex = nextIndex
-        else
-            syncCommandInspector()
 
         if (expandedCommandIndex >= commands.length)
             expandedCommandIndex = -1
-    }
-
-    function syncCommandInspector() {
-        if (deviceInspectorFormProvider)
-            deviceInspectorFormProvider.inspectCommand(selectedCommand)
     }
 
     function selectCommandIndex(commandIndex) {
@@ -361,10 +332,6 @@ Item {
         return address.length > 0 ? address : qsTr("未分配")
     }
 
-    function deviceProtocols(device) {
-        return protocolsText(device && device.supportedProtocols ? device.supportedProtocols : [])
-    }
-
     function protocolsText(protocols, separator) {
         return (protocols || []).map(function(protocol) {
             return String(protocol).toLowerCase() === "internal" ? qsTr("无协议") : String(protocol)
@@ -415,18 +382,6 @@ Item {
             return
 
         createDevicePopupLoader.openForTemplate(selectedTemplate, initialInputSpecs(selectedTemplate))
-    }
-
-    function updateField(field, value) {
-        if (selectedDeviceInCurrentView && selectedDevice && selectedDevice.setFieldValue)
-            selectedDevice.setFieldValue(field, value)
-    }
-
-    function configSpecSummary(configSpec) {
-        var defaultText = configSpec.defaultValue === undefined || configSpec.defaultValue === null
-            ? qsTr("空")
-            : String(configSpec.defaultValue)
-        return String(configSpec.type) + " / " + defaultText
     }
 
     ColumnLayout {
@@ -705,7 +660,7 @@ Item {
                                         ToolTip.visible: hovered
                                         ToolTip.delay: 600
                                         ToolTip.text: String(modelData.name || "") + "\n"
-                                            + root.deviceAddress(modelData) + " · " + root.deviceProtocols(modelData)
+                                            + root.deviceAddress(modelData) + " · " + root.protocolsText(modelData && modelData.supportedProtocols)
 
                                         Behavior on opacity {
                                             NumberAnimation { duration: 120 }
@@ -991,11 +946,41 @@ Item {
                                 }
                             }
 
-                            Form.AppFormContent {
+                            ColumnLayout {
+                                objectName: "deviceProfile"
                                 Layout.fillWidth: true
-                                formData: root.deviceInspectorFormProvider
-                                    ? root.deviceInspectorFormProvider.deviceForm
-                                    : ({})
+                                spacing: 6
+
+                                DeviceReadOnlyField {
+                                    Layout.fillWidth: true
+                                    fieldData: ({ "label": qsTr("模板"), "value": root.objectValue(root.selectedDevice, "templateName", "") })
+                                }
+                                DeviceReadOnlyField {
+                                    Layout.fillWidth: true
+                                    fieldData: ({ "label": qsTr("设备类型"), "value": root.objectValue(root.selectedDevice, "deviceType", "") })
+                                }
+                                DeviceReadOnlyField {
+                                    objectName: "deviceProfileName"
+                                    Layout.fillWidth: true
+                                    fieldData: ({ "label": qsTr("名称"), "value": root.objectValue(root.selectedDevice, "name", "") })
+                                }
+                                DeviceProfilePairField {
+                                    objectName: "deviceProfileProtocolStatus"
+                                    Layout.fillWidth: true
+                                    fieldData: ({ "customData": {
+                                        "leftLabel": qsTr("支持协议"),
+                                        "leftValue": root.selectedDevice && root.selectedDevice.supportedProtocols
+                                            ? root.selectedDevice.supportedProtocols.join(", ") : "",
+                                        "rightLabel": qsTr("状态"),
+                                        "rightValue": root.selectedDevice && root.selectedDevice.online !== undefined
+                                            ? (root.selectedDevice.online ? qsTr("在线") : qsTr("离线")) : ""
+                                    } })
+                                }
+                                DeviceReadOnlyField {
+                                    objectName: "deviceProfileDescription"
+                                    Layout.fillWidth: true
+                                    fieldData: ({ "label": qsTr("描述"), "value": root.objectValue(root.selectedDevice, "description", "") })
+                                }
                             }
                         }
                     }

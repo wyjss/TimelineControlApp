@@ -20,16 +20,11 @@ const char *kSupportedProtocolsConfigKey = "__supportedProtocols";
 const char *kOnlineConfigKey = "__online";
 const char *kStatusConfigKey = "__status";
 
-QString createDeviceId()
-{
-    return QStringLiteral("device-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
-}
-
 } // namespace
 
 Device::Device(DeviceTemplate *deviceTemplate, QObject *parent)
     : QObject(parent)
-    , m_id(createDeviceId())
+    , m_id(QStringLiteral("device-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)))
     , m_templateName(deviceTemplate ? deviceTemplate->name() : QString())
     , m_deviceTemplate(deviceTemplate)
 {
@@ -236,9 +231,9 @@ QString Device::commandInvalidReason(DeviceCommand *command,
 
 DeviceCommand *Device::createCommandDraft(const QString &protocol) const
 {
-    const QString commandProtocol = protocol.trimmed().isEmpty() && !m_supportedProtocols.isEmpty()
-        ? m_supportedProtocols.first()
-        : protocol.trimmed();
+    QString commandProtocol = protocol.trimmed();
+    if (commandProtocol.isEmpty() && !m_supportedProtocols.isEmpty())
+        commandProtocol = m_supportedProtocols.first();
     if (!supportsProtocol(commandProtocol))
         return nullptr;
 
@@ -280,30 +275,12 @@ DeviceCommand *Device::createCommand(const QString &protocol, const QString &nam
     if (!command)
         return nullptr;
 
-    const QString trimmedName = name.trimmed();
-    if (!trimmedName.isEmpty())
-        command->setName(trimmedName);
+    if (!name.isEmpty())
+        command->setName(name);
 
     if (!commitCommandDraft(command)) {
+        LOG_ERROR("commitCommandDraft !!!!!!!!!!!!!!!!! ERRRRRRRRRRRRRRR");
         deleteCommandDraft(command);
-        return nullptr;
-    }
-    return command;
-}
-
-DeviceCommand *Device::createCommandForType(const QString &commandType,
-                                            const QString &name)
-{
-    DeviceCommand *command = m_deviceTemplate
-        ? m_deviceTemplate->createCommand(commandType, this)
-        : nullptr;
-    if (!command)
-        return nullptr;
-
-    if (!name.trimmed().isEmpty())
-        command->setName(name);
-    if (!appendCommand(command)) {
-        delete command;
         return nullptr;
     }
     return command;
@@ -374,7 +351,7 @@ bool Device::removeCommand(DeviceCommand *command)
 
 bool Device::setFieldValue(const QString &field, const QVariant &value)
 {
-    const QByteArray propertyName = field.trimmed().toUtf8();
+    const QByteArray propertyName = field.toUtf8();
     if (propertyName.isEmpty())
         return false;
 

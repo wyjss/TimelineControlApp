@@ -12,7 +12,6 @@ class DeviceManager;
 class DeviceModel;
 class DeviceTemplateModel;
 class DeviceExecutorManager;
-class DeviceInspectorFormProvider;
 class FenceManager;
 class VideoProjectionPlanController;
 class TimelineCommand;
@@ -26,9 +25,7 @@ class TimelineRuntime final : public UICore::BaseRuntime
     Q_PROPERTY(DeviceManager *deviceManager READ deviceManager CONSTANT FINAL)
     Q_PROPERTY(DeviceModel *deviceModel READ deviceModel CONSTANT FINAL)
     Q_PROPERTY(DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
-    Q_PROPERTY(DeviceInspectorFormProvider *deviceInspectorFormProvider READ deviceInspectorFormProvider CONSTANT FINAL)
     Q_PROPERTY(FenceManager *fenceManager READ fenceManager CONSTANT FINAL)
-    Q_PROPERTY(VideoProjectionPlanController *videoProjectionPlanController READ videoProjectionPlanController CONSTANT FINAL)
     Q_PROPERTY(TimelineManager *timelineManager READ timelineManager CONSTANT FINAL)
     Q_PROPERTY(QString currentPlanFilePath READ currentPlanFilePath NOTIFY currentPlanFilePathChanged FINAL)
     Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanFilePathChanged FINAL)
@@ -42,9 +39,7 @@ public:
     DeviceManager *deviceManager() const;
     DeviceModel *deviceModel() const;
     DeviceTemplateModel *deviceTemplateModel() const;
-    DeviceInspectorFormProvider *deviceInspectorFormProvider() const;
     FenceManager *fenceManager() const;
-    VideoProjectionPlanController *videoProjectionPlanController() const;
     TimelineManager *timelineManager() const;
     QString currentPlanFilePath() const;
     QString currentPlanName() const;
@@ -66,7 +61,6 @@ private:
     DeviceTemplateModel *m_deviceTemplateModel = nullptr;
     DeviceExecutorManager *m_deviceExecutorManager = nullptr;
     DeviceManager *m_deviceManager = nullptr;
-    DeviceInspectorFormProvider *m_deviceInspectorFormProvider = nullptr;
     FenceManager *m_fenceManager = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
     QString m_currentPlanFilePath;

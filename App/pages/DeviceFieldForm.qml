@@ -105,10 +105,6 @@ ColumnLayout {
         return value
     }
 
-    function displayValue(field, value) {
-        return value
-    }
-
     function fieldInvalidReason(field) {
         return field && field.invalidReason ? field.invalidReason(fieldValue(field)) : ""
     }
@@ -169,7 +165,7 @@ ColumnLayout {
             Base.AppTextField {
                 visible: fieldRow.editor === "text"
                 Layout.fillWidth: true
-                text: String(root.displayValue(fieldRow.fieldSpec, root.fieldValue(fieldRow.fieldSpec)))
+                text: String(root.fieldValue(fieldRow.fieldSpec))
                 placeholderText: String(fieldRow.fieldSpec.placeholderText || fieldRow.fieldSpec.placeholder || "")
                 enabled: !fieldRow.fieldReadOnly
                 inputMethodHints: fieldRow.fieldSpec.type === "int"

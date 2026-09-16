@@ -31,10 +31,10 @@ CrossCondition::CrossCondition(const QString& id,
 							   const QString& timeline,
 							   QObject* parent)
 	: QObject(parent)
-	, m_id(id.trimmed())
-	, m_locator(locator.trimmed())
-	, m_fence(fence.trimmed())
-	, m_timeline(timeline.trimmed())
+	, m_id(id)
+	, m_locator(locator)
+	, m_fence(fence)
+	, m_timeline(timeline)
 	, m_sourceTimeline(sourceTimeline)
 {
 	double value = std::fmod(heading, 360.0);
@@ -75,11 +75,10 @@ QString CrossCondition::locator() const
 
 void CrossCondition::setLocator(const QString& locator)
 {
-	const QString value = locator.trimmed();
-	if (m_locator == value)
+	if (m_locator == locator)
 		return;
 
-	m_locator = value;
+	m_locator = locator;
 	bindLocator();
 	emit targetChanged();
 }
@@ -91,11 +90,10 @@ QString CrossCondition::fence() const
 
 void CrossCondition::setFence(const QString& fence)
 {
-	const QString value = fence.trimmed();
-	if (m_fence == value)
+	if (m_fence == fence)
 		return;
 
-	m_fence = value;
+	m_fence = fence;
 	resetTracking();
 	emit fenceChanged();
 }
@@ -128,11 +126,10 @@ QString CrossCondition::timeline() const
 
 void CrossCondition::setTimeline(const QString& timeline)
 {
-	const QString value = timeline.trimmed();
-	if (m_timeline == value)
+	if (m_timeline == timeline)
 		return;
 
-	m_timeline = value;
+	m_timeline = timeline;
 	emit timelineChanged();
 }
 
@@ -328,7 +325,7 @@ void CrossCondition::updateLocation(double longitude,
 	m_previousLongitude = longitude;
 	m_previousLatitude = latitude;
 
-#if 1
+#if 0 // 调试，暂时保留
 	if (!crossed && m_timelineManager->currentTimeMs() > 2000) {
 		LOG_ERROR("调试，2秒后启动子时间线" << m_timelineManager->currentTimeMs());
 		setTouched(true);
