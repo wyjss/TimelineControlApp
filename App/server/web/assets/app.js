@@ -319,7 +319,6 @@ function renderCommands(data, timeline) {
             command.name,
             command.deviceId,
             command.startTimeMs,
-            command.durationMs,
             command.executionParameters,
             command.state,
             command.error
@@ -347,9 +346,8 @@ function renderCommands(data, timeline) {
         if (command.error) copy.append(createElement("small", "command-error", command.error));
         row.append(copy);
         row.append(createElement("span", "command-device", devices.get(command.deviceId) || command.deviceId || "未指定设备"));
-        row.append(createElement("span", "command-duration", command.durationMs ? formatTime(command.durationMs) : "瞬时"));
         row.append(createElement("span", `command-status ${command.state}`, commandStateLabel(command.state)));
-        row.title = `时间：${formatTime(command.startTimeMs)}\n设备：${devices.get(command.deviceId) || command.deviceId || "未指定设备"}\n名称：${command.name || "未命名指令"}\n执行参数：${parameters}\n持续时间：${command.durationMs ? formatTime(command.durationMs) : "瞬时"}\n状态：${commandStateLabel(command.state)}${command.error ? `\n错误：${command.error}` : ""}`;
+        row.title = `时间：${formatTime(command.startTimeMs)}\n设备：${devices.get(command.deviceId) || command.deviceId || "未指定设备"}\n名称：${command.name || "未命名指令"}\n执行参数：${parameters}\n状态：${commandStateLabel(command.state)}${command.error ? `\n错误：${command.error}` : ""}`;
         elements["command-list"].append(row);
     }
 }

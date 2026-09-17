@@ -41,6 +41,8 @@ private:
     DeviceTemplate *createDefaultDeviceTemplateDmx512();
     DeviceTemplate *createDefaultDeviceTemplateHttp();
     DeviceTemplate *createDefaultDeviceTemplateSerial();
+    DeviceTemplate * createDefaultDeviceTemplateUdp();
+
     DeviceTemplate *makeDeviceTemplate(const QString &name,
                                        const QString &deviceType,
                                        const QStringList &supportedProtocols,

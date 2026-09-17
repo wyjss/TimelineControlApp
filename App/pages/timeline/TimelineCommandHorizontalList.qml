@@ -25,7 +25,7 @@ Item {
 
     // 密集指令保留三层标签空间，普通轨道使用紧凑高度。
     implicitHeight: visibleCommands.some(function(command) {
-        return commandDurationMs(command) <= 0 && instantCommandLayout(command).lane !== 1
+        return instantCommandLayout(command).lane !== 1
     }) ? 80 : 48
 
     signal commandSelected(var command)
@@ -50,20 +50,9 @@ Item {
         return (ruler ? ruler.timeToX(ms) : 0) - timelineOffsetX
     }
 
-    function durationToWidth(ms) {
-        var pixelsPerSecond = ruler ? ruler.effectivePixelsPerSecond : 1
-        return Math.max(1, ms / 1000 * pixelsPerSecond)
-    }
-
     function commandStartMs(command) {
         return command && command.startTimeMs !== undefined && command.startTimeMs !== null
             ? Number(command.startTimeMs)
-            : 0
-    }
-
-    function commandDurationMs(command) {
-        return command && command.durationMs !== undefined && command.durationMs !== null
-            ? Number(command.durationMs)
             : 0
     }
 
@@ -107,34 +96,6 @@ Item {
         default:
             return "#4f46e5"
         }
-    }
-
-    function commandSameSlot(left, right) {
-        return commandStartMs(left) === commandStartMs(right)
-            && (commandDurationMs(left) <= 0) === (commandDurationMs(right) <= 0)
-    }
-
-    function commandStackIndex(command) {
-        var commandId = String(command && command.id || "")
-        var stackIndex = 0
-        for (var index = 0; index < visibleCommands.length; ++index) {
-            var other = visibleCommands[index]
-            if (!commandSameSlot(other, command))
-                continue
-            if (other === command || (commandId.length > 0 && String(other.id || "") === commandId))
-                return stackIndex
-            ++stackIndex
-        }
-        return 0
-    }
-
-    function commandStackCount(command) {
-        var count = 0
-        for (var index = 0; index < visibleCommands.length; ++index) {
-            if (commandSameSlot(visibleCommands[index], command))
-                ++count
-        }
-        return Math.max(1, count)
     }
 
     function instantCommandDisplayWidth(command) {
@@ -181,8 +142,7 @@ Item {
         var instantCommands = []
         for (var index = 0; index < visibleCommands.length; ++index) {
             var item = visibleCommands[index]
-            if (commandDurationMs(item) <= 0)
-                instantCommands.push({ "command": item, "order": index })
+            instantCommands.push({ "command": item, "order": index })
         }
         instantCommands.sort(function(left, right) {
             return commandStartMs(left.command) - commandStartMs(right.command)
@@ -280,8 +240,6 @@ Item {
             objectName: "timelineCommand_" + String(commandData.id || "")
 
             property var commandData: modelData
-            readonly property real durationMs: root.commandDurationMs(commandData)
-            readonly property bool instantCommand: durationMs <= 0
             readonly property bool filteredOut: root.commandFilteredOut(commandData)
             readonly property color commandColor: root.commandColor(commandData)
             readonly property color stateColor: filteredOut
@@ -294,30 +252,20 @@ Item {
                 : qsTr("指令"))
             readonly property bool selected: commandMouse.previewing || String(commandData && commandData.id || "")
                 === root.selectedCommandId
-            readonly property int stackIndex: root.commandStackIndex(commandData)
-            readonly property int stackCount: root.commandStackCount(commandData)
-            readonly property var instantLayout: instantCommand
-                ? root.instantCommandLayout(commandData)
-                : ({ "lane": 1, "visible": true, "overflowCount": 0, "onLeft": false, "width": 0 })
-            readonly property bool overflowCommand: instantCommand && instantLayout.overflowCount > 0
+            readonly property var instantLayout: root.instantCommandLayout(commandData)
+            readonly property bool overflowCommand: instantLayout.overflowCount > 0
             readonly property string displayText: overflowCommand && !commandMouse.previewing
                 ? commandText + " +" + String(instantLayout.overflowCount)
                 : commandText
             // 拖动只预览时间位置，保留原标签排布，松开后再提交模型。
             readonly property real anchorX: root.timeToX(commandMouse.previewing
                 ? commandMouse.previewStartTimeMs : root.commandStartMs(commandData))
-            readonly property bool instantLabelOnLeft: instantCommand && instantLayout.onLeft
-            readonly property real stackOffsetY: instantCommand
-                ? (instantLayout.lane - 1) * root.instantLabelHeight
-                : (stackIndex - (stackCount - 1) / 2) * 8
+            readonly property bool instantLabelOnLeft: instantLayout.onLeft
+            readonly property real stackOffsetY: (instantLayout.lane - 1) * root.instantLabelHeight
 
-            x: instantCommand
-                ? anchorX - (instantLabelOnLeft ? width - 6 : 6)
-                : anchorX
+            x: anchorX - (instantLabelOnLeft ? width - 6 : 6)
             y: 0
-            width: instantCommand
-                ? instantLayout.width
-                : Math.max(40, root.durationToWidth(durationMs))
+            width: instantLayout.width
             height: root.height
             z: commandMouse.previewing ? 4 : (selected ? 3 : (commandMouse.containsMouse ? 2 : 1))
             visible: commandMouse.previewing || (instantLayout.visible && x + width > 0 && x < root.width)
@@ -370,12 +318,10 @@ Item {
                     }
                 }
 
-                x: commandBlock.instantCommand ? instantCommandPill.x : 0
-                y: commandBlock.instantCommand
-                    ? instantCommandPill.y
-                    : Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
-                width: commandBlock.instantCommand ? instantCommandPill.width : parent.width
-                height: commandBlock.instantCommand ? instantCommandPill.height : 26
+                x: instantCommandPill.x
+                y: instantCommandPill.y
+                width: instantCommandPill.width
+                height: instantCommandPill.height
                 acceptedButtons: Qt.LeftButton
                 hoverEnabled: true
                 preventStealing: dragArmed
@@ -433,7 +379,6 @@ Item {
             }
 
             Rectangle {
-                visible: commandBlock.instantCommand
                 x: commandBlock.instantLabelOnLeft ? parent.width - 6 : 6
                 y: 8
                 width: 1
@@ -443,7 +388,6 @@ Item {
             }
 
             Rectangle {
-                visible: commandBlock.instantCommand
                 x: commandBlock.instantLabelOnLeft ? parent.width - 14 : 6
                 y: Math.round(parent.height / 2 + commandBlock.stackOffsetY)
                 width: 8
@@ -455,7 +399,6 @@ Item {
             Rectangle {
                 id: instantCommandPill
 
-                visible: commandBlock.instantCommand
                 x: commandBlock.instantLabelOnLeft ? 0 : 14
                 y: Math.round(parent.height / 2 - height / 2 + commandBlock.stackOffsetY)
                 width: parent.width - 14
@@ -472,7 +415,6 @@ Item {
             }
 
             Rectangle {
-                visible: commandBlock.instantCommand
                 width: 8
                 height: width
                 x: (commandBlock.instantLabelOnLeft ? parent.width - 6 : 6) - width / 2
@@ -486,7 +428,6 @@ Item {
             }
 
             Base.AppText {
-                visible: commandBlock.instantCommand
                 anchors.fill: instantCommandPill
                 anchors.leftMargin: 9
                 anchors.rightMargin: 9
@@ -495,56 +436,6 @@ Item {
                 textTone: commandBlock.filteredOut
                     ? UiStyle.TextTone.Neutral
                     : UiStyle.TextTone.Primary
-                verticalAlignment: Text.AlignVCenter
-                elide: Text.ElideRight
-            }
-
-            Rectangle {
-                visible: !commandBlock.instantCommand
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: commandBlock.stackOffsetY
-                width: parent.width
-                height: 24
-                radius: 4
-                color: Qt.rgba(commandBlock.commandColor.r,
-                               commandBlock.commandColor.g,
-                               commandBlock.commandColor.b,
-                               commandBlock.selected ? 0.52 : (commandMouse.containsMouse ? 0.42 : 0.30))
-                border.width: commandMouse.containsMouse || commandBlock.selected
-                    || Number(commandBlock.commandData && commandBlock.commandData.state !== undefined
-                        ? commandBlock.commandData.state
-                        : 0) !== 0
-                    ? 1
-                    : 0
-                border.color: commandBlock.selected
-                    ? root.colorValue("inverseText", "#f8fafc") : commandBlock.stateColor
-            }
-
-            Rectangle {
-                visible: !commandBlock.instantCommand
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: commandBlock.stackOffsetY
-                width: 2
-                height: 24
-                radius: 1
-                color: root.colorValue("inverseText", "#f8fafc")
-                opacity: 0.62
-            }
-
-            Base.AppText {
-                visible: !commandBlock.instantCommand && parent.width >= 56
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                anchors.verticalCenterOffset: commandBlock.stackOffsetY
-                anchors.leftMargin: 10
-                anchors.rightMargin: 8
-                text: commandBlock.commandText
-                styleRole: UiStyle.TypographyRole.BodyM
-                textTone: commandBlock.filteredOut
-                    ? UiStyle.TextTone.Neutral
-                    : UiStyle.TextTone.Inverse
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
             }

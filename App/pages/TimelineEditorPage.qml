@@ -475,11 +475,6 @@ Item {
                                             ? Math.max(0, Number(commandData.startTimeMs || 0))
                                                 / root.overviewDurationMs
                                             : 0
-                                        readonly property real durationRatio: root.overviewDurationMs > 0
-                                            ? Math.max(0, Number(commandData.durationMs || 0))
-                                                / root.overviewDurationMs
-                                            : 0
-                                        readonly property bool instantCommand: durationRatio <= 0
                                         readonly property color markerColor: {
                                             var protocol = String(commandData && commandData.targetCommand
                                                 ? commandData.targetCommand.protocol
@@ -498,18 +493,16 @@ Item {
                                         x: Math.min(parent.width - width,
                                                     Math.round(parent.width * startRatio))
                                         y: 2 + index % 3 * 9
-                                        width: instantCommand
-                                            ? 10
-                                            : Math.max(10, Math.round(parent.width * durationRatio))
+                                        width: 10
                                         height: 8
                                         z: 1
 
                                         Rectangle {
                                             anchors.centerIn: parent
-                                            width: parent.instantCommand ? 7 : parent.width
-                                            height: parent.instantCommand ? 7 : 6
-                                            radius: parent.instantCommand ? 2 : 3
-                                            rotation: parent.instantCommand ? 45 : 0
+                                            width: 7
+                                            height: 7
+                                            radius: 2
+                                            rotation: 45
                                             color: parent.markerColor
                                             opacity: parent.commandData.filteredOut
                                                 ? 0.36

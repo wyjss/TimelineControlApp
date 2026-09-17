@@ -95,7 +95,7 @@ void Timeline::start(qint64 masterTimeMs, qint64 startTimeMs)
     qint64 durationMs = 0;
     for (TimelineCommand *command : m_playCommands) {
         durationMs = qMax(durationMs,
-                          command->startTimeMs() + command->durationMs());
+                          command->startTimeMs());
         command->setErrorMessage(QString());
         command->setState(command->startTimeMs() < startTimeMs
                               ? TimelineCommand::Skipped : TimelineCommand::Idle);

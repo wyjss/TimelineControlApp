@@ -7,6 +7,19 @@
 
 namespace Utils {
 
+	class VideoOptionsMgr : public QObject
+	{
+		Q_OBJECT
+	private:
+		VideoOptionsMgr();
+	public:
+		static VideoOptionsMgr* getInstance();
+		const QVariantList& getOptions();
+	signals:
+		void optionsChanged(const QVariantList&);
+	private:
+		QVariantList m_options;
+	};
 	// 获取视频的可选项列表
 	QVariantList getVideoOptions();
 
@@ -29,5 +42,10 @@ namespace Utils {
 	QRect boundedRect(const QRect& rect, const QSize& bounds);
 
 	QVariantMap makeOption(const QString& label, const QString& value);
+
+	// hex
+	bool toHexData(const QString& ss, QByteArray* data = nullptr);
+	QString toHex(uint8_t v);
+	uint8_t fromHex(const QString& s);
 
 } // namespace Utils

@@ -6,27 +6,50 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
+#include <QFileSystemWatcher>
 
 namespace Utils 
 {
 
-	QVariantList getVideoOptions()
+	VideoOptionsMgr::VideoOptionsMgr()
 	{
-		static QVariantList s_opts;
-		static qint64 s_time = 0;
-		// 超过间隔才刷新，避免视频变动
-		if (QDateTime::currentMSecsSinceEpoch() - s_time > 1000) {
-			s_opts.clear();
-			s_time = QDateTime::currentMSecsSinceEpoch();
-
+		auto _func_getOptions = []() {
+			QVariantList opts;
 			QDir dir(DeviceConstants::LocalVideoPrefix);
 			auto infos = dir.entryInfoList({"*.mp4", "*.avi"});
 			for (const auto& info : infos) {
-				s_opts.push_back(QString("$") + info.fileName());
+				opts.push_back(QString("$") + info.fileName());
 			}
-		}
-		
-		return s_opts;
+			return opts;
+		};
+
+		m_options = _func_getOptions();
+		QFileSystemWatcher* watcher = new QFileSystemWatcher(this);
+		watcher->addPath(DeviceConstants::LocalVideoPrefix);
+		connect(watcher,
+				&QFileSystemWatcher::directoryChanged,
+				this, [this, _func_getOptions]()
+				{
+					m_options = _func_getOptions();
+
+					emit optionsChanged(m_options);
+				});
+	}
+
+	VideoOptionsMgr* VideoOptionsMgr::getInstance()
+	{
+		static VideoOptionsMgr* s_VideoOptionsMgr = new VideoOptionsMgr;
+		return s_VideoOptionsMgr;
+	}
+
+	const QVariantList& VideoOptionsMgr::getOptions()
+	{
+		return m_options;
+	}
+
+	QVariantList getVideoOptions()
+	{
+		return VideoOptionsMgr::getInstance()->getOptions();
 	}
 
 	QString getVideoRealSource(const QString& source)
@@ -122,4 +145,43 @@ namespace Utils
 		return {{"label", label}, {"value", value}};
 	}
 
+	bool toHexData(const QString& ss, QByteArray* data)
+	{
+		if (ss.isEmpty() || ss.size() % 2 != 0) {
+			return false;
+		}
+
+		for (int i = 0; i < ss.size(); ++i) {
+			auto c = ss[i].toUpper();
+			
+			if (
+				(c >= '0' && c <= '9') ||
+				(c >= 'A' && c <= 'F')
+				) {
+				;
+			} else {
+				return false;
+			}
+		}
+
+		if (data) {
+			*data = QByteArray::fromHex(ss.toLatin1());
+		}
+		return true;
+	}
+
+	QString toHex(uint8_t v)
+	{
+		auto s = QString::number(v, 16);
+		if (s.size() % 2 == 1) {
+			s.insert(0, '0');
+		}
+		return s;
+	}
+
+	uint8_t fromHex(const QString& s)
+	{
+		assert(s.size() == 1);
+		return s.toUInt(nullptr, 16);
+	}
 } // namespace Utils

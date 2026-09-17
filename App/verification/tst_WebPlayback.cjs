@@ -43,6 +43,10 @@ const data = {
         durationMs: 60000, commands: [], triggers: []
     }))
 };
+data.timelines[0].commands.push({
+    id: 'event', name: 'Set light', deviceId: 'light', startTimeMs: 5000,
+    executionParameters: [{ name: 'Brightness', value: 50 }], state: 'idle', error: ''
+});
 const render = () => {
     context.fixture = structuredClone(data);
     vm.runInContext('render(fixture)', context);
@@ -57,6 +61,17 @@ const respond = async (request, snapshot) => {
     assert.equal(elements.get('now-title').textContent, 'A');
     assert.equal(elements.get('primary-label').textContent, '播放当前节目');
     assert.equal(elements.get('queue-panel').hidden, false);
+    const commandRow = elements.get('command-list').children[0];
+    assert.deepEqual(commandRow.children.map(child => child.className), [
+        'command-time', 'command-copy', 'command-device', 'command-status idle'
+    ]);
+    assert.equal(commandRow.children[0].textContent, '00:00:05');
+    assert.equal(commandRow.children[1].children[1].textContent, '参数：Brightness：50');
+    assert.ok(!commandRow.title.includes('持续时间'));
+    data.timelines[0].commands[0].executionParameters[0].value = 75;
+    render();
+    assert.equal(elements.get('command-list').children[0].children[1].children[1].textContent,
+        '参数：Brightness：75');
 
     elements.get('timeline-list').children[1].children[0].events.click();
     let request = requests.shift();
@@ -127,5 +142,5 @@ const respond = async (request, snapshot) => {
     await respond(oldPoll, oldData);
     assert.equal(elements.get('queue-panel').hidden, true);
     assert.equal(requests.length, 0);
-    console.log('PASS: selected vs playing program, separate controls, completed replay, request payloads, empty queue and stale poll protection');
+    console.log('PASS: selected vs playing program, separate controls, completed replay, request payloads, empty queue, stale poll protection and event parameter refresh');
 })().catch(error => { console.error(error); process.exitCode = 1; });

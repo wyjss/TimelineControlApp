@@ -3,6 +3,7 @@
 #include "devices/Device.h"
 #include "devices/DeviceConstants.h"
 #include "runtime/TimelineRuntime.h"
+#include "runtime/utils.h"
 #include "timeline/TimelineManager.h"
 
 #define LC "[DeviceCommand] "
@@ -457,15 +458,30 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValu
 		params.insert(it.key(), it.value());
 	}
 
-
+   
     if (params.contains(m_stringTemplateKey)) {
+		// 是否在插入时进行16进制转换
+		bool needToHex =
+			params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex;
+
         auto str = params[m_stringTemplateKey].toString();
+        auto oldStr = str;
 		
 		for (auto it = params.cbegin(); it != params.cend(); ++it) {
             QString k = QString("${%1}").arg(it.key());
             // 普通替换
             if (str.contains(k)) {
-                str = str.replace(k, it.value().toString());
+                bool numOk = false;
+                auto num = it.value().toUInt(&numOk);
+                
+                // hex替换
+                if (needToHex && numOk) {
+                    str = str.replace(k, Utils::toHex(num));
+                } 
+                // 普通替换
+                else {
+					str = str.replace(k, it.value().toString());
+                }
             } 
             // http query插入
             else if (k.insert(1, "&"); str.contains(k)) {
@@ -477,6 +493,7 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValu
             }
 		}
 
+        LOG_DEBUG("字符模板" << oldStr << "->\t" << str);
         params[m_stringTemplateKey] = str;
     }
 
@@ -596,6 +613,7 @@ DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
 	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
 	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
     addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Payload));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::PayloadType));
 }
 
 //////////////////////////////////////////////////////////////////////////

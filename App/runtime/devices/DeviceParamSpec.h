@@ -54,7 +54,7 @@ public:
     void setPattern(const QString &pattern);
 
     QString typeName() const;
-    DeviceParamSpec *clone(QObject *parent = nullptr) const;
+    virtual DeviceParamSpec *clone(QObject *parent = nullptr) const;
     Q_INVOKABLE QString invalidReason(const QVariant &value = QVariant()) const;
 
     static QString typeName(ValueType valueType);

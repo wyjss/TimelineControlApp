@@ -25,7 +25,6 @@ TestCase {
             width: 1200
             height: 760
             property real startTimeMs: 1234
-            property real durationMs: 0
             property alias page: page
             property alias model: commandModel
             property alias manager: manager
@@ -33,7 +32,7 @@ TestCase {
             QtObject {
                 id: commandModel
                 property var commands: [{ id: "move", targetDeviceId: "one", commandName: "播放视频",
-                    startTimeMs: fixture.startTimeMs, durationMs: fixture.durationMs,
+                    startTimeMs: fixture.startTimeMs,
                     executionInputValues: { file: "sample.mp4", play: true },
                     targetCommand: { protocol: "pc" }, state: 3, errorMessage: "原执行结果" }]
                 property string selectedCommandId: ""
@@ -124,17 +123,17 @@ TestCase {
     }
 
     function test_move_data() {
+        // 当前刻度尺在 1 倍缩放时每秒 24 像素，96 像素对应 4 秒。
         return [
-            { tag: "instant", start: 1234, duration: 0, scale: 1, scroll: 0, delta: 64, expected: 5234 },
-            { tag: "duration", start: 1234, duration: 5000, scale: 1, scroll: 0, delta: 64, expected: 5234 },
-            { tag: "zero-bound", start: 1234, duration: 0, scale: 1, scroll: 0, delta: -64, expected: 0 },
-            { tag: "zoom-scroll", start: 21234, duration: 0, scale: 2, scroll: 100, delta: 64, expected: 29234 }
+            { tag: "instant", start: 1234, scale: 1, scroll: 0, delta: 96, expected: 5234 },
+            { tag: "zero-bound", start: 1234, scale: 1, scroll: 0, delta: -96, expected: 0 },
+            { tag: "zoom-scroll", start: 21234, scale: 2, scroll: 100, delta: 96, expected: 29234 }
         ]
     }
 
     function test_move(data) {
         var fixture = createTemporaryObject(fixtureComponent, testWindow.contentItem,
-            { startTimeMs: data.start, durationMs: data.duration })
+            { startTimeMs: data.start })
         verify(fixture)
         fixture.page.timelineTimeScale = data.scale
         fixture.page.timelineScrollX = data.scroll
@@ -155,7 +154,7 @@ TestCase {
         mouseRelease(fixture.page, point.x + data.delta, point.y, Qt.LeftButton, Qt.ControlModifier)
         compare(fixture.model.updates, 1)
         compare(command.startTimeMs, data.expected)
-        compare(command.durationMs, data.duration)
+        compare(command.durationMs, undefined)
         compare(command.executionInputValues, { file: "sample.mp4", play: true })
         compare(command.state, 0)
         compare(fixture.model.selectedCommandId, "move")
@@ -242,18 +241,18 @@ TestCase {
         var commands = []
         for (var index = 0; index < 4; ++index)
             commands.push({ id: "dense" + index, targetDeviceId: "one", commandName: "播放视频",
-                startTimeMs: 3000, durationMs: 0, executionInputValues: {}, targetCommand: { protocol: "pc" } })
+                startTimeMs: 3000, executionInputValues: {}, targetCommand: { protocol: "pc" } })
         fixture.model.commands = commands
         var point = pressCommand(fixture, "dense2", Qt.ControlModifier)
         var block = findChild(fixture.page, "timelineCommand_dense2")
         compare(block.instantLayout.overflowCount, 1)
         var lane = block.instantLayout.lane
-        mouseMove(fixture.page, point.x + 160, point.y, 20, Qt.LeftButton)
+        mouseMove(fixture.page, point.x + 240, point.y, 20, Qt.LeftButton)
         compare(block.instantLayout.lane, lane)
         compare(block.displayText, "播放视频")
         verify(block.visible)
         compare(fixture.model.updates, 0)
-        mouseRelease(fixture.page, point.x + 160, point.y, Qt.LeftButton, Qt.ControlModifier)
+        mouseRelease(fixture.page, point.x + 240, point.y, Qt.LeftButton, Qt.ControlModifier)
         compare(fixture.model.updates, 1)
         compare(commands[2].startTimeMs, 13000)
         compare(commands[0].startTimeMs, 3000)

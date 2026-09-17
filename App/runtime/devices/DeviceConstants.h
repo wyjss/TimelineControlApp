@@ -16,6 +16,7 @@ namespace DeviceType {
 	inline const QString Sound = "音响";
 	inline const QString Locator = "定位器";
 	inline const QString Fusion3 = "分布式融合器3.0";
+	inline const QString XB809 = "XB809主控";
 };
 
 //! 公共key定义，包括DeviceParamSpec::createForKey和指令CommandType
@@ -51,7 +52,16 @@ namespace DeviceKey {
 	inline const QString KeystoneCorrection = "keystoneCorrection";
 	inline const QString SerialPayload = "serialPayload";
 	// @todo 可以代替 SerialPayload/HttpBody ?
+	// 内部使用QString承载
 	inline const QString Payload = "payload";
+	// 载荷类型，Text（默认）、Hex
+	// 只用于提示数据处理（数据发送和模板key），不能控制ui输入模式
+	// 串口默认hex，不需要这个参数
+	// udp根据PayloadType理解Payload
+	inline const QString PayloadType = "payloadType";
+	inline const QString PayloadType_Text = "Text";
+	inline const QString PayloadType_Hex = "Hex";
+	//
 	inline const QString Port = "port";
 	inline const QString VirtualScreenWidth = "virtualScreenWidth";
 	inline const QString VirtualScreenHeight = "virtualScreenHeight";

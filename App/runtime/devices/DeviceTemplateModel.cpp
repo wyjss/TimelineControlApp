@@ -6,6 +6,7 @@
 #include "devices/backends/Fusion3.h"
 #include "devices/backends/Locator.h"
 #include "devices/backends/PC.h"
+#include "devices/backends/XB809.h"
 
 
 DeviceTemplateModel::DeviceTemplateModel(TimelineModel *timelineModel,
@@ -25,9 +26,11 @@ void DeviceTemplateModel::loadDefaultTemplates()
     appendTemplate(createDefaultDeviceTemplateDmx512());
     appendTemplate(createDefaultDeviceTemplateHttp());
     appendTemplate(createDefaultDeviceTemplateSerial());
+    appendTemplate(createDefaultDeviceTemplateUdp());
     appendTemplate(new Fusion3DeviceTemplate(this));
     appendTemplate(new LocatorDeviceTemplate(m_timelineModel, this));
     appendTemplate(new SerialPowerDeviceTemplate);
+    appendTemplate(new XB809DeviceTemplate(this));
 }
 
 QVariantList DeviceTemplateModel::templates() const
@@ -151,6 +154,19 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateSerial()
                               QStringList{DeviceProtocol::Serial},
                               tr("串口协议设备"),
                               specs);
+}
+
+DeviceTemplate* DeviceTemplateModel::createDefaultDeviceTemplateUdp()
+{
+	const QList<DeviceParamSpec*> specs{
+		DeviceParamSpec::createForKey(DeviceKey::Port),
+	};
+
+	return makeDeviceTemplate(tr("UDP协议"),
+							  QString(),
+							  QStringList{DeviceProtocol::Udp},
+							  tr("UDP协议设备"),
+							  specs);
 }
 
 DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,

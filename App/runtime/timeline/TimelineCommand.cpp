@@ -17,7 +17,6 @@
 
 namespace {
 
-const char *kDurationMsKey = "durationMs";
 const char *kExecutionInputValuesKey = "__executionInputValues";
 
 } // namespace
@@ -92,7 +91,7 @@ void TimelineCommand::setExecutionInputValues(const QVariantMap &executionInputV
         m_executionInputValues.remove(DeviceKey::Rect);
     }
     emit executionInputValuesChanged();
-    emit durationMsChanged();
+    emit parametersChanged();
 }
 
 DeviceCommand *TimelineCommand::targetCommand() const
@@ -114,18 +113,18 @@ void TimelineCommand::setTargetCommand(DeviceCommand *targetCommand)
         connect(m_targetCommand, &DeviceCommand::filteredOutChanged,
                 this, &TimelineCommand::filteredOutChanged);
         connect(m_targetCommand, &DeviceCommand::fieldChanged,
-                this, &TimelineCommand::durationMsChanged);
+                this, &TimelineCommand::parametersChanged);
         connect(m_targetCommand, &QObject::destroyed, this, [this]() {
             m_targetCommand.clear();
             emit targetCommandChanged();
             emit filteredOutChanged();
-            emit durationMsChanged();
+            emit parametersChanged();
             emit targetCommandDestroyed();
         });
     }
 
     emit targetCommandChanged();
-    emit durationMsChanged();
+    emit parametersChanged();
     if (previousFilteredOut != filteredOut())
         emit filteredOutChanged();
 }
@@ -133,14 +132,6 @@ void TimelineCommand::setTargetCommand(DeviceCommand *targetCommand)
 bool TimelineCommand::filteredOut() const
 {
     return m_targetCommand && m_targetCommand->filteredOut();
-}
-
-qint64 TimelineCommand::durationMs() const
-{
-    const QVariantMap params = m_targetCommand
-        ? m_targetCommand->resolvedParams(m_executionInputValues)
-        : m_executionInputValues;
-    return qMax<qint64>(0, params.value(kDurationMsKey).toLongLong());
 }
 
 TimelineCommand::State TimelineCommand::state() const
@@ -284,7 +275,7 @@ qint64 TimelineCommandModel::realDurationMs()
 		for (TimelineCommand* command : items()) {
 			if (command)
 				realDurationMs = qMax(realDurationMs,
-									  command->startTimeMs() + command->durationMs());
+									  command->startTimeMs());
 		}
 
 		m_realDurationMs = realDurationMs;
@@ -650,16 +641,12 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
     disconnectCommand(command);
     command->setParent(this);
 
-    const auto notifyDurationChanged = [this, command]() {
-        makeRealTimeChanged();
-        emitCommandChanged(command);
-    };
     const auto notifyChanged = [this, command]() {
         emitCommandChanged(command);
     };
 
 	connect(command, &TimelineCommand::startTimeMsChanged, this,
-			[this, command, notifyDurationChanged]() {
+			[this, command]() {
 
                 // 重排检测
 				const int from = indexOfCommand(command);
@@ -674,10 +661,11 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
                 if (to != from) {
                     moveItem(from, to);
                 }
-				emit notifyDurationChanged();
+				makeRealTimeChanged();
+                emitCommandChanged(command);
 			});
 
-    connect(command, &TimelineCommand::durationMsChanged, this, notifyDurationChanged);
+    connect(command, &TimelineCommand::parametersChanged, this, notifyChanged);
     connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {
         removeCommand(command);
     });

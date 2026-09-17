@@ -291,6 +291,18 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		return spec;
 	}
 
+	if (deviceKey == DeviceKey::PayloadType) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("载荷类型"),
+										 QString(),
+                                         SelectType,
+                                         SelectEditor);
+        spec->setValue(DeviceKey::PayloadType_Text);
+        spec->setDefaultValue(DeviceKey::PayloadType_Text);
+        spec->setOptions({DeviceKey::PayloadType_Text, DeviceKey::PayloadType_Hex});
+		return spec;
+	}
+
 	if (deviceKey == DeviceKey::VirtualScreenWidth || deviceKey == DeviceKey::VirtualScreenHeight) {
 		const bool width = deviceKey == DeviceKey::VirtualScreenWidth;
 		auto* spec = new DeviceParamSpec(deviceKey,
@@ -403,6 +415,12 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		spec->setRequired(true);
 		spec->setReadOnly(false);
         spec->setOptions(Utils::getVideoOptions());
+
+		QObject::connect(Utils::VideoOptionsMgr::getInstance(),
+						 &Utils::VideoOptionsMgr::optionsChanged,
+						 spec,
+						 &DeviceParamSpec::setOptions
+		);
 		return spec;
 	}
 

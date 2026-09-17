@@ -288,10 +288,7 @@ QJsonObject WebControlServer::statusSnapshot() const
         QJsonArray timelines;
         for (Timeline *timeline : manager->timelineModel()->items()) {
             QJsonArray commands;
-            qint64 durationMs = timeline->durationMs();
             for (TimelineCommand *command : timeline->commandModel()->commands()) {
-                durationMs = qMax(durationMs,
-                                  command->startTimeMs() + command->durationMs());
                 QJsonArray executionParameters;
                 if (DeviceCommand *targetCommand = command->targetCommand()) {
                     const QVariantMap values = command->executionInputValues();
@@ -311,7 +308,6 @@ QJsonObject WebControlServer::statusSnapshot() const
                     {QStringLiteral("name"), command->commandName()},
                     {QStringLiteral("deviceId"), command->targetDeviceId()},
                     {QStringLiteral("startTimeMs"), command->startTimeMs()},
-                    {QStringLiteral("durationMs"), command->durationMs()},
                     {QStringLiteral("executionParameters"), executionParameters},
                     {QStringLiteral("state"), commandStateName(command->state())},
                     {QStringLiteral("error"), command->errorMessage()}
@@ -339,7 +335,7 @@ QJsonObject WebControlServer::statusSnapshot() const
                 {QStringLiteral("name"), timeline->name()},
                 {QStringLiteral("state"), timelineStateName(timeline->state())},
                 {QStringLiteral("currentTimeMs"), timeline->currentTimeMs()},
-                {QStringLiteral("durationMs"), durationMs},
+                {QStringLiteral("durationMs"), timeline->commandModel()->realDurationMs()},
                 {QStringLiteral("queuePosition"), playQueue.indexOf(timeline->id())},
                 {QStringLiteral("commands"), commands},
                 {QStringLiteral("triggers"), triggers}
