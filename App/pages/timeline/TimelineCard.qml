@@ -262,7 +262,6 @@ Item {
 
                 Base.AppText {
                     text: root.formatTime(root.currentTimeMs)
-                    familyOverride: root.appTheme.typography.familyMono
                     styleRole: UiStyle.TypographyRole.BodyL
                     overrideWeight: Font.Medium
                     colorOverride: root.running
@@ -274,7 +273,6 @@ Item {
 
                 Base.AppText {
                     text: "/"
-                    familyOverride: root.appTheme.typography.familyMono
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                 }
@@ -282,7 +280,6 @@ Item {
                 Base.AppText {
                     Layout.fillWidth: true
                     text: root.formatTime(root.realDurationMs)
-                    familyOverride: root.appTheme.typography.familyMono
                     styleRole: UiStyle.TypographyRole.BodyS
                     textTone: UiStyle.TextTone.Secondary
                     elide: Text.ElideRight

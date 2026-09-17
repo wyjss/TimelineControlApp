@@ -192,7 +192,7 @@ Item {
             readonly property string targetDeviceId: String(trackData.id || "")
             readonly property bool selected: root.trackSelectedState(trackData)
             readonly property bool online: Boolean(trackData.online)
-            readonly property bool filteredOut: trackData && trackData.filteredOut
+            readonly property bool filteredOut: Boolean(trackData && trackData.filteredOut)
             readonly property var childTracks: root.childTracksForParent(targetDeviceId)
             readonly property bool expanded: childTracks.length > 0
                 && root.parentTrackExpanded(targetDeviceId)

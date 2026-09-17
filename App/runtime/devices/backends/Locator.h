@@ -35,7 +35,7 @@ private slots:
 	void checkStatus();
 private:
 	void* mapSock2Handle(QTcpSocket* sock);
-	bool parseRmcPosition(const QString& nmea, double&lon, double& lat, double& heading);
+	bool parseNMEA0186(const QString& nmea, double&lon, double& lat, double& heading);
 signals:
 	void locationChanged(QString name, double lon, double lat, double heading, bool online);
 private:

@@ -358,31 +358,12 @@ Item {
                     }
                 }
                 Base.AppSelect {
-                    id: timelineSelect
                     objectName: "videoTimelineSelect"
                     Layout.fillWidth: true
-                    controlHeight: root.pageTheme.density.controlHeightMd + root.pageTheme.density.panePadding
-                    optionHeight: root.pageTheme.density.controlHeightMd
                     options: root.timelines
                     value: root.selectedTimelineId
+                    placeholderText: qsTr("暂无时间线")
                     enabled: root.timelines.length > 0
-                    contentItem: Column {
-                        leftPadding: timelineSelect.contentPaddingX
-                        rightPadding: timelineSelect.contentPaddingX + timelineSelect.indicatorWidth
-                        topPadding: root.pageTheme.density.controlGap
-                        spacing: root.pageTheme.density.controlGap / 2
-                        Base.AppText {
-                            text: qsTr("当前时间线")
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                        }
-                        Base.AppText {
-                            width: parent.width - parent.leftPadding - parent.rightPadding
-                            text: timelineSelect.currentLabel || qsTr("暂无时间线")
-                            styleRole: UiStyle.TypographyRole.BodyM
-                            elide: Text.ElideRight
-                        }
-                    }
                     onValueSelected: {
                         root.forceActiveFocus()
                         if (root.timelineManager)

@@ -191,20 +191,35 @@ void LocationRecver::readData()
 	m_map[handle].online = true;
 	m_map[handle].lastTouch = QDateTime::currentMSecsSinceEpoch();
 
-	double lon, lat, heading;
-	if (parseRmcPosition(data, lon, lat, heading)) {
+	double lon = -1, lat = -1, heading = -1;
+	if (parseNMEA0186(data, lon, lat, heading)) {
+#if 0 // 过滤微小变动
 		QVector3D dx((m_map[handle].lon - lon) * 1e7,
 					 (m_map[handle].lat - lat) * 1e7, 
 					 0);
-// 		if (dx.length() < 10) {
-// 			LOG_DEBUG("过滤");
-// 			return;
-// 		}
-		m_map[handle].lon = lon;
-		m_map[handle].lat = lat;
-		m_map[handle].heading = heading;
-		//LOG_DEBUG("recv location " << qSetRealNumberPrecision(10) << lon << lat);
-		emit locationChanged(m_map[handle].ip, lon, lat, heading, true);
+		if (dx.length() < 10) {
+			LOG_DEBUG("过滤");
+			return;
+		}
+#endif
+		bool lonLatDirty = false;
+		if (lon != -1) {
+			lonLatDirty = true;
+			m_map[handle].lon = lon;
+		}
+		if (lat != -1) {
+			lonLatDirty = true;
+			m_map[handle].lat = lat;
+		}
+		if (heading != -1) {
+			m_map[handle].heading = heading;
+		}
+		
+		// 分为两个协议，只在位置变化时再通知
+		if (lonLatDirty) {
+			heading = m_map[handle].heading;
+			emit locationChanged(m_map[handle].ip, lon, lat, heading, true);
+		}
 	}
 }
 
@@ -213,7 +228,7 @@ void LocationRecver::checkStatus()
 
 	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
 		auto sock = itr->sock;
-#if 0
+#if 1
 		if (
 			sock->state() != QTcpSocket::ConnectedState &&
 			sock->state() != QTcpSocket::ConnectingState
@@ -283,7 +298,7 @@ void* LocationRecver::mapSock2Handle(QTcpSocket* sock)
 	return nullptr;
 }
 
-bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& lat, double& heading)
+bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat, double& heading)
 {
 	LOG_DEBUG("parse:" << nmea);
 	if (!nmea.startsWith('$'))
@@ -294,22 +309,22 @@ bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& 
 
 	int iLon = -1, iLat = -1, iHeading = -1;
 	bool vaild = false;
-	if (fields[0].endsWith("RMC") == false) {
-		return false;
-		iLon = 1;
-		iLat = 3;
-	} else if (fields[0].endsWith("RMC")) {
+
+	if (fields[0].endsWith("RMC")) {
 		if (fields.size() < 9 || fields[2] != "A") {
 			return false;
 		}
 		iLon = 5;
 		iLat = 3;
-		iHeading = 8;
+		// 仅使用HEADING获取朝向
+		//iHeading = 8;
+	} else if (fields[0].endsWith("HEADING")) {
+		iHeading = 12;
 	} else {
 		LOG_ERROR("不支持的协议" << fields[0]);
 		return false;
 	}
-
+	
 
 	// RMC:
 	// 0  $GNRMC
@@ -322,39 +337,39 @@ bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& 
 	// 7  地面速度 knots
 	// 8  地面航向 degrees
 
-// 	if (fields[2] != "A")
-// 		return false;
+	if (iLon != -1) {
+		if (fields[iLon].isEmpty() || fields[iLat].isEmpty())
+			return false;
 
-	if (fields[iLon].isEmpty() || fields[iLat].isEmpty())
-		return false;
+		bool latOk = false;
+		bool lonOk = false;
 
-	bool latOk = false;
-	bool lonOk = false;
+		fields[iLat].toDouble(&latOk);
+		fields[iLon].toDouble(&lonOk);
 
-	fields[iLat].toDouble(&latOk);
-	fields[iLon].toDouble(&lonOk);
+		if (!latOk || !lonOk)
+			return false;
 
-	if (!latOk || !lonOk)
-		return false;
+		lon = nmeaCoordinateToDegree(fields[iLon]);
+		lat = nmeaCoordinateToDegree(fields[iLat]);
 
-	lon = nmeaCoordinateToDegree(fields[iLon]);
-	lat = nmeaCoordinateToDegree(fields[iLat]);
+		if (fields[iLat + 1] == "S")
+			lat = -lat;
 
-	if (fields[iLat + 1] == "S")
-		lat = -lat;
+		if (fields[iLon + 1] == "W")
+			lon = -lon;
+	}
 
-	if (fields[iLon + 1] == "W")
-		lon = -lon;
-
-	heading = 0;
 	if (iHeading != -1) {
+		double tempHeading = 0;
 		bool ok;
-		heading = fields[iHeading].toDouble(&ok);
-		if (!ok) {
-			heading = -1;
+		tempHeading = fields[iHeading].toDouble(&ok);
+		if (ok) {
+			heading = tempHeading;
 		}
 	}
 	
+#if 0 // gps本地调试
 	if (!m_recordFile) {
 		LOG_MARK_DEBUG_CODE("定位记录");
 		QDir().mkpath("./temp_locationRecords");
@@ -365,15 +380,13 @@ bool LocationRecver::parseRmcPosition(const QString& nmea, double& lon, double& 
 		m_recordFile->open(QIODevice::WriteOnly | QIODevice::Text);
 	}
 
-
 	{
 		auto str = QString("%1,%2,%3").arg(QString::number(lon, 'g', 10))
 			.arg(QString::number(lat, 'g', 10))
 			.arg(QString::number(heading, 'g', 10)).toLatin1();
 		m_recordFile->write(str);
 		m_recordFile->write("\n");
-		m_recordFile->flush();
 	}
-	
-		return true;
+#endif
+	return true;
 }

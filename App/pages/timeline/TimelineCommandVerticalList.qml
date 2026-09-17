@@ -94,7 +94,7 @@ Item {
             : root.colorValue("neutralBorder", "#45576b")
     }
 
-    function executionParameters(command) {
+    function executionParameters(command, compactDisplay) {
         var values = command ? command.executionInputValues || {} : {}
         var fields = command && command.targetCommand
             ? command.targetCommand.executionInputFields || []
@@ -108,9 +108,11 @@ Item {
                 continue
             if (typeof value === "boolean")
                 value = value ? qsTr("是") : qsTr("否")
+            if (compactDisplay && key === "videoFile")
+                value = String(value).replace(/^\$/, "").split(/[\\/]/).pop()
             parts.push(String(fields[index].label || key) + "：" + String(value))
         }
-        return parts.length > 0 ? parts.join(" · ") : qsTr("无")
+        return parts.length > 0 ? parts.join(" · ") : (compactDisplay ? "" : qsTr("无"))
     }
 
     function commandInfo(command) {
@@ -224,12 +226,13 @@ Item {
                     === root.selectedCommandId
                 readonly property bool filteredOut: root.commandFilteredOut(commandData)
                 width: commandList.width
-                height: root.compact ? 60 : 40
+                height: (root.compact ? 60 : 40) + bottomPadding
                 opacity: filteredOut ? 0.46 : 1
                 leftPadding: 10
                 rightPadding: 10
                 topPadding: 0
-                bottomPadding: 0
+                bottomPadding: compactExecutionParameters.visible
+                    ? compactExecutionParameters.implicitHeight + 4 : 0
                 hoverEnabled: true
                 focusPolicy: Qt.StrongFocus
                 onClicked: root.commandSelected(commandData)
@@ -374,6 +377,23 @@ Item {
                             color: root.resultColor(commandRow.commandData)
                         }
                     }
+                }
+
+                Base.AppText {
+                    id: compactExecutionParameters
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.leftMargin: commandRow.leftPadding
+                    anchors.rightMargin: commandRow.rightPadding
+                    anchors.bottomMargin: 4
+                    visible: root.compact && text.length > 0
+                    text: root.compact ? root.executionParameters(commandRow.commandData, true) : ""
+                    textFormat: Text.PlainText
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: UiStyle.TextTone.Secondary
+                    elide: Text.ElideRight
                 }
 
                 Rectangle {

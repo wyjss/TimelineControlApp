@@ -805,6 +805,12 @@ Item {
 
         parent: root
         width: Math.min(360, root.width - 24)
+        // 直接累计内容高度，避免换行文本与布局隐式尺寸相互回算。
+        height: topPadding + bottomPadding
+            + Math.max(queueEditorTitle.implicitHeight, queueEditorClearButton.implicitHeight)
+            + queueEditorDescription.implicitHeight
+            + queueEditorDivider.Layout.preferredHeight + queueEditorList.Layout.preferredHeight
+            + spacing * 3
         modal: false
         showModalOverlay: false
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -819,12 +825,16 @@ Item {
             Layout.fillWidth: true
 
             Base.AppText {
+                id: queueEditorTitle
+
                 Layout.fillWidth: true
                 text: qsTr("编排队列")
                 styleRole: UiStyle.TypographyRole.SectionTitle
             }
 
             Base.AppButton {
+                id: queueEditorClearButton
+
                 text: qsTr("清空")
                 size: UiStyle.ButtonSize.Small
                 variant: UiStyle.ButtonVariant.Ghost
@@ -834,6 +844,8 @@ Item {
         }
 
         Base.AppText {
+            id: queueEditorDescription
+
             Layout.fillWidth: true
             text: qsTr("已选时间轴按编号顺序串行播放；条件触发的时间轴可以并行运行。")
             styleRole: UiStyle.TypographyRole.BodyS
@@ -842,6 +854,8 @@ Item {
         }
 
         Rectangle {
+            id: queueEditorDivider
+
             Layout.fillWidth: true
             Layout.preferredHeight: 1
             color: root.pageTheme.colors.border

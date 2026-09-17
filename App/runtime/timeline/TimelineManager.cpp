@@ -334,16 +334,9 @@ void TimelineManager::pausePlayback()
     if (m_clock->state() != TimelineClock::Running)
         return;
 
+    // 暂停先执行时钟
     m_clock->pause();
-    if (!m_deviceModel)
-        return;
-
-    for (auto dev : m_deviceModel->items()) {
-        if (dev->filteredOut())
-            continue;
-        if (auto cmd = dev->commandByName(DeviceKey::SystemPause))
-            emit deviceCommandTriggered(cmd);
-    }
+    triggerSystemCommand(DeviceKey::SystemPause);
 }
 
 void TimelineManager::resumePlayback()
@@ -352,22 +345,17 @@ void TimelineManager::resumePlayback()
     if (m_clock->state() != TimelineClock::Paused)
         return;
 
+    triggerSystemCommand(DeviceKey::SystemResume);
     m_clock->start();
-    if (!m_deviceModel)
-        return;
-
-    for (auto dev : m_deviceModel->items()) {
-        if (dev->filteredOut())
-            continue;
-        if (auto cmd = dev->commandByName(DeviceKey::SystemResume))
-            emit deviceCommandTriggered(cmd);
-    }
 }
 
 void TimelineManager::stopPlayback(bool notifyDevices)
 {
     LOG_INFO("stopPlayback");
     notifyDevices = notifyDevices && m_clock->state() != TimelineClock::Stopped;
+	if (notifyDevices)
+		triggerSystemCommand(DeviceKey::SystemStop);
+
     for (Timeline *timeline : m_timelineModel->items())
         timeline->stop();
     if (m_playQueueIndex != -1) {
@@ -381,14 +369,48 @@ void TimelineManager::stopPlayback(bool notifyDevices)
         emit playbackChanged();
     }
 
-    if (!notifyDevices || !m_deviceModel)
+   
+}
+
+void TimelineManager::triggerSystemCommand(const QString &commandName)
+{
+    if (!m_deviceModel)
         return;
 
-    for (auto dev : m_deviceModel->items()) {
-        if (dev->filteredOut())
+    // 查找所有存在指令的设备
+    QSet<QString> devIdSet;
+    for (auto timeline : m_timelineModel->items()) {
+        // 过滤未启动的
+        if (timeline->state() == Timeline::Stopped ||
+            timeline->state() ==  Timeline::Waiting) {
             continue;
-        if (auto cmd = dev->commandByName(DeviceKey::SystemStop))
-            emit deviceCommandTriggered(cmd);
+        }
+
+        //
+        for (auto cmd : timeline->commandModel()->items()) {
+            devIdSet.insert(cmd->targetDeviceId());
+        }
+        
+    }
+
+    for (Device *device : m_deviceModel->items()) {
+        // 被过滤的
+        if (device->filteredOut()) {
+			continue;
+        }
+        
+        // 无调用指令的
+        if (devIdSet.contains(device->id()) == false) {
+            continue;
+        }
+
+        // 无对应系统指令的
+        DeviceCommand *command = device->commandByName(commandName);
+        if (!command)
+            continue;
+
+        // do
+        emit deviceCommandTriggered(command);
     }
 }
 

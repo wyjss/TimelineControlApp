@@ -91,6 +91,7 @@ private:
     void handleTimelineCompleted(Timeline *timeline);
     bool hasRunningTimeline() const;
     void bindCommandsForDevice(Device *device);
+    void triggerSystemCommand(const QString &commandName);
 
     TimelineClock *m_clock = nullptr;
     TimelineModel *m_timelineModel = nullptr;

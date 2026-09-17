@@ -264,7 +264,6 @@ void CrossCondition::updateLocation(double longitude,
 	if (m_timelineManager->playbackState() != TimelineManager::Running) {
 		return;
 	}
-	LOG_DEBUG("pass state" << m_sourceTimeline->state());
 	setTouched(false);
 	if (!qIsFinite(longitude) || !qIsFinite(latitude) || !qIsFinite(heading)) {
 		resetTracking();
@@ -340,7 +339,7 @@ void CrossCondition::updateLocation(double longitude,
 
 	if (!crossed)
 		return;
-	LOG_DEBUG("正常触发！！！");
+	LOG_INFO("栅栏正常触发！！！"   << this->locator() << this->fence());
 	setTouched(true);
 	if (m_timelineManager)
 		m_timelineManager->triggerTimeline(m_timeline);

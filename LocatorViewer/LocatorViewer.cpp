@@ -164,11 +164,14 @@ LocatorViewer::LocatorViewer(QObject* parent)
     option.name = ragis::DefaultView2D;
     earth->createView(option);
 
-    ragis::Viewpoint vp = {{109.0, 32.7, 0.0}, {0, -90, 4000}};
-    earth->getViewpoint()->setHomeViewpoint(vp);
-    earth->getViewpoint()->setViewpoint(vp);
-    earth->startRender();
-    earth->addEventCallback(m_lineCallback);
+	// 安康
+	ragis::Viewpoint vp = {{109.0, 32.7, 0.0}, {0, -90, 4000}};
+	// 成都
+	vp = {{104.091615374, 30.5949669721, 0.00300980731845}, {-5.25193385626e-06, -89.8999999023, 1493.23007819}};
+	earth->getViewpoint()->setHomeViewpoint(vp);
+	earth->getViewpoint()->setViewpoint(vp);
+	earth->startRender();
+	earth->addEventCallback(m_lineCallback);
 }
 
 LocatorViewer::~LocatorViewer()

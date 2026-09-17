@@ -23,6 +23,7 @@ ApplicationWindow {
     property int timelineStartTimeMs: 0
     property bool timelineEditing: false
     property bool locatorMonitorOpen: false
+    property bool closeConfirmed: false
     readonly property bool locatorManagementActive: shell.activeNavigationKey === "locator"
     readonly property var settingsNavigationItem: ({
         "key": "system-settings",
@@ -105,6 +106,13 @@ ApplicationWindow {
         ? String(appRuntime.settings.applicationName)
         : qsTr("时间线控制应用")
     color: appTheme.colors.backgroundWindow
+    onClosing: {
+        close.accepted = timelineStopped && closeConfirmed
+        closeConfirmed = false
+        if (!close.accepted && !exitConfirmDialog.visible)
+            exitConfirmDialog.open()
+    }
+    onTimelineStoppedChanged: exitConfirmDialog.close()
     Component.onCompleted: {
         var screens = Qt.application.screens
         for (var index = 0; index < screens.length; ++index) {
@@ -117,6 +125,50 @@ ApplicationWindow {
         y = screen.virtualY + Math.round((screen.height - height) / 2)
         activateNavigation(shellController ? shellController.activeNavigationKey : "")
         visible = true
+    }
+
+    Base.AppDialog {
+        id: exitConfirmDialog
+        objectName: "exitConfirmDialog"
+
+        parent: window.contentItem
+        width: Math.min(420, parent.width - window.appTheme.density.pageMargin * 2)
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        title: window.timelineStopped ? qsTr("退出确认") : qsTr("无法退出")
+        message: window.timelineStopped
+            ? qsTr("确定退出时间线控制应用？尚未保存的工程修改将丢失。")
+            : qsTr("请先停止播放，再退出应用。")
+        initialFocusItem: cancelExitButton
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: exitConfirmDialog.spacing
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            Base.AppButton {
+                id: cancelExitButton
+
+                text: window.timelineStopped ? qsTr("取消") : qsTr("确认")
+                variant: UiStyle.ButtonVariant.Secondary
+                onClicked: exitConfirmDialog.close()
+            }
+
+            Base.AppButton {
+                text: qsTr("退出")
+                visible: window.timelineStopped
+                enabled: window.timelineStopped
+                onClicked: {
+                    if (!window.timelineStopped)
+                        return
+                    window.closeConfirmed = true
+                    window.close()
+                }
+            }
+        }
     }
 
     Ui.AppShell {
@@ -303,7 +355,8 @@ ApplicationWindow {
                         iconName: !window.queuePlayback && window.timelineRunning ? "pause" : "play"
                         enabled: window.timelineManager
                             && window.timelineManager.currentTimeline
-                            && (!window.queuePlayback || window.timelineStopped || window.timelineCompleted)
+                            && !window.timelineCompleted
+                            && (!window.queuePlayback || window.timelineStopped)
                         onClicked: {
                             if (window.shellController)
                                 window.shellController.handleUiAction(
