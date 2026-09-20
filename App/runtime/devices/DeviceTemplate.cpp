@@ -21,12 +21,12 @@ DeviceTemplate::DeviceTemplate(const QString &name,
 {
     m_configSpecs.prepend(DeviceParamSpec::createForKey(DeviceKey::Ip));
 
-	for (auto spec : m_configSpecs) {
-		spec->setParent(this);
-	}
-	for (auto cmd : m_commands) {
+    for (auto spec : m_configSpecs) {
+        spec->setParent(this);
+    }
+    for (auto cmd : m_commands) {
         cmd->setParent(this);
-	}
+    }
 }
 
 QString DeviceTemplate::name() const
@@ -68,9 +68,9 @@ QList<DeviceParamSpec *> DeviceTemplate::configSpecObjects() const
 Device *DeviceTemplate::createDevice(QObject *parent, const QVariantMap &configValues)
 {
     auto *device = new Device(this, parent);
-	device->setDeviceType(deviceType());
+    device->setDeviceType(deviceType());
     device->setSupportedProtocols(supportedProtocols());
-	device->setDescription(description());
+    device->setDescription(description());
 
     for (DeviceParamSpec *configSpec : m_configSpecs)
         device->addParam(configSpec->clone(device));
@@ -84,7 +84,7 @@ Device *DeviceTemplate::createDevice(QObject *parent, const QVariantMap &configV
         device->appendCommand(newCmd);
     }
 
-	return device;
+    return device;
 }
 
 DeviceCommand *DeviceTemplate::createCommand(const QString &commandType,
@@ -106,13 +106,13 @@ SerialPowerDeviceTemplate::SerialPowerDeviceTemplate(QObject* parent /* = nullpt
                      parent
     )
 {
-	auto openPayload = DeviceParamSpec::createForKey(DeviceKey::SerialPayload);
-	openPayload->setKey("open");
-	openPayload->setLabel("开机码");
+    auto openPayload = DeviceParamSpec::createForKey(DeviceKey::SerialPayload);
+    openPayload->setKey("open");
+    openPayload->setLabel("开机码");
     openPayload->setParent(this);
     m_configSpecs << openPayload;
 
-	auto closePayload = DeviceParamSpec::createForKey(DeviceKey::SerialPayload);
+    auto closePayload = DeviceParamSpec::createForKey(DeviceKey::SerialPayload);
     closePayload->setKey("close");
     closePayload->setLabel("关机码");
     closePayload->setParent(this);
@@ -124,20 +124,20 @@ Device * SerialPowerDeviceTemplate::createDevice(QObject *parent, const QVariant
     Device *device = DeviceTemplate::createDevice(parent, configValues);
 
     {
-		DeviceCommand* command = new DeviceCommand_Serial(device);
-		command->setName("开机");
-		DeviceParamSpec* payload = command->getField(DeviceKey::SerialPayload);
-		payload->setValue(configValues.value(QStringLiteral("open")));
-		device->appendCommand(command);
+        DeviceCommand* command = new DeviceCommand_Serial(device);
+        command->setName("开机");
+        DeviceParamSpec* payload = command->getField(DeviceKey::SerialPayload);
+        payload->setValue(configValues.value(QStringLiteral("open")));
+        device->appendCommand(command);
        
     }
    
     {
-		DeviceCommand* command = new DeviceCommand_Serial(device);
-		command->setName("关机");
-		DeviceParamSpec* payload = command->getField(DeviceKey::SerialPayload);
-		payload->setValue(configValues.value(QStringLiteral("close")));
-		device->appendCommand(command);
+        DeviceCommand* command = new DeviceCommand_Serial(device);
+        command->setName("关机");
+        DeviceParamSpec* payload = command->getField(DeviceKey::SerialPayload);
+        payload->setValue(configValues.value(QStringLiteral("close")));
+        device->appendCommand(command);
     }
 
     return device;

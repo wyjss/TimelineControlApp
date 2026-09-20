@@ -254,7 +254,7 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 }
 
 DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
-                                               QObject *parent) const
+											   QObject *parent) const
 {
 	if (commandType == DeviceKey::CommandOpenVideo)
 		return new OpenVideoCommand(parent);

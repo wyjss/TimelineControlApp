@@ -85,8 +85,8 @@ public:
 
     Q_INVOKABLE bool setFieldValue(const QString &field, const QVariant &value);
 public:
-	void writeToStream(QDataStream& stream) const;
-	void readFromStream(QDataStream& stream, TimelineModel *timelineModel = nullptr);
+    void writeToStream(QDataStream& stream) const;
+    void readFromStream(QDataStream& stream, TimelineModel *timelineModel = nullptr);
 signals:
     void deviceTypeChanged();
     void nameChanged();

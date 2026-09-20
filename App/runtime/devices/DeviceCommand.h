@@ -43,11 +43,11 @@ public:
                   QObject *parent = nullptr);
 
     // 创建基础协议指令
-	static DeviceCommand* createForProtocol(const QString& protocol,
-											QObject* parent = nullptr);
-	static DeviceCommand* createFromJson(const QJsonObject& json,
-										 QObject* parent = nullptr,
-										 TimelineModel* timelineModel = nullptr);
+    static DeviceCommand* createForProtocol(const QString& protocol,
+                                            QObject* parent = nullptr);
+    static DeviceCommand* createFromJson(const QJsonObject& json,
+                                         QObject* parent = nullptr,
+                                         TimelineModel* timelineModel = nullptr);
 
     QString name() const;
     void setName(const QString &name);
@@ -62,10 +62,10 @@ public:
     DeviceParamSpec* getField(const QString& key) const;
     Q_INVOKABLE virtual QString invalidReason() const;
 
-	QJsonObject toJson() const;
-	bool loadFromJson(const QJsonObject& json);
+    QJsonObject toJson() const;
+    bool loadFromJson(const QJsonObject& json);
 
-	Q_INVOKABLE virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const;
+    Q_INVOKABLE virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const;
 
     void addCreationInputField(DeviceParamSpec *field);
     void addExecutionInputField(DeviceParamSpec *field);
@@ -125,39 +125,39 @@ private:
 class DeviceCommand_Internal : public DeviceCommand
 {
 public:
-	explicit DeviceCommand_Internal(QObject* parent = nullptr);
+    explicit DeviceCommand_Internal(QObject* parent = nullptr);
 
 protected:
     DeviceCommand_Internal(const QString& protocol,
-					  const QString& name,
-					  const QString& commandType,
-					  QObject* parent);
+                      const QString& name,
+                      const QString& commandType,
+                      QObject* parent);
 };
 
 // 串口
 class DeviceCommand_Serial final : public DeviceCommand
 {
 public:
-	explicit DeviceCommand_Serial(QObject* parent)
-		: DeviceCommand(DeviceProtocol::Serial, QStringLiteral("串口指令"), parent)
-	{
-		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPort));
-		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::BaudRate));
-		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPayload));
-	}
+    explicit DeviceCommand_Serial(QObject* parent)
+        : DeviceCommand(DeviceProtocol::Serial, QStringLiteral("串口指令"), parent)
+    {
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPort));
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::BaudRate));
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPayload));
+    }
 };
 
 // UDP
 class DeviceCommand_Udp : public DeviceCommand
 {
 public:
-	explicit DeviceCommand_Udp(QObject* parent = nullptr);
+    explicit DeviceCommand_Udp(QObject* parent = nullptr);
 
 protected:
     DeviceCommand_Udp(const QString& protocol,
-					   const QString& name,
-					   const QString& commandType,
-					   QObject* parent);
+                       const QString& name,
+                       const QString& commandType,
+                       QObject* parent);
 };
 
 // HTTP

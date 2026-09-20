@@ -33,8 +33,8 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
     QByteArray data;
     if (params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex) {
         if (!Utils::toHexData(payload, &data)) {
-			emit executionFinished(executionId, command, false, tr("无效的hex数据"));
-			return;
+            emit executionFinished(executionId, command, false, tr("无效的hex数据"));
+            return;
         }
     } else {
         data = payload.toUtf8();

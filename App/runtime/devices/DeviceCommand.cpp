@@ -198,77 +198,77 @@ DeviceCommand::DeviceCommand(const QString &protocol,
     auto *nameField = DeviceParamSpec::createForKey(DeviceKey::Name);
     nameField->setValue(name);
     nameField->setDefaultValue(name);
-	connect(nameField, &DeviceParamSpec::valueChanged, this, &DeviceCommand::nameChanged);
-	addCreationInputField(nameField);
+    connect(nameField, &DeviceParamSpec::valueChanged, this, &DeviceCommand::nameChanged);
+    addCreationInputField(nameField);
 }
 
 DeviceCommand* DeviceCommand::createForProtocol(const QString& protocol, QObject* parent)
 {
-	const QString value = protocol.trimmed();
-	if (value == DeviceProtocol::Internal)
-		return new DeviceCommand_Internal(parent);
-	if (value == DeviceProtocol::Udp)
-		return new DeviceCommand_Udp(parent);
-	if (value == DeviceProtocol::Http)
-		return new DeviceCommand_Http(parent);
-	if (value == DeviceProtocol::Pc)
-		return new DeviceCommand_PC(parent);
-	if (value == DeviceProtocol::Serial)
-		return new DeviceCommand_Serial(parent);
-	if (value == DeviceProtocol::Dmx512)
-		return new Dmx512Command(parent);
+    const QString value = protocol.trimmed();
+    if (value == DeviceProtocol::Internal)
+        return new DeviceCommand_Internal(parent);
+    if (value == DeviceProtocol::Udp)
+        return new DeviceCommand_Udp(parent);
+    if (value == DeviceProtocol::Http)
+        return new DeviceCommand_Http(parent);
+    if (value == DeviceProtocol::Pc)
+        return new DeviceCommand_PC(parent);
+    if (value == DeviceProtocol::Serial)
+        return new DeviceCommand_Serial(parent);
+    if (value == DeviceProtocol::Dmx512)
+        return new Dmx512Command(parent);
 
     LOG_ERROR("不支持的指令类型 " << protocol);
-	return nullptr;
+    return nullptr;
 }
 
 DeviceCommand* DeviceCommand::createFromJson(const QJsonObject& json,
-											 QObject* parent,
-											 TimelineModel* timelineModel)
+                                             QObject* parent,
+                                             TimelineModel* timelineModel)
 {
     if (json.contains(DeviceKey::CommandType)) {
         LOG_ERROR("无法从json创建commandType指令");
-		return nullptr;
+        return nullptr;
     }
 
-	DeviceCommand* command = createForProtocol(
-		json.value(QString::fromLatin1(kProtocolKey)).toString(), parent);
-	if (!command)
-		return nullptr;
+    DeviceCommand* command = createForProtocol(
+        json.value(QString::fromLatin1(kProtocolKey)).toString(), parent);
+    if (!command)
+        return nullptr;
 
-	const auto loadFields = [command, timelineModel](const QJsonArray& fields,
-															  bool executionFields) {
-		for (const QJsonValue& value : fields) {
-			const QJsonObject fieldJson = value.toObject();
-			DeviceParamSpec* field = executionFields
-				? nullptr
-				: command->getField(fieldJson.value(QStringLiteral("key")).toString());
+    const auto loadFields = [command, timelineModel](const QJsonArray& fields,
+                                                              bool executionFields) {
+        for (const QJsonValue& value : fields) {
+            const QJsonObject fieldJson = value.toObject();
+            DeviceParamSpec* field = executionFields
+                ? nullptr
+                : command->getField(fieldJson.value(QStringLiteral("key")).toString());
 
-			if (field) {
-				if (!applyFieldSpec(field, fieldJson))
-					return false;
-				continue;
-			}
+            if (field) {
+                if (!applyFieldSpec(field, fieldJson))
+                    return false;
+                continue;
+            }
 
-			field = fieldFromJson(fieldJson, timelineModel, command);
-			if (!field)
-				return false;
+            field = fieldFromJson(fieldJson, timelineModel, command);
+            if (!field)
+                return false;
 
-			if (executionFields)
-				command->addExecutionInputField(field);
-			else
-				command->addCreationInputField(field);
-		}
-		return true;
-	};
+            if (executionFields)
+                command->addExecutionInputField(field);
+            else
+                command->addCreationInputField(field);
+        }
+        return true;
+    };
 
-	if (!loadFields(json.value(QString::fromLatin1(kCreationInputFieldSpecsKey)).toArray(), false)
-		|| !loadFields(json.value(QString::fromLatin1(kExecutionInputFieldSpecsKey)).toArray(), true)
-		|| !command->loadFromJson(json)) {
-		delete command;
-		return nullptr;
-	}
-	return command;
+    if (!loadFields(json.value(QString::fromLatin1(kCreationInputFieldSpecsKey)).toArray(), false)
+        || !loadFields(json.value(QString::fromLatin1(kExecutionInputFieldSpecsKey)).toArray(), true)
+        || !command->loadFromJson(json)) {
+        delete command;
+        return nullptr;
+    }
+    return command;
 }
 
 QString DeviceCommand::name() const
@@ -319,25 +319,25 @@ void DeviceCommand::setEditable(bool editable)
 
 void DeviceCommand::setDevice(Device *device)
 {
-	if (m_device == device)
-		return;
+    if (m_device == device)
+        return;
 
     const bool previousFilteredOut = filteredOut();
 
-	if (m_device) {
-		disconnect(m_device, &Device::paramChanged, this, nullptr);
-		disconnect(m_device, &Device::filteredOutChanged, this, &DeviceCommand::filteredOutChanged);
-	}
-
-	m_device = device;
-
     if (m_device) {
-		connect(m_device, &Device::paramChanged, this, &DeviceCommand::updateParamFromDevice);
-		connect(m_device, &Device::filteredOutChanged, this, &DeviceCommand::filteredOutChanged);
-		updateParamFromDevice();
+        disconnect(m_device, &Device::paramChanged, this, nullptr);
+        disconnect(m_device, &Device::filteredOutChanged, this, &DeviceCommand::filteredOutChanged);
     }
 
-	emit deviceChanged();
+    m_device = device;
+
+    if (m_device) {
+        connect(m_device, &Device::paramChanged, this, &DeviceCommand::updateParamFromDevice);
+        connect(m_device, &Device::filteredOutChanged, this, &DeviceCommand::filteredOutChanged);
+        updateParamFromDevice();
+    }
+
+    emit deviceChanged();
     if (previousFilteredOut != filteredOut())
         emit filteredOutChanged();
 }
@@ -437,37 +437,37 @@ bool DeviceCommand::loadFromJson(const QJsonObject &json)
 
 QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValues) const
 {
-	QVariantMap params;
+    QVariantMap params;
 
-	for (DeviceParamSpec* field : m_creationInputFields)
-		params.insert(field->key(), field->value());
+    for (DeviceParamSpec* field : m_creationInputFields)
+        params.insert(field->key(), field->value());
 
     // 将Device的、Command不适用的参数也放进入
-	if (m_device) {
-		const QVariantMap values = m_device->configValues();
-		for (auto it = values.cbegin(); it != values.cend(); ++it)
-			params.insert(it.key(), it.value());
-	}
+    if (m_device) {
+        const QVariantMap values = m_device->configValues();
+        for (auto it = values.cbegin(); it != values.cend(); ++it)
+            params.insert(it.key(), it.value());
+    }
 
-	for (DeviceParamSpec* field : m_executionInputFields)
-		params.insert(field->key(), field->value());
+    for (DeviceParamSpec* field : m_executionInputFields)
+        params.insert(field->key(), field->value());
 
-	for (auto it = executionInputValues.cbegin();
-		 it != executionInputValues.cend();
-		 ++it) {
-		params.insert(it.key(), it.value());
-	}
+    for (auto it = executionInputValues.cbegin();
+         it != executionInputValues.cend();
+         ++it) {
+        params.insert(it.key(), it.value());
+    }
 
    
     if (params.contains(m_stringTemplateKey)) {
-		// 是否在插入时进行16进制转换
-		bool needToHex =
-			params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex;
+        // 是否在插入时进行16进制转换
+        bool needToHex =
+            params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex;
 
         auto str = params[m_stringTemplateKey].toString();
         auto oldStr = str;
-		
-		for (auto it = params.cbegin(); it != params.cend(); ++it) {
+        
+        for (auto it = params.cbegin(); it != params.cend(); ++it) {
             QString k = QString("${%1}").arg(it.key());
             // 普通替换
             if (str.contains(k)) {
@@ -480,7 +480,7 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValu
                 } 
                 // 普通替换
                 else {
-					str = str.replace(k, it.value().toString());
+                    str = str.replace(k, it.value().toString());
                 }
             } 
             // http query插入
@@ -491,7 +491,7 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValu
                 qurl.setQuery(query);
                 str = qurl.toString();
             }
-		}
+        }
 
         LOG_DEBUG("字符模板" << oldStr << "->\t" << str);
         params[m_stringTemplateKey] = str;
@@ -513,7 +513,7 @@ void DeviceCommand::addCreationInputField(DeviceParamSpec *field)
 
     if (getField(field->key())) {
         LOG_ERROR("重复添加创建字段 " << field->key());
-		return;
+        return;
     }
 
     if (field->parent() != this)
@@ -548,14 +548,14 @@ QVariantList DeviceCommand::creationInputFields() const
 
 QVariantList DeviceCommand::creationMinInputFields() const
 {
-	QVariantList result;
+    QVariantList result;
     const QVariantMap configValues = m_device ? m_device->configValues() : QVariantMap();
     for (DeviceParamSpec *field : m_creationInputFields) {
         if (!configValues.contains(field->key()))
             result.append(QVariant::fromValue(field));
     }
-		
-	return result;
+        
+    return result;
 }
 
 QVariantList DeviceCommand::executionInputFields() const
@@ -573,35 +573,35 @@ void DeviceCommand::updateParamFromDevice()
         return;
     }
 
-	for (DeviceParamSpec* field : m_creationInputFields) {
-		if (auto inField = m_device->getParam(field->key())) {
-			field->setValue(inField->value());
-		}
-	}
+    for (DeviceParamSpec* field : m_creationInputFields) {
+        if (auto inField = m_device->getParam(field->key())) {
+            field->setValue(inField->value());
+        }
+    }
 }
 
 
 //////////////////////////////////////////////////////////////////////////
 DeviceCommand_Internal::DeviceCommand_Internal(QObject* parent)
-	: DeviceCommand_Internal(DeviceProtocol::Internal, QStringLiteral("内部指令"), QString(), parent)
+    : DeviceCommand_Internal(DeviceProtocol::Internal, QStringLiteral("内部指令"), QString(), parent)
 {
 
 }
 
 DeviceCommand_Internal::DeviceCommand_Internal(const QString& protocol,
-									 const QString& name,
-									 const QString& commandType,
-									 QObject* parent)
-	: DeviceCommand(protocol, name, commandType, parent)
+                                     const QString& name,
+                                     const QString& commandType,
+                                     QObject* parent)
+    : DeviceCommand(protocol, name, commandType, parent)
 {
-	
+    
 }
 
 //////////////////////////////////////////////////////////////////////////
 DeviceCommand_Udp::DeviceCommand_Udp(QObject* parent)
-	: DeviceCommand_Udp(DeviceProtocol::Udp, QStringLiteral("Udp指令"), QString(), parent)
+    : DeviceCommand_Udp(DeviceProtocol::Udp, QStringLiteral("Udp指令"), QString(), parent)
 {
-	
+    
 }
 
 DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
@@ -610,8 +610,8 @@ DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
                   QObject* parent)
     : DeviceCommand(protocol, name, commandType, parent)
 {
-	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
-	addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
     addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Payload));
     addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::PayloadType));
 }
@@ -646,5 +646,5 @@ DeviceCommand_PC::DeviceCommand_PC(const QString &name,
     : DeviceCommand_Http(DeviceProtocol::Pc, name, commandType, parent)
 {
     getField(DeviceKey::Port)->setValue(11357);
-	getField(DeviceKey::ApiPath)->setRequired(false);
+    getField(DeviceKey::ApiPath)->setRequired(false);
 }

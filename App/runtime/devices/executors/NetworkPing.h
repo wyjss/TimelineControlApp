@@ -23,14 +23,8 @@ signals:
 private:
     bool m_quit = false;
 private:
-    /**
-     * @brief Ping 一个 IPv4 地址或主机名
-     *
-     * @param host      例如 "192.168.1.10" / "localhost" / "device.local"
-     * @param timeoutMs 超时时间，单位 ms
-     */
-    static bool ping(const QString& host,
-                     quint32 timeoutMs = 1000);
+    // 探测 IPv4 地址或主机名，timeoutMs 单位为毫秒
+    static bool ping(const QString &host, quint32 timeoutMs = 1000);
 
-    static QString resolveIPv4(const QString& host);
+    static QString resolveIPv4(const QString &host);
 };

@@ -47,17 +47,16 @@ ColumnLayout {
         if (readOnly || (field && field.readOnly))
             return
 
-        var nextValue = normalizedValue(field, value)
         if (writeBack) {
-            field.value = nextValue
+            field.value = value
         } else {
             var nextValues = {}
             for (var name in values)
                 nextValues[name] = values[name]
-            nextValues[fieldKey(field)] = nextValue
+            nextValues[fieldKey(field)] = value
             values = nextValues
         }
-        fieldEdited(field, nextValue)
+        fieldEdited(field, value)
     }
 
     function resetValues() {
@@ -71,7 +70,7 @@ ColumnLayout {
         var result = {}
         for (var index = 0; index < fields.length; ++index) {
             var field = fields[index]
-            result[fieldKey(field)] = normalizedValue(field, fieldValue(field))
+            result[fieldKey(field)] = fieldValue(field)
         }
         return result
     }
@@ -92,17 +91,6 @@ ColumnLayout {
         if (field && String(field.type) === "bool")
             return "toggle"
         return "text"
-    }
-
-    function normalizedValue(field, value) {
-        var type = field ? String(field.type) : ""
-        if (type === "int")
-            return Math.round(Number(value))
-        if (type === "double")
-            return Number(value)
-        if (type === "bool")
-            return !!value
-        return value
     }
 
     function fieldInvalidReason(field) {

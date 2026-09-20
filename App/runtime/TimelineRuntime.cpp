@@ -51,12 +51,12 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
 
     m_taskManager = (new UICore::TaskManager(this));
     m_deviceModel = (new DeviceModel(this));
-	m_fenceManager = (new FenceManager(this));
-	m_timelineManager = (new TimelineManager(m_deviceModel, this));
-	m_deviceTemplateModel = (new DeviceTemplateModel(m_timelineManager->timelineModel(), this));
-	m_deviceExecutorManager = (new DeviceExecutorManager(this));
-	m_deviceManager = (new DeviceManager(m_deviceModel, m_deviceTemplateModel, m_deviceExecutorManager, this));
-	m_videoProjectionPlanController = (new VideoProjectionPlanController(this));
+    m_fenceManager = (new FenceManager(this));
+    m_timelineManager = (new TimelineManager(m_deviceModel, this));
+    m_deviceTemplateModel = (new DeviceTemplateModel(m_timelineManager->timelineModel(), this));
+    m_deviceExecutorManager = (new DeviceExecutorManager(this));
+    m_deviceManager = (new DeviceManager(m_deviceModel, m_deviceTemplateModel, m_deviceExecutorManager, this));
+    m_videoProjectionPlanController = (new VideoProjectionPlanController(this));
 
     qRegisterMetaType<DeviceCommand *>("DeviceCommand*");
     qRegisterMetaType<Device *>("Device*");

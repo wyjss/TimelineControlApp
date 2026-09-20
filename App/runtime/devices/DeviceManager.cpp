@@ -176,8 +176,7 @@ QString DeviceManager::validateDeviceCreation(const QString &deviceType,
     if (normalizedDeviceType.isEmpty())
         return tr("设备类型必填");
 
-    const QString normalizedDeviceName = deviceName.trimmed();
-    if (normalizedDeviceName.isEmpty())
+    if (deviceName.trimmed().isEmpty())
         return tr("设备名称必填");
     for (const QChar character : deviceName) {
         if (character.isSpace())
@@ -196,7 +195,7 @@ QString DeviceManager::validateDeviceCreation(const QString &deviceType,
         }
     }
 
-    if (m_deviceModel && m_deviceModel->hasDeviceName(normalizedDeviceType, normalizedDeviceName))
+    if (m_deviceModel && m_deviceModel->hasDeviceName(normalizedDeviceType, deviceName))
         return tr("该类型中已存在同名设备");
 
     return QString();
@@ -247,15 +246,14 @@ QString DeviceManager::validateDeviceUpdate(Device *device, const QString &devic
     if (!device || !m_deviceModel || m_deviceModel->deviceById(device->id()) != device)
         return tr("设备不存在");
 
-    const QString normalizedDeviceName = deviceName.trimmed();
-    if (normalizedDeviceName.isEmpty())
+    if (deviceName.trimmed().isEmpty())
         return tr("设备名称必填");
     for (const QChar character : deviceName) {
         if (character.isSpace())
             return tr("设备名称不能包含空格");
     }
 
-    if (m_deviceModel->hasDeviceName(device->deviceType(), normalizedDeviceName, device->id()))
+    if (m_deviceModel->hasDeviceName(device->deviceType(), deviceName, device->id()))
         return tr("该类型中已存在同名设备");
 
     return QString();

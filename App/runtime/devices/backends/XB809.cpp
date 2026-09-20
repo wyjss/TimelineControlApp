@@ -80,49 +80,49 @@ Device* XB809DeviceTemplate::createDevice(QObject* parent, const QVariantMap& co
 {
     auto device = DeviceTemplate::createDevice(parent, configValues);
     
-	{// 暂停播放	3c 6b 7c 8d  	11 00 00 00
-		auto cmd = new BaseXB809Command("暂停播放", "3c6b7c8d11000000");
+    {// 暂停播放	3c 6b 7c 8d  	11 00 00 00
+        auto cmd = new BaseXB809Command("暂停播放", "3c6b7c8d11000000");
         device->appendCommand(cmd);
-	}
-	{// 继续播放	3c 6b 7c 8d 	22 00 00 00
-		auto cmd = new BaseXB809Command("继续播放", "3c6b7c8d22000000");
+    }
+    {// 继续播放	3c 6b 7c 8d 	22 00 00 00
+        auto cmd = new BaseXB809Command("继续播放", "3c6b7c8d22000000");
         device->appendCommand(cmd);
-	}
-	{// 播放指定节目	3c 6b 7c 8d  	33 x1 00 00 (注2)
-		auto cmd = new BaseXB809Command("播放指定节目", "3c6b7c8d33${index}0000");
+    }
+    {// 播放指定节目	3c 6b 7c 8d  	33 x1 00 00 (注2)
+        auto cmd = new BaseXB809Command("播放指定节目", "3c6b7c8d33${index}0000");
 
-		auto param = new DeviceParamSpec("index", "节目索引", 0, DeviceParamSpec::IntType);
-		param->setMinimum(0);
-		param->setMaximum(0x1f);
-		cmd->addExecutionInputField(param);
-
-        device->appendCommand(cmd);
-	}
-	{// 恢复定时播放	3c 6b 7c 8d  	44 00 00 00
-		auto cmd = new BaseXB809Command("恢复定时播放", "3c6b7c8d44000000");
-        device->appendCommand(cmd);
-	}
-	{// 调节速度	3c 6b 7c 8d  	55 x2 00 00 (注3)
-		auto cmd = new BaseXB809Command("调节速度", "3c6b7c8d55${spd}0000");
-
-		auto param = new DeviceParamSpec("spd", "速度等级", 0, DeviceParamSpec::IntType);
-		param->setMinimum(0);
-		param->setMaximum(0x0f);
-		cmd->addExecutionInputField(param);
+        auto param = new DeviceParamSpec("index", "节目索引", 0, DeviceParamSpec::IntType);
+        param->setMinimum(0);
+        param->setMaximum(0x1f);
+        cmd->addExecutionInputField(param);
 
         device->appendCommand(cmd);
-	}
-	{// 循环/不循环 播放	3c 6b 7c 8d  	66 x3 00 00 (注4)
-		auto cmd = new BaseXB809Command("关闭循环", "3c6b7c8d66000000");
+    }
+    {// 恢复定时播放	3c 6b 7c 8d  	44 00 00 00
+        auto cmd = new BaseXB809Command("恢复定时播放", "3c6b7c8d44000000");
+        device->appendCommand(cmd);
+    }
+    {// 调节速度	3c 6b 7c 8d  	55 x2 00 00 (注3)
+        auto cmd = new BaseXB809Command("调节速度", "3c6b7c8d55${spd}0000");
+
+        auto param = new DeviceParamSpec("spd", "速度等级", 0, DeviceParamSpec::IntType);
+        param->setMinimum(0);
+        param->setMaximum(0x0f);
+        cmd->addExecutionInputField(param);
+
+        device->appendCommand(cmd);
+    }
+    {// 循环/不循环 播放	3c 6b 7c 8d  	66 x3 00 00 (注4)
+        auto cmd = new BaseXB809Command("关闭循环", "3c6b7c8d66000000");
         device->appendCommand(cmd);
 
-		cmd = new BaseXB809Command("打开循环", "3c6b7c8d66550000");
+        cmd = new BaseXB809Command("打开循环", "3c6b7c8d66550000");
         device->appendCommand(cmd);
-	}
-	{// 保存当前设置	3c 6b 7c 8d  	77 00 00 00
-		auto cmd = new BaseXB809Command("保存当前设置", "3c6b7c8d77000000");
+    }
+    {// 保存当前设置	3c 6b 7c 8d  	77 00 00 00
+        auto cmd = new BaseXB809Command("保存当前设置", "3c6b7c8d77000000");
         device->appendCommand(cmd);
-	}
+    }
 
     return device;
 }

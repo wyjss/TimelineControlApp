@@ -14,9 +14,9 @@ namespace {
 QUrl iconSource(const QString &fileName)
 {
     auto f = QStringLiteral("./assets/icons/") + fileName;
-	if (QFile::exists(f) == false) {
-		f = QFileInfo(QString::fromUtf8(__FILE__)).dir().absoluteFilePath(QString("../") + f);
-	}
+    if (QFile::exists(f) == false) {
+        f = QFileInfo(QString::fromUtf8(__FILE__)).dir().absoluteFilePath(QString("../") + f);
+    }
     return QUrl::fromLocalFile(f);
 }
 

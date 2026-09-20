@@ -8,7 +8,7 @@
 #define LC "[TimelineCommand] "
 #include "LogMacros.h"
 
-#include <algorithm>
+#include <QtAlgorithms>
 #include <QDataStream>
 #include <QFileInfo>
 #include <QJsonObject>
@@ -83,10 +83,10 @@ void TimelineCommand::setExecutionInputValues(const QVariantMap &executionInputV
         LOG_WARN("存在废弃兼容字段Rect");
         QRect rect;
         if (Utils::rectFromString(m_executionInputValues[DeviceKey::Rect].toString(), rect)) {
-			m_executionInputValues[DeviceKey::VideoWindowX] = rect.x();
-			m_executionInputValues[DeviceKey::VideoWindowY] = rect.y();
-			m_executionInputValues[DeviceKey::VideoWindowW] = rect.width();
-			m_executionInputValues[DeviceKey::VideoWindowH] = rect.height();
+            m_executionInputValues[DeviceKey::VideoWindowX] = rect.x();
+            m_executionInputValues[DeviceKey::VideoWindowY] = rect.y();
+            m_executionInputValues[DeviceKey::VideoWindowW] = rect.width();
+            m_executionInputValues[DeviceKey::VideoWindowH] = rect.height();
         }
         m_executionInputValues.remove(DeviceKey::Rect);
     }
@@ -267,21 +267,21 @@ QVariantList TimelineCommandModel::commandVariants() const
 
 qint64 TimelineCommandModel::realDurationMs()
 {
-	if (m_realDurationNeedUpdate) {
-		m_realDurationNeedUpdate = false;
+    if (m_realDurationNeedUpdate) {
+        m_realDurationNeedUpdate = false;
 
-		LOG_DEBUG("updateRealDuration");
-		qint64 realDurationMs = 0;
-		for (TimelineCommand* command : items()) {
-			if (command)
-				realDurationMs = qMax(realDurationMs,
-									  command->startTimeMs());
-		}
+        LOG_DEBUG("updateRealDuration");
+        qint64 realDurationMs = 0;
+        for (TimelineCommand* command : items()) {
+            if (command)
+                realDurationMs = qMax(realDurationMs,
+                                      command->startTimeMs());
+        }
 
-		m_realDurationMs = realDurationMs;
-	}
+        m_realDurationMs = realDurationMs;
+    }
 
-	return m_realDurationMs;
+    return m_realDurationMs;
 }
 
 void TimelineCommandModel::makeRealTimeChanged()
@@ -309,7 +309,7 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
     };
 
     QList<TimelineCommand *> sortedCommands = items();
-    std::stable_sort(sortedCommands.begin(), sortedCommands.end(), [](TimelineCommand *left, TimelineCommand *right) {
+    qSort(sortedCommands.begin(), sortedCommands.end(), [](TimelineCommand *left, TimelineCommand *right) {
         return left && right ? left->startTimeMs() < right->startTimeMs() : right != nullptr;
     });
 
@@ -499,7 +499,7 @@ TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
                                         targetCommand);
 
     auto cmds = this->items();
-	int targetIndex = cmds.size();
+    int targetIndex = cmds.size();
     for (int i = 0; i < cmds.size(); ++i) {
         if (cmds[i]->startTimeMs() > startTimeMs) {
             targetIndex = i;
@@ -507,8 +507,8 @@ TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
         }
     }
     if (!insertItem(targetIndex, command)) {
-		command->deleteLater();
-		return nullptr;
+        command->deleteLater();
+        return nullptr;
     }
 
     return command;
@@ -645,25 +645,25 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
         emitCommandChanged(command);
     };
 
-	connect(command, &TimelineCommand::startTimeMsChanged, this,
-			[this, command]() {
+    connect(command, &TimelineCommand::startTimeMsChanged, this,
+            [this, command]() {
 
                 // 重排检测
-				const int from = indexOfCommand(command);
+                const int from = indexOfCommand(command);
                 int to = from;
                 while (to > 0 && commandAt(to - 1)->startTimeMs() > command->startTimeMs()) {
                     to--;
                 }
-				while (to < items().size() - 1 && commandAt(to + 1)->startTimeMs() < command->startTimeMs()) {
+                while (to < items().size() - 1 && commandAt(to + 1)->startTimeMs() < command->startTimeMs()) {
                     to++;
-				}
+                }
 
                 if (to != from) {
                     moveItem(from, to);
                 }
-				makeRealTimeChanged();
+                makeRealTimeChanged();
                 emitCommandChanged(command);
-			});
+            });
 
     connect(command, &TimelineCommand::parametersChanged, this, notifyChanged);
     connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {

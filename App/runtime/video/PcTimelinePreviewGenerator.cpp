@@ -1,6 +1,6 @@
 #include "runtime/video/PcTimelinePreviewGenerator.h"
 
-#include <algorithm>
+#include <QtAlgorithms>
 
 #include <QFile>
 #include <QPainter>
@@ -222,7 +222,7 @@ void PcTimelinePreviewGenerator::startPreview()
     if (!m_pcDevice || !m_timelineCommandModel) {
         m_previewImage = QImage();
         if (m_previewUrl.toLocalFile().isEmpty() == false) {
-			QFile::remove(m_previewUrl.toLocalFile());
+            QFile::remove(m_previewUrl.toLocalFile());
         }
         m_previewUrl = QUrl();
         m_previewTimeMs = m_generationTimeMs;
@@ -256,7 +256,7 @@ QVector<PcTimelinePreviewGenerator::VideoState>
 PcTimelinePreviewGenerator::videoStatesAt(qint64 timeMs, const QSize &canvasSize) const
 {
     QList<TimelineCommand *> commands = m_timelineCommandModel->commands();
-    std::stable_sort(commands.begin(), commands.end(), [](TimelineCommand *left, TimelineCommand *right) {
+    qSort(commands.begin(), commands.end(), [](TimelineCommand *left, TimelineCommand *right) {
         return left && right ? left->startTimeMs() < right->startTimeMs() : right != nullptr;
     });
 
@@ -393,13 +393,13 @@ void PcTimelinePreviewGenerator::finishPreview()
         const QString previewPath = m_temporaryDir.filePath(
             QStringLiteral("preview-%1.jpg").arg(m_generationRevision));
         if (m_previewImage.save(previewPath, "JPG", 90)) {
-			if (m_previewUrl.isEmpty() == false)
-				QFile::remove(m_previewUrl.toLocalFile());
-			m_previewUrl = QUrl::fromLocalFile(previewPath);
-		} else {
-			if (m_previewUrl.isEmpty() == false)
-				QFile::remove(m_previewUrl.toLocalFile());
-			m_previewUrl = QUrl();
+            if (m_previewUrl.isEmpty() == false)
+                QFile::remove(m_previewUrl.toLocalFile());
+            m_previewUrl = QUrl::fromLocalFile(previewPath);
+        } else {
+            if (m_previewUrl.isEmpty() == false)
+                QFile::remove(m_previewUrl.toLocalFile());
+            m_previewUrl = QUrl();
             m_errors.append(tr("无法保存预览图像"));
         }
         m_previewTimeMs = m_generationTimeMs;

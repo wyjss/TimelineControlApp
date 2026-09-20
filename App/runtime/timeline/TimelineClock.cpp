@@ -42,12 +42,10 @@ qint64 TimelineClock::currentTimeMs() const
 
 void TimelineClock::setCurrentTimeMs(qint64 currentTimeMs)
 {
-    const qint64 normalizedTimeMs = qMax<qint64>(0, currentTimeMs);
-
-    if (m_currentTimeMs == normalizedTimeMs)
+    if (m_currentTimeMs == currentTimeMs)
         return;
 
-    m_currentTimeMs = normalizedTimeMs;
+    m_currentTimeMs = currentTimeMs;
     if (m_state == Running) {
         m_runBaseTimeMs = m_currentTimeMs;
         m_elapsedTimer.restart();

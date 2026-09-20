@@ -51,32 +51,8 @@ public:
 
 }
 
-//template<typename TDds, typename TProto>
-//static inline void copyFieldValueToDds(const TProto& p, TDds& d, int maxCharXSize)
-//{
-//	if constexpr (
-//		std::is_array_v<std::remove_reference_t<TDds>> &&
-//		std::is_same_v<std::remove_extent_t<std::remove_reference_t<TDds>>, char>) {
-//
-//		using Arr = std::remove_reference_t<TDds>;
-//		constexpr size_t N = std::extent_v<Arr>;
-//
-//		//memcpy(d, p.c_str(), std::min<int>(N - 1, p.size()));
-//		d[N - 1] = '\0';
-//
-//        std::cout << N << "\n";
-//		std::cout << typeid(p).name() << ", " << typeid(d).name() << "\n";
-//		std::cout << sizeof(TProto) << ", " << sizeof(p) << "\n";
-//	}
-//
-//   
-//}
 int main(int argc, char *argv[])
 {
-    //char ddd[10];
-    //copyFieldValueToDds(ddd, ddd, 0);
-    //exit(0);
-
     //qputenv("QT_QUICK_BACKEND", "software");
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);

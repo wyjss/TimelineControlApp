@@ -46,8 +46,8 @@ void NetworkPing::checkOnline(const QStringList &deviceIds,
         online = ping(ip, 1000);
     }
 
-    for (const QString& deviceId : deviceIds) {
-		emit onlineChecked(deviceId, online);
+    for (const QString &deviceId : deviceIds) {
+        emit onlineChecked(deviceId, online);
     }
 }
 
@@ -56,29 +56,22 @@ void NetworkPing::quit()
     m_quit = true;
 }
 
-QString NetworkPing::resolveIPv4(const QString& host)
+QString NetworkPing::resolveIPv4(const QString &host)
 {
-    // ---------------------------------------------------------
-    // 1. 本身就是 IPv4
-    // ---------------------------------------------------------
     QHostAddress address;
 
-    if (address.setAddress(host) &&
-        address.protocol() == QAbstractSocket::IPv4Protocol)
-    {
+    if (address.setAddress(host)
+        && address.protocol() == QAbstractSocket::IPv4Protocol) {
         return address.toString();
     }
 
-    // ---------------------------------------------------------
-    // 2. 主机名解析
-    // ---------------------------------------------------------
+    // 非 IPv4 地址时，尝试解析主机名
     const QHostInfo info = QHostInfo::fromName(host);
 
     if (info.error() != QHostInfo::NoError)
         return {};
 
-    for (const QHostAddress& addr : info.addresses())
-    {
+    for (const QHostAddress &addr : info.addresses()) {
         if (addr.protocol() == QAbstractSocket::IPv4Protocol)
             return addr.toString();
     }
@@ -87,7 +80,7 @@ QString NetworkPing::resolveIPv4(const QString& host)
 }
 
 
-bool NetworkPing::ping(const QString& host, quint32 timeoutMs)
+bool NetworkPing::ping(const QString &host, quint32 timeoutMs)
 {
 #ifndef Q_OS_WIN
     Q_UNUSED(host)

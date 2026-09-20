@@ -46,23 +46,17 @@ struct VideoProjectionMapping
 //! 一条完整的视频投影方案数据。
 struct VideoProjectionPlan
 {
-    //! 方案名称。
     QString name;
     //! 投影窗口 id，用于后续关联具体输出窗口。
     QString projectionWindowId;
     //! 当前方案涉及的 PC 设备 id 列表，可由 mappings 推导后写入。
     QStringList targetPcIds;
-    //! 视频源地址。
     QUrl videoSource;
     //! 视频源像素尺寸。
     QSize videoSize = QSize(1920, 1080);
-    //! 当前方案的所有取景区域。
     QVector<VideoProjectionCapture> captures;
-    //! 当前方案的所有输出映射。
     QVector<VideoProjectionMapping> mappings;
-    //! 创建时间。
     QDateTime createdAt;
-    //! 最近更新时间。
     QDateTime updatedAt;
 };
 

@@ -5,7 +5,7 @@
 #include <QDataStream>
 #include <QtGlobal>
 
-#include <algorithm>
+#include <QtAlgorithms>
 
 
 Timeline::Timeline(const QString &id,
@@ -84,7 +84,7 @@ void Timeline::start(qint64 masterTimeMs, qint64 startTimeMs)
         return;
 
     m_playCommands = m_commandModel->commands();
-    std::stable_sort(m_playCommands.begin(), m_playCommands.end(),
+    qSort(m_playCommands.begin(), m_playCommands.end(),
                      [](TimelineCommand *left, TimelineCommand *right) {
         return left->startTimeMs() < right->startTimeMs();
     });
@@ -125,8 +125,8 @@ void Timeline::stop()
     m_state = Stopped;
     emit stateChanged(m_state);
 
-	m_currentTimeMs = 0;
-	emit currentTimeMsChanged(m_currentTimeMs);
+    m_currentTimeMs = 0;
+    emit currentTimeMsChanged(m_currentTimeMs);
 
     for (auto cmd : m_playCommands) {
         cmd->setState(TimelineCommand::Idle);

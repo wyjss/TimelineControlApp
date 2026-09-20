@@ -77,7 +77,7 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
         // 成功
         if (success) {
             ;
-		} else {
+        } else {
             if (reply->property("timedOut").toBool()) {
                 message = "HTTP 请求超时";
             } else if (statusCode == -1) {
@@ -86,7 +86,7 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
                 message = QString("HTTP %1").arg(statusCode);
                 message += reply->readAll();
             }
-		}
+        }
         
         if (connectFailed) {
             LOG_ERROR("http连接错误，禁用2000ms" << reply->url());

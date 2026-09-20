@@ -353,8 +353,8 @@ void TimelineManager::stopPlayback(bool notifyDevices)
 {
     LOG_INFO("stopPlayback");
     notifyDevices = notifyDevices && m_clock->state() != TimelineClock::Stopped;
-	if (notifyDevices)
-		triggerSystemCommand(DeviceKey::SystemStop);
+    if (notifyDevices)
+        triggerSystemCommand(DeviceKey::SystemStop);
 
     for (Timeline *timeline : m_timelineModel->items())
         timeline->stop();
@@ -396,7 +396,7 @@ void TimelineManager::triggerSystemCommand(const QString &commandName)
     for (Device *device : m_deviceModel->items()) {
         // 被过滤的
         if (device->filteredOut()) {
-			continue;
+            continue;
         }
         
         // 无调用指令的
@@ -567,7 +567,7 @@ void TimelineManager::updateTimeline(Timeline *timeline, qint64 clockTimeMs)
     const QList<TimelineCommand *> commands = timeline->updateTime(clockTimeMs);
     for (TimelineCommand* command : commands) {
         if (m_playbackDevices.isEmpty() || m_playbackDevices.contains(command->targetDeviceId())) {
-			emit commandTriggered(timeline, command);
+            emit commandTriggered(timeline, command);
         } else {
             command->setState(TimelineCommand::Skipped);
         }

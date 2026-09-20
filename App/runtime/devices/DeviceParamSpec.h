@@ -66,8 +66,6 @@ signals:
     void patternChanged();
 
 private:
-    static QVariant normalizedValue(ValueType valueType, const QVariant &value);
-
     QVariant m_defaultValue;
     QString m_pattern;
     TimelineModel *m_timelineModel = nullptr;

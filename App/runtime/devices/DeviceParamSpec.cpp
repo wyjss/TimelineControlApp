@@ -20,14 +20,35 @@ DeviceParamSpec::DeviceParamSpec(const QString &key,
                                  QObject *parent)
     : BaseField(parent)
 {
-    const QVariant normalized = normalizedValue(valueType, value);
+    QVariant initialValue = value;
+    switch (valueType) {
+    case IntType:
+        initialValue = value.toInt();
+        break;
+    case DoubleType:
+        initialValue = value.toDouble();
+        break;
+    case StringType:
+    case SelectType:
+        initialValue = value.toString();
+        break;
+    case BoolType:
+        initialValue = value.toBool();
+        break;
+    case ColorType:
+        initialValue = value.value<QColor>();
+        break;
+    case VariantType:
+    case InvalidType:
+        break;
+    }
 
     setKey(key);
     setLabel(label);
     setValueType(valueType);
     setEditorHint(editorHint);
-    setValue(normalized);
-    setDefaultValue(normalized);
+    setValue(initialValue);
+    setDefaultValue(initialValue);
     setRequired(true);
 }
 
@@ -146,28 +167,6 @@ QString DeviceParamSpec::typeName(ValueType valueType)
     return QStringLiteral("无效");
 }
 
-QVariant DeviceParamSpec::normalizedValue(ValueType valueType, const QVariant &value)
-{
-    switch (valueType) {
-    case IntType:
-        return value.toInt();
-    case DoubleType:
-        return value.toDouble();
-    case StringType:
-    case SelectType:
-        return value.toString();
-    case BoolType:
-        return value.toBool();
-    case ColorType:
-        return value.value<QColor>();
-    case VariantType:
-    case InvalidType:
-        break;
-    }
-
-    return value;
-}
-
 DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                                TimelineModel *timelineModel)
 {
@@ -218,11 +217,11 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
     }
 
     //if (deviceKey == DeviceKey::StringTemplate) {
-	//	auto* spec = new DeviceParamSpec(deviceKey,
-	//									 QStringLiteral("字符模板"),
-	//									 "",
-	//									 StringType,
-	//									 TextEditor);
+    //	auto* spec = new DeviceParamSpec(deviceKey,
+    //									 QStringLiteral("字符模板"),
+    //									 "",
+    //									 StringType,
+    //									 TextEditor);
     //    return spec;
     //}
 
@@ -281,39 +280,39 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
-	if (deviceKey == DeviceKey::Payload) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("载荷"),
-										 QString(),
-										 StringType,
-										 TextEditor);
-		spec->setPlaceholderText(QStringLiteral(""));
-		return spec;
-	}
+    if (deviceKey == DeviceKey::Payload) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("载荷"),
+                                         QString(),
+                                         StringType,
+                                         TextEditor);
+        spec->setPlaceholderText(QStringLiteral(""));
+        return spec;
+    }
 
-	if (deviceKey == DeviceKey::PayloadType) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("载荷类型"),
-										 QString(),
+    if (deviceKey == DeviceKey::PayloadType) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("载荷类型"),
+                                         QString(),
                                          SelectType,
                                          SelectEditor);
         spec->setValue(DeviceKey::PayloadType_Text);
         spec->setDefaultValue(DeviceKey::PayloadType_Text);
         spec->setOptions({DeviceKey::PayloadType_Text, DeviceKey::PayloadType_Hex});
-		return spec;
-	}
+        return spec;
+    }
 
-	if (deviceKey == DeviceKey::VirtualScreenWidth || deviceKey == DeviceKey::VirtualScreenHeight) {
-		const bool width = deviceKey == DeviceKey::VirtualScreenWidth;
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 width ? QStringLiteral("虚拟大屏宽度") : QStringLiteral("虚拟大屏高度"),
-										 width ? 1920 : 1080,
-										 IntType,
-										 TextEditor);
-		spec->setMinimum(1);
-		spec->setMaximum(16384);
-		return spec;
-	}
+    if (deviceKey == DeviceKey::VirtualScreenWidth || deviceKey == DeviceKey::VirtualScreenHeight) {
+        const bool width = deviceKey == DeviceKey::VirtualScreenWidth;
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         width ? QStringLiteral("虚拟大屏宽度") : QStringLiteral("虚拟大屏高度"),
+                                         width ? 1920 : 1080,
+                                         IntType,
+                                         TextEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(16384);
+        return spec;
+    }
 
     if (deviceKey == DeviceKey::ScreenWidth || deviceKey == DeviceKey::ScreenHeight) {
         const bool width = deviceKey == DeviceKey::ScreenWidth;
@@ -347,211 +346,211 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                    SelectType,
                                    SelectEditor);
 
-	if (deviceKey == DeviceKey::Dmx512Bits) {
-		auto vs = QVector<qint32>(512, 0);
-		auto param = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("目标DMX512适配器"),
-										 QVariant::fromValue(vs),
-										 VariantType,
-										 CustomEditor);
-		param->setReadOnly(true);
-		return param;
-	}
+    if (deviceKey == DeviceKey::Dmx512Bits) {
+        auto vs = QVector<qint32>(512, 0);
+        auto param = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("目标DMX512适配器"),
+                                         QVariant::fromValue(vs),
+                                         VariantType,
+                                         CustomEditor);
+        param->setReadOnly(true);
+        return param;
+    }
 
-	if (deviceKey == DeviceKey::Dmx512BitStart) {
-		auto param = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("起始位"),
-										 0,
-										 IntType,
-										 AutoEditor);
-		param->setMinimum(0);
-		param->setMaximum(511);
-		param->setReadOnly(false);
-		return param;
-	}
+    if (deviceKey == DeviceKey::Dmx512BitStart) {
+        auto param = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("起始位"),
+                                         0,
+                                         IntType,
+                                         AutoEditor);
+        param->setMinimum(0);
+        param->setMaximum(511);
+        param->setReadOnly(false);
+        return param;
+    }
 
-	if (deviceKey == DeviceKey::Dmx512BitOffset) {
-		auto param = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("偏移位（相对起始）"),
-										 0,
-										 IntType,
-										 AutoEditor);
-		param->setMinimum(0);
-		param->setMaximum(511);
-		param->setReadOnly(false);
-		return param;
-	}
+    if (deviceKey == DeviceKey::Dmx512BitOffset) {
+        auto param = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("偏移位（相对起始）"),
+                                         0,
+                                         IntType,
+                                         AutoEditor);
+        param->setMinimum(0);
+        param->setMaximum(511);
+        param->setReadOnly(false);
+        return param;
+    }
 
-	if (deviceKey == DeviceKey::Dmx512BitCount) {
-		auto param = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("指令宽度"),
-										 1,
-										 IntType,
-										 AutoEditor);
-		param->setMinimum(1);
-		param->setMaximum(511);
-		param->setReadOnly(false);
-		return param;
-	}
+    if (deviceKey == DeviceKey::Dmx512BitCount) {
+        auto param = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("指令宽度"),
+                                         1,
+                                         IntType,
+                                         AutoEditor);
+        param->setMinimum(1);
+        param->setMaximum(511);
+        param->setReadOnly(false);
+        return param;
+    }
 
-	if (deviceKey == DeviceKey::Dmx512CommandBits) {
-		
-		auto param = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("指令数据"),
-										 "",
-										 StringType,
-										 TextEditor);
+    if (deviceKey == DeviceKey::Dmx512CommandBits) {
+        
+        auto param = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("指令数据"),
+                                         "",
+                                         StringType,
+                                         TextEditor);
         param->setPattern(DevicePattern::Dmx);
-		param->setReadOnly(false);
-		return param;
-	}
+        param->setReadOnly(false);
+        return param;
+    }
 
-	if (deviceKey == DeviceKey::VideoFile) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("视频文件"),
-										 "",
-										 SelectType,
-										 SelectEditor);
-		spec->setRequired(true);
-		spec->setReadOnly(false);
+    if (deviceKey == DeviceKey::VideoFile) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("视频文件"),
+                                         "",
+                                         SelectType,
+                                         SelectEditor);
+        spec->setRequired(true);
+        spec->setReadOnly(false);
         spec->setOptions(Utils::getVideoOptions());
 
-		QObject::connect(Utils::VideoOptionsMgr::getInstance(),
-						 &Utils::VideoOptionsMgr::optionsChanged,
-						 spec,
-						 &DeviceParamSpec::setOptions
-		);
-		return spec;
-	}
+        QObject::connect(Utils::VideoOptionsMgr::getInstance(),
+                         &Utils::VideoOptionsMgr::optionsChanged,
+                         spec,
+                         &DeviceParamSpec::setOptions
+        );
+        return spec;
+    }
 
-	if (deviceKey == DeviceKey::VideoTimeSec) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("视频起始时间(秒)"),
-										 "",
-										 DoubleType,
-										 AutoEditor);
-		spec->setRequired(false);
+    if (deviceKey == DeviceKey::VideoTimeSec) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("视频起始时间(秒)"),
+                                         "",
+                                         DoubleType,
+                                         AutoEditor);
+        spec->setRequired(false);
         spec->setMinimum(0);
         spec->setMaximum(60 * 60 * 6);
         spec->setValue(0);
         spec->setDefaultValue(9.5);
-		return spec;
-	}
+        return spec;
+    }
 
-	if (deviceKey == DeviceKey::VideoWindowX) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("视频窗口起点x坐标"),
-										 0,
-										 IntType,
-										 AutoEditor);
-		return spec;
-	}
-	if (deviceKey == DeviceKey::VideoWindowY) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("视频窗口起点y坐标"),
-										 0,
-										 IntType,
-										 AutoEditor);
-		return spec;
-	}
-	if (deviceKey == DeviceKey::VideoWindowW) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("视频窗口宽度"),
-										 1920,
-										 IntType,
-										 AutoEditor);
-		spec->setMinimum(1);
-		spec->setMaximum(9999);
-		return spec;
-	}
-	if (deviceKey == DeviceKey::VideoWindowH) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("视频窗口高度"),
-										 1080,
-										 IntType,
-										 AutoEditor);
-		spec->setMinimum(1);
+    if (deviceKey == DeviceKey::VideoWindowX) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("视频窗口起点x坐标"),
+                                         0,
+                                         IntType,
+                                         AutoEditor);
+        return spec;
+    }
+    if (deviceKey == DeviceKey::VideoWindowY) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("视频窗口起点y坐标"),
+                                         0,
+                                         IntType,
+                                         AutoEditor);
+        return spec;
+    }
+    if (deviceKey == DeviceKey::VideoWindowW) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("视频窗口宽度"),
+                                         1920,
+                                         IntType,
+                                         AutoEditor);
+        spec->setMinimum(1);
         spec->setMaximum(9999);
-		return spec;
-	}
+        return spec;
+    }
+    if (deviceKey == DeviceKey::VideoWindowH) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("视频窗口高度"),
+                                         1080,
+                                         IntType,
+                                         AutoEditor);
+        spec->setMinimum(1);
+        spec->setMaximum(9999);
+        return spec;
+    }
 
-	if (deviceKey == DeviceKey::VideoSrcX) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-			QStringLiteral("视频源起点x坐标"),
-			0,
-			IntType,
-			AutoEditor);
-		return spec;
-	}
-	if (deviceKey == DeviceKey::VideoSrcY) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-			QStringLiteral("视频源起点y坐标"),
-			0,
-			IntType,
-			AutoEditor);
-		return spec;
-	}
-	if (deviceKey == DeviceKey::VideoSrcW) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-			QStringLiteral("视频源宽度"),
-			0,
-			IntType,
-			AutoEditor);
-		spec->setMinimum(0);
-		spec->setMaximum(9999);
-		return spec;
-	}
-	if (deviceKey == DeviceKey::VideoSrcH) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-			QStringLiteral("视频源高度"),
-			0,
-			IntType,
-			AutoEditor);
-		spec->setMinimum(0);
-		spec->setMaximum(9999);
-		return spec;
-	}
+    if (deviceKey == DeviceKey::VideoSrcX) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+            QStringLiteral("视频源起点x坐标"),
+            0,
+            IntType,
+            AutoEditor);
+        return spec;
+    }
+    if (deviceKey == DeviceKey::VideoSrcY) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+            QStringLiteral("视频源起点y坐标"),
+            0,
+            IntType,
+            AutoEditor);
+        return spec;
+    }
+    if (deviceKey == DeviceKey::VideoSrcW) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+            QStringLiteral("视频源宽度"),
+            0,
+            IntType,
+            AutoEditor);
+        spec->setMinimum(0);
+        spec->setMaximum(9999);
+        return spec;
+    }
+    if (deviceKey == DeviceKey::VideoSrcH) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+            QStringLiteral("视频源高度"),
+            0,
+            IntType,
+            AutoEditor);
+        spec->setMinimum(0);
+        spec->setMaximum(9999);
+        return spec;
+    }
 
-	if (deviceKey == DeviceKey::Location) {
+    if (deviceKey == DeviceKey::Location) {
         QVariantMap vm;
         vm["lon"] = 0;
         vm["lat"] = 0;
 
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("坐标"),
-										 vm,
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("坐标"),
+                                         vm,
                                          VariantType,
                                          CustomEditor);
         spec->setReadOnly(true);
-		return spec;
-	}
+        return spec;
+    }
 
-	if (deviceKey == DeviceKey::Timeline) {
-		auto* spec = new DeviceParamSpec(deviceKey,
-										 QStringLiteral("时间线"),
-										 "",
+    if (deviceKey == DeviceKey::Timeline) {
+        auto* spec = new DeviceParamSpec(deviceKey,
+                                         QStringLiteral("时间线"),
+                                         "",
                                          SelectType,
                                          SelectEditor);
         spec->setRequired(true);
-		spec->m_timelineModel = timelineModel;
-		if (timelineModel) {
-			const auto func_updateTimelineOpts = [spec, timelineModel]() {
-				QVariantList options;
-				options.reserve(timelineModel->count());
-				for (int index = 0; index < timelineModel->count(); ++index) {
-					const Timeline *timeline = timelineModel->timelineAt(index);
-					if (timeline) {
-						options.append(Utils::makeOption(timeline->name(), timeline->id()));
-					}
-				}
-				spec->setOptions(options);
-			};
-			connect(timelineModel, &TimelineModel::timelinesChanged,
-					spec, func_updateTimelineOpts);
-			func_updateTimelineOpts();
-		}
-		return spec;
-	}
+        spec->m_timelineModel = timelineModel;
+        if (timelineModel) {
+            const auto func_updateTimelineOpts = [spec, timelineModel]() {
+                QVariantList options;
+                options.reserve(timelineModel->count());
+                for (int index = 0; index < timelineModel->count(); ++index) {
+                    const Timeline *timeline = timelineModel->timelineAt(index);
+                    if (timeline) {
+                        options.append(Utils::makeOption(timeline->name(), timeline->id()));
+                    }
+                }
+                spec->setOptions(options);
+            };
+            connect(timelineModel, &TimelineModel::timelinesChanged,
+                    spec, func_updateTimelineOpts);
+            func_updateTimelineOpts();
+        }
+        return spec;
+    }
 
     return nullptr;
 }

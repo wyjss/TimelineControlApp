@@ -158,15 +158,15 @@ DeviceTemplate *DeviceTemplateModel::createDefaultDeviceTemplateSerial()
 
 DeviceTemplate* DeviceTemplateModel::createDefaultDeviceTemplateUdp()
 {
-	const QList<DeviceParamSpec*> specs{
-		DeviceParamSpec::createForKey(DeviceKey::Port),
-	};
+    const QList<DeviceParamSpec*> specs{
+        DeviceParamSpec::createForKey(DeviceKey::Port),
+    };
 
-	return makeDeviceTemplate(tr("UDP协议"),
-							  QString(),
-							  QStringList{DeviceProtocol::Udp},
-							  tr("UDP协议设备"),
-							  specs);
+    return makeDeviceTemplate(tr("UDP协议"),
+                              QString(),
+                              QStringList{DeviceProtocol::Udp},
+                              tr("UDP协议设备"),
+                              specs);
 }
 
 DeviceTemplate *DeviceTemplateModel::makeDeviceTemplate(const QString &name,
