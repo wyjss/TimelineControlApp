@@ -27,6 +27,12 @@ endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(Dependencies)
 
+
+set(RAGIS_ROOT "D:/Program/RA/RAGis2" CACHE PATH "RAGis2 root directory")
+set(RAGIS_DEPENDENCY_DIR "D:/Program/third_party/all" CACHE PATH "RAGis2 dependency directory")
+set(RAGIS_SOURCE_DIR "${RAGIS_ROOT}/src/RAGis2")
+set(RAGIS_OUTPUT_DIR "${RAGIS_ROOT}/build/output")
+
 add_subdirectory(UICore_new)
 add_subdirectory(LocatorViewer)
 add_subdirectory(App)

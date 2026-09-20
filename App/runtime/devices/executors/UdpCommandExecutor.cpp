@@ -3,6 +3,8 @@
 #include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
 
+#include "runtime/utils.h"
+
 #define LC "[UdpCommandExecutor] "
 #include "LogMacros.h"
 #include <QUdpSocket>
@@ -22,13 +24,22 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
                                      DeviceCommand *command,
                                      const QVariantMap &params)
 {
-    const QString path = params.value(DeviceKey::Payload).toString();
-    if (m_ip.isEmpty() || path.isEmpty()) {
+    const QString payload = params.value(DeviceKey::Payload).toString();
+    if (m_ip.isEmpty() || payload.isEmpty()) {
         emit executionFinished(executionId, command, false, tr("HTTP 地址或路径为空"));
         return;
     }
 
-    auto data = path.toUtf8();
+    QByteArray data;
+    if (params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex) {
+        if (!Utils::toHexData(payload, &data)) {
+			emit executionFinished(executionId, command, false, tr("无效的hex数据"));
+			return;
+        }
+    } else {
+        data = payload.toUtf8();
+    }
+    
     QUdpSocket sock;
     auto size = sock.writeDatagram(data, QHostAddress(m_ip), m_port);
     LOG_DEBUG("send udp order: " << data);

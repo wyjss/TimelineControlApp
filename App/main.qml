@@ -3,6 +3,7 @@ import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Dialogs 1.3
 import QtQuick.Layouts 1.14
+import QtQuick.Window 2.14
 import "qrc:/UICore/qml" as Ui
 import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/components/shell" as Shell
@@ -109,6 +110,12 @@ ApplicationWindow {
     onClosing: {
         close.accepted = timelineStopped && closeConfirmed
         closeConfirmed = false
+
+        if (window.visibility === Window.Minimized)
+             window.showNormal()
+        window.raise()
+        window.requestActivate()
+
         if (!close.accepted && !exitConfirmDialog.visible)
             exitConfirmDialog.open()
     }
@@ -627,6 +634,8 @@ ApplicationWindow {
             - height - shell.overlayMargin)
         property real monitorX: NaN
         property real monitorY: NaN
+        property real monitorWidth: NaN
+        property real monitorHeight: NaN
 
         x: managementMode
             ? shell.leftContentInset
@@ -638,10 +647,14 @@ ApplicationWindow {
                                              monitorMaxY))
         width: managementMode
             ? hostWidth
-            : Math.min(520, Math.max(320, hostWidth * 0.42))
+            : Math.min(Math.max(0, hostWidth - shell.overlayMargin * 2),
+                       Math.max(320, isNaN(monitorWidth)
+                           ? Math.min(520, hostWidth * 0.42) : monitorWidth))
         height: managementMode
             ? hostHeight
-            : Math.min(360, Math.max(240, hostHeight * 0.45))
+            : Math.min(Math.max(0, hostHeight - shell.overlayMargin * 2),
+                       Math.max(240, isNaN(monitorHeight)
+                           ? Math.min(360, hostHeight * 0.45) : monitorHeight))
         visible: managementMode || window.locatorMonitorOpen
         z: 10
         sizeToContent: false
@@ -732,6 +745,70 @@ ApplicationWindow {
             managementMode: locatorViewerHost.managementMode && window.timelineStopped
             deviceModel: window.appRuntime ? window.appRuntime.deviceModel : null
             fenceManager: window.appRuntime ? window.appRuntime.fenceManager : null
+        }
+
+        Repeater {
+            model: 2
+
+            MouseArea {
+                id: resizeHandle
+
+                readonly property bool leftEdge: index === 0
+                anchors.left: leftEdge ? parent.left : undefined
+                anchors.right: leftEdge ? undefined : parent.right
+                anchors.bottom: parent.bottom
+                width: 24
+                height: 24
+                visible: !locatorViewerHost.managementMode
+                z: 1
+                hoverEnabled: true
+                cursorShape: leftEdge ? Qt.SizeBDiagCursor : Qt.SizeFDiagCursor
+                acceptedButtons: Qt.LeftButton
+                preventStealing: true
+
+                property real pressWindowX: 0
+                property real pressWindowY: 0
+                property real pressHostX: 0
+                property real pressWidth: 0
+                property real pressHeight: 0
+
+                onPressed: {
+                    var point = mapToItem(window.contentItem, mouse.x, mouse.y)
+                    pressWindowX = point.x
+                    pressWindowY = point.y
+                    pressHostX = locatorViewerHost.x
+                    pressWidth = locatorViewerHost.width
+                    pressHeight = locatorViewerHost.height
+                    locatorViewerHost.monitorX = pressHostX
+                    locatorViewerHost.monitorY = locatorViewerHost.y
+                }
+                onPositionChanged: {
+                    if (!pressed)
+                        return
+                    var point = mapToItem(window.contentItem, mouse.x, mouse.y)
+                    locatorViewerHost.monitorWidth = Math.min(
+                        Math.max(0, leftEdge
+                            ? pressHostX + pressWidth - locatorViewerHost.monitorMinX
+                            : shell.width - pressHostX - shell.overlayMargin),
+                        Math.max(320, pressWidth + (leftEdge ? -1 : 1) * (point.x - pressWindowX)))
+                    if (leftEdge)
+                        locatorViewerHost.monitorX = pressHostX + pressWidth - locatorViewerHost.width
+                    locatorViewerHost.monitorHeight = Math.min(
+                        Math.max(0, shell.height - (shell.showBottomBar ? shell.bottomBarHeight : 0)
+                            - locatorViewerHost.y - shell.overlayMargin),
+                        Math.max(240, pressHeight + point.y - pressWindowY))
+                }
+
+                Text {
+                    anchors.left: resizeHandle.leftEdge ? parent.left : undefined
+                    anchors.right: resizeHandle.leftEdge ? undefined : parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: 4
+                    text: resizeHandle.leftEdge ? "◣" : "◢"
+                    font.pixelSize: 12
+                    color: window.appTheme.colors.border
+                }
+            }
         }
     }
 

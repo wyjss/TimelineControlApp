@@ -14,12 +14,14 @@
 #include <QJsonObject>
 #include <QThread>
 #include <QTcpSocket>
+#include <QNetworkProxy>
 #include <QDateTime>
 #include <QTimer>
 #include <QVector3D>
 #include <QFile>
 #include <QDir>
 #include <QDateTime>
+#include <QRegularExpression>
 
 namespace {
 
@@ -137,6 +139,7 @@ void LocationRecver::addLocator(QObject* handle, const QString& name, const QStr
 	}
 
 	QTcpSocket* sock = new QTcpSocket;
+	sock->setProxy(QNetworkProxy::NoProxy);
 	connect(sock, &QTcpSocket::readyRead, this, &LocationRecver::readData);
 	connect(sock, &QTcpSocket::stateChanged, this, [name, sock](QTcpSocket::SocketState state) {
 		LOG_DEBUG("locator state changed " << name << state);
@@ -170,56 +173,61 @@ void LocationRecver::removeLocator(QObject* handle)
 void LocationRecver::readData() 
 {
 	auto sock = dynamic_cast<QTcpSocket*>(sender());
+	auto handle = mapSock2Handle(sock);
+	auto& buffer = m_map[handle].buffer;
 	auto size = sock->bytesAvailable();
-	QByteArray data;
 	while (size) {
-		data = sock->read(size);
+		 buffer += sock->read(size);
 		size = sock->bytesAvailable();
 	}
 	
-	if (data.isEmpty()) {
+	if (buffer.isEmpty()) {
 		return;
 	}
-	//LOG_ERROR(data);
-	auto i = data.lastIndexOf("$");
-	if (i == -1) {
-		return;
-	}
-	data = data.mid(i);
 
-	auto handle = mapSock2Handle(sock);
 	m_map[handle].online = true;
 	m_map[handle].lastTouch = QDateTime::currentMSecsSinceEpoch();
 
-	double lon = -1, lat = -1, heading = -1;
-	if (parseNMEA0186(data, lon, lat, heading)) {
+	
+	bool lonLatDirty = false;
+
+	static const QByteArray SY = "\r\n";
+	int iii = buffer.indexOf(SY);
+	while (iii != -1) {
+
+		auto pkt = buffer.left(iii);
+		buffer.remove(0, iii + SY.size());
+		iii = buffer.indexOf(SY);
+
+		double lon = -1, lat = -1, heading = -1;
+		if (parseNMEA0186(pkt, lon, lat, heading)) {
 #if 0 // 过滤微小变动
-		QVector3D dx((m_map[handle].lon - lon) * 1e7,
-					 (m_map[handle].lat - lat) * 1e7, 
-					 0);
-		if (dx.length() < 10) {
-			LOG_DEBUG("过滤");
-			return;
-		}
+			QVector3D dx((m_map[handle].lon - lon) * 1e7,
+				(m_map[handle].lat - lat) * 1e7,
+				0);
+			if (dx.length() < 10) {
+				LOG_DEBUG("过滤");
+				return;
+			}
 #endif
-		bool lonLatDirty = false;
-		if (lon != -1) {
-			lonLatDirty = true;
-			m_map[handle].lon = lon;
-		}
-		if (lat != -1) {
-			lonLatDirty = true;
-			m_map[handle].lat = lat;
-		}
-		if (heading != -1) {
-			m_map[handle].heading = heading;
-		}
-		
-		// 分为两个协议，只在位置变化时再通知
-		if (lonLatDirty) {
-			heading = m_map[handle].heading;
-			emit locationChanged(m_map[handle].ip, lon, lat, heading, true);
-		}
+
+			if (lon != -1) {
+				lonLatDirty = true;
+				m_map[handle].lon = lon;
+			}
+			if (lat != -1) {
+				lonLatDirty = true;
+				m_map[handle].lat = lat;
+			}
+			if (heading != -1) {
+				m_map[handle].heading = heading;
+			}
+}
+	}
+
+	// 分为两个协议，只在位置变化时再通知
+	if (lonLatDirty) {
+		emit locationChanged(m_map[handle].ip, m_map[handle].lon, m_map[handle].lat, m_map[handle].heading, true);
 	}
 }
 
@@ -300,9 +308,10 @@ void* LocationRecver::mapSock2Handle(QTcpSocket* sock)
 
 bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat, double& heading)
 {
+	
 	LOG_DEBUG("parse:" << nmea);
-	if (!nmea.startsWith('$'))
-		return false;
+// 	if (!nmea.startsWith('$'))
+// 		return false;
 	
 
 	const QStringList fields = nmea.split(',');
@@ -318,7 +327,7 @@ bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat
 		iLat = 3;
 		// 仅使用HEADING获取朝向
 		//iHeading = 8;
-	} else if (fields[0].endsWith("HEADING")) {
+	} else if (fields[0].endsWith("HEADINGA")) {
 		iHeading = 12;
 	} else {
 		LOG_ERROR("不支持的协议" << fields[0]);
@@ -366,6 +375,8 @@ bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat
 		tempHeading = fields[iHeading].toDouble(&ok);
 		if (ok) {
 			heading = tempHeading;
+			// @todo 测试结果0度朝向正东，手动+90
+			heading += 90;
 		}
 	}
 	
@@ -386,6 +397,7 @@ bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat
 			.arg(QString::number(heading, 'g', 10)).toLatin1();
 		m_recordFile->write(str);
 		m_recordFile->write("\n");
+		m_recordFile->flush();
 	}
 #endif
 	return true;

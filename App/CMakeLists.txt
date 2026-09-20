@@ -71,6 +71,7 @@ endif()
 set_target_properties(TimelineControlApp PROPERTIES
     VS_DEBUGGER_ENVIRONMENT "PATH=\
 D:/Program/third_party/ffmpeg/bin;\
+D:/Program/third_party/all/bin;\
 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE};\
 ${RAGIS_OUTPUT_DIR};\
 $<TARGET_FILE_DIR:Qt5::Core>;"
@@ -83,16 +84,16 @@ file(GLOB RAGIS_RUNTIME_DLLS
     "${RAGIS_ROOT}/build/output/RAGis2.pdb"
     "${RAGIS_DEPENDENCY_DIR}/bin/*.dll"
 )
-if(false)
-    add_custom_command(TARGET TimelineControlApp POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${RAGIS_RUNTIME_DLLS}
-            $<TARGET_FILE_DIR:TimelineControlApp>
-    )
-else()
-    add_custom_command(TARGET TimelineControlApp POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${RAGIS_RUNTIME_DLLS}
-            $<TARGET_FILE_DIR:TimelineControlApp>
-    )
-endif()
+#if(false)
+#    add_custom_command(TARGET TimelineControlApp POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#            ${RAGIS_RUNTIME_DLLS}
+#            $<TARGET_FILE_DIR:TimelineControlApp>
+#    )
+#else()
+#    add_custom_command(TARGET TimelineControlApp POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy
+#            ${RAGIS_RUNTIME_DLLS}
+#            $<TARGET_FILE_DIR:TimelineControlApp>
+#    )
+#endif()

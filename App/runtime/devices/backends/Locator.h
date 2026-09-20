@@ -50,6 +50,7 @@ private:
 		double heading = 0;
 
 		QTcpSocket* sock = nullptr;
+		QByteArray buffer;
 	};
 	QMap<void*, Data> m_map;
 

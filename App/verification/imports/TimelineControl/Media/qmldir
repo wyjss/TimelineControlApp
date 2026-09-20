@@ -1,0 +1,2 @@
+module TimelineControl.Media
+FfmpegVideoFrameItem 1.0 FfmpegVideoFrameItem.qml
