@@ -2,6 +2,7 @@ import QtQuick 2.14
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
 import LocatorViewer 1.0
+import "qrc:/UICore/qml/components/base" as Base
 import "location"
 
 Item {
@@ -14,7 +15,7 @@ Item {
     property var displayedFenceHandles: []
     property string currentFenceHandle: ""
     property string pendingFenceHandle: ""
-    property string pendingFenceName: ""
+    property var pendingFenceCoordinates: null
 
     function refreshTargets() {
         targetItems = deviceModel
@@ -45,8 +46,6 @@ Item {
 
     function createFence() {
         pendingFenceHandle = "fence." + Date.now()
-        pendingFenceName = qsTr("栅栏 %1").arg((fenceManager ? fenceManager.fences.length : 0) + 1)
-        pendingFenceHandle = pendingFenceName
         viewer.startLineDrawing(pendingFenceHandle)
     }
 
@@ -59,16 +58,15 @@ Item {
             if (!finished || !root.fenceManager || name !== root.pendingFenceHandle)
                 return
 
-            var fenceName = root.pendingFenceName
-            root.pendingFenceHandle = ""
-            root.pendingFenceName = ""
-            root.fenceManager.upsertFence(name,
-                                          fenceName,
-                                          startLongitude,
-                                          startLatitude,
-                                          endLongitude,
-                                          endLatitude)
-            root.currentFenceHandle = name
+            root.pendingFenceCoordinates = {
+                startLongitude: startLongitude,
+                startLatitude: startLatitude,
+                endLongitude: endLongitude,
+                endLatitude: endLatitude
+            }
+            fenceNameField.text = ""
+            fenceNameDialog.errorText = ""
+            fenceNameDialog.open()
         }
     }
 
@@ -158,6 +156,80 @@ Item {
                             root.fenceManager.removeFence(handle)
                     }
                 }
+            }
+        }
+    }
+
+    Base.AppDialog {
+        id: fenceNameDialog
+
+        property string errorText: ""
+
+        parent: root
+        width: Math.min(420, parent.width - 32)
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        title: qsTr("栅栏名称")
+        message: errorText
+        rejectText: qsTr("取消")
+        acceptText: qsTr("保存")
+        acceptEnabled: root.fenceManager && fenceNameField.text.trim().length > 0
+        initialFocusItem: fenceNameField
+        closeOnAccepted: false
+        onAccepted: {
+            if (!acceptEnabled)
+                return
+
+            var fenceName = fenceNameField.text.trim()
+            var fences = root.fenceManager.fences
+            for (var index = 0; index < fences.length; ++index) {
+                if (String(fences[index].handle) === fenceName
+                        || String(fences[index].name).trim() === fenceName) {
+                    errorText = qsTr("栅栏名称已存在，请输入其他名称")
+                    return
+                }
+            }
+            var devices = root.deviceModel ? root.deviceModel.devices : []
+            for (var deviceIndex = 0; deviceIndex < devices.length; ++deviceIndex) {
+                if (String(devices[deviceIndex].deviceType).trim() === qsTr("定位器")
+                        && String(devices[deviceIndex].name) === fenceName) {
+                    errorText = qsTr("名称与定位器重复，请输入其他名称")
+                    return
+                }
+            }
+
+            var coordinates = root.pendingFenceCoordinates
+            if (!root.fenceManager.upsertFence(fenceName,
+                                               fenceName,
+                                               coordinates.startLongitude,
+                                               coordinates.startLatitude,
+                                               coordinates.endLongitude,
+                                               coordinates.endLatitude)) {
+                errorText = qsTr("栅栏保存失败，请重试")
+                return
+            }
+            if (root.pendingFenceHandle !== fenceName)
+                viewer.removeObject(root.pendingFenceHandle)
+            root.pendingFenceHandle = ""
+            root.currentFenceHandle = fenceName
+            close()
+        }
+        onClosed: {
+            if (root.pendingFenceHandle.length > 0)
+                viewer.removeObject(root.pendingFenceHandle)
+            root.pendingFenceHandle = ""
+            root.pendingFenceCoordinates = null
+        }
+
+        Base.AppTextField {
+            id: fenceNameField
+
+            Layout.fillWidth: true
+            placeholderText: qsTr("请输入栅栏名称")
+            onTextChanged: fenceNameDialog.errorText = ""
+            onAccepted: {
+                if (fenceNameDialog.acceptEnabled)
+                    fenceNameDialog.accepted()
             }
         }
     }

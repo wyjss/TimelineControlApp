@@ -239,7 +239,9 @@ bool TimelineManager::waitForTrigger(const QString &id)
 bool TimelineManager::triggerTimeline(const QString &id)
 {
     Timeline *timeline = timelineById(id);
-    if (!timeline || timeline->state() != Timeline::Waiting)
+
+   // if (!timeline || timeline->state() != Timeline::Waiting)
+    if (!timeline || timeline->state() == Timeline::Running)
         return false;
 
     return startTimeline(id);

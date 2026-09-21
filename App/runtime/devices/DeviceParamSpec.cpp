@@ -525,6 +525,17 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
+	if (deviceKey == DeviceKey::LocationTrigger) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+			QStringLiteral("是否启用触发"),
+			true,
+			SelectType,
+			SelectEditor);
+		spec->setReadOnly(false);
+        spec->setOptions({"true", "false"});
+		return spec;
+	}
+
     if (deviceKey == DeviceKey::Timeline) {
         auto* spec = new DeviceParamSpec(deviceKey,
                                          QStringLiteral("时间线"),

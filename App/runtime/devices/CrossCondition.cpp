@@ -3,6 +3,8 @@
 #include "devices/Device.h"
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceModel.h"
+#include "devices/DeviceParamSpec.h"
+
 #include "location/FenceManager.h"
 #include "runtime/TimelineRuntime.h"
 #include "timeline/Timeline.h"
@@ -219,10 +221,16 @@ void CrossCondition::bindLocator()
 
 	m_locatorDevice = device;
 	connect(device, &Device::paramChanged, this,
-			[this](const QString& key, const QVariant& value) {
+			[device, this](const QString& key, const QVariant& value) {
 		if (key != DeviceKey::Location || !m_locatorDevice || !m_locatorDevice->isOnline()) {
 			if (key == DeviceKey::Location)
 				resetTracking();
+			return;
+		}
+
+		// 开关判断
+		if (device->getParam(DeviceKey::LocationTrigger)->value().toBool() == false) {
+			LOG_DEBUG("此定位器关闭了触发功能，跳过");
 			return;
 		}
 

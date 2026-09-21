@@ -167,7 +167,7 @@ LocatorViewer::LocatorViewer(QObject* parent)
 	// 安康
 	ragis::Viewpoint vp = {{109.0, 32.7, 0.0}, {0, -90, 4000}};
 	// 成都
-	vp = {{104.091615374, 30.5949669721, 0.00300980731845}, {-5.25193385626e-06, -89.8999999023, 1493.23007819}};
+	//vp = {{104.091615374, 30.5949669721, 0.00300980731845}, {-5.25193385626e-06, -89.8999999023, 1493.23007819}};
 	earth->getViewpoint()->setHomeViewpoint(vp);
 	earth->getViewpoint()->setViewpoint(vp);
 	earth->startRender();
@@ -187,6 +187,7 @@ bool LocatorViewer::updateTarget(const QString& name,
                                  double latitude,
                                  double heading,
                                  bool online,
+                                 bool trigger,
                                  const QString& imageUrl)
 {
     if (name.isEmpty() || imageUrl.isEmpty())
@@ -203,11 +204,11 @@ bool LocatorViewer::updateTarget(const QString& name,
         vp.eye.x = longitude;
         vp.eye.y = latitude;
         vp.eye.z = 0;
-        vp.hpd = {0, -90, 100};
+        vp.hpd = {0, -90, 1000};
         RagEarth::getViewpointIns()->setHomeViewpoint(vp);
     }
     auto entity = earth->getEntity(name, true);
-    entity->setMaxPoseCount(5000);
+    entity->setMaxPoseCount(600);
 
     entity->get<ragis::RagHisTrack>("", true)->setColor(Qt::red);
     entity->get<ragis::RagHisTrack>("", true)->setType(Track_Line);
@@ -223,8 +224,8 @@ bool LocatorViewer::updateTarget(const QString& name,
     if (s_f_world == CguVec3{0, 0, 0}) {
         s_f_world = curWorld;
     }
-    LOG_INFO("移动距离： " << (curWorld - s_world).GetMod() 
-    <<"，原点距离：" << (curWorld - s_f_world).GetMod());
+	//LOG_INFO("移动距离： " << (curWorld - s_world).GetMod() 
+	//<<"，原点距离：" << (curWorld - s_f_world).GetMod());
 
     s_world = curWorld;
 
@@ -238,15 +239,31 @@ bool LocatorViewer::updateTarget(const QString& name,
     image->detachAll();
     image->attachView(view);
 
+	QColor lineColor = online ? Qt::green : Qt::red;
+	if (trigger == false) {
+		lineColor = Qt::darkGray;
+	}
+	QColor fillColor = lineColor;
+	
+	fillColor.setAlphaF(0.1);
+	QColor textColor = trigger ? Qt::white : Qt::white;
+
     auto label = entity->get<ragis::RagLabel>(QString(), true);
     DocumentLayout layout;
-    layout.rows.resize(2);
-    layout.rows[0].fields.resize(2);
-
+    layout.rows[0].fields[0].color = textColor;
+    layout.rows[0].fields[0].outlineColor = Qt::black;
+    layout.rows[0].fields[0].size = 24;
     label->setLayout(layout);
-    label->setText(0, name);
-	label->setText(1, online ? "${绿点.png}" : "${红点.png}");
-    label->setText(2, QString("朝向:%1").arg(int(heading)));
+
+   
+    label->setFillColor(fillColor);
+    label->setLineColor(lineColor);
+    label->setText(0, QString("%1\n朝向：%2\n在线：%3\n开关：%4")
+    .arg(name)
+    .arg(int(heading))
+    .arg(online ? "是" : "否")
+    .arg(trigger ? "是" : "否")
+    );
 
     return true;
 }
@@ -280,7 +297,7 @@ bool LocatorViewer::drawLine(const QString& name,
 {
     if (name.isEmpty())
         return false;
-    LOG_DEBUG((startLongitude + endLongitude) / 2 << (startLatitude + endLatitude) / 2);
+    //LOG_DEBUG((startLongitude + endLongitude) / 2 << (startLatitude + endLatitude) / 2);
     auto earth = ragis::RagEarth::getInstance();
     auto view = earth->getView2D();
     if (!view)

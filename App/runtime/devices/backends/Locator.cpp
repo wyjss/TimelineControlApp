@@ -36,15 +36,18 @@ QList<DeviceCommand *> createLocatorCommands(TimelineModel *timelineModel)
 
 } // namespace
 
-LocatorDeviceTemplate::LocatorDeviceTemplate(TimelineModel *timelineModel,
-	                                         QObject* parent)
-	: DeviceTemplate("定位器", 
-					 DeviceType::Locator, 
-					 {DeviceProtocol::Internal},
-					 "自动接收/更新动态gps数据",
-					 {DeviceParamSpec::createForKey(DeviceKey::Location)},
-					 createLocatorCommands(timelineModel),
-					 parent)
+LocatorDeviceTemplate::LocatorDeviceTemplate(TimelineModel* timelineModel,
+	QObject* parent)
+	: DeviceTemplate("定位器",
+		DeviceType::Locator,
+		{ DeviceProtocol::Internal },
+		"自动接收/更新动态gps数据",
+		{
+DeviceParamSpec::createForKey(DeviceKey::Location),
+DeviceParamSpec::createForKey(DeviceKey::LocationTrigger)
+		},
+		createLocatorCommands(timelineModel),
+		parent)
 {
 	// 绑定
 	connect(TimelineRuntime::getInstance()->deviceModel(),
@@ -79,17 +82,35 @@ Device* LocatorDeviceTemplate::createDevice(
 										  vm);
 					device->setOnline(online);
 
-					LocatorViewer::getInstance()->updateTarget(
-						device->name(),
-						lon,
-						lat,
-						heading,
-						online
-					);
+					//LocatorViewer::getInstance()->updateTarget(
+					//	device->name(),
+					//	lon,
+					//	lat,
+					//	heading,
+					//	online,
+					//	device->getParam(DeviceKey::LocationTrigger)->value().toBool()
+					//);
 				}
 			});
 
-	
+	connect(device, &Device::paramChanged, device, [device](const QString & k, const QVariant & v) {
+		if (k == DeviceKey::Location ||
+			k == DeviceKey::LocationTrigger
+			) {
+			auto vm = device->getParam(DeviceKey::Location)->value().toMap();
+			bool online = device->isOnline();
+			bool triggerState = device->getParam(DeviceKey::LocationTrigger)->value().toBool();
+
+			LocatorViewer::getInstance()->updateTarget(
+				device->name(),
+				vm["lon"].toDouble(),
+				vm["lat"].toDouble(),
+				vm["heading"].toDouble(),
+				online,
+				triggerState
+			);
+		}
+		});
 	return device;
 }
 
@@ -141,9 +162,9 @@ void LocationRecver::addLocator(QObject* handle, const QString& name, const QStr
 	QTcpSocket* sock = new QTcpSocket;
 	sock->setProxy(QNetworkProxy::NoProxy);
 	connect(sock, &QTcpSocket::readyRead, this, &LocationRecver::readData);
-	connect(sock, &QTcpSocket::stateChanged, this, [name, sock](QTcpSocket::SocketState state) {
-		LOG_DEBUG("locator state changed " << name << state);
-			});
+	//connect(sock, &QTcpSocket::stateChanged, this, [name, sock](QTcpSocket::SocketState state) {
+	//	LOG_DEBUG("locator state changed " << name << state);
+	//		});
 
 	Data d;
 	d.name = name;
@@ -236,13 +257,13 @@ void LocationRecver::checkStatus()
 
 	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
 		auto sock = itr->sock;
-#if 1
+#if 0
 		if (
 			sock->state() != QTcpSocket::ConnectedState &&
 			sock->state() != QTcpSocket::ConnectingState
 			) {
 			sock->connectToHost(QHostAddress(itr->ip), 1121);
-			LOG_DEBUG("reconnect ti host " << itr->ip);
+			//LOG_DEBUG("reconnect ti host " << itr->ip);
 		}
 
 		// 5s无数据判定离线
@@ -252,10 +273,10 @@ void LocationRecver::checkStatus()
 #else// debug，暂时保留
 
 		static int s_i = 0;
-		++s_i;
-		if (s_i > 6) {
-			return;
-		}
+// 		++s_i;
+// 		if (s_i > 6) {
+// 			return;
+// 		}
 		//bool online = rand() % 2 == 0;
 		bool online = true;
 		double lon = 109.022 + rand() % 1000 / 1000'000.0;

@@ -90,6 +90,8 @@ namespace DeviceKey {
 
 	// 定位器坐标，VMap["lon" "lat"]
 	inline const QString Location = "location";
+	// 定位器触发功能开关，某些船只手动触发
+	inline const QString LocationTrigger = "locationTrigger";
 
 	// 时间线选择
 	inline const QString Timeline = "timeline";

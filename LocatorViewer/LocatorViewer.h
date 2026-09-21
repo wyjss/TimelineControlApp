@@ -22,16 +22,17 @@ public:
     ~LocatorViewer() override;
 
     static void initialize();
-    static void quit();
+	static void quit();
 
-    //! 新增或更新二维图片目标，heading 单位为度
-    Q_INVOKABLE bool updateTarget(const QString& name,
-                                  double longitude,
-                                  double latitude,
-                                  double heading,
-                                  bool online = true,
-                                  const QString& imageUrl = "船.png");
-    Q_INVOKABLE void removeTarget(const QString& name);
+	//! 新增或更新二维图片目标，heading 单位为度
+	Q_INVOKABLE bool updateTarget(const QString& name,
+		double longitude,
+		double latitude,
+		double heading,
+		bool online = true,
+		bool trigger = true,
+		const QString& imageUrl = "船.png");
+	Q_INVOKABLE void removeTarget(const QString& name);
 
     //! 通过两端经纬度新增或更新二维线段
     Q_INVOKABLE bool updateLine(const QString& name,

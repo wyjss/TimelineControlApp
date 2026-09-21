@@ -38,7 +38,9 @@ Item {
     readonly property bool stopped: !timelineManager || timelineManager.playbackState === 0
     readonly property bool queued: timelineManager && timelineManager.playQueue
         ? timelineManager.playQueue.indexOf(timelineId) >= 0 : false
+    //为了支持重复触发，除了running都是waiting
     readonly property bool waiting: timeline && timeline.state === 1
+    //readonly property bool waiting: !running
     readonly property bool running: timeline && timeline.state === 2
     readonly property bool completed: timeline && timeline.state === 3
     readonly property int realDurationMs: commandModel
@@ -381,7 +383,9 @@ Item {
                         id: timelineMenu
 
                         MenuItem {
-                            visible: root.waiting
+                            //为了支持重复触发，非running都可以点击
+                            //visible: root.waiting
+                            visible: !root.running
                             height: visible ? implicitHeight : 0
                             text: qsTr("立即触发")
                             onTriggered: root.timelineManager.triggerTimeline(root.timelineId)
