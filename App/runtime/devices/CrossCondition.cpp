@@ -16,6 +16,7 @@
 #include <QDataStream>
 #include <QtMath>
 #include <QVariantMap>
+#include <QVector3D>
 
 #include <cmath>
 
@@ -39,8 +40,11 @@ CrossCondition::CrossCondition(const QString& id,
 	, m_timeline(timeline)
 	, m_sourceTimeline(sourceTimeline)
 {
+	// 
 	double value = std::fmod(heading, 360.0);
 	m_heading = value < 0 ? value + 360.0 : value;
+
+	//
 	TimelineRuntime* runtime = TimelineRuntime::getInstance();
 	if (runtime) {
 		m_deviceModel = runtime->deviceModel();
@@ -295,40 +299,14 @@ void CrossCondition::updateLocation(double longitude,
 			}
 		}
 	}
+	bool crossed = testCross(
+		fenceData["startLongitude"].toDouble(), fenceData["startLatitude"].toDouble(),
+		fenceData["endLongitude"].toDouble(), fenceData["endLatitude"].toDouble(),
+		m_previousLongitude, m_previousLatitude,
+		longitude, latitude,
+		heading
+	);
 
-	const double middleLatitude = (m_previousLatitude + latitude) / 2.0;
-	const double longitudeScale = qCos(qDegreesToRadians(middleLatitude));
-	const double previousX = m_previousLongitude * longitudeScale;
-	const double previousY = m_previousLatitude;
-	const double currentX = longitude * longitudeScale;
-	const double currentY = latitude;
-	const double fenceStartX = fenceData.value(QStringLiteral("startLongitude")).toDouble() * longitudeScale;
-	const double fenceStartY = fenceData.value(QStringLiteral("startLatitude")).toDouble();
-	const double fenceEndX = fenceData.value(QStringLiteral("endLongitude")).toDouble() * longitudeScale;
-	const double fenceEndY = fenceData.value(QStringLiteral("endLatitude")).toDouble();
-	const double moveX = currentX - previousX;
-	const double moveY = currentY - previousY;
-	const double fenceX = fenceEndX - fenceStartX;
-	const double fenceY = fenceEndY - fenceStartY;
-	const double denominator = moveX * fenceY - moveY * fenceX;
-
-	bool crossed = !fenceData.isEmpty() && !qFuzzyIsNull(longitudeScale)
-		&& !qFuzzyIsNull(denominator);
-	if (crossed) {
-		const double offsetX = fenceStartX - previousX;
-		const double offsetY = fenceStartY - previousY;
-		const double moveRatio = (offsetX * fenceY - offsetY * fenceX) / denominator;
-		const double fenceRatio = (offsetX * moveY - offsetY * moveX) / denominator;
-		crossed = moveRatio > 0.0 && moveRatio <= 1.0
-			&& fenceRatio >= 0.0 && fenceRatio <= 1.0;
-	}
-
-	double normalizedHeading = std::fmod(heading, 360.0);
-	if (normalizedHeading < 0)
-		normalizedHeading += 360.0;
-	double headingDifference = qAbs(normalizedHeading - m_heading);
-	headingDifference = qMin(headingDifference, 360.0 - headingDifference);
-	crossed = crossed && headingDifference <= kHeadingTolerance;
 	m_previousLongitude = longitude;
 	m_previousLatitude = latitude;
 
@@ -341,12 +319,12 @@ void CrossCondition::updateLocation(double longitude,
 		setActive(false);
 		return;
 	}
-	
-
 #endif
 
-	if (!crossed)
+	if (!crossed) {
 		return;
+	}
+
 	LOG_INFO("栅栏正常触发！！！"   << this->locator() << this->fence());
 	setTouched(true);
 	if (m_timelineManager)
@@ -374,4 +352,44 @@ void CrossCondition::setTouched(bool touched)
 
 	m_touched = touched;
 	emit touchedChanged();
+}
+
+bool CrossCondition::testCross(double fenceStartX, double fenceStartY,
+							   double fenceEndX, double fenceEndY,
+							   double lineStartX, double lineStartY,
+							   double lineEndX, double lineEndY,
+							   double heading) const
+{
+	// double精度经纬->float精度xy
+	// 以lineStart为原点
+#define _D_2_F(__DV, __Ori) static_cast<float>((__DV - __Ori) * 10000000.0)
+	
+	const double _ORI_X = lineStartX;
+	const double _ORI_Y = lineStartY;
+
+	QVector3D fenceStart = { _D_2_F(fenceStartX, _ORI_X), _D_2_F(fenceStartY, _ORI_Y), 0 };
+	QVector3D fenceEnd = { _D_2_F(fenceEndX, _ORI_X), _D_2_F(fenceEndY, _ORI_Y), 0 };
+	QVector3D lineEnd = { _D_2_F(lineEndX, _ORI_X), _D_2_F(lineEndY, _ORI_Y), 0 };
+#undef _D_2_F
+
+	// 叉积判断相交，平行、共线或零长度线段不触发
+	const double moveX = lineEnd.x();
+	const double moveY = lineEnd.y();
+	const double fenceX = double(fenceEnd.x()) - fenceStart.x();
+	const double fenceY = double(fenceEnd.y()) - fenceStart.y();
+	const double denominator = moveX * fenceY - moveY * fenceX;
+	if (qFuzzyIsNull(denominator))
+		return false;
+
+	const double moveRatio = (fenceStart.x() * fenceY - fenceStart.y() * fenceX) / denominator;
+	const double fenceRatio = (fenceStart.x() * moveY - fenceStart.y() * moveX) / denominator;
+	// 排除移动起点，包含移动终点和栅栏端点
+	if (!(moveRatio > 0.0 && moveRatio <= 1.0
+		&& fenceRatio >= 0.0 && fenceRatio <= 1.0)) {
+		return false;
+	}
+
+	double headingDifference = std::fmod(qAbs(heading - m_heading), 360.0);
+	headingDifference = qMin(headingDifference, 360.0 - headingDifference);
+	return headingDifference <= kHeadingTolerance;
 }

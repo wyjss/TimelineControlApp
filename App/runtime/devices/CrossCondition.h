@@ -53,6 +53,13 @@ public:
 									  Timeline* sourceTimeline,
 									  QObject* parent = nullptr);
 
+private:
+	//! 测试移动线段是否穿越栅栏，heading 为定位器航向。
+	bool testCross(double fenceStartX, double fenceStartY,
+				   double fenceEndX, double fenceEndY,
+				   double lineStartX, double lineStartY,
+				   double lineEndX, double lineEndY,
+				   double heading) const;
 signals:
 	void targetChanged();
 	void fenceChanged();
