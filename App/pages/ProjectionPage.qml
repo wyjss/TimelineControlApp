@@ -766,6 +766,19 @@ Item {
                                     }
                                 }
                             }
+                            RowLayout {
+                                spacing: 8
+                                Base.AppText { text: qsTr("视频起始时间(秒)") }
+                                Base.AppNumberField {
+                                    objectName: "videoCommandStartTime"
+                                    Layout.preferredWidth: 138
+                                    value: root.selectedCommand ? Number(root.selectedCommand.videoTimeSec || 0) : 0
+                                    minimum: 0
+                                    maximum: 60 * 60 * 6
+                                    decimals: 3
+                                    onValueEdited: root.updateCommand({ "videoTimeSec": nextValue })
+                                }
+                            }
                             Base.AppCheckBox {
                                 objectName: "videoCommandPlay"
                                 text: qsTr("立即播放")

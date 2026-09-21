@@ -1,6 +1,8 @@
 #include <QApplication>
+#include <QDataStream>
 #include <QFileInfo>
 #include <QImage>
+#include <QMetaType>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickImageProvider>
@@ -9,6 +11,7 @@
 #include <QSerialPortInfo>
 #include <qqml.h>
 #include <QUrl>
+#include <QVector>
 //#include <QScreen>
 
 #include <iostream>
@@ -70,6 +73,8 @@ int main(int argc, char *argv[])
     //QRect virtualGeometry = QGuiApplication::primaryScreen()->virtualGeometry();
     //qDebug() << virtualGeometry;
    // exit(0);
+    qRegisterMetaTypeStreamOperators<QVector<int>>("QVector<int>");
+
     TimelineRuntime runtime;
     WebControlServer webControlServer(
         &runtime,
