@@ -471,6 +471,19 @@ Item {
             mouse.accepted = true
         }
 
+        onDoubleClicked: {
+            if (!root.dragEnabled || !root.currentTimeDragEnabled
+                    || mouse.x < root.resolvedTrackLeftX)
+                return
+
+            var timeMs = (root.scrollX + mouse.x - root.resolvedStartTimeX)
+                / root.safePixelsPerSecond * 1000
+            root.requestCurrentTimeMs(timeMs)
+            pressX = mouse.x
+            pressCurrentTimeMs = root.resolvedCurrentTimeMs
+            draggingCurrentTime = true
+        }
+
         onPositionChanged: {
             if (!root.dragEnabled || !pressed)
                 return
