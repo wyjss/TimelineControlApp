@@ -134,19 +134,22 @@ ColumnLayout {
                 spacing: 8
 
                 Base.AppText {
-                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignBaseline
                     text: String(fieldRow.fieldSpec.label || fieldRow.fieldSpec.key || "") + (fieldRow.fieldSpec.required ? " *" : "")
                     styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: UiStyle.TextTone.Secondary
+                    textTone: UiStyle.TextTone.Primary
                     elide: Text.ElideRight
                 }
 
                 Base.AppText {
-                    text: String(fieldRow.fieldSpec.type || "")
+                    visible: text.length > 0
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignBaseline
+                    text: fieldRow.fieldSpec.subtitle
+                        ? qsTr("（%1）").arg(fieldRow.fieldSpec.subtitle) : ""
                     styleRole: UiStyle.TypographyRole.BodyS
-                    textTone: fieldRow.invalidReason.length > 0
-                        ? UiStyle.TextTone.Danger
-                        : UiStyle.TextTone.Secondary
+                    textTone: UiStyle.TextTone.Secondary
+                    elide: Text.ElideRight
                 }
             }
 

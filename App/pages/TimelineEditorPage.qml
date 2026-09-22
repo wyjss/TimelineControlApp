@@ -821,7 +821,7 @@ Item {
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
         title: editing ? qsTr("编辑执行指令") : qsTr("添加时间轴指令")
-        message: targetCommand ? root.commandName(targetCommand) : ""
+        message: targetCommand ? qsTr("设备指令：%1").arg(root.commandName(targetCommand)) : ""
         rejectText: qsTr("取消")
         acceptText: editing ? qsTr("保存") : qsTr("添加")
         acceptIconName: "workflow"
@@ -842,7 +842,7 @@ Item {
                 Layout.fillWidth: true
                 text: qsTr("别名")
                 styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
+                textTone: UiStyle.TextTone.Primary
             }
 
             Base.AppTextField {
@@ -861,7 +861,7 @@ Item {
                 Layout.fillWidth: true
                 text: qsTr("开始时间")
                 styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
+                textTone: UiStyle.TextTone.Primary
             }
 
             Base.AppNumberField {

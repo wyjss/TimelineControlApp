@@ -22,6 +22,7 @@ public:
 	{
 		auto* videoFileField = DeviceParamSpec::createForKey(DeviceKey::VideoFile);
 		videoFileField->setRequired(false);
+		videoFileField->setSubtitle("留空表示全部视频");
 		addExecutionInputField(videoFileField);
 
 	}
