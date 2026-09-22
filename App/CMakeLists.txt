@@ -20,7 +20,9 @@ add_executable(TimelineControlApp
     ${TIMELINE_APP_SOURCES}
     ${TIMELINE_APP_RESOURCES}
 )
-
+target_compile_definitions(TimelineControlApp PRIVATE
+    $<$<CONFIG:RelWithDebInfo>:QT_QML_DEBUG>
+)
 include(server/web/TimelineWebControl.cmake)
 
 target_include_directories(TimelineControlApp PRIVATE

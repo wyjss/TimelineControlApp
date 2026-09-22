@@ -68,7 +68,7 @@ XB809DeviceTemplate::XB809DeviceTemplate(QObject *parent)
     : DeviceTemplate(QStringLiteral("XB809"),
                      DeviceType::XB809,
                      QStringList{DeviceProtocol::Udp},
-                     QStringLiteral("XB809控制"),
+                     QStringLiteral("基于UDP协议的XB809主控设备"),
                      createXB809Params(),
                      {},
                      parent)

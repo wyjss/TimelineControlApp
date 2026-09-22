@@ -18,6 +18,8 @@
 #include "timeline/TimelineManager.h"
 #include "timeline/TimelineModel.h"
 
+#include "LogMacros.h"
+
 #include <QDataStream>
 #include <QDir>
 #include <QFile>
@@ -25,6 +27,7 @@
 #include <QIODevice>
 #include <QJsonObject>
 #include <QPointer>
+#include <QTemporaryFile>
 #include <QUuid>
 #include <QUrl>
 
@@ -289,10 +292,39 @@ bool TimelineRuntime::loadPlanFromFile(const QString &filePath)
     if (!file.open(QIODevice::ReadOnly))
         return false;
 
+    QTemporaryFile backupFile(QDir::temp().filePath(QStringLiteral("TimelineControlApp-backup-XXXXXX.tlplan")));
+    if (!backupFile.open()) {
+        LOG_ERROR("无法创建当前方案备份，已取消加载：" << backupFile.errorString());
+        return false;
+    }
+
+    QDataStream backupStream(&backupFile);
+    writePlanToStream(backupStream);
+    if (backupStream.status() != QDataStream::Ok || !backupFile.flush()) {
+        LOG_ERROR("当前方案备份失败，已取消加载：" << backupFile.errorString());
+        return false;
+    }
+
     QDataStream stream(&file);
     readPlanFromStream(stream);
-    if (stream.status() != QDataStream::Ok)
+    if (stream.status() != QDataStream::Ok) {
+        backupFile.setAutoRemove(false);
+        if (!backupFile.seek(0)) {
+            LOG_ERROR("加载失败，无法读取恢复备份，备份保留在："
+                      << backupFile.fileName() << backupFile.errorString());
+            return false;
+        }
+
+        QDataStream restoreStream(&backupFile);
+        readPlanFromStream(restoreStream);
+        if (restoreStream.status() != QDataStream::Ok) {
+            LOG_ERROR("加载失败，原方案恢复失败，备份保留在：" << backupFile.fileName());
+        } else {
+            backupFile.setAutoRemove(true);
+            LOG_WARN("方案加载失败，已恢复原方案：" << file.fileName());
+        }
         return false;
+    }
 
     if (m_currentPlanFilePath != file.fileName()) {
         m_currentPlanFilePath = file.fileName();
