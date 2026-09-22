@@ -143,7 +143,8 @@ Timeline *TimelineManager::cloneTimeline(const QString &id, const QString &name)
                                                    command->targetDeviceId(),
                                                    command->commandName(),
                                                    command->executionInputValues(),
-                                                   command->targetCommand())) {
+                                                   command->targetCommand(),
+                                                   command->alias())) {
             removeTimeline(timeline->id());
             return nullptr;
         }

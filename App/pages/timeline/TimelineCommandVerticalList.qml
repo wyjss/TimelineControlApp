@@ -121,7 +121,7 @@ Item {
         return qsTr("时间：%1\n设备：%2\n名称：%3\n执行参数：%4\n结果：%5")
             .arg(formatTime(command.startTimeMs, true))
             .arg(deviceName(command.targetDeviceId))
-            .arg(String(command.commandName || qsTr("指令")))
+            .arg(String(command.alias || qsTr("指令")))
             .arg(executionParameters(command))
             .arg(String(command.stateText || qsTr("待执行")))
     }
@@ -325,8 +325,8 @@ Item {
                             objectName: "commandNameLabel"
                             Layout.fillWidth: true
                             text: String(commandRow.commandData
-                                && commandRow.commandData.commandName
-                                ? commandRow.commandData.commandName : qsTr("指令"))
+                                && commandRow.commandData.alias
+                                ? commandRow.commandData.alias : qsTr("指令"))
                             styleRole: UiStyle.TypographyRole.BodyM
                             textTone: commandRow.filteredOut
                                 ? UiStyle.TextTone.Secondary : UiStyle.TextTone.Primary

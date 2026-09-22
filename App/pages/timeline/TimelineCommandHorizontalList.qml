@@ -99,7 +99,7 @@ Item {
     }
 
     function instantCommandDisplayWidth(command) {
-        var text = String(command && command.commandName ? command.commandName : qsTr("指令"))
+        var text = String(command && command.alias ? command.alias : qsTr("指令"))
         return Math.min(instantCommandMaxWidth,
                         Math.max(instantCommandMinWidth,
                                  Math.ceil(commandFontMetrics.advanceWidth(text)) + 32))
@@ -109,7 +109,7 @@ Item {
         if (!command)
             return ""
 
-        var parts = [String(command.commandName || qsTr("指令"))]
+        var parts = [String(command.alias || qsTr("指令"))]
         var deviceText = String(command.targetDeviceId || "")
         for (var index = 0; index < devices.length; ++index) {
             if (String(devices[index].id || "") === String(command.targetDeviceId || "")) {
@@ -247,8 +247,8 @@ Item {
                 : (commandData && commandData.stateColor
                 ? commandData.stateColor
                 : root.colorValue("neutralText", "#cbd5e1"))
-            readonly property string commandText: String(commandData && commandData.commandName
-                ? commandData.commandName
+            readonly property string commandText: String(commandData && commandData.alias
+                ? commandData.alias
                 : qsTr("指令"))
             readonly property bool selected: commandMouse.previewing || String(commandData && commandData.id || "")
                 === root.selectedCommandId

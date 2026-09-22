@@ -161,24 +161,19 @@ Item {
         }
 
         var startTimeMs = Math.max(0, Math.round(timelineCurrentTimeMs))
-        var executionFields = selectedCommand.executionInputFields || []
-        if (executionFields.length > 0) {
-            addTimelineCommandPopup.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
-            return
-        }
-
-        addTimelineCommand(selectedTimelineDevice, selectedCommand, startTimeMs, {})
+        addTimelineCommandPopup.openForCommand(selectedTimelineDevice, selectedCommand, startTimeMs)
     }
 
-    function addTimelineCommand(targetDevice, targetCommand, startTimeMs, executionValues) {
+    function addTimelineCommand(targetDevice, targetCommand, startTimeMs, executionValues, alias) {
         if (!timelineStopped || !timelineCommandModel)
             return
 
         timelineCommandModel.addDeviceCommand(startTimeMs,
                                               String(targetDevice.id || ""),
                                               targetCommand,
-                                              executionValues || {})
-        executionStatusText = qsTr("已在 %2 添加 %1").arg(commandName(targetCommand)).arg(formatTimelineMs(startTimeMs))
+                                              executionValues || {},
+                                              alias)
+        executionStatusText = qsTr("已在 %2 添加 %1").arg(alias || targetCommand.name).arg(formatTimelineMs(startTimeMs))
     }
 
     function selectTimelineCommand(command, positionView) {
@@ -730,7 +725,7 @@ Item {
         title: qsTr("删除时间线指令")
         message: timelineCommand
             ? qsTr("确定删除“%1”？设备：%2，执行时间：%3。")
-                .arg(timelineCommand.commandName || qsTr("指令"))
+                .arg(timelineCommand.alias || qsTr("指令"))
                 .arg(root.deviceName(root.deviceForId(String(timelineCommand.targetDeviceId || ""))))
                 .arg(root.formatTimelineMs(timelineCommand.startTimeMs))
             : ""
@@ -768,6 +763,7 @@ Item {
                 editingTimelineCommand = null
                 targetDevice = nextDevice
                 targetCommand = nextCommand
+                commandAliasField.text = nextCommand.name
                 targetStartTimeMs = nextStartTimeMs
                 validationVisible = false
                 executionFieldForm.values = {}
@@ -791,6 +787,7 @@ Item {
 
                 targetDevice = root.deviceForId(String(command.targetDeviceId || ""))
                 targetStartTimeMs = Number(command.startTimeMs || 0)
+                commandAliasField.text = command.alias
                 validationVisible = false
                 executionFieldForm.values = command.executionInputValues || ({})
             })
@@ -804,15 +801,18 @@ Item {
             if (editing) {
                 if (timelineCommandModel.updateCommand(editingTimelineCommand,
                                                        targetStartTimeMs,
-                                                       executionFieldForm.valueMap()))
+                                                       executionFieldForm.valueMap())) {
+                    editingTimelineCommand.alias = commandAliasField.text
                     close()
+                }
                 return
             }
 
             root.addTimelineCommand(targetDevice,
                                     targetCommand,
                                     targetStartTimeMs,
-                                    executionFieldForm.valueMap())
+                                    executionFieldForm.valueMap(),
+                                    commandAliasField.text)
             close()
         }
 
@@ -820,7 +820,7 @@ Item {
         maximumDialogHeight: Math.min(580, Math.max(360, parent ? parent.height - 96 : 460))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        title: editing ? qsTr("编辑执行指令") : qsTr("执行参数")
+        title: editing ? qsTr("编辑执行指令") : qsTr("添加时间轴指令")
         message: targetCommand ? root.commandName(targetCommand) : ""
         rejectText: qsTr("取消")
         acceptText: editing ? qsTr("保存") : qsTr("添加")
@@ -834,12 +834,35 @@ Item {
             targetCommand = null
         }
 
-        Base.AppDialogSection {
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6
+
+            Base.AppText {
+                Layout.fillWidth: true
+                text: qsTr("别名")
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
+            }
+
+            Base.AppTextField {
+                id: commandAliasField
+                objectName: "timelineCommandAlias"
+                Layout.fillWidth: true
+            }
+        }
+
+        ColumnLayout {
             Layout.fillWidth: true
             visible: addTimelineCommandPopup.editing
-            title: qsTr("开始时间")
-            compact: true
-            bodyFillHeight: false
+            spacing: 6
+
+            Base.AppText {
+                Layout.fillWidth: true
+                text: qsTr("开始时间")
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: UiStyle.TextTone.Secondary
+            }
 
             Base.AppNumberField {
                 Layout.fillWidth: true

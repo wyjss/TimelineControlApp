@@ -27,12 +27,14 @@ TimelineCommand::TimelineCommand(qint64 startTimeMs,
                                  const QString &commandName,
                                  const QVariantMap &executionInputValues,
                                  DeviceCommand *targetCommand,
+                                 const QString &alias,
                                  QObject *parent)
     : QObject(parent)
     , m_id(QStringLiteral("timeline-command-%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces)))
     , m_startTimeMs(qMax<qint64>(0, startTimeMs))
     , m_targetDeviceId(targetDeviceId.trimmed())
     , m_commandName(commandName)
+    , m_alias(alias.isEmpty() ? commandName : alias)
 {
     setExecutionInputValues(executionInputValues);
     setTargetCommand(targetCommand);
@@ -66,6 +68,21 @@ QString TimelineCommand::targetDeviceId() const
 QString TimelineCommand::commandName() const
 {
     return m_commandName;
+}
+
+QString TimelineCommand::alias() const
+{
+    return m_alias;
+}
+
+void TimelineCommand::setAlias(const QString &alias)
+{
+    const QString &value = alias.isEmpty() ? m_commandName : alias;
+    if (m_alias == value)
+        return;
+
+    m_alias = value;
+    emit aliasChanged();
 }
 
 QVariantMap TimelineCommand::executionInputValues() const
@@ -207,6 +224,7 @@ void TimelineCommand::writeToStream(QDataStream &stream) const
            << m_startTimeMs
            << m_targetDeviceId
            << m_commandName
+           << m_alias
            << storedValues;
 }
 
@@ -216,12 +234,14 @@ void TimelineCommand::readFromStream(QDataStream &stream)
     qint64 startTimeMs = 0;
     QString targetDeviceId;
     QString commandName;
+    QString alias;
     QVariantMap storedValues;
 
     stream >> id
            >> startTimeMs
            >> targetDeviceId
            >> commandName
+           >> alias
            >> storedValues;
 
     if (stream.status() != QDataStream::Ok)
@@ -230,6 +250,7 @@ void TimelineCommand::readFromStream(QDataStream &stream)
     m_id = id;
     m_targetDeviceId = targetDeviceId.trimmed();
     m_commandName = commandName;
+    setAlias(alias);
     setTargetCommand(nullptr);
     m_state = Idle;
     m_errorMessage.clear();
@@ -460,7 +481,8 @@ void TimelineCommandModel::setSelectedCommandId(const QString &selectedCommandId
 TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
                                                         const QString &targetDeviceId,
                                                         DeviceCommand *targetCommand,
-                                                        const QVariantMap &executionInputValues)
+                                                        const QVariantMap &executionInputValues,
+                                                        const QString &alias)
 {
     if (!targetCommand)
         return nullptr;
@@ -469,7 +491,8 @@ TimelineCommand *TimelineCommandModel::addDeviceCommand(qint64 startTimeMs,
                       targetDeviceId,
                       targetCommand->name(),
                       executionInputValues,
-                      targetCommand);
+                      targetCommand,
+                      alias);
 }
 
 bool TimelineCommandModel::updateCommand(TimelineCommand *command,
@@ -490,13 +513,15 @@ TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
                                                   const QString &targetDeviceId,
                                                   const QString &commandName,
                                                   const QVariantMap &executionInputValues,
-                                                  DeviceCommand *targetCommand)
+                                                  DeviceCommand *targetCommand,
+                                                  const QString &alias)
 {
     auto *command = new TimelineCommand(startTimeMs,
                                         targetDeviceId,
                                         commandName,
                                         executionInputValues,
-                                        targetCommand);
+                                        targetCommand,
+                                        alias);
 
     auto cmds = this->items();
     int targetIndex = cmds.size();
@@ -575,7 +600,7 @@ void TimelineCommandModel::readFromStream(QDataStream &stream)
     QList<TimelineCommand *> commands;
     commands.reserve(commandCount);
     for (int index = 0; index < commandCount; ++index) {
-        auto *command = new TimelineCommand(0, QString(), QString(), QVariantMap(), nullptr, this);
+        auto *command = new TimelineCommand(0, QString(), QString(), QVariantMap(), nullptr, QString(), this);
         command->readFromStream(stream);
         if (stream.status() != QDataStream::Ok) {
             delete command;
@@ -665,6 +690,7 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
                 emitCommandChanged(command);
             });
 
+    connect(command, &TimelineCommand::aliasChanged, this, notifyChanged);
     connect(command, &TimelineCommand::parametersChanged, this, notifyChanged);
     connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {
         removeCommand(command);

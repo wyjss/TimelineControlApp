@@ -110,7 +110,7 @@ Base.AppDialog {
         var parts = cloneTime.text.split(/[:.]/)
         var timeMs = Number(parts[0]) * 3600000 + Number(parts[1]) * 60000
             + Number(parts[2]) * 1000 + Number(parts[3])
-        var command = commandModel.addDeviceCommand(timeMs, targetPc.id, targetPc.loadCommand, values)
+        var command = commandModel.addDeviceCommand(timeMs, targetPc.id, targetPc.loadCommand, values, sourceCommand.alias)
         if (!command) {
             errorText = qsTr("克隆指令失败")
             return

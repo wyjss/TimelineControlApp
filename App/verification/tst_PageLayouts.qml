@@ -59,7 +59,7 @@ TestCase {
             height: 260
             devices: testDeviceModel.devices
             commands: [{ "id": "first", "targetDeviceId": "one",
-                         "commandName": "暂停播放", "startTimeMs": 13800 }]
+                         "commandName": "暂停播放", "alias": "幕间暂停", "startTimeMs": 13800 }]
         }
     }
 
@@ -75,6 +75,8 @@ TestCase {
         wait(30)
         var label = findChild(list, "commandNameLabel")
         verify(label)
+        compare(label.text, "幕间暂停")
+        verify(list.commandInfo(list.commands[0]).indexOf("幕间暂停") >= 0)
         verify(label.width >= label.implicitWidth, "Command name is squeezed out")
         var position = label.mapToItem(list, 0, 0)
         verify(position.x + label.width <= list.width, "Command name exceeds the list")
@@ -83,7 +85,7 @@ TestCase {
         compare(list.count, 1)
         var commands = []
         for (var index = 0; index < 30; ++index)
-            commands.push({ id: "item" + index, commandName: "Command " + index,
+            commands.push({ id: "item" + index, commandName: "Command " + index, alias: "Command " + index,
                             targetDeviceId: "one", startTimeMs: index * 1000 })
         list.commands = commands
         list.selectedCommandId = "item29"
@@ -198,9 +200,9 @@ TestCase {
             property string selectedCommandId: ""
             property var childTracksByParentId: ({})
             property var addedCommands: []
-            function addDeviceCommand(time, deviceId, command, values) {
+            function addDeviceCommand(time, deviceId, command, values, alias) {
                 addedCommands = addedCommands.concat([{ time: time, deviceId: deviceId,
-                                                        command: command, values: values }])
+                                                        command: command, values: values, alias: alias }])
             }
         }
     }
@@ -237,14 +239,28 @@ TestCase {
             verify(position.y + button.height <= palette.height, "Default commands require scrolling")
         }
         findChild(host, "addDeviceCommand_2").clicked()
+        wait(30)
+        var dialog = findChild(page, "addTimelineCommandPopup")
+        var aliasField = findChild(dialog, "timelineCommandAlias")
+        verify(dialog.visible && aliasField.visible)
+        compare(aliasField.text, "暂停播放")
+        compare(page.timelineCommandModel.addedCommands.length, 0)
+        aliasField.text = "取消添加"
+        dialog.close()
+        findChild(host, "addDeviceCommand_2").clicked()
+        wait(30)
+        compare(aliasField.text, "暂停播放")
+        aliasField.text = "  幕间暂停  "
+        dialog.commit()
         compare(page.timelineCommandModel.addedCommands.length, 1)
         compare(page.timelineCommandModel.addedCommands[0].time, 13800)
         compare(page.timelineCommandModel.addedCommands[0].deviceId, "one")
         compare(page.timelineCommandModel.addedCommands[0].command.name, "暂停播放")
+        compare(page.timelineCommandModel.addedCommands[0].alias, "  幕间暂停  ")
         findChild(host, "addDeviceCommand_0").clicked()
         wait(30)
-        var dialog = findChild(page, "addTimelineCommandPopup")
         verify(dialog.visible)
+        compare(aliasField.text, "加载视频")
         compare(dialog.targetCommand.name, "加载视频")
         compare(dialog.targetStartTimeMs, 13800)
         compare(page.timelineCommandModel.addedCommands.length, 1)
@@ -281,7 +297,7 @@ TestCase {
         verify(host && host.editor)
         host.deviceModel = testDeviceModel
         var model = createTemporaryObject(commandModelComponent, host)
-        model.commands = [{ id: "existing", targetDeviceId: "one", commandName: "暂停播放",
+        model.commands = [{ id: "existing", targetDeviceId: "one", commandName: "暂停播放", alias: "幕间暂停",
                             startTimeMs: 13800, filteredOut: false }]
         host.timelineManager = { playbackState: 0, playQueue: [], playQueueIndex: -1,
                                  currentTimeline: { id: "main", name: "主时间轴", commandModel: model },
@@ -308,7 +324,7 @@ TestCase {
         verify(list.visible && !palette.visible)
         var commandLabel = findChild(list, "commandNameLabel")
         verify(commandLabel.visible)
-        compare(commandLabel.text, "暂停播放")
+        compare(commandLabel.text, "幕间暂停")
         mouseClick(commandLabel)
         compare(model.selectedCommandId, "existing")
         mouseClick(selector, selector.width * 0.25, selector.height / 2)
@@ -355,9 +371,9 @@ TestCase {
         commandSelectionSpy.clear()
         var commands = []
         for (var index = 0; index < 4; ++index)
-            commands.push({ id: "dense" + index, targetDeviceId: "one", commandName: "暂停播放",
+            commands.push({ id: "dense" + index, targetDeviceId: "one", commandName: "暂停播放", alias: "幕间暂停",
                             startTimeMs: 3000, targetCommand: { protocol: "pc" } })
-        commands.push({ id: "sparse", targetDeviceId: "two", commandName: "停止播放",
+        commands.push({ id: "sparse", targetDeviceId: "two", commandName: "停止播放", alias: "停止播放",
                         startTimeMs: 10000, targetCommand: { protocol: "pc" } })
         model.commands = commands
         wait(30)

@@ -34,7 +34,7 @@
 namespace {
 
 constexpr quint32 kTimelinePlanMagic = 0x544C504E;
-constexpr qint32 kTimelinePlanVersion = 6;
+constexpr qint32 kTimelinePlanVersion = 7;
 
 } // namespace
 
@@ -237,7 +237,7 @@ void TimelineRuntime::readPlanFromStream(QDataStream &stream)
     stream >> magic >> version;
     if (stream.status() != QDataStream::Ok
         || magic != kTimelinePlanMagic
-        || (version != 2 && version != 3 && version != 5 && version != kTimelinePlanVersion)) {
+        || version != kTimelinePlanVersion) {
         stream.setStatus(QDataStream::ReadCorruptData);
         return;
     }

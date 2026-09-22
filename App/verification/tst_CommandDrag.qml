@@ -31,7 +31,7 @@ TestCase {
 
             QtObject {
                 id: commandModel
-                property var commands: [{ id: "move", targetDeviceId: "one", commandName: "播放视频",
+                property var commands: [{ id: "move", targetDeviceId: "one", commandName: "播放视频", alias: "播放视频",
                     startTimeMs: fixture.startTimeMs,
                     executionInputValues: { file: "sample.mp4", play: true },
                     targetCommand: { protocol: "pc" }, state: 3, errorMessage: "原执行结果" }]
@@ -89,7 +89,7 @@ TestCase {
             id: overview
             width: 1000
             height: 48
-            commands: [{ id: "overview", commandName: "概览指令", startTimeMs: 3000 }]
+            commands: [{ id: "overview", commandName: "概览指令", alias: "概览指令", startTimeMs: 3000 }]
             ruler: Timeline.TimelineRuler { parent: overview; visible: false; width: 1000; durationMs: 60000 }
         }
     }
@@ -240,7 +240,7 @@ TestCase {
         verify(fixture)
         var commands = []
         for (var index = 0; index < 4; ++index)
-            commands.push({ id: "dense" + index, targetDeviceId: "one", commandName: "播放视频",
+            commands.push({ id: "dense" + index, targetDeviceId: "one", commandName: "播放视频", alias: "播放视频",
                 startTimeMs: 3000, executionInputValues: {}, targetCommand: { protocol: "pc" } })
         fixture.model.commands = commands
         var point = pressCommand(fixture, "dense2", Qt.ControlModifier)

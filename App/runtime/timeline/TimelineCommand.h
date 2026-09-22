@@ -20,6 +20,8 @@ class TimelineCommand final : public QObject
     Q_PROPERTY(qint64 startTimeMs READ startTimeMs WRITE setStartTimeMs NOTIFY startTimeMsChanged FINAL)
     Q_PROPERTY(QString targetDeviceId READ targetDeviceId CONSTANT FINAL)
     Q_PROPERTY(QString commandName READ commandName CONSTANT FINAL)
+    //! 时间轴显示名称，不参与设备指令查找。
+    Q_PROPERTY(QString alias READ alias WRITE setAlias NOTIFY aliasChanged FINAL)
     Q_PROPERTY(QVariantMap executionInputValues READ executionInputValues WRITE setExecutionInputValues NOTIFY executionInputValuesChanged FINAL)
     Q_PROPERTY(DeviceCommand *targetCommand READ targetCommand NOTIFY targetCommandChanged FINAL)
     Q_PROPERTY(bool filteredOut READ filteredOut NOTIFY filteredOutChanged FINAL)
@@ -44,6 +46,7 @@ public:
                     const QString &commandName,
                     const QVariantMap &executionInputValues,
                     DeviceCommand *targetCommand,
+                    const QString &alias = QString(),
                     QObject *parent = nullptr);
 
     QString id() const;
@@ -54,6 +57,8 @@ public:
     QString targetDeviceId() const;
 
     QString commandName() const;
+    QString alias() const;
+    void setAlias(const QString &alias);
 
     QVariantMap executionInputValues() const;
     void setExecutionInputValues(const QVariantMap &executionInputValues);
@@ -75,6 +80,7 @@ public:
 
 signals:
     void startTimeMsChanged();
+    void aliasChanged();
     void executionInputValuesChanged();
     void targetCommandChanged();
     void targetCommandDestroyed();
@@ -88,6 +94,7 @@ private:
     qint64 m_startTimeMs = 0;
     QString m_targetDeviceId;
     QString m_commandName;
+    QString m_alias;
     QVariantMap m_executionInputValues;
     QPointer<DeviceCommand> m_targetCommand;
     State m_state = Idle;
@@ -121,7 +128,8 @@ public:
     Q_INVOKABLE TimelineCommand *addDeviceCommand(qint64 startTimeMs,
                                                                    const QString &targetDeviceId,
                                                                    DeviceCommand *targetCommand,
-                                                                   const QVariantMap &executionInputValues);
+                                                                   const QVariantMap &executionInputValues,
+                                                                   const QString &alias = QString());
     Q_INVOKABLE bool updateCommand(TimelineCommand *command,
                                    qint64 startTimeMs,
                                    const QVariantMap &executionInputValues);
@@ -129,7 +137,8 @@ public:
                                                  const QString &targetDeviceId,
                                                  const QString &commandName,
                                                  const QVariantMap &executionInputValues,
-                                                 DeviceCommand *targetCommand);
+                                                 DeviceCommand *targetCommand,
+                                                 const QString &alias = QString());
 
     void resetCommands(const QList<TimelineCommand *> &commands);
     void removeCommandAt(int row);
