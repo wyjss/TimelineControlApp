@@ -31,13 +31,14 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
     }
 
     QByteArray data;
-    if (params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex) {
-        if (!Utils::toHexData(payload, &data)) {
-            emit executionFinished(executionId, command, false, tr("无效的hex数据"));
-            return;
-        }
-        LOG_DEBUG("转换16禁止数据:" << payload);
-    } else {
+	if (params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex) {
+		if (!Utils::toHexData(payload, &data)) {
+			emit executionFinished(executionId, command, false, tr("无效的hex数据"));
+			return;
+		}
+		LOG_DEBUG("转换16禁止数据:" << payload);
+	} else
+    {
         data = payload.toUtf8();
     }
     
@@ -45,6 +46,7 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
     auto size = sock.writeDatagram(data, QHostAddress(m_ip), m_port);
 
 	LOG_DEBUG("send udp order: " << data);
+	LOG_DEBUG("send udp order ip: " << m_ip << m_port);
 
     if (size == data.size()) {
         emit executionFinished(executionId, command, true, "");
