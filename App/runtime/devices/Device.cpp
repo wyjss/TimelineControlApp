@@ -17,6 +17,7 @@
 namespace {
 
 const char *kSupportedProtocolsConfigKey = "__supportedProtocols";
+const char *kGroupNamesConfigKey = "__groupNames";
 const char *kOnlineConfigKey = "__online";
 const char *kStatusConfigKey = "__status";
 
@@ -66,6 +67,26 @@ void Device::setName(const QString &name)
 
     m_name = name;
     emit nameChanged();
+}
+
+QStringList Device::groupNames() const
+{
+    return m_groupNames;
+}
+
+void Device::setGroupNames(const QStringList &groupNames)
+{
+    QStringList nextGroupNames;
+    for (const QString &groupName : groupNames) {
+        if (!groupName.isEmpty() && !nextGroupNames.contains(groupName))
+            nextGroupNames.append(groupName);
+    }
+
+    if (m_groupNames == nextGroupNames)
+        return;
+
+    m_groupNames = nextGroupNames;
+    emit groupNamesChanged();
 }
 
 QStringList Device::supportedProtocols() const
@@ -372,6 +393,8 @@ bool Device::setFieldValue(const QString &field, const QVariant &value)
 void Device::writeToStream(QDataStream& stream) const
 {
     QVariantMap streamConfigValues = configValues();
+    if (!m_groupNames.isEmpty())
+        streamConfigValues.insert(QString::fromLatin1(kGroupNamesConfigKey), m_groupNames);
     if (!supportedProtocols().isEmpty())
         streamConfigValues.insert(QString::fromLatin1(kSupportedProtocolsConfigKey), supportedProtocols());
     streamConfigValues.insert(QString::fromLatin1(kOnlineConfigKey), isOnline());
@@ -445,6 +468,7 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
     setDeviceType(deviceType);
     setName(name);
     setDescription(description);
+    setGroupNames(configValues.take(QString::fromLatin1(kGroupNamesConfigKey)).toStringList());
     const QStringList restoredSupportedProtocols = configValues.take(QString::fromLatin1(kSupportedProtocolsConfigKey)).toStringList();
     const QVariant restoredOnline = configValues.take(QString::fromLatin1(kOnlineConfigKey));
     const QString restoredStatus = configValues.take(QString::fromLatin1(kStatusConfigKey)).toString();

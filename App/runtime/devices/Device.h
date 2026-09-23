@@ -27,6 +27,8 @@ class Device final : public QObject
     Q_PROPERTY(QString templateName READ templateName CONSTANT FINAL)
     Q_PROPERTY(QString deviceType READ deviceType WRITE setDeviceType NOTIFY deviceTypeChanged FINAL)
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
+    //! 所属分组名称，空列表表示未分组。
+    Q_PROPERTY(QStringList groupNames READ groupNames WRITE setGroupNames NOTIFY groupNamesChanged FINAL)
     Q_PROPERTY(QStringList supportedProtocols READ supportedProtocols WRITE setSupportedProtocols NOTIFY supportedProtocolsChanged FINAL)
     Q_PROPERTY(bool online READ isOnline WRITE setOnline NOTIFY onlineChanged FINAL)
     Q_PROPERTY(bool filteredOut READ filteredOut WRITE setFilteredOut NOTIFY filteredOutChanged FINAL)
@@ -46,6 +48,9 @@ public:
 
     QString name() const;
     void setName(const QString &name);
+
+    QStringList groupNames() const;
+    void setGroupNames(const QStringList &groupNames);
 
     QStringList supportedProtocols() const;
     void setSupportedProtocols(const QStringList &supportedProtocols);
@@ -90,6 +95,7 @@ public:
 signals:
     void deviceTypeChanged();
     void nameChanged();
+    void groupNamesChanged();
     void supportedProtocolsChanged();
     void onlineChanged();
     void filteredOutChanged();
@@ -105,6 +111,7 @@ private:
     DeviceTemplate *m_deviceTemplate = nullptr;
     QString m_deviceType;
     QString m_name;
+    QStringList m_groupNames;
     QStringList m_supportedProtocols;
     bool m_online = false;
     bool m_filteredOut = false;

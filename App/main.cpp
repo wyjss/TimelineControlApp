@@ -12,6 +12,7 @@
 #include <qqml.h>
 #include <QUrl>
 #include <QVector>
+#include <QUdpSocket>
 //#include <QScreen>
 
 #include <iostream>
@@ -22,6 +23,7 @@
 #include "runtime/TimelineShellController.h"
 #include "runtime/video/FfmpegVideoFrameItem.h"
 #include "runtime/video/PcTimelinePreviewGenerator.h"
+#include "runtime/utils.h"
 #include "server/web/WebControlServer.h"
 
 #include "LogMacros.h"
@@ -65,6 +67,45 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QApplication application(argc, argv);
+    if(0)
+	{// debug
+		QByteArray pkt(6, 0xff);
+		// 30-56-0F-4E-CA-5B
+		QString sMac = "30560F4ECA5B";
+		QByteArray bMac;
+		Utils::toHexData(sMac, &bMac);
+		for (int i = 0; i < 16; ++i) {
+			pkt.push_back(bMac);
+		}
+		QUdpSocket* sock = new QUdpSocket;
+        //sock->setSocketOption(QUdpSocket::MulticastLoopbackOption, 1);
+		auto ip = QHostAddress("255.255.255.255");
+		ip = QHostAddress("192.168.100.255");
+
+		bool r = false;
+
+
+        r = sock->bind(QHostAddress::AnyIPv4);
+        LOG_INFO("bind " << r);
+
+		//r = sock->joinMulticastGroup(QHostAddress("255.255.255.255"));
+        //LOG_INFO("join " << r);
+
+		auto size = sock->writeDatagram(pkt, ip, 7);
+		LOG_INFO("send " << size);
+
+		size = sock->writeDatagram(pkt, ip, 9);
+		LOG_INFO("send " << size);
+
+		size = sock->writeDatagram(pkt, ip, 5);
+		LOG_INFO("send " << size);
+
+        r = sock->flush();
+        LOG_INFO("flush " << r);
+		int a = 0;
+        return application.exec();
+	}
+
     UICore::initialize();
     LocatorViewer::initialize();
     application.setOrganizationName(QStringLiteral("TimelineControlApp"));
@@ -115,6 +156,7 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty())
         return -1;
 
+   
     auto r = application.exec();
     LocatorViewer::quit();
     LOG_INFO("viewer quit");

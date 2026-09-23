@@ -4,6 +4,8 @@
 
 #include <QFile>
 #include <QPainter>
+#include <QProcess>
+#include <QTemporaryDir>
 
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
@@ -21,6 +23,54 @@ namespace {
 const QString kTimelineDrawerKey = QStringLiteral("timeline");
 
 } // namespace
+
+
+class PcTimelinePreviewWorker final : public QObject
+{
+    Q_OBJECT
+
+public:
+    using VideoState = PcTimelinePreviewGenerator::VideoState;
+
+    PcTimelinePreviewWorker()
+        : m_process(this)
+    {
+        connect(&m_process,
+                qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
+                this,
+                [this](int exitCode, QProcess::ExitStatus exitStatus) {
+                    completeFrame(exitCode == 0 && exitStatus == QProcess::NormalExit,
+                                  QString::fromLocal8Bit(m_process.readAllStandardError()).trimmed());
+                });
+        connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
+            if (error == QProcess::FailedToStart)
+                completeFrame(false, m_process.errorString());
+        });
+    }
+
+public slots:
+    void startPreview(const QVector<VideoState> &videoStates, const QSize &canvasSize,
+                      const QString &ffmpegProgram, int revision);
+    void cancel();
+
+signals:
+    void finished(const QImage &image, const QUrl &url, const QString &errorString, int revision);
+
+private:
+    void startNextFrame();
+    void completeFrame(bool success, const QString &errorMessage);
+    void finishPreview();
+
+    QProcess m_process;
+    QTemporaryDir m_temporaryDir;
+    QVector<VideoState> m_videoStates;
+    QImage m_canvas;
+    QStringList m_errors;
+    QString m_ffmpegProgram;
+    int m_frameIndex = 0;
+    int m_revision = -1;
+    bool m_framePending = false;
+};
 
 
 PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineManager *timelineManager,
@@ -49,21 +99,44 @@ PcTimelinePreviewGenerator::PcTimelinePreviewGenerator(TimelineManager *timeline
         connect(m_shellController, &UICore::AppShellController::activeNavigationKeyChanged,
                 this, &PcTimelinePreviewGenerator::updateActiveState);
 
-    connect(&m_process,
-            qOverload<int, QProcess::ExitStatus>(&QProcess::finished),
-            this,
-            [this](int exitCode, QProcess::ExitStatus exitStatus) {
-                completeFrame(exitCode == 0 && exitStatus == QProcess::NormalExit,
-                              QString::fromLocal8Bit(m_process.readAllStandardError()).trimmed());
-            });
-    connect(&m_process, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
-        if (error == QProcess::FailedToStart)
-            completeFrame(false, m_process.errorString());
-    });
+    qRegisterMetaType<QVector<VideoState>>("QVector<VideoState>");
+    m_worker = new PcTimelinePreviewWorker;
+    m_worker->moveToThread(&m_workerThread);
+    connect(&m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
+    connect(this, &PcTimelinePreviewGenerator::previewRequested,
+            m_worker, &PcTimelinePreviewWorker::startPreview, Qt::QueuedConnection);
+    connect(this, &PcTimelinePreviewGenerator::cancelRequested,
+            m_worker, &PcTimelinePreviewWorker::cancel, Qt::QueuedConnection);
+    connect(m_worker, &PcTimelinePreviewWorker::finished, this,
+            [this](const QImage &image, const QUrl &url, const QString &errorString, int revision) {
+                if (isActive() && revision == m_generationRevision) {
+                    m_previewImage = image;
+                    if (!m_previewUrl.isEmpty())
+                        QFile::remove(m_previewUrl.toLocalFile());
+                    m_previewUrl = url;
+                    m_previewTimeMs = m_generationTimeMs;
+                    setErrorString(errorString);
+                    emit previewChanged();
+                    emit previewReady(m_previewImage, m_previewTimeMs);
+                } else if (!url.isEmpty()) {
+                    QFile::remove(url.toLocalFile());
+                }
+                setBusy(false);
+                if (isActive() && m_generationRevision != m_revision && !m_refreshTimer.isActive())
+                    m_refreshTimer.start();
+            }, Qt::QueuedConnection);
+    m_workerThread.start();
 
     updateCurrentTimeline();
     updatePcDevice();
     updateActiveState();
+}
+
+PcTimelinePreviewGenerator::~PcTimelinePreviewGenerator()
+{
+    QMetaObject::invokeMethod(m_worker, "cancel", Qt::BlockingQueuedConnection);
+    m_workerThread.quit();
+    m_workerThread.wait();
 }
 
 Device *PcTimelinePreviewGenerator::pcDevice() const
@@ -85,11 +158,15 @@ void PcTimelinePreviewGenerator::setPcDevice(Device *device)
 
     if (m_pcDevice)
         disconnect(m_pcDevice, nullptr, this, nullptr);
+    m_generationRevision = -1;
+    emit cancelRequested();
     m_pcDevice = device;
     if (m_pcDevice) {
         connect(m_pcDevice, &Device::configValuesChanged,
                 this, &PcTimelinePreviewGenerator::requestPreview);
         connect(m_pcDevice, &QObject::destroyed, this, [this]() {
+            m_generationRevision = -1;
+            emit cancelRequested();
             m_pcDevice = nullptr;
             emit pcDeviceChanged();
             requestPreview();
@@ -184,6 +261,8 @@ void PcTimelinePreviewGenerator::updateCurrentTimeline()
 
     if (m_timelineCommandModel)
         disconnect(m_timelineCommandModel, nullptr, this, nullptr);
+    m_generationRevision = -1;
+    emit cancelRequested();
     m_timelineCommandModel = commandModel;
     if (m_timelineCommandModel) {
         connect(m_timelineCommandModel, &TimelineCommandModel::commandsChanged,
@@ -202,21 +281,14 @@ void PcTimelinePreviewGenerator::updateActiveState()
 
     ++m_revision;
     m_refreshTimer.stop();
-    m_framePending = false;
-    if (m_process.state() != QProcess::NotRunning)
-        m_process.kill();
-    setBusy(false);
+    m_generationRevision = -1;
+    emit cancelRequested();
 }
 
 void PcTimelinePreviewGenerator::startPreview()
 {
     if (m_busy || !isActive())
         return;
-    if (m_process.state() != QProcess::NotRunning) {
-        m_refreshTimer.start();
-        return;
-    }
-
     m_generationRevision = m_revision;
     m_generationTimeMs = m_requestedTimeMs;
     if (!m_pcDevice || !m_timelineCommandModel) {
@@ -243,13 +315,9 @@ void PcTimelinePreviewGenerator::startPreview()
             * qMax(1, config.value(DeviceKey::ScreenRows, 1).toInt());
 
     const QSize canvasSize(qMax(1, width), qMax(1, height));
-    m_videoStates = videoStatesAt(m_generationTimeMs, canvasSize);
-    m_canvas = QImage(canvasSize, QImage::Format_RGB32);
-    m_canvas.fill(Qt::black);
-    m_errors.clear();
-    m_frameIndex = 0;
+    const QVector<VideoState> videoStates = videoStatesAt(m_generationTimeMs, canvasSize);
     setBusy(true);
-    startNextFrame();
+    emit previewRequested(videoStates, canvasSize, m_ffmpegProgram, m_generationRevision);
 }
 
 QVector<PcTimelinePreviewGenerator::VideoState>
@@ -331,12 +399,34 @@ PcTimelinePreviewGenerator::videoStatesAt(qint64 timeMs, const QSize &canvasSize
     return states;
 }
 
-void PcTimelinePreviewGenerator::startNextFrame()
+void PcTimelinePreviewWorker::startPreview(const QVector<VideoState> &videoStates, const QSize &canvasSize,
+                                          const QString &ffmpegProgram, int revision)
 {
-    if (!isActive()) {
-        finishPreview();
+    m_revision = revision;
+    m_videoStates = videoStates;
+    m_ffmpegProgram = ffmpegProgram;
+    m_canvas = QImage(canvasSize, QImage::Format_RGB32);
+    m_canvas.fill(Qt::black);
+    m_errors.clear();
+    m_frameIndex = 0;
+    startNextFrame();
+}
+
+void PcTimelinePreviewWorker::cancel()
+{
+    if (m_revision < 0)
         return;
+    m_framePending = false;
+    if (m_process.state() != QProcess::NotRunning) {
+        m_process.kill();
+        m_process.waitForFinished(-1);
     }
+    emit finished(QImage(), QUrl(), QString(), m_revision);
+    m_revision = -1;
+}
+
+void PcTimelinePreviewWorker::startNextFrame()
+{
     if (m_frameIndex >= m_videoStates.size()) {
         finishPreview();
         return;
@@ -366,7 +456,7 @@ void PcTimelinePreviewGenerator::startNextFrame()
                                 outputPath});
 }
 
-void PcTimelinePreviewGenerator::completeFrame(bool success, const QString &errorMessage)
+void PcTimelinePreviewWorker::completeFrame(bool success, const QString &errorMessage)
 {
     if (!m_framePending)
         return;
@@ -386,31 +476,20 @@ void PcTimelinePreviewGenerator::completeFrame(bool success, const QString &erro
     startNextFrame();
 }
 
-void PcTimelinePreviewGenerator::finishPreview()
+void PcTimelinePreviewWorker::finishPreview()
 {
-    if (isActive()) {
-        m_previewImage = m_canvas;
-        const QString previewPath = m_temporaryDir.filePath(
-            QStringLiteral("preview-%1.jpg").arg(m_generationRevision));
-        if (m_previewImage.save(previewPath, "JPG", 90)) {
-            if (m_previewUrl.isEmpty() == false)
-                QFile::remove(m_previewUrl.toLocalFile());
-            m_previewUrl = QUrl::fromLocalFile(previewPath);
-        } else {
-            if (m_previewUrl.isEmpty() == false)
-                QFile::remove(m_previewUrl.toLocalFile());
-            m_previewUrl = QUrl();
-            m_errors.append(tr("无法保存预览图像"));
-        }
-        m_previewTimeMs = m_generationTimeMs;
-        setErrorString(m_errors.join(QLatin1Char('\n')));
-        emit previewChanged();
-        emit previewReady(m_previewImage, m_previewTimeMs);
-    }
-
-    setBusy(false);
-    if (isActive() && m_generationRevision != m_revision && !m_refreshTimer.isActive())
-        m_refreshTimer.start();
+    QImage image = m_canvas;
+    if (image.width() > 1920 || image.height() > 1080)
+        image = image.scaled(1920, 1080, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const QString previewPath = m_temporaryDir.filePath(
+        QStringLiteral("preview-%1.jpg").arg(m_revision));
+    QUrl url;
+    if (image.save(previewPath, "JPG", 90))
+        url = QUrl::fromLocalFile(previewPath);
+    else
+        m_errors.append(tr("无法保存预览图像"));
+    emit finished(image, url, m_errors.join(QLatin1Char('\n')), m_revision);
+    m_revision = -1;
 }
 
 void PcTimelinePreviewGenerator::setBusy(bool busy)
@@ -428,3 +507,5 @@ void PcTimelinePreviewGenerator::setErrorString(const QString &errorString)
     m_errorString = errorString;
     emit errorStringChanged();
 }
+
+#include "PcTimelinePreviewGenerator.moc"

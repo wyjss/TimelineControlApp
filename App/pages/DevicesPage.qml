@@ -1358,7 +1358,7 @@ Item {
                 return
 
             if (editing) {
-                if (deviceManager.updateDevice(editingDevice, deviceName, buildConfigValues()))
+                if (deviceManager.updateDevice(editingDevice, deviceName, buildConfigValues(), editingDevice.groupNames))
                     close()
                 return
             }

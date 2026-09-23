@@ -94,6 +94,7 @@ Device* XB809DeviceTemplate::createDevice(QObject* parent, const QVariantMap& co
         auto param = new DeviceParamSpec("index", "节目索引", 0, DeviceParamSpec::IntType);
         param->setMinimum(0);
         param->setMaximum(0x1f);
+        param->setSubtitle("0表示第一个节目，以此类推");
         cmd->addExecutionInputField(param);
 
         device->appendCommand(cmd);
@@ -108,6 +109,7 @@ Device* XB809DeviceTemplate::createDevice(QObject* parent, const QVariantMap& co
         auto param = new DeviceParamSpec("spd", "速度等级", 0, DeviceParamSpec::IntType);
         param->setMinimum(0);
         param->setMaximum(0x0f);
+        param->setSubtitle("0表示第一级，以此类推");
         cmd->addExecutionInputField(param);
 
         device->appendCommand(cmd);

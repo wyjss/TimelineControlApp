@@ -2,6 +2,7 @@ import QtQuick 2.14
 import UICore.Style 1.0
 import QtQuick.Controls 2.14
 import QtQuick.Layouts 1.14
+import QtQuick.Window 2.14
 import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/theme" as Theme
 import "timeline" as Timeline
@@ -33,6 +34,7 @@ Item {
     property bool controlTrackVisible: false
     property string commandPanelMode: "device"
     readonly property var editor: timelineEditorLoader.item
+    readonly property var pcPreviewGenerator: editor ? editor.pcPreviewGenerator : null
 
     onControlTrackVisibleChanged: {
         if (controlTrackVisible)
@@ -755,7 +757,113 @@ Item {
                         }
                     }
                 }
+
+                Base.AppSurface {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 188
+                    visible: root.controlTrackVisible && root.timelineStopped
+                        && root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
+                    onVisibleChanged: {
+                        if (!visible && pcPreviewWindow)
+                            pcPreviewWindow.close()
+                    }
+                    sizeToContent: false
+                    surfaceTone: UiStyle.SurfaceTone.Section
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 8
+
+                        RowLayout {
+                            Layout.fillWidth: true
+
+                            Base.AppText {
+                                Layout.fillWidth: true
+                                text: qsTr("PC 预览")
+                                styleRole: UiStyle.TypographyRole.BodyM
+                            }
+
+                            Base.AppText {
+                                text: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
+                                    ? qsTr("生成中…")
+                                    : qsTr("%1 ms").arg(root.pcPreviewGenerator
+                                        ? root.pcPreviewGenerator.previewTimeMs
+                                        : 0)
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                            }
+
+                            Base.AppButton {
+                                objectName: "enlargePcPreviewButton"
+                                text: qsTr("放大")
+                                size: UiStyle.ButtonSize.Small
+                                variant: UiStyle.ButtonVariant.Ghost
+                                onClicked: {
+                                    pcPreviewWindow.show()
+                                    pcPreviewWindow.raise()
+                                    pcPreviewWindow.requestActivate()
+                                }
+                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+
+                            Image {
+                                anchors.fill: parent
+                                source: root.pcPreviewGenerator
+                                    ? root.pcPreviewGenerator.previewUrl
+                                    : ""
+                                fillMode: Image.PreserveAspectFit
+                                cache: false
+                            }
+
+                            MouseArea {
+                                objectName: "pcPreviewMouseArea"
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onDoubleClicked: {
+                                    pcPreviewWindow.show()
+                                    pcPreviewWindow.raise()
+                                    pcPreviewWindow.requestActivate()
+                                }
+                            }
+
+                            BusyIndicator {
+                                anchors.centerIn: parent
+                                running: visible
+                                visible: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    Window {
+        id: pcPreviewWindow
+        objectName: "pcPreviewWindow"
+
+        width: 960
+        height: 540
+        minimumWidth: 480
+        minimumHeight: 270
+        transientParent: root.Window.window
+        flags: Qt.Window
+        color: "black"
+        title: root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
+            ? qsTr("PC 预览 · %1").arg(root.pcPreviewGenerator.pcDevice.name)
+            : qsTr("PC 预览")
+
+        Image {
+            anchors.fill: parent
+            source: pcPreviewWindow.visible && root.pcPreviewGenerator
+                ? root.pcPreviewGenerator.previewUrl : ""
+            fillMode: Image.PreserveAspectFit
+            cache: false
         }
     }
 

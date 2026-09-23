@@ -648,60 +648,6 @@ Item {
                             }
                         }
                     }
-
-                    Base.AppSurface {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 188
-                        visible: root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
-                        sizeToContent: false
-                        surfaceTone: UiStyle.SurfaceTone.Section
-
-                        ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 10
-                            spacing: 8
-
-                            RowLayout {
-                                Layout.fillWidth: true
-
-                                Base.AppText {
-                                    Layout.fillWidth: true
-                                    text: qsTr("PC 预览")
-                                    styleRole: UiStyle.TypographyRole.BodyM
-                                }
-
-                                Base.AppText {
-                                    text: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
-                                        ? qsTr("生成中…")
-                                        : qsTr("%1 ms").arg(root.pcPreviewGenerator
-                                            ? root.pcPreviewGenerator.previewTimeMs
-                                            : 0)
-                                    styleRole: UiStyle.TypographyRole.BodyS
-                                    textTone: UiStyle.TextTone.Secondary
-                                }
-                            }
-
-                            Item {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-
-                                Image {
-                                    anchors.fill: parent
-                                    source: root.pcPreviewGenerator
-                                        ? root.pcPreviewGenerator.previewUrl
-                                        : ""
-                                    fillMode: Image.PreserveAspectFit
-                                    cache: false
-                                }
-
-                                BusyIndicator {
-                                    anchors.centerIn: parent
-                                    running: visible
-                                    visible: root.pcPreviewGenerator && root.pcPreviewGenerator.busy
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }

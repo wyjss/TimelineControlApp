@@ -34,11 +34,13 @@ public:
     Q_INVOKABLE bool createDeviceFromTemplate(const QString &templateName,
                                               const QVariantMap &configValues = QVariantMap(),
                                               const QString &deviceName = QString(),
-                                              const QString &deviceType = QString());
+                                              const QString &deviceType = QString(),
+                                              const QStringList &groupNames = QStringList());
     Q_INVOKABLE QString validateDeviceUpdate(Device *device, const QString &deviceName) const;
     Q_INVOKABLE bool updateDevice(Device *device,
                                   const QString &deviceName,
-                                  const QVariantMap &configValues);
+                                  const QVariantMap &configValues,
+                                  const QStringList &groupNames);
 
 private:
     void refreshDmx512AdapterOptions();

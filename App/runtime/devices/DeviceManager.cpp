@@ -204,7 +204,8 @@ QString DeviceManager::validateDeviceCreation(const QString &deviceType,
 bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
                                              const QVariantMap &configValues,
                                              const QString &deviceName,
-                                             const QString &deviceType)
+                                             const QString &deviceType,
+                                             const QStringList &groupNames)
 {
     DeviceTemplate *selectedTemplate = m_deviceTemplateModel ? m_deviceTemplateModel->templateByName(templateName) : nullptr;
     if (!selectedTemplate)
@@ -235,6 +236,7 @@ bool DeviceManager::createDeviceFromTemplate(const QString &templateName,
     if (!newDevice)
         return false;
 
+    newDevice->setGroupNames(groupNames);
     m_deviceModel->appendDevice(newDevice);
     if (m_deviceModel)
         m_deviceModel->setCurrentDeviceId(newDevice->id());
@@ -261,12 +263,14 @@ QString DeviceManager::validateDeviceUpdate(Device *device, const QString &devic
 
 bool DeviceManager::updateDevice(Device *device,
                                  const QString &deviceName,
-                                 const QVariantMap &configValues)
+                                 const QVariantMap &configValues,
+                                 const QStringList &groupNames)
 {
     if (!validateDeviceUpdate(device, deviceName).isEmpty())
         return false;
 
     device->setName(deviceName);
+    device->setGroupNames(groupNames);
     for (auto it = configValues.cbegin(); it != configValues.cend(); ++it) {
         if (!it.key().isEmpty())
             device->setParamValue(it.key(), it.value());

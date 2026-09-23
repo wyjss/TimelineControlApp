@@ -20,6 +20,8 @@ class DeviceModel final : public TypedListModel<Device *>
     Q_PROPERTY(QString currentDeviceId READ currentDeviceId WRITE setCurrentDeviceId NOTIFY currentDeviceIdChanged FINAL)
     Q_PROPERTY(Device *currentDevice READ currentDevice NOTIFY currentDeviceChanged FINAL)
     Q_PROPERTY(QStringList deviceTypes READ deviceTypes NOTIFY deviceTypesChanged FINAL)
+    //! 所有设备的组名，按首次出现的顺序去重。
+    Q_PROPERTY(QStringList groupNames READ groupNames NOTIFY groupNamesChanged FINAL)
 
 public:
     explicit DeviceModel(QObject *parent = nullptr);
@@ -35,6 +37,7 @@ public:
                        const QString &excludedDeviceId = QString()) const;
 
     QStringList deviceTypes(bool manual = false) const;
+    QStringList groupNames() const;
 
     Q_INVOKABLE QVariantList deviceOptionsForDeviceType(const QString &deviceType) const;
     Q_INVOKABLE void selectDevice(const QString &deviceId);
@@ -53,6 +56,7 @@ signals:
     void deviceAboutToBeRemoved(Device *device, const QString &deviceId);
     void deviceRemoved(const QString &deviceId);
     void deviceTypesChanged();
+    void groupNamesChanged();
     void currentDeviceIdChanged();
     void currentDeviceChanged();
 

@@ -8,6 +8,22 @@
 #include <QUrlQuery>
 #include <QRect>
 
+// class PowerOnCommand : public DeviceCommand_Udp
+// {
+// public:
+// 	PowerOnCommand(QObject* parent)
+// 		: DeviceCommand_Udp(DeviceProtocol::Udp, "开机", "", parent)
+// 	{
+// 		this->getField(DeviceKey::Port)->setRequired(false);
+// 		this->getField(DeviceKey::Port)->setValue();
+// 
+// 		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
+// 		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
+// 		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Payload));
+// 		addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::PayloadType));
+// 	}
+// };
+
 class _VideoControlCommand : public DeviceCommand_PC
 {
 public:

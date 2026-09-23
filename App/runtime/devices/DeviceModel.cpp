@@ -9,6 +9,7 @@
 DeviceModel::DeviceModel(QObject *parent)
     : TypedListModel<Device *>(parent)
 {
+    connect(this, &DeviceModel::devicesChanged, this, &DeviceModel::groupNamesChanged);
 }
 
 DeviceModel::~DeviceModel()
@@ -136,6 +137,18 @@ QStringList DeviceModel::deviceTypes(bool manual) const
             types << deviceType;
     }
     return types;
+}
+
+QStringList DeviceModel::groupNames() const
+{
+    QStringList names;
+    for (Device *device : items()) {
+        for (const QString &groupName : device->groupNames()) {
+            if (!names.contains(groupName))
+                names.append(groupName);
+        }
+    }
+    return names;
 }
 
 QVariantList DeviceModel::deviceOptionsForDeviceType(const QString &deviceType) const
@@ -344,6 +357,8 @@ void DeviceModel::prepareDevice(Device *device)
         emit deviceTypesChanged();
     });
     connect(device, &Device::nameChanged, this, notifyChanged);
+    connect(device, &Device::groupNamesChanged, this, notifyChanged);
+    connect(device, &Device::groupNamesChanged, this, &DeviceModel::groupNamesChanged);
     connect(device, &Device::supportedProtocolsChanged, this, notifyChanged);
     connect(device, &Device::onlineChanged, this, notifyChanged);
     connect(device, &Device::descriptionChanged, this, notifyChanged);

@@ -3,9 +3,8 @@
 #include <QImage>
 #include <QObject>
 #include <QPointer>
-#include <QProcess>
 #include <QRect>
-#include <QTemporaryDir>
+#include <QThread>
 #include <QTimer>
 #include <QUrl>
 #include <QVector>
@@ -15,6 +14,7 @@ class Device;
 class DeviceModel;
 class TimelineCommandModel;
 class TimelineManager;
+class PcTimelinePreviewWorker;
 namespace UICore {
 class AppShellController;
 }
@@ -31,10 +31,20 @@ class PcTimelinePreviewGenerator final : public QObject
     Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged FINAL)
 
 public:
+    struct VideoState
+    {
+        QString source;
+        QRect rect;
+        qint64 positionMs = 0;
+        qint64 changedAtMs = 0;
+        bool playing = false;
+    };
+
     PcTimelinePreviewGenerator(TimelineManager *timelineManager,
                                DeviceModel *deviceModel,
                                UICore::AppShellController *shellController,
                                QObject *parent = nullptr);
+    ~PcTimelinePreviewGenerator() override;
 
     Device *pcDevice() const;
 
@@ -52,6 +62,9 @@ public:
     Q_INVOKABLE void seek(qint64 timeMs);
 
 signals:
+    void previewRequested(const QVector<VideoState> &videoStates, const QSize &canvasSize,
+                          const QString &ffmpegProgram, int revision);
+    void cancelRequested();
     void pcDeviceChanged();
     void previewChanged();
     void previewReady(const QImage &image, qint64 timeMs);
@@ -60,15 +73,6 @@ signals:
     void errorStringChanged();
 
 private:
-    struct VideoState
-    {
-        QString source;
-        QRect rect;
-        qint64 positionMs = 0;
-        qint64 changedAtMs = 0;
-        bool playing = false;
-    };
-
     void requestPreview();
     bool isActive() const;
     void updateActiveState();
@@ -77,9 +81,6 @@ private:
     void setPcDevice(Device *device);
     void startPreview();
     QVector<VideoState> videoStatesAt(qint64 timeMs, const QSize &canvasSize) const;
-    void startNextFrame();
-    void completeFrame(bool success, const QString &errorMessage);
-    void finishPreview();
     void setBusy(bool busy);
     void setErrorString(const QString &errorString);
 
@@ -95,15 +96,12 @@ private:
     bool m_busy = false;
     QString m_errorString;
     QTimer m_refreshTimer;
-    QProcess m_process;
-    QTemporaryDir m_temporaryDir;
-    QVector<VideoState> m_videoStates;
-    QImage m_canvas;
-    QStringList m_errors;
-    int m_frameIndex = 0;
+    QThread m_workerThread;
+    PcTimelinePreviewWorker *m_worker = nullptr;
     int m_revision = 0;
     int m_generationRevision = 0;
     qint64 m_requestedTimeMs = 0;
     qint64 m_generationTimeMs = 0;
-    bool m_framePending = false;
 };
+
+Q_DECLARE_METATYPE(QVector<PcTimelinePreviewGenerator::VideoState>)
