@@ -7,6 +7,8 @@
 #include "devices/backends/Locator.h"
 #include "devices/backends/PC.h"
 #include "devices/backends/XB809.h"
+#include "devices/backends/LMI.h"
+#include "devices/backends/Lighting.h"
 
 
 DeviceTemplateModel::DeviceTemplateModel(TimelineModel *timelineModel,
@@ -31,6 +33,8 @@ void DeviceTemplateModel::loadDefaultTemplates()
     appendTemplate(new LocatorDeviceTemplate(m_timelineModel, this));
     appendTemplate(new SerialPowerDeviceTemplate);
     appendTemplate(new XB809DeviceTemplate(this));
+    appendTemplate(new LMIDeviceTemplate(this));
+    appendTemplate(new LightingDeviceTemplate(this));
 }
 
 QVariantList DeviceTemplateModel::templates() const

@@ -17,6 +17,8 @@ namespace DeviceType {
 	inline const QString Locator = "定位器";
 	inline const QString Fusion3 = "分布式融合器3.0";
 	inline const QString XB809 = "XB809主控";
+	inline const QString LMI = "水幕";
+	inline const QString Lighting = "灯控";
 };
 
 //! 公共key定义，包括DeviceParamSpec::createForKey和指令CommandType
@@ -72,6 +74,7 @@ namespace DeviceKey {
 	inline const QString SerialPort = "serialPort";
 	inline const QString VideoFile = "videoFile";
 	inline const QString VideoTimeSec = "videoTimeSec";
+	inline const QString VideoSeekTimeSec = "videoSeekTimeSec";
 
 	// 已废弃，用VideoWindow*代替。
 	// @todo 目前只用来做兼容，后期删除
@@ -107,6 +110,7 @@ namespace DeviceKey {
 	inline const QString CommandOpenVideo = "openVideo";
 	inline const QString CommandPlayVideo = "playVideo";
 	inline const QString CommandPauseVideo = "pauseVideo";
+	inline const QString CommandSeekVideo = "seekVideo";
 	inline const QString CommandStopVideo = "closeVideo";
 	inline const QString CommandClosePlayer = "closePlayer";
 	//inline const QString CommandPlayDomeVideo = "playDomeVideo";

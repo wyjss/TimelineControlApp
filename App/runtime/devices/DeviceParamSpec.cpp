@@ -423,19 +423,33 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
-    if (deviceKey == DeviceKey::VideoTimeSec) {
-        auto* spec = new DeviceParamSpec(deviceKey,
-                                         QStringLiteral("视频起始时间(秒)"),
-                                         "",
-                                         DoubleType,
-                                         AutoEditor);
-        spec->setRequired(false);
-        spec->setMinimum(0);
-        spec->setMaximum(60 * 60 * 6);
-        spec->setValue(0);
-        spec->setDefaultValue(9.5);
-        return spec;
-    }
+	if (deviceKey == DeviceKey::VideoTimeSec) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频起始时间(秒)"),
+										 "",
+										 DoubleType,
+										 AutoEditor);
+		spec->setRequired(false);
+		spec->setMinimum(0);
+		spec->setMaximum(60 * 60 * 6);
+		spec->setValue(0);
+		spec->setDefaultValue(9.5);
+		return spec;
+	}
+
+	if (deviceKey == DeviceKey::VideoSeekTimeSec) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("视频跳转时间"),
+										 "",
+										 DoubleType,
+										 AutoEditor);
+		spec->setRequired(true);
+		spec->setMinimum(0);
+		spec->setMaximum(60 * 60 * 6);
+		spec->setValue(0);
+		spec->setDefaultValue(0);
+		return spec;
+	}
 
     if (deviceKey == DeviceKey::VideoWindowX) {
         auto* spec = new DeviceParamSpec(deviceKey,

@@ -56,6 +56,13 @@ public:
 			api = qurl.url();
 			params[DeviceKey::Name] = this->name() + "-" + url;
 		}
+		if (commandType() == DeviceKey::CommandSeekVideo) {
+			QUrl qurl(api);
+			QUrlQuery query(qurl);
+			query.addQueryItem("time", params[DeviceKey::VideoSeekTimeSec].toString());
+			qurl.setQuery(query);
+			api = qurl.url();
+		}
 		params[DeviceKey::ApiPath] = api;
 		return params;
 	}
@@ -154,6 +161,24 @@ public:
 	}
 };
 
+class SeekVideoCommand : public _VideoControlCommand
+{
+public:
+	explicit SeekVideoCommand(QObject* parent)
+		: _VideoControlCommand("视频跳转",
+							   DeviceKey::CommandSeekVideo,
+							   "/video/seek",
+							   parent)
+	{
+
+		this->addExecutionInputField(
+			DeviceParamSpec::createForKey(DeviceKey::VideoSeekTimeSec)
+		);
+
+		setStringTemplateKey(DeviceKey::ApiPath);
+	}
+};
+
 class StopVideoCommand : public _VideoControlCommand
 {
 public:
@@ -248,6 +273,7 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(new OpenVideoCommand(device));
 	device->appendCommand(new PlayVideoCommand(device));
 	device->appendCommand(new PauseVideoCommand(device));
+	device->appendCommand(new SeekVideoCommand(device));
 	device->appendCommand(new StopVideoCommand(device));
 	device->appendCommand(new ClosePlayerCommand(device));
 	//device->appendCommand(new PlayDomeVideoCommand(device));
@@ -279,6 +305,8 @@ DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
 		return new PlayVideoCommand(parent);
 	if (commandType == DeviceKey::CommandPauseVideo)
 		return new PauseVideoCommand(parent);
+	if (commandType == DeviceKey::CommandSeekVideo)
+		return new SeekVideoCommand(parent);
 	if (commandType == DeviceKey::CommandStopVideo)
 		return new StopVideoCommand(parent);
 	if (commandType == DeviceKey::CommandClosePlayer)

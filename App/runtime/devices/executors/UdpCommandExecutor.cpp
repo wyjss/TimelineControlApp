@@ -36,7 +36,7 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
 			emit executionFinished(executionId, command, false, tr("无效的hex数据"));
 			return;
 		}
-		LOG_DEBUG("转换16禁止数据:" << payload);
+		LOG_DEBUG("转换16进制数据:" << payload);
 	} else
     {
         data = payload.toUtf8();

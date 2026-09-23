@@ -469,7 +469,7 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValu
         
         for (auto it = params.cbegin(); it != params.cend(); ++it) {
             QString k = QString("${%1}").arg(it.key());
-            // 普通替换
+            // 普通替换，${key}
             if (str.contains(k)) {
                 bool numOk = false;
                 auto num = it.value().toUInt(&numOk);
@@ -483,7 +483,7 @@ QVariantMap DeviceCommand::resolvedParams(const QVariantMap & executionInputValu
                     str = str.replace(k, it.value().toString());
                 }
             } 
-            // http query插入
+            // http query插入，$&{key}
             else if (k.insert(1, "&"); str.contains(k)) {
                 QUrl qurl(str);
                 QUrlQuery query(qurl);
