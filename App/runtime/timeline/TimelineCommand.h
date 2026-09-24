@@ -151,6 +151,9 @@ public:
 
 signals:
     void commandsChanged();
+    //! 指令增删或执行参数、时间提交后通知调度，不包含执行状态变化。
+    //! retimedCommand 仅在已有指令的触发时间实际改变时传入。
+    void commandScheduleChanged(TimelineCommand *retimedCommand = nullptr);
     void realDurationMsChanged();
     void selectedCommandIdChanged();
 

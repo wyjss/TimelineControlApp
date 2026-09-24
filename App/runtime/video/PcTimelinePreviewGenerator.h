@@ -3,11 +3,12 @@
 #include <QImage>
 #include <QObject>
 #include <QPointer>
-#include <QRect>
 #include <QThread>
 #include <QTimer>
 #include <QUrl>
 #include <QVector>
+
+#include "runtime/video/PcVideoStateCalculator.h"
 
 
 class Device;
@@ -31,14 +32,7 @@ class PcTimelinePreviewGenerator final : public QObject
     Q_PROPERTY(QString errorString READ errorString NOTIFY errorStringChanged FINAL)
 
 public:
-    struct VideoState
-    {
-        QString source;
-        QRect rect;
-        qint64 positionMs = 0;
-        qint64 changedAtMs = 0;
-        bool playing = false;
-    };
+    using VideoState = PcVideoStateCalculator::VideoState;
 
     PcTimelinePreviewGenerator(TimelineManager *timelineManager,
                                DeviceModel *deviceModel,
@@ -80,7 +74,6 @@ private:
     void updatePcDevice();
     void setPcDevice(Device *device);
     void startPreview();
-    QVector<VideoState> videoStatesAt(qint64 timeMs, const QSize &canvasSize) const;
     void setBusy(bool busy);
     void setErrorString(const QString &errorString);
 

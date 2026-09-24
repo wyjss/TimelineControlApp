@@ -3,7 +3,9 @@
 #include <UICore/Shell/BaseRuntime.h>
 #include <UICore/Task/TaskManager.h>
 
+#include <QPointer>
 #include <QString>
+#include <QTimer>
 #include <QVariantMap>
 
 class QDataStream;
@@ -16,6 +18,7 @@ class DeviceTemplateModel;
 class DeviceExecutorManager;
 class FenceManager;
 class VideoProjectionPlanController;
+class Timeline;
 class TimelineCommand;
 class TimelineManager;
 
@@ -59,6 +62,8 @@ signals:
     void currentPlanFilePathChanged();
 
 private:
+    void seekPcVideoPreview(qint64 timeMs);
+    void flushPcVideoPreview();
     void executeTimelineCommand(TimelineCommand *timelineCommand,
                                 const QVariantMap &executionInputValues,
                                 bool isTest);
@@ -71,6 +76,9 @@ private:
     DeviceManager *m_deviceManager = nullptr;
     FenceManager *m_fenceManager = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
+    QTimer m_pcVideoSeekTimer;
+    QPointer<Timeline> m_pendingPcVideoTimeline;
+    qint64 m_pendingPcVideoTimeMs = 0;
     QString m_currentPlanFilePath;
     int m_runId = 0;
 };

@@ -1,21 +1,17 @@
 #include "runtime/video/PcTimelinePreviewGenerator.h"
 
-#include <QtAlgorithms>
-
 #include <QFile>
 #include <QPainter>
 #include <QProcess>
 #include <QTemporaryDir>
 
 #include "devices/Device.h"
-#include "devices/DeviceCommand.h"
 #include "devices/DeviceConstants.h"
 #include "devices/DeviceModel.h"
 #include <UICore/Shell/AppShellController.h>
 #include "timeline/Timeline.h"
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
-#include "utils.h"
 
 
 namespace {
@@ -315,88 +311,16 @@ void PcTimelinePreviewGenerator::startPreview()
             * qMax(1, config.value(DeviceKey::ScreenRows, 1).toInt());
 
     const QSize canvasSize(qMax(1, width), qMax(1, height));
-    const QVector<VideoState> videoStates = videoStatesAt(m_generationTimeMs, canvasSize);
+    QVector<VideoState> videoStates = PcVideoStateCalculator::stateAt(
+        m_timelineCommandModel->commands(), m_pcDevice->id(), m_generationTimeMs).videos;
+    for (int index = videoStates.size() - 1; index >= 0; --index) {
+        VideoState &state = videoStates[index];
+        state.windowRect = state.windowRect.intersected(QRect(QPoint(), canvasSize));
+        if (state.windowRect.isEmpty())
+            videoStates.removeAt(index);
+    }
     setBusy(true);
     emit previewRequested(videoStates, canvasSize, m_ffmpegProgram, m_generationRevision);
-}
-
-QVector<PcTimelinePreviewGenerator::VideoState>
-PcTimelinePreviewGenerator::videoStatesAt(qint64 timeMs, const QSize &canvasSize) const
-{
-    QList<TimelineCommand *> commands = m_timelineCommandModel->commands();
-    qSort(commands.begin(), commands.end(), [](TimelineCommand *left, TimelineCommand *right) {
-        return left && right ? left->startTimeMs() < right->startTimeMs() : right != nullptr;
-    });
-
-    QVector<VideoState> states;
-    const QString deviceId = m_pcDevice->id();
-    const auto advance = [](VideoState &state, qint64 eventTimeMs) {
-        if (state.playing)
-            state.positionMs += qMax<qint64>(0, eventTimeMs - state.changedAtMs);
-        state.changedAtMs = eventTimeMs;
-    };
-
-    for (TimelineCommand *command : commands) {
-        if (!command || command->targetDeviceId() != deviceId || command->startTimeMs() > timeMs)
-            continue;
-
-        DeviceCommand *targetCommand = command->targetCommand();
-        if (!targetCommand)
-            continue;
-
-        const QString commandType = targetCommand->commandType();
-        const QVariantMap input = command->executionInputValues();
-        const QString source = Utils::getVideoRealSource(input.value(DeviceKey::VideoFile).toString());
-        const qint64 eventTimeMs = command->startTimeMs();
-
-        if (commandType == QStringLiteral("openVideo")) {
-            if (source.isEmpty())
-                continue;
-            for (int index = states.size() - 1; index >= 0; --index) {
-                if (states.at(index).source == source)
-                    states.removeAt(index);
-            }
-            QRect rect(input.value(DeviceKey::VideoWindowX).toInt(),
-                       input.value(DeviceKey::VideoWindowY).toInt(),
-                       input.value(DeviceKey::VideoWindowW).toInt(),
-                       input.value(DeviceKey::VideoWindowH).toInt());
-            rect = rect.intersected(QRect(QPoint(), canvasSize));
-            if (!rect.isEmpty())
-                states.append(VideoState{source, rect, 0, eventTimeMs, input.value(QStringLiteral("play"), true).toBool()});
-            continue;
-        }
-
-        if (commandType == QStringLiteral("closePlayer")) {
-            states.clear();
-            continue;
-        }
-
-        if (commandType == QStringLiteral("closeVideo")) {
-            if (source.isEmpty()) {
-                states.clear();
-            } else {
-                for (int index = states.size() - 1; index >= 0; --index) {
-                    if (states.at(index).source == source)
-                        states.removeAt(index);
-                }
-            }
-            continue;
-        }
-
-        const bool play = commandType == QStringLiteral("playVideo");
-        if (!play && commandType != QStringLiteral("pauseVideo"))
-            continue;
-        for (VideoState &state : states) {
-            if (!source.isEmpty() && state.source != source)
-                continue;
-            advance(state, eventTimeMs);
-            state.playing = play;
-        }
-    }
-
-    for (VideoState &state : states)
-        advance(state, timeMs);
-    return states;
 }
 
 void PcTimelinePreviewWorker::startPreview(const QVector<VideoState> &videoStates, const QSize &canvasSize,
@@ -469,7 +393,7 @@ void PcTimelinePreviewWorker::completeFrame(bool success, const QString &errorMe
         m_errors.append(QStringLiteral("%1: %2").arg(m_videoStates.at(m_frameIndex).source, detail));
     } else {
         QPainter painter(&m_canvas);
-        painter.drawImage(m_videoStates.at(m_frameIndex).rect, frame);
+        painter.drawImage(m_videoStates.at(m_frameIndex).windowRect, frame);
     }
 
     ++m_frameIndex;

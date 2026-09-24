@@ -16,6 +16,7 @@ Item {
     property string deviceIdFilter: ""
     property string selectedCommandId: ""
     property bool editingEnabled: true
+    property bool locatingEnabled: false
     property bool showDeviceName: false
     readonly property var visibleCommands: filterCommands()
     readonly property int count: visibleCommands.length
@@ -26,6 +27,8 @@ Item {
     readonly property int resultColumnWidth: 32
 
     signal commandSelected(var command)
+    signal commandTestRequested(var command)
+    signal locateRequested(var command)
     signal editRequested(var command)
     signal removeRequested(var command)
 
@@ -124,6 +127,13 @@ Item {
             .arg(String(command.alias || qsTr("指令")))
             .arg(executionParameters(command))
             .arg(String(command.stateText || qsTr("待执行")))
+    }
+
+    TimelineCommandContextMenu {
+        id: commandMenu
+        locatingEnabled: root.locatingEnabled
+        onTestRequested: root.commandTestRequested(command)
+        onLocateRequested: root.locateRequested(command)
     }
 
     ColumnLayout {
@@ -236,9 +246,20 @@ Item {
                 hoverEnabled: true
                 focusPolicy: Qt.StrongFocus
                 onClicked: root.commandSelected(commandData)
-                ToolTip.visible: hovered && !editButton.hovered && !removeButton.hovered
+                ToolTip.visible: hovered && !locateButton.hovered && !editButton.hovered && !removeButton.hovered
                 ToolTip.delay: 500
                 ToolTip.text: root.commandInfo(commandData)
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.RightButton
+                    onClicked: {
+                        commandMenu.timelineCommand = commandRow.commandData
+                        var position = mapToItem(root, mouse.x, mouse.y)
+                        root.commandSelected(commandRow.commandData)
+                        commandMenu.popup(position.x, position.y)
+                    }
+                }
 
                 Behavior on opacity {
                     NumberAnimation { duration: 120 }
@@ -400,13 +421,33 @@ Item {
                     anchors.right: parent.right
                     anchors.rightMargin: 5
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 66
+                    width: locateButton.width + (root.editingEnabled ? 70 : 6)
                     height: 34
                     radius: 4
-                    visible: commandRow.hovered && root.editingEnabled
+                    visible: commandRow.hovered
                     color: root.colorValue("backgroundSurfaceOverlay", "#20262c")
                     opacity: 0.96
                     z: 1
+                }
+
+                Base.AppButton {
+                    id: locateButton
+                    objectName: "locateTimelineCommand_" + String(commandRow.commandData.id || "")
+
+                    anchors.right: root.editingEnabled ? editButton.left : parent.right
+                    anchors.rightMargin: root.editingEnabled ? 4 : 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 28
+                    minWidth: 44
+                    size: UiStyle.ButtonSize.Small
+                    variant: UiStyle.ButtonVariant.Ghost
+                    text: qsTr("定位")
+                    visible: commandRow.hovered
+                    enabled: root.locatingEnabled
+                    z: 2
+                    onClicked: root.locateRequested(commandRow.commandData)
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("定位到指令")
                 }
 
                 Base.AppButton {

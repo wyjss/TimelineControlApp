@@ -17,6 +17,7 @@
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
 #include "timeline/TimelineModel.h"
+#include "video/PcVideoStateCalculator.h"
 
 #include "LogMacros.h"
 
@@ -83,6 +84,21 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     });
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_videoProjectionPlanController, &VideoProjectionPlanController::removeMappingsForPc);
+    m_pcVideoSeekTimer.setInterval(200);
+    m_pcVideoSeekTimer.setSingleShot(true);
+    connect(&m_pcVideoSeekTimer, &QTimer::timeout, this, &TimelineRuntime::flushPcVideoPreview);
+    connect(m_timelineManager, &TimelineManager::currentTimelineChanged,
+            this, [this]() {
+        m_pcVideoSeekTimer.stop();
+        m_pendingPcVideoTimeline.clear();
+    });
+    connect(m_timelineManager->timelineModel(), &TimelineModel::timelinesChanged,
+            this, [this]() {
+        for (Timeline *timeline : m_timelineManager->timelineModel()->items()) {
+            connect(timeline, &Timeline::seekPreviewRequested,
+                    this, &TimelineRuntime::seekPcVideoPreview, Qt::UniqueConnection);
+        }
+    });
     connect(m_timelineManager, &TimelineManager::commandTriggered,
             this, [this](Timeline *, TimelineCommand *timelineCommand) {
         executeTimelineCommand(timelineCommand, timelineCommand->executionInputValues(), false);
@@ -94,6 +110,10 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     });
     connect(m_timelineManager, &TimelineManager::playbackStateChanged,
             this, [this](TimelineManager::PlaybackState state) {
+        if (state != TimelineManager::Paused) {
+            m_pcVideoSeekTimer.stop();
+            m_pendingPcVideoTimeline.clear();
+        }
         if (state != TimelineManager::Stopped)
             return;
 
@@ -113,6 +133,56 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
         loadPlanFromFile(defaultPlanFilePath);
     if (m_timelineManager->timelineModel()->rowCount() == 0)
         m_timelineManager->createTimeline(tr("主时间轴"));
+}
+
+void TimelineRuntime::seekPcVideoPreview(qint64 timeMs)
+{
+    Timeline *timeline = qobject_cast<Timeline *>(sender());
+    if (m_timelineManager->playbackState() != TimelineManager::Paused
+        || !timeline || timeline->state() != Timeline::Running)
+        return;
+
+    m_pendingPcVideoTimeline = timeline;
+    m_pendingPcVideoTimeMs = timeMs;
+    // 窗口内只覆盖目标位置，不重启定时器，持续拖动时仍定期同步。
+    if (!m_pcVideoSeekTimer.isActive())
+        m_pcVideoSeekTimer.start();
+}
+
+void TimelineRuntime::flushPcVideoPreview()
+{
+    Timeline *timeline = m_pendingPcVideoTimeline.data();
+    const qint64 timeMs = m_pendingPcVideoTimeMs;
+    m_pendingPcVideoTimeline.clear();
+    if (m_timelineManager->playbackState() != TimelineManager::Paused
+        || !timeline || timeline->state() != Timeline::Running)
+        return;
+
+    const QList<TimelineCommand *> commands = timeline->commandModel()->commands();
+    for (Device *device : m_deviceModel->items()) {
+        if (device->filteredOut() || !device->supportsProtocol(DeviceProtocol::Pc))
+            continue;
+
+        const auto state = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);
+        if (state.videos.isEmpty())
+            continue;
+
+        for (const QVariant &value : device->commands()) {
+            DeviceCommand *command = value.value<DeviceCommand *>();
+            if (command->protocol() != DeviceProtocol::Pc
+                || command->commandType() != DeviceKey::CommandSeekVideo)
+                continue;
+
+            // 暂停拖动只同步视频进度，不执行播放指令。
+            for (const auto &video : state.videos) {
+                m_deviceExecutorManager->execute(
+                    QUuid::createUuid().toString(QUuid::WithoutBraces), command,
+                    {{DeviceKey::VideoFile, video.source},
+                     {DeviceKey::VideoSeekTimeSec, static_cast<double>(video.positionMs) / 1000.0}});
+            }
+            break;
+        }
+    }
 }
 
 void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand,
@@ -169,7 +239,8 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand,
         if (finishedExecutionId != executionId || finishedCommand != deviceCommand)
             return;
 
-        if ((isTest || m_runId == runId) && timelineCommandGuard) {
+        if ((isTest || m_runId == runId) && timelineCommandGuard
+            && timelineCommandGuard->state() == TimelineCommand::Running) {
             timelineCommandGuard->setErrorMessage(errorMessage);
             timelineCommandGuard->setState(success
                                                ? TimelineCommand::Succeeded

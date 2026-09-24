@@ -352,6 +352,18 @@ void TimelineManager::resumePlayback()
     m_clock->start();
 }
 
+bool TimelineManager::seekTimeline(const QString &id, qint64 timeMs)
+{
+    Timeline *timeline = timelineById(id);
+    if (playbackState() != Paused || !timeline || timeline->state() != Timeline::Running)
+        return false;
+
+    const qint64 targetTimeMs = qBound<qint64>(0, timeMs, timeline->commandModel()->realDurationMs());
+    if (targetTimeMs != timeline->currentTimeMs())
+        timeline->seek(m_clock->currentTimeMs(), targetTimeMs);
+    return true;
+}
+
 void TimelineManager::stopPlayback(bool notifyDevices)
 {
     LOG_INFO("stopPlayback");

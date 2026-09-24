@@ -572,7 +572,7 @@ Item {
                                     minWidth: 32
                                     text: "+"
                                     variant: UiStyle.ButtonVariant.Secondary
-                                    enabled: !!root.editor && root.editor.canAddTimelineCommand
+                                    enabled: !!root.editor && root.editor.commandEditingEnabled
                                         && !!root.editor.timelineCommandModel && !!root.editor.selectedTimelineDevice
                                     onClicked: {
                                         root.editor.selectCommandIndex(index)
@@ -699,6 +699,7 @@ Item {
                             }
 
                             Timeline.TimelineCommandHorizontalList {
+                                objectName: "timelineOverviewCommands"
                                 anchors.fill: parent
                                 theme: root.pageTheme
                                 ruler: overviewRuler
@@ -706,9 +707,18 @@ Item {
                                 devices: root.devices
                                 deviceIdFilter: ""
                                 selectedCommandId: root.selectedTimelineCommandId
+                                locatingEnabled: !!root.editor && root.editor.currentTimeEditingEnabled
                                 timelineOffsetX: 0
                                 onCommandSelected: function(command) {
                                     root.selectTimelineCommand(command)
+                                }
+                                onCommandTestRequested: {
+                                    if (root.editor)
+                                        root.editor.commandTestRequested(command)
+                                }
+                                onLocateRequested: {
+                                    if (root.editor)
+                                        root.editor.setTimelineCurrentTimeMs(command.startTimeMs)
                                 }
                             }
 
@@ -744,10 +754,21 @@ Item {
                         devices: root.devices
                         deviceIdFilter: ""
                         selectedCommandId: root.selectedTimelineCommandId
-                        editingEnabled: root.timelineStopped
+                        editingEnabled: !!root.editor && root.editor.commandEditingEnabled
+                        locatingEnabled: !!root.editor && root.editor.currentTimeEditingEnabled
                         showDeviceName: !root.controlTrackVisible
                         onCommandSelected: function(command) {
                             root.selectTimelineCommand(command)
+                        }
+                        onCommandTestRequested: {
+                            if (root.editor)
+                                root.editor.commandTestRequested(command)
+                        }
+                        onLocateRequested: function(command) {
+                            if (!root.editor || !root.editor.currentTimeEditingEnabled)
+                                return
+                            root.editor.selectTimelineCommand(command)
+                            root.editor.setTimelineCurrentTimeMs(command.startTimeMs)
                         }
                         onEditRequested: function(command) {
                             root.editTimelineCommand(command)
@@ -756,6 +777,17 @@ Item {
                             root.removeTimelineCommand(command)
                         }
                     }
+                }
+
+                Base.AppText {
+                    objectName: "timelineCommandPanelTestStatus"
+                    Layout.fillWidth: true
+                    text: root.editor ? root.editor.quickTestStatusText : ""
+                    visible: text.length > 0
+                    styleRole: UiStyle.TypographyRole.BodyS
+                    textTone: root.editor && root.editor.quickTestCommand && root.editor.quickTestCommand.state === 3
+                        ? UiStyle.TextTone.Danger : UiStyle.TextTone.Secondary
+                    wrapMode: Text.WordWrap
                 }
 
                 Base.AppSurface {

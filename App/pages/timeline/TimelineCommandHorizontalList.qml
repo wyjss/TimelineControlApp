@@ -15,6 +15,7 @@ Item {
     property string deviceIdFilter: ""
     property string selectedCommandId: ""
     property bool editingEnabled: false
+    property bool locatingEnabled: false
     property real timelineOffsetX: 0
     property int instantCommandMinWidth: 56
     property int instantCommandMaxWidth: 180
@@ -29,6 +30,8 @@ Item {
     }) ? 80 : 48
 
     signal commandSelected(var command)
+    signal commandTestRequested(var command)
+    signal locateRequested(var command)
     signal commandMoveRequested(var command, real startTimeMs)
 
     function colorValue(name, fallback) {
@@ -219,6 +222,13 @@ Item {
         }
     }
 
+    TimelineCommandContextMenu {
+        id: commandMenu
+        locatingEnabled: root.locatingEnabled
+        onTestRequested: root.commandTestRequested(command)
+        onLocateRequested: root.locateRequested(command)
+    }
+
     Base.AppText {
         id: commandMeasureText
 
@@ -322,7 +332,7 @@ Item {
                 y: instantCommandPill.y
                 width: instantCommandPill.width
                 height: instantCommandPill.height
-                acceptedButtons: Qt.LeftButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 hoverEnabled: true
                 preventStealing: dragArmed
                 cursorShape: dragArmed ? Qt.SizeHorCursor : Qt.ArrowCursor
@@ -336,6 +346,8 @@ Item {
                     }).join("\n")
                     : root.commandInfo(commandBlock.commandData)
                 onPressed: {
+                    if (mouse.button !== Qt.LeftButton)
+                        return
                     dragged = false
                     dragCanceled = false
                     if (!root.editingEnabled || !root.ruler || !(mouse.modifiers & Qt.ControlModifier))
@@ -362,6 +374,8 @@ Item {
                         Math.round(pressStartTimeMs + deltaX / pressPixelsPerSecond * 1000)))
                 }
                 onReleased: {
+                    if (mouse.button !== Qt.LeftButton)
+                        return
                     var moveRequested = previewing && dragContextValid
                         && (mouse.modifiers & Qt.ControlModifier)
                     var deltaX = mapToItem(root, mouse.x, mouse.y).x - pressX
@@ -373,6 +387,13 @@ Item {
                 }
                 onClicked: {
                     mouse.accepted = true
+                    if (mouse.button === Qt.RightButton) {
+                        commandMenu.timelineCommand = commandBlock.commandData
+                        var position = mapToItem(root, mouse.x, mouse.y)
+                        root.commandSelected(commandBlock.commandData)
+                        commandMenu.popup(position.x, position.y)
+                        return
+                    }
                     if (!dragged && !dragCanceled)
                         root.commandSelected(commandBlock.commandData)
                 }

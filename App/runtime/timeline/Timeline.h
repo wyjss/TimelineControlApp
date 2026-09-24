@@ -51,6 +51,7 @@ public:
     // mgr驱动
     void waitForTrigger();
     void start(qint64 masterTimeMs, qint64 startTimeMs = 0);
+    void seek(qint64 masterTimeMs, qint64 startTimeMs);
     void stop();
     QList<TimelineCommand *> updateTime(qint64 masterTimeMs);
 
@@ -62,6 +63,8 @@ public:
 signals:
     void stateChanged(State state);
     void currentTimeMsChanged(qint64 timeMs);
+    //! 拖动播放指针时通知预览位置，不改变当前时间和执行队列。
+    void seekPreviewRequested(qint64 timeMs);
     void durationMsChanged(qint64 timeMs);
     void relativeStartTimeMsChanged();
 

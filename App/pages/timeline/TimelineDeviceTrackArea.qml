@@ -18,6 +18,7 @@ Item {
     property string selectedDeviceId: ""
     property string selectedCommandId: ""
     property bool editingEnabled: false
+    property bool locatingEnabled: false
     property int rowHeight: 48
     property int childRowHeight: 30
     property int rowSpacing: 0
@@ -26,6 +27,8 @@ Item {
 
     signal trackSelected(string targetDeviceId)
     signal commandSelected(var command)
+    signal commandTestRequested(var command)
+    signal locateRequested(var command)
     signal commandMoveRequested(var command, real startTimeMs)
 
     implicitHeight: Math.max(220, devices.length * (rowHeight + rowSpacing) - rowSpacing)
@@ -358,10 +361,13 @@ Item {
                 deviceIdFilter: trackRow.targetDeviceId
                 selectedCommandId: root.selectedCommandId
                 editingEnabled: root.editingEnabled
+                locatingEnabled: root.locatingEnabled
                 timelineOffsetX: root.labelWidth
                 onCommandSelected: function(command) {
                     root.commandSelected(command)
                 }
+                onCommandTestRequested: root.commandTestRequested(command)
+                onLocateRequested: root.locateRequested(command)
                 onCommandMoveRequested: function(command, startTimeMs) {
                     root.commandMoveRequested(command, startTimeMs)
                 }

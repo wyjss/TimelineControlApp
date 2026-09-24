@@ -73,6 +73,7 @@ namespace DeviceKey {
 	inline const QString ScreenWidth = "screenWidth";
 	inline const QString SerialPort = "serialPort";
 	inline const QString VideoFile = "videoFile";
+	inline const QString AudioFile = "audioFile";
 	inline const QString VideoTimeSec = "videoTimeSec";
 	inline const QString VideoSeekTimeSec = "videoSeekTimeSec";
 
@@ -114,7 +115,11 @@ namespace DeviceKey {
 	inline const QString CommandStopVideo = "closeVideo";
 	inline const QString CommandClosePlayer = "closePlayer";
 	//inline const QString CommandPlayDomeVideo = "playDomeVideo";
-
+	// PC-音频控制指令
+	inline const QString CommandPlayAudio = "playAudio";
+	inline const QString CommandPauseAudio = "pauseAudio";
+	inline const QString CommandStopAudio = "stopAudio";
+	//inline const QString CommandSeekAudio = "seekAudio";
 
 	//////////////////////////////////////////////////////////////////////////
 	// 系统控制指令，为了兼容外部创建，只用作名称

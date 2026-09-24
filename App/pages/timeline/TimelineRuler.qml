@@ -39,6 +39,9 @@ Item {
     property bool dragEnabled: true
     // 是否允许拖动时刻线。
     property bool currentTimeDragEnabled: true
+    // 暂停定位时只预览拖动位置，松手后提交。
+    property bool commitCurrentTimeOnRelease: false
+    property string timelineId: ""
     // 拖动时刻线的时间步进，单位毫秒。
     property int currentTimeDragStepMs: 100
     readonly property real labelWidth: majorTickMs < 1000 ? 96 : 64
@@ -54,8 +57,11 @@ Item {
     readonly property real resolvedTrackLeftX: Math.max(0, Math.min(width, trackLeftX))
     readonly property real resolvedStartTimeX: Math.max(0, startTimeX)
     readonly property int resolvedCurrentTimeMs: Math.max(0, Math.min(durationMs, currentTimeMs))
+    readonly property int displayedCurrentTimeMs: commitCurrentTimeOnRelease
+        && interactionArea.draggingCurrentTime && interactionArea.previewTimeMs >= 0
+        ? interactionArea.previewTimeMs : resolvedCurrentTimeMs
     // 当前时间在组件内的 x 坐标，单位像素。
-    readonly property real currentTimeX: timeToX(resolvedCurrentTimeMs)
+    readonly property real currentTimeX: timeToX(displayedCurrentTimeMs)
     readonly property real endPaddingX: Math.max(0, width - resolvedStartTimeX)
     // 时间轴内容总宽度，单位像素。
     readonly property real contentWidth: Math.max(width, resolvedStartTimeX + durationMs / 1000 * effectivePixelsPerSecond + endPaddingX)
@@ -67,6 +73,8 @@ Item {
     signal scrollXChangeRequested(real nextScrollX)
     // 请求宿主更新当前时间，单位毫秒。
     signal currentTimeMsChangeRequested(int nextCurrentTimeMs)
+    // 拖动时通知预览位置，单位毫秒。
+    signal currentTimePreviewRequested(int timeMs)
     // 请求宿主更新时间缩放值。
     signal timeScaleChangeRequested(real nextTimeScale)
 
@@ -133,8 +141,18 @@ Item {
         var nextCurrentTimeMs = snapToStep === false
             ? Math.max(0, Math.min(durationMs, Math.round(value)))
             : clampTimeMs(value)
-        if (nextCurrentTimeMs !== resolvedCurrentTimeMs)
+        if (!currentTimeDragEnabled)
+            return
+        var previewChanged = interactionArea.draggingCurrentTime
+            && interactionArea.previewTimeMs >= 0 && nextCurrentTimeMs !== displayedCurrentTimeMs
+        if (commitCurrentTimeOnRelease && interactionArea.draggingCurrentTime) {
+            if (interactionArea.previewTimeMs >= 0)
+                interactionArea.previewTimeMs = nextCurrentTimeMs
+        } else if (nextCurrentTimeMs !== resolvedCurrentTimeMs) {
             currentTimeMsChangeRequested(nextCurrentTimeMs)
+        }
+        if (previewChanged)
+            currentTimePreviewRequested(nextCurrentTimeMs)
     }
 
     function safeMinorTicksPerMajor() {
@@ -226,7 +244,7 @@ Item {
 
     function syncCurrentTimeText() {
         if (!currentTimeField.activeFocus) {
-            currentTimeField.text = formatTime(resolvedCurrentTimeMs, true)
+            currentTimeField.text = formatTime(displayedCurrentTimeMs, true)
             currentTimeField.cursorPosition = currentTimeField.length
         }
     }
@@ -352,9 +370,17 @@ Item {
                 root.syncCurrentTimeText()
             }
             function onCurrentTimeMsChanged() {
+                if (root.commitCurrentTimeOnRelease)
+                    interactionArea.previewTimeMs = -1
+            }
+            function onDisplayedCurrentTimeMsChanged() {
                 root.updateRuler(false, false)
                 root.syncCurrentTimeText()
             }
+            function onCurrentTimeDragEnabledChanged() { interactionArea.previewTimeMs = -1 }
+            function onCommitCurrentTimeOnReleaseChanged() { interactionArea.previewTimeMs = -1 }
+            function onTimelineIdChanged() { interactionArea.previewTimeMs = -1 }
+            function onVisibleChanged() { interactionArea.previewTimeMs = -1 }
             function onScrollXChanged() { root.updateRuler(false, false) }
             function onTrackLeftXChanged() { root.updateRuler(false, false) }
             function onStartTimeXChanged() { root.updateRuler(true, false) }
@@ -391,6 +417,7 @@ Item {
 
         Base.AppTextField {
             id: currentTimeField
+            objectName: "timelineCurrentTimeField"
 
             anchors.left: parent.left
             anchors.leftMargin: 12
@@ -411,12 +438,9 @@ Item {
 
             onEditingFinished: {
                 var timeMs = root.parseTime(text)
-                var nextTimeMs = timeMs >= 0
-                    ? Math.max(0, Math.min(root.durationMs, Math.round(timeMs)))
-                    : root.resolvedCurrentTimeMs
                 if (timeMs >= 0)
-                    root.requestCurrentTimeMs(nextTimeMs, false)
-                text = root.formatTime(nextTimeMs, true)
+                    root.requestCurrentTimeMs(timeMs, false)
+                text = root.formatTime(root.displayedCurrentTimeMs, true)
                 cursorPosition = length
             }
             onReadOnlyChanged: root.syncCurrentTimeText()
@@ -446,6 +470,7 @@ Item {
         property real pressScrollX: 0
         property int pressCurrentTimeMs: 0
         property bool draggingCurrentTime: false
+        property int previewTimeMs: -1
 
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton
@@ -466,8 +491,11 @@ Item {
             pressX = mouse.x
             pressScrollX = root.scrollX
             pressCurrentTimeMs = root.resolvedCurrentTimeMs
+            previewTimeMs = pressCurrentTimeMs
             draggingCurrentTime = root.currentTimeDragEnabled
                 && Math.abs(mouse.x - root.currentTimeX) <= 8
+            if (draggingCurrentTime)
+                forceActiveFocus()
             mouse.accepted = true
         }
 
@@ -478,10 +506,12 @@ Item {
 
             var timeMs = (root.scrollX + mouse.x - root.resolvedStartTimeX)
                 / root.safePixelsPerSecond * 1000
+            previewTimeMs = root.resolvedCurrentTimeMs
+            draggingCurrentTime = true
             root.requestCurrentTimeMs(timeMs)
             pressX = mouse.x
-            pressCurrentTimeMs = root.resolvedCurrentTimeMs
-            draggingCurrentTime = true
+            pressCurrentTimeMs = root.displayedCurrentTimeMs
+            forceActiveFocus()
         }
 
         onPositionChanged: {
@@ -490,12 +520,32 @@ Item {
 
             var deltaX = mouse.x - pressX
             if (draggingCurrentTime) {
+                if (previewTimeMs < 0)
+                    return
                 root.requestCurrentTimeMs(pressCurrentTimeMs + deltaX / root.safePixelsPerSecond * 1000)
                 return
             }
 
             var nextScrollX = root.clampScrollX(pressScrollX - deltaX)
             root.requestScrollX(nextScrollX)
+        }
+
+        onReleased: {
+            var targetTimeMs = previewTimeMs
+            var commitTime = draggingCurrentTime && root.commitCurrentTimeOnRelease
+                && root.currentTimeDragEnabled && targetTimeMs >= 0
+            draggingCurrentTime = false
+            previewTimeMs = -1
+            if (commitTime)
+                root.requestCurrentTimeMs(targetTimeMs, false)
+        }
+        onCanceled: {
+            draggingCurrentTime = false
+            previewTimeMs = -1
+        }
+        Keys.onEscapePressed: {
+            previewTimeMs = -1
+            event.accepted = true
         }
 
         onWheel: {

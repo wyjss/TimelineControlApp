@@ -200,6 +200,18 @@ TestCase {
             property string selectedCommandId: ""
             property var childTracksByParentId: ({})
             property var addedCommands: []
+            property var updatedCommands: []
+            property var removedCommands: []
+            function updateCommand(command, time, values) {
+                updatedCommands = updatedCommands.concat([{command: command, time: time, values: values}])
+                command.startTimeMs = time
+                command.executionInputValues = values
+                return true
+            }
+            function removeCommand(command) {
+                removedCommands = removedCommands.concat([command])
+                return true
+            }
             function addDeviceCommand(time, deviceId, command, values, alias) {
                 addedCommands = addedCommands.concat([{ time: time, deviceId: deviceId,
                                                         command: command, values: values, alias: alias }])
@@ -300,16 +312,86 @@ TestCase {
         compare(host.commandPanelMode, "timeline")
         verify(!palette.visible)
         findChild(host, "commandPanelModeSelector").valueSelected("device")
+        var timeBeforeSelection = page.timelineCurrentTimeMs
         page.selectTimelineCommand({ id: "existing", startTimeMs: 24000 })
         compare(host.commandPanelMode, "timeline")
         compare(page.timelineCommandModel.selectedCommandId, "existing")
         page.deviceTrackSelected()
-        compare(findChild(host, "commandAddTime").text, page.formatTimelineMs(24000))
+        compare(findChild(host, "commandAddTime").text, page.formatTimelineMs(timeBeforeSelection))
         page.selectedTimelineDevice = { id: "two", name: "无指令设备", commands: [] }
         wait(30)
         compare(palette.count, 0)
         compare(page.selectedCommandIndex, -1)
         compare(page.timelineCommandModel.addedCommands.length, 2)
+    }
+
+    function test_pausedCommandEditing() {
+        var host = createTemporaryObject(timelinePageComponent, testWindow.contentItem,
+                                         {controlTrackVisible: true})
+        verify(host && host.editor)
+        host.deviceModel = testDeviceModel
+        var model = createTemporaryObject(commandModelComponent, host)
+        var command = {id: "edit", targetDeviceId: "one", commandName: "指令", alias: "原别名",
+            startTimeMs: 40000, executionInputValues: {}, state: 0, errorMessage: "",
+            targetCommand: {name: "指令", protocol: "http", executionInputFields: []}}
+        model.commands = [command]
+        var timeline = {id: "main", name: "时间线", currentTimeMs: 20000, durationMs: 60000,
+            commandModel: model, crossConditionModel: null}
+        host.timelineManager = {playbackState: 2, currentTimeline: timeline, timelineModel: null,
+            playQueue: [], playQueueIndex: -1}
+        var page = host.editor
+        verify(page.commandEditingEnabled)
+        compare(page.timelineCurrentTimeMs, 20000)
+        var list = findChild(host, "timelineCommandPanelList")
+        verify(list.editingEnabled)
+        host.editTimelineCommand(command)
+        var dialog = findChild(page, "addTimelineCommandPopup")
+        tryCompare(dialog, "opened", true)
+        verify(dialog.editing && dialog.acceptEnabled)
+        dialog.targetStartTimeMs = 25000
+        findChild(dialog, "timelineCommandAlias").text = "修改别名"
+        dialog.commit()
+        tryCompare(dialog, "visible", false)
+        compare(model.updatedCommands.length, 1)
+        compare(command.startTimeMs, 25000)
+        compare(command.alias, "修改别名")
+        compare(page.timelineCurrentTimeMs, 20000)
+
+        host.editTimelineCommand(command)
+        tryCompare(dialog, "opened", true)
+        dialog.targetStartTimeMs = 28000
+        host.timelineManager = {playbackState: 1, currentTimeline: timeline, timelineModel: null}
+        verify(!dialog.acceptEnabled && !list.editingEnabled)
+        dialog.commit()
+        compare(model.updatedCommands.length, 1)
+        compare(command.startTimeMs, 25000)
+        dialog.close()
+        tryCompare(dialog, "visible", false)
+        host.editTimelineCommand(command)
+        verify(!dialog.visible)
+        host.removeTimelineCommand(command)
+        var removeDialog = findChild(page, "removeTimelineCommandPopup")
+        verify(!removeDialog.visible)
+
+        host.timelineManager = {playbackState: 2, currentTimeline: timeline, timelineModel: null}
+        host.removeTimelineCommand(command)
+        tryCompare(removeDialog, "opened", true)
+        verify(removeDialog.acceptEnabled)
+        host.timelineManager = {playbackState: 1, currentTimeline: timeline, timelineModel: null}
+        verify(!removeDialog.acceptEnabled)
+        removeDialog.accepted()
+        compare(model.removedCommands.length, 0)
+        removeDialog.close()
+        tryCompare(removeDialog, "visible", false)
+        host.timelineManager = {playbackState: 2, currentTimeline: timeline, timelineModel: null}
+        host.removeTimelineCommand(command)
+        tryCompare(removeDialog, "opened", true)
+        removeDialog.accepted()
+        compare(model.removedCommands.length, 1)
+        compare(model.removedCommands[0], command)
+        compare(page.timelineCurrentTimeMs, 20000)
+        removeDialog.close()
+        tryCompare(removeDialog, "visible", false)
     }
 
     function test_commandPanelTabs_data() {
@@ -323,7 +405,9 @@ TestCase {
         host.deviceModel = testDeviceModel
         var model = createTemporaryObject(commandModelComponent, host)
         model.commands = [{ id: "existing", targetDeviceId: "one", commandName: "暂停播放", alias: "幕间暂停",
-                            startTimeMs: 13800, filteredOut: false }]
+                            startTimeMs: 13800, filteredOut: false, targetCommand: {protocol: "pc"},
+                            executionInputValues: {file: "sample.mp4"} }]
+        model.realDurationMs = 13800
         host.timelineManager = { playbackState: 0, playQueue: [], playQueueIndex: -1,
                                  currentTimeline: { id: "main", name: "主时间轴", commandModel: model },
                                  timelineModel: null }
@@ -350,8 +434,47 @@ TestCase {
         var commandLabel = findChild(list, "commandNameLabel")
         verify(commandLabel.visible)
         compare(commandLabel.text, "幕间暂停")
-        mouseClick(commandLabel)
+        host.editor.fallbackTimelineCurrentTimeMs = 7654
+        mouseClick(commandLabel, 5, commandLabel.height / 2)
         compare(model.selectedCommandId, "existing")
+        compare(host.editor.timelineCurrentTimeMs, 7654)
+        var locate = findChild(list, "locateTimelineCommand_existing")
+        verify(locate && locate.enabled)
+        verify(locate.width >= locate.contentItem.implicitWidth)
+        tryCompare(locate, "visible", true)
+        mouseClick(locate)
+        compare(host.editor.timelineCurrentTimeMs, 13800)
+        var tested = []
+        host.editor.appRuntime = {
+            testDeviceCommand: function(deviceId, command, values) {
+                tested.push({deviceId: deviceId, command: command, values: values})
+                return {alias: "", state: 3, stateText: "失败", errorMessage: "测试设备未连接"}
+            }
+        }
+        var menu = findChild(list, "timelineCommandContextMenu")
+        verify(menu)
+        mouseClick(commandLabel, 5, commandLabel.height / 2, Qt.RightButton)
+        tryCompare(menu, "opened", true)
+        compare(tested.length, 0)
+        mouseClick(menu.itemAt(0))
+        tryCompare(menu, "visible", false)
+        compare(tested.length, 1)
+        compare(tested[0].deviceId, "one")
+        compare(tested[0].values, {file: "sample.mp4"})
+        compare(host.editor.timelineCurrentTimeMs, 13800)
+        var status = findChild(host, "timelineCommandPanelTestStatus")
+        verify(status.visible && status.text.indexOf("测试设备未连接") >= 0)
+        host.editor.fallbackTimelineCurrentTimeMs = 7654
+        model.selectedCommandId = ""
+        mouseClick(commandLabel, 5, commandLabel.height / 2, Qt.RightButton)
+        tryCompare(menu, "opened", true)
+        compare(model.selectedCommandId, "existing")
+        compare(host.editor.timelineCurrentTimeMs, 7654)
+        verify(menu.itemAt(1).enabled)
+        mouseClick(menu.itemAt(1))
+        tryCompare(menu, "visible", false)
+        compare(host.editor.timelineCurrentTimeMs, 13800)
+        compare(tested.length, 1)
         mouseClick(selector, selector.width * 0.25, selector.height / 2)
         compare(host.commandPanelMode, "device")
         verify(palette.visible)
@@ -364,6 +487,33 @@ TestCase {
         keyClick(Qt.Key_Right)
         compare(host.commandPanelMode, "timeline")
         compare(selector.value, "timeline")
+        host.controlTrackVisible = false
+        wait(30)
+        var overview = findChild(host, "timelineOverviewCommands")
+        verify(overview && overview.visible)
+        var block = findChild(overview, "timelineCommand_existing")
+        var hit = findChild(block, "timelineCommandHitArea")
+        menu = findChild(overview, "timelineCommandContextMenu")
+        host.editor.fallbackTimelineCurrentTimeMs = 7654
+        model.selectedCommandId = ""
+        mouseClick(hit, 5, hit.height / 2, Qt.RightButton)
+        tryCompare(menu, "opened", true)
+        compare(model.selectedCommandId, "existing")
+        compare(host.editor.timelineCurrentTimeMs, 7654)
+        compare(tested.length, 1)
+        mouseClick(menu.itemAt(0))
+        tryCompare(menu, "visible", false)
+        compare(tested.length, 2)
+        compare(tested[1].command, model.commands[0].targetCommand)
+        compare(host.editor.timelineCurrentTimeMs, 7654)
+        verify(status.visible && status.text.indexOf("幕间暂停") >= 0)
+        mouseClick(hit, 5, hit.height / 2, Qt.RightButton)
+        tryCompare(menu, "opened", true)
+        verify(menu.itemAt(1).enabled)
+        mouseClick(menu.itemAt(1))
+        tryCompare(menu, "visible", false)
+        compare(host.editor.timelineCurrentTimeMs, 13800)
+        compare(tested.length, 2)
     }
 
     Component {

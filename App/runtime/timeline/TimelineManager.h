@@ -67,6 +67,7 @@ public:
     Q_INVOKABLE bool startPlayback(const QStringList &timelineIds, qint64 startTimeMs = 0);
     Q_INVOKABLE void pausePlayback();
     Q_INVOKABLE void resumePlayback();
+    Q_INVOKABLE bool seekTimeline(const QString &id, qint64 timeMs);
     Q_INVOKABLE void stopPlayback(bool notifyDevices = true);
 
     // 播控-过滤

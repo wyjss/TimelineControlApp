@@ -17,6 +17,8 @@ namespace Utils {
 		const QVariantList& getOptions();
 	signals:
 		void optionsChanged(const QVariantList&);
+
+		void videoOptionsChanged(const QVariantList&);
 	private:
 		QVariantList m_options;
 	};

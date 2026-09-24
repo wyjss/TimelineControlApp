@@ -423,6 +423,24 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
+	if (deviceKey == DeviceKey::AudioFile) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("音频文件"),
+										 "",
+										 SelectType,
+										 SelectEditor);
+		spec->setRequired(true);
+		spec->setReadOnly(false);
+		spec->setOptions(Utils::getVideoOptions());
+
+		QObject::connect(Utils::VideoOptionsMgr::getInstance(),
+						 &Utils::VideoOptionsMgr::optionsChanged,
+						 spec,
+						 &DeviceParamSpec::setOptions
+		);
+		return spec;
+	}
+
 	if (deviceKey == DeviceKey::VideoTimeSec) {
 		auto* spec = new DeviceParamSpec(deviceKey,
 										 QStringLiteral("视频起始时间(秒)"),

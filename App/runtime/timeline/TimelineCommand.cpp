@@ -1,4 +1,5 @@
 #include "timeline/TimelineCommand.h"
+#include "timeline/Timeline.h"
 
 #include "devices/Device.h"
 #include "devices/DeviceCommand.h"
@@ -502,10 +503,26 @@ bool TimelineCommandModel::updateCommand(TimelineCommand *command,
     if (indexOfCommand(command) < 0)
         return false;
 
+    const auto *timeline = qobject_cast<Timeline *>(parent());
+    const bool timelineStarted = timeline
+        && (timeline->state() == Timeline::Running || timeline->state() == Timeline::Completed);
+    const bool timeChanged = command->startTimeMs() != qMax<qint64>(0, startTimeMs);
+    const bool preserveResult = timelineStarted && command->state() != TimelineCommand::Idle;
+    if (preserveResult && !timeChanged
+        && command->executionInputValues() == executionInputValues)
+        return true;
+
     command->setStartTimeMs(startTimeMs);
     command->setExecutionInputValues(executionInputValues);
-    command->setErrorMessage(QString());
-    command->setState(TimelineCommand::Idle);
+    if (!preserveResult || timeChanged) {
+        command->setErrorMessage(QString());
+        command->setState(timeChanged && timelineStarted && command->startTimeMs() < timeline->currentTimeMs()
+                              ? TimelineCommand::Skipped : TimelineCommand::Idle);
+    } else if (command->state() == TimelineCommand::Running) {
+        command->setErrorMessage(tr("指令已修改，原执行结果已作废"));
+        command->setState(TimelineCommand::Failed);
+    }
+    emit commandScheduleChanged(timeChanged ? command : nullptr);
     return true;
 }
 
@@ -536,6 +553,7 @@ TimelineCommand *TimelineCommandModel::addCommand(qint64 startTimeMs,
         return nullptr;
     }
 
+    emit commandScheduleChanged();
     return command;
 }
 
@@ -548,6 +566,7 @@ void TimelineCommandModel::resetCommands(const QList<TimelineCommand *> &command
             setSelectedCommandId(QString());
         makeRealTimeChanged();
         emit commandsChanged();
+        emit commandScheduleChanged();
     }
 }
 
@@ -566,6 +585,7 @@ void TimelineCommandModel::removeCommandAt(int row)
         command->deleteLater();
         makeRealTimeChanged();
         emit commandsChanged();
+        emit commandScheduleChanged();
     }
 }
 

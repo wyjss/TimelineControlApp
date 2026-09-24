@@ -203,6 +203,10 @@ public:
 	}
 };
 
+class PlayAudioCommand : public DeviceCommand_PC
+{
+
+};
 //class PlayDomeVideoCommand final : public DeviceCommand_PC
 //{
 //public:

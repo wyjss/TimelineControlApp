@@ -45,7 +45,9 @@ Item {
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
     readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
-    readonly property bool canAddTimelineCommand: timelineStopped || timelineManager.playbackState === 2
+    readonly property bool commandEditingEnabled: timelineStopped || timelineManager.playbackState === 2
+    readonly property bool currentTimeEditingEnabled: timelineStopped
+        || (timelineManager.playbackState === 2 && currentTimeline && currentTimeline.state === 2)
     readonly property var selectedCommand: selectedCommandIndex >= 0
         && selectedCommandIndex < deviceCommands.length
         ? deviceCommands[selectedCommandIndex]
@@ -74,10 +76,27 @@ Item {
     property int selectedCommandIndex: -1
     property string timelineCommandListMode: "all"
     property string executionStatusText: ""
+    property var quickTestCommand: null
+    readonly property string quickTestStatusText: quickTestCommand
+        ? qsTr("测试 %1：%2").arg(quickTestCommand.alias)
+            .arg(quickTestCommand.state === 3 && quickTestCommand.errorMessage.length > 0
+                ? qsTr("失败：%1").arg(quickTestCommand.errorMessage) : quickTestCommand.stateText)
+        : ""
 
     signal closeRequested()
     signal deviceTrackSelected()
     signal timelineCommandSelected()
+    signal commandTestRequested(var command)
+
+    onCommandTestRequested: {
+        if (!appRuntime || !command)
+            return
+        var result = appRuntime.testDeviceCommand(String(command.targetDeviceId || ""),
+                                                  command.targetCommand,
+                                                  command.executionInputValues || {})
+        result.alias = command.alias
+        quickTestCommand = result
+    }
 
     onDevicesChanged: ensureSelectedTimelineDevice()
     onSelectedTimelineDeviceIdChanged: {
@@ -153,7 +172,7 @@ Item {
     }
 
     function addSelectedCommandAtCurrentTime() {
-        if (!canAddTimelineCommand)
+        if (!commandEditingEnabled)
             return
 
         if (!timelineCommandModel || !selectedTimelineDevice || !selectedCommand) {
@@ -166,7 +185,7 @@ Item {
     }
 
     function addTimelineCommand(targetDevice, targetCommand, startTimeMs, executionValues, alias) {
-        if (!canAddTimelineCommand || !timelineCommandModel)
+        if (!commandEditingEnabled || !timelineCommandModel)
             return
 
         timelineCommandModel.addDeviceCommand(startTimeMs,
@@ -185,30 +204,32 @@ Item {
             timelineCommandModel.selectedCommandId = String(command.id || "")
         if (String(command.targetDeviceId || "").length > 0)
             selectTimelineDevice(String(command.targetDeviceId || ""))
-        if (positionView !== false) {
-            setTimelineCurrentTimeMs(command.startTimeMs)
+        if (positionView !== false)
             positionControlTrackAtTime(command.startTimeMs)
-        }
         timelineCommandSelected()
     }
 
     function editTimelineCommand(command) {
-        if (!timelineStopped || !timelineCommandModel || !command)
+        if (!commandEditingEnabled || !timelineCommandModel || !command)
             return
 
         addTimelineCommandPopup.openForTimelineCommand(command)
     }
 
     function requestRemoveTimelineCommand(command) {
-        if (timelineStopped && timelineCommandModel && command)
+        if (commandEditingEnabled && timelineCommandModel && command)
             removeTimelineCommandPopup.openForCommand(command)
     }
 
     function setTimelineCurrentTimeMs(currentTimeMs) {
-        if (!timelineStopped)
+        if (!currentTimeEditingEnabled)
             return
 
         var normalizedTimeMs = Math.max(0, Math.round(Number(currentTimeMs || 0)))
+        if (!timelineStopped) {
+            timelineManager.seekTimeline(currentTimeline.id, normalizedTimeMs)
+            return
+        }
         fallbackTimelineCurrentTimeMs = normalizedTimeMs
         if (pcPreviewGenerator)
             pcPreviewGenerator.seek(normalizedTimeMs)
@@ -372,6 +393,7 @@ Item {
 
                     Timeline.TimelineRuler {
                         id: timelineRuler
+                        objectName: "timelineRuler"
 
                         Layout.fillWidth: true
                         Layout.preferredHeight: 52
@@ -381,9 +403,15 @@ Item {
                         trackLeftX: root.timelineTrackLabelWidth
                         startTimeX: root.timelineTrackLabelWidth + 20
                         timeScale: root.timelineTimeScale
-                        currentTimeDragEnabled: root.timelineStopped
+                        currentTimeDragEnabled: root.currentTimeEditingEnabled
+                        commitCurrentTimeOnRelease: !root.timelineStopped
+                        timelineId: root.currentTimeline ? String(root.currentTimeline.id || "") : ""
                         onScrollXChangeRequested: function(nextScrollX) {
                             root.timelineScrollX = nextScrollX
+                        }
+                        onCurrentTimePreviewRequested: function(timeMs) {
+                            if (root.currentTimeline)
+                                root.currentTimeline.seekPreviewRequested(timeMs)
                         }
                         onCurrentTimeMsChangeRequested: function(nextCurrentTimeMs) {
                             root.setTimelineCurrentTimeMs(nextCurrentTimeMs)
@@ -408,7 +436,8 @@ Item {
                         labelWidth: root.timelineTrackLabelWidth
                         selectedDeviceId: root.selectedTimelineDeviceId
                         selectedCommandId: root.selectedTimelineCommandId
-                        editingEnabled: root.timelineStopped
+                        editingEnabled: root.commandEditingEnabled
+                        locatingEnabled: root.currentTimeEditingEnabled
                         onTrackSelected: function(targetDeviceId) {
                             root.selectTimelineDevice(targetDeviceId)
                             root.deviceTrackSelected()
@@ -416,8 +445,10 @@ Item {
                         onCommandSelected: function(command) {
                             root.selectTimelineCommand(command)
                         }
+                        onCommandTestRequested: root.commandTestRequested(command)
+                        onLocateRequested: root.setTimelineCurrentTimeMs(command.startTimeMs)
                         onCommandMoveRequested: function(command, startTimeMs) {
-                            if (!root.timelineStopped || !root.timelineCommandModel || !command)
+                            if (!root.commandEditingEnabled || !root.timelineCommandModel || !command)
                                 return
                             if (startTimeMs !== Number(command.startTimeMs)
                                     && !root.timelineCommandModel.updateCommand(command, startTimeMs,
@@ -425,6 +456,17 @@ Item {
                                 return
                             root.selectTimelineCommand(command, false)
                         }
+                    }
+
+                    Base.AppText {
+                        objectName: "timelineQuickTestStatus"
+                        Layout.fillWidth: true
+                        visible: !root.controlTrackOnly && text.length > 0
+                        text: root.quickTestStatusText
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: root.quickTestCommand && root.quickTestCommand.state === 3
+                            ? UiStyle.TextTone.Danger : UiStyle.TextTone.Secondary
+                        wrapMode: Text.WordWrap
                     }
 
                     Base.AppSurface {
@@ -637,9 +679,17 @@ Item {
                                 ? root.selectedTimelineDeviceId
                                 : ""
                             selectedCommandId: root.selectedTimelineCommandId
-                            editingEnabled: root.timelineStopped
+                            editingEnabled: root.commandEditingEnabled
+                            locatingEnabled: root.currentTimeEditingEnabled
                             onCommandSelected: function(command) {
                                 root.selectTimelineCommand(command)
+                            }
+                            onCommandTestRequested: root.commandTestRequested(command)
+                            onLocateRequested: function(command) {
+                                if (!root.currentTimeEditingEnabled)
+                                    return
+                                root.selectTimelineCommand(command)
+                                root.setTimelineCurrentTimeMs(command.startTimeMs)
                             }
                             onEditRequested: function(command) {
                                 root.editTimelineCommand(command)
@@ -656,6 +706,7 @@ Item {
 
     Base.AppDialog {
         id: removeTimelineCommandPopup
+        objectName: "removeTimelineCommandPopup"
 
         parent: root
 
@@ -679,8 +730,9 @@ Item {
         rejectText: qsTr("取消")
         acceptText: qsTr("删除")
         acceptButtonVariant: UiStyle.ButtonVariant.Danger
+        acceptEnabled: root.commandEditingEnabled
         onAccepted: {
-            if (root.timelineCommandModel && timelineCommand)
+            if (root.commandEditingEnabled && root.timelineCommandModel && timelineCommand)
                 root.timelineCommandModel.removeCommand(timelineCommand)
         }
         onClosed: timelineCommand = null
@@ -745,7 +797,7 @@ Item {
 
         function commit() {
             validationVisible = true
-            if (!formValid || !targetDevice || !targetCommand)
+            if (!root.commandEditingEnabled || !formValid || !targetDevice || !targetCommand)
                 return
 
             if (editing) {
@@ -775,7 +827,7 @@ Item {
         rejectText: qsTr("取消")
         acceptText: editing ? qsTr("保存") : qsTr("添加")
         acceptIconName: "workflow"
-        acceptEnabled: (editing ? root.timelineStopped : root.canAddTimelineCommand) && formValid
+        acceptEnabled: root.commandEditingEnabled && formValid
         closeOnAccepted: false
         onAccepted: commit()
         onClosed: {
