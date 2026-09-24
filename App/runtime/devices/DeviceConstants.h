@@ -130,6 +130,7 @@ namespace DeviceKey {
 
 namespace DeviceConstants {
 	inline const QString LocalVideoPrefix = "D:/video/";
+	inline const QString LocalAudioPrefix = "D:/audio/";
 }
 
 //! 设备协议名称定义

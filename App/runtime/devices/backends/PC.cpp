@@ -205,7 +205,55 @@ public:
 
 class PlayAudioCommand : public DeviceCommand_PC
 {
+public:
+	explicit PlayAudioCommand(QObject* parent)
+		: DeviceCommand_PC("播放音频",
+						   DeviceKey::CommandPlayAudio,
+						   parent)
+	{
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::AudioFile));
+	}
 
+	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+	{
+		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
+		QString url = Utils::getAudioRealSource(executionInputValues.value(DeviceKey::AudioFile).toString());
+		params[DeviceKey::AudioFile] = url;
+
+		QUrlQuery query;
+		query.addQueryItem("url", url);
+
+		QString api = QString("/audio/play?") + query.toString();
+		params[DeviceKey::Name] = this->name() + "-" + url;
+		params[DeviceKey::ApiPath] = api;
+		return params;
+	}
+private:
+	QString m_api;
+};
+
+class PauseAudioCommand : public DeviceCommand_PC
+{
+public:
+	explicit PauseAudioCommand(QObject* parent)
+		: DeviceCommand_PC("暂停音频",
+							   DeviceKey::CommandPauseAudio,
+							   parent)
+	{
+		getField(DeviceKey::ApiPath)->setValue("/audio/pause");
+	}
+};
+
+class StopAudioCommand : public DeviceCommand_PC
+{
+public:
+	explicit StopAudioCommand(QObject* parent)
+		: DeviceCommand_PC("关闭音频",
+						   DeviceKey::CommandStopAudio,
+						   parent)
+	{
+		getField(DeviceKey::ApiPath)->setValue("/audio/stop");
+	}
 };
 //class PlayDomeVideoCommand final : public DeviceCommand_PC
 //{
@@ -280,6 +328,9 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(new SeekVideoCommand(device));
 	device->appendCommand(new StopVideoCommand(device));
 	device->appendCommand(new ClosePlayerCommand(device));
+	device->appendCommand(new PlayAudioCommand(device));
+	device->appendCommand(new PauseAudioCommand(device));
+	device->appendCommand(new StopAudioCommand(device));
 	//device->appendCommand(new PlayDomeVideoCommand(device));
 
 	// 系统
@@ -315,6 +366,13 @@ DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
 		return new StopVideoCommand(parent);
 	if (commandType == DeviceKey::CommandClosePlayer)
 		return new ClosePlayerCommand(parent);
+
+	if (commandType == DeviceKey::CommandPlayAudio)
+		return new PlayAudioCommand(parent);
+	if (commandType == DeviceKey::CommandPauseAudio)
+		return new PauseAudioCommand(parent);
+	if (commandType == DeviceKey::CommandStopAudio)
+		return new StopAudioCommand(parent);
 // 	if (commandType == DeviceKey::CommandPlayDomeVideo)
 // 		return new PlayDomeVideoCommand(parent);
 	return nullptr;

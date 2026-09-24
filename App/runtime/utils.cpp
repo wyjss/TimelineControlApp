@@ -10,52 +10,93 @@
 
 namespace Utils 
 {
-
-	VideoOptionsMgr::VideoOptionsMgr()
+	//////////////////////////////////////////////////////////////////////////
+	AVOptionsMgr::AVOptionsMgr()
 	{
-		auto _func_getOptions = []() {
-			QVariantList opts;
-			QDir dir(DeviceConstants::LocalVideoPrefix);
-			auto infos = dir.entryInfoList({"*.mp4", "*.avi"});
-			for (const auto& info : infos) {
-				opts.push_back(QString("$") + info.fileName());
-			}
-			return opts;
-		};
+		refreshOptions();
 
-		m_options = _func_getOptions();
 		QFileSystemWatcher* watcher = new QFileSystemWatcher(this);
 		watcher->addPath(DeviceConstants::LocalVideoPrefix);
-		connect(watcher,
-				&QFileSystemWatcher::directoryChanged,
-				this, [this, _func_getOptions]()
-				{
-					m_options = _func_getOptions();
-
-					emit optionsChanged(m_options);
-				});
+		watcher->addPath(DeviceConstants::LocalAudioPrefix);
+		connect(watcher, &QFileSystemWatcher::directoryChanged,
+				this, [this]() {refreshOptions(); });
 	}
 
-	VideoOptionsMgr* VideoOptionsMgr::getInstance()
+	AVOptionsMgr* AVOptionsMgr::getInstance()
 	{
-		static VideoOptionsMgr* s_VideoOptionsMgr = new VideoOptionsMgr;
-		return s_VideoOptionsMgr;
+		static AVOptionsMgr* s_AVOptionsMgr = new AVOptionsMgr;
+		return s_AVOptionsMgr;
 	}
 
-	const QVariantList& VideoOptionsMgr::getOptions()
+	const QVariantList& AVOptionsMgr::getVideoOptions()
 	{
-		return m_options;
+		return m_videoOptions;
 	}
+
+	const QVariantList& AVOptionsMgr::getAudioOptions()
+	{
+		return m_audioOptions;
+	}
+
+	QVariantList AVOptionsMgr::getOptions(const QString path, const QStringList& nameFilters) const
+	{
+		QVariantList opts;
+		QDir dir(path);
+		auto infos = dir.entryInfoList(nameFilters);
+		for (const auto& info : infos) {
+			opts.push_back(QString("$") + info.fileName());
+		}
+		return opts;
+	}
+
+	void AVOptionsMgr::refreshOptions()
+	{
+		auto videos = getOptions(DeviceConstants::LocalVideoPrefix,
+								 { "*.mp4", "*.avi" , "*.flv" });
+		auto audios = getOptions(DeviceConstants::LocalAudioPrefix, 
+								 { "*.mp3","*.wav" ,"*.aac"});
+
+		bool dirty = false;
+
+		if (videos != m_videoOptions) {
+			m_videoOptions = videos;
+			dirty = true;
+		}
+
+		if (audios != m_audioOptions) {
+			m_audioOptions = audios;
+			dirty = true;
+		}
+
+		if (dirty) {
+			emit optionsChanged(m_videoOptions, m_audioOptions);
+		}
+	}
+	//////////////////////////////////////////////////////////////////////////
 
 	QVariantList getVideoOptions()
 	{
-		return VideoOptionsMgr::getInstance()->getOptions();
+		return AVOptionsMgr::getInstance()->getVideoOptions();
+	}
+	
+	QVariantList getAudioOptions()
+	{
+		return AVOptionsMgr::getInstance()->getAudioOptions();
 	}
 
 	QString getVideoRealSource(const QString& source)
 	{
 		if (source.startsWith("$")) {
 			return DeviceConstants::LocalVideoPrefix + source.mid(1);
+		} else {
+			return source;
+		}
+	}
+
+	QString getAudioRealSource(const QString& source)
+	{
+		if (source.startsWith("$")) {
+			return DeviceConstants::LocalAudioPrefix + source.mid(1);
 		} else {
 			return source;
 		}

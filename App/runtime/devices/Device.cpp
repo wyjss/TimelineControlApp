@@ -527,8 +527,14 @@ void Device::readFromStream(QDataStream& stream, TimelineModel *timelineModel)
     }
 
     for (DeviceCommand *command : oldCommands) {
-        if (!m_commands.contains(command))
-            delete command;
+        if (!m_commands.contains(command)) {
+            // 无法编辑的是内部指令，可能是新增的，不能删除
+            if (command->editable() == false) {
+                appendCommand(command);
+            } else {
+				delete command;
+            }
+        }
     }
     emit commandsChanged();
 }

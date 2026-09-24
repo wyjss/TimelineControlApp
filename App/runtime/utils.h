@@ -7,26 +7,34 @@
 
 namespace Utils {
 
-	class VideoOptionsMgr : public QObject
+	class AVOptionsMgr : public QObject
 	{
 		Q_OBJECT
 	private:
-		VideoOptionsMgr();
+		AVOptionsMgr();
 	public:
-		static VideoOptionsMgr* getInstance();
-		const QVariantList& getOptions();
-	signals:
-		void optionsChanged(const QVariantList&);
+		static AVOptionsMgr* getInstance();
 
-		void videoOptionsChanged(const QVariantList&);
+		const QVariantList& getVideoOptions();
+		const QVariantList& getAudioOptions();
+	private:
+		QVariantList getOptions(const QString path, const QStringList& nameFilters) const;
+		void refreshOptions();
+	signals:
+		void optionsChanged(const QVariantList& v, const QVariantList& a);
+
 	private:
 		QVariantList m_options;
+		QVariantList m_videoOptions;
+		QVariantList m_audioOptions;
 	};
-	// 获取视频的可选项列表
+	// 获取音视频的可选项列表
 	QVariantList getVideoOptions();
+	QVariantList getAudioOptions();
 
 	// 获取视频的真实地址
 	QString getVideoRealSource(const QString& source);
+	QString getAudioRealSource(const QString& source);
 
 	// rect <-> variant map转换
 	bool rectFromMap(const QVariantMap& vmap, QRect& rect);

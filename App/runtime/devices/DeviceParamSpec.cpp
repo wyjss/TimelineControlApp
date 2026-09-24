@@ -415,10 +415,11 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         spec->setReadOnly(false);
         spec->setOptions(Utils::getVideoOptions());
 
-        QObject::connect(Utils::VideoOptionsMgr::getInstance(),
-                         &Utils::VideoOptionsMgr::optionsChanged,
-                         spec,
-                         &DeviceParamSpec::setOptions
+        QObject::connect(Utils::AVOptionsMgr::getInstance(),
+                         &Utils::AVOptionsMgr::optionsChanged,
+                         spec, [spec](const QVariantList& v, const QVariantList& a) {
+                             spec->setOptions(v);
+                         }
         );
         return spec;
     }
@@ -431,13 +432,13 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 										 SelectEditor);
 		spec->setRequired(true);
 		spec->setReadOnly(false);
-		spec->setOptions(Utils::getVideoOptions());
+		spec->setOptions(Utils::getAudioOptions());
 
-		QObject::connect(Utils::VideoOptionsMgr::getInstance(),
-						 &Utils::VideoOptionsMgr::optionsChanged,
-						 spec,
-						 &DeviceParamSpec::setOptions
-		);
+        QObject::connect(Utils::AVOptionsMgr::getInstance(),
+                         &Utils::AVOptionsMgr::optionsChanged,
+                         spec, [spec](const QVariantList& v, const QVariantList& a) {
+                             spec->setOptions(a);
+                         });
 		return spec;
 	}
 
