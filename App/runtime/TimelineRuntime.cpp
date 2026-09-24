@@ -85,7 +85,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
             m_videoProjectionPlanController, &VideoProjectionPlanController::removeMappingsForPc);
     connect(m_timelineManager, &TimelineManager::commandTriggered,
             this, [this](Timeline *, TimelineCommand *timelineCommand) {
-        executeTimelineCommand(timelineCommand);
+        executeTimelineCommand(timelineCommand, timelineCommand->executionInputValues(), false);
     });
     connect(m_timelineManager, &TimelineManager::deviceCommandTriggered,
             this, [this](DeviceCommand *command) {
@@ -115,7 +115,9 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
         m_timelineManager->createTimeline(tr("主时间轴"));
 }
 
-void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
+void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand,
+                                             const QVariantMap &executionInputValues,
+                                             bool isTest)
 {
     if (!timelineCommand)
         return;
@@ -159,7 +161,7 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
                timelineCommand, nullptr);
     connect(m_deviceExecutorManager, &DeviceExecutorManager::executionFinished,
             timelineCommand,
-            [this, runId, executionId, timelineCommandGuard, deviceCommand](
+            [this, runId, executionId, timelineCommandGuard, deviceCommand, isTest](
                 const QString &finishedExecutionId,
                 DeviceCommand *finishedCommand,
                 bool success,
@@ -167,7 +169,7 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
         if (finishedExecutionId != executionId || finishedCommand != deviceCommand)
             return;
 
-        if (m_runId == runId && timelineCommandGuard) {
+        if ((isTest || m_runId == runId) && timelineCommandGuard) {
             timelineCommandGuard->setErrorMessage(errorMessage);
             timelineCommandGuard->setState(success
                                                ? TimelineCommand::Succeeded
@@ -177,7 +179,20 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand)
     m_deviceExecutorManager->execute(
         executionId,
         deviceCommand,
-        timelineCommand->executionInputValues());
+        executionInputValues);
+}
+
+TimelineCommand *TimelineRuntime::testDeviceCommand(const QString &targetDeviceId,
+                                                    DeviceCommand *deviceCommand,
+                                                    const QVariantMap &executionInputValues)
+{
+    auto *command = new TimelineCommand(0,
+                                        targetDeviceId,
+                                        deviceCommand ? deviceCommand->name() : QString(),
+                                        executionInputValues,
+                                        deviceCommand);
+    executeTimelineCommand(command, executionInputValues, true);
+    return command;
 }
 
 UICore::TaskManager *TimelineRuntime::taskManager() const

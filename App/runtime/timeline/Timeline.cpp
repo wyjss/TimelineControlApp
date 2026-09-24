@@ -17,6 +17,24 @@ Timeline::Timeline(const QString &id,
     , m_commandModel(new TimelineCommandModel(this))
     , m_crossConditionModel(new CrossConditionModel(this, this))
 {
+    connect(m_commandModel, &QAbstractItemModel::rowsInserted, this,
+            [this](const QModelIndex &, int first, int last) {
+        if (m_state != Running)
+            return;
+
+        for (int row = first; row <= last; ++row) {
+            TimelineCommand *command = m_commandModel->commandAt(row);
+            // 只插入待执行部分，保留已执行指令的位置和状态。
+            int index = m_nextCommandIndex;
+            while (index < m_playCommands.size()
+                   && m_playCommands.at(index)->startTimeMs() <= command->startTimeMs())
+                ++index;
+            m_playCommands.insert(index, command);
+            if (command->startTimeMs() < m_currentTimeMs)
+                command->setState(TimelineCommand::Skipped);
+            setDurationMs(qMax(m_durationMs, command->startTimeMs()));
+        }
+    });
 }
 
 QString Timeline::id() const

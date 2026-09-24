@@ -45,6 +45,7 @@ Item {
     readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
     readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
+    readonly property bool canAddTimelineCommand: timelineStopped || timelineManager.playbackState === 2
     readonly property var selectedCommand: selectedCommandIndex >= 0
         && selectedCommandIndex < deviceCommands.length
         ? deviceCommands[selectedCommandIndex]
@@ -152,7 +153,7 @@ Item {
     }
 
     function addSelectedCommandAtCurrentTime() {
-        if (!timelineStopped)
+        if (!canAddTimelineCommand)
             return
 
         if (!timelineCommandModel || !selectedTimelineDevice || !selectedCommand) {
@@ -165,7 +166,7 @@ Item {
     }
 
     function addTimelineCommand(targetDevice, targetCommand, startTimeMs, executionValues, alias) {
-        if (!timelineStopped || !timelineCommandModel)
+        if (!canAddTimelineCommand || !timelineCommandModel)
             return
 
         timelineCommandModel.addDeviceCommand(startTimeMs,
@@ -694,6 +695,7 @@ Item {
         property var targetDevice: null
         property var targetCommand: null
         property var editingTimelineCommand: null
+        property var testTimelineCommand: null
         property int targetStartTimeMs: 0
         property bool validationVisible: false
         readonly property bool editing: editingTimelineCommand !== null
@@ -707,6 +709,7 @@ Item {
 
             Qt.callLater(function() {
                 editingTimelineCommand = null
+                testTimelineCommand = null
                 targetDevice = nextDevice
                 targetCommand = nextCommand
                 commandAliasField.text = nextCommand.name
@@ -725,6 +728,7 @@ Item {
 
             Qt.callLater(function() {
                 editingTimelineCommand = command
+                testTimelineCommand = null
                 targetCommand = command.targetCommand
                 if (!targetCommand) {
                     close()
@@ -771,11 +775,12 @@ Item {
         rejectText: qsTr("取消")
         acceptText: editing ? qsTr("保存") : qsTr("添加")
         acceptIconName: "workflow"
-        acceptEnabled: root.timelineStopped && formValid
+        acceptEnabled: (editing ? root.timelineStopped : root.canAddTimelineCommand) && formValid
         closeOnAccepted: false
         onAccepted: commit()
         onClosed: {
             editingTimelineCommand = null
+            testTimelineCommand = null
             targetDevice = null
             targetCommand = null
         }
@@ -839,6 +844,46 @@ Item {
             writeBack: false
             showErrors: addTimelineCommandPopup.validationVisible
             emptyText: qsTr("无执行参数")
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            Base.AppButton {
+                objectName: "testTimelineCommandButton"
+                text: qsTr("测试")
+                enabled: root.appRuntime
+                    && addTimelineCommandPopup.targetDevice
+                    && addTimelineCommandPopup.targetCommand
+                    && addTimelineCommandPopup.formValid
+                onClicked: {
+                    addTimelineCommandPopup.validationVisible = true
+                    addTimelineCommandPopup.testTimelineCommand = root.appRuntime.testDeviceCommand(
+                        String(addTimelineCommandPopup.targetDevice.id || ""),
+                        addTimelineCommandPopup.targetCommand,
+                        executionFieldForm.valueMap())
+                }
+            }
+
+            Base.AppText {
+                objectName: "timelineCommandTestStatus"
+                Layout.fillWidth: true
+                text: {
+                    var command = addTimelineCommandPopup.testTimelineCommand
+                    if (!command)
+                        return ""
+                    return command.state === 3 && command.errorMessage.length > 0
+                        ? qsTr("失败：%1").arg(command.errorMessage)
+                        : command.stateText
+                }
+                styleRole: UiStyle.TypographyRole.BodyS
+                textTone: addTimelineCommandPopup.testTimelineCommand
+                    && addTimelineCommandPopup.testTimelineCommand.state === 3
+                    ? UiStyle.TextTone.Danger
+                    : UiStyle.TextTone.Secondary
+                wrapMode: Text.WordWrap
+            }
         }
     }
 }

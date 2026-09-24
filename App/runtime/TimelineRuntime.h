@@ -4,10 +4,12 @@
 #include <UICore/Task/TaskManager.h>
 
 #include <QString>
+#include <QVariantMap>
 
 class QDataStream;
 
 
+class DeviceCommand;
 class DeviceManager;
 class DeviceModel;
 class DeviceTemplateModel;
@@ -48,12 +50,18 @@ public:
     void readPlanFromStream(QDataStream &stream);
     Q_INVOKABLE bool savePlanToFile(const QString &filePath);
     Q_INVOKABLE bool loadPlanFromFile(const QString &filePath);
+    //! 独立测试设备指令，返回由 QML 持有的临时执行状态。
+    Q_INVOKABLE TimelineCommand *testDeviceCommand(const QString &targetDeviceId,
+                                                  DeviceCommand *deviceCommand,
+                                                  const QVariantMap &executionInputValues);
 
 signals:
     void currentPlanFilePathChanged();
 
 private:
-    void executeTimelineCommand(TimelineCommand *timelineCommand);
+    void executeTimelineCommand(TimelineCommand *timelineCommand,
+                                const QVariantMap &executionInputValues,
+                                bool isTest);
 
     UICore::TaskManager *m_taskManager = nullptr;
     DeviceModel *m_deviceModel = nullptr;

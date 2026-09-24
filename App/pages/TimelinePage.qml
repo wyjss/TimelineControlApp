@@ -572,7 +572,7 @@ Item {
                                     minWidth: 32
                                     text: "+"
                                     variant: UiStyle.ButtonVariant.Secondary
-                                    enabled: !!root.editor && root.editor.timelineStopped
+                                    enabled: !!root.editor && root.editor.canAddTimelineCommand
                                         && !!root.editor.timelineCommandModel && !!root.editor.selectedTimelineDevice
                                     onClicked: {
                                         root.editor.selectCommandIndex(index)

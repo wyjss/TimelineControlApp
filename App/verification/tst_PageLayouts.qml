@@ -267,6 +267,31 @@ TestCase {
         dialog.close()
         page.timelineManager = { playbackState: 1, currentTimeline: null, timelineModel: null }
         verify(!findChild(host, "addDeviceCommand_2").enabled)
+        page.addSelectedCommandAtCurrentTime()
+        tryCompare(dialog, "visible", false)
+        page.timelineManager = { playbackState: 2,
+            currentTimeline: { currentTimeMs: 17650, durationMs: 30000 }, timelineModel: null }
+        verify(findChild(host, "addDeviceCommand_2").enabled)
+        compare(findChild(host, "commandAddTime").text, "00:17.650")
+        findChild(host, "addDeviceCommand_2").clicked()
+        wait(30)
+        verify(dialog.visible && dialog.acceptEnabled)
+        compare(dialog.targetStartTimeMs, 17650)
+        dialog.commit()
+        compare(page.timelineCommandModel.addedCommands.length, 2)
+        compare(page.timelineCommandModel.addedCommands[1].time, 17650)
+        compare(page.timelineCommandModel.addedCommands[1].deviceId, "one")
+        compare(page.timelineCommandModel.addedCommands[1].command.name, "暂停播放")
+        findChild(host, "addDeviceCommand_2").clicked()
+        wait(30)
+        verify(dialog.visible && dialog.acceptEnabled)
+        page.timelineManager = { playbackState: 1,
+            currentTimeline: page.currentTimeline, timelineModel: null }
+        verify(!dialog.acceptEnabled)
+        dialog.commit()
+        compare(page.timelineCommandModel.addedCommands.length, 2)
+        page.timelineManager = { playbackState: 3, currentTimeline: null, timelineModel: null }
+        verify(!findChild(host, "addDeviceCommand_2").enabled)
         page.timelineManager = null
         findChild(host, "commandPanelModeSelector").valueSelected("timeline")
         compare(host.commandPanelMode, "timeline")
@@ -284,7 +309,7 @@ TestCase {
         wait(30)
         compare(palette.count, 0)
         compare(page.selectedCommandIndex, -1)
-        compare(page.timelineCommandModel.addedCommands.length, 1)
+        compare(page.timelineCommandModel.addedCommands.length, 2)
     }
 
     function test_commandPanelTabs_data() {
