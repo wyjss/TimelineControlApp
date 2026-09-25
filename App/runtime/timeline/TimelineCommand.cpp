@@ -292,7 +292,7 @@ qint64 TimelineCommandModel::realDurationMs()
     if (m_realDurationNeedUpdate) {
         m_realDurationNeedUpdate = false;
 
-        LOG_DEBUG("updateRealDuration");
+        //LOG_DEBUG("updateRealDuration");
         qint64 realDurationMs = 0;
         for (TimelineCommand* command : items()) {
             if (command)

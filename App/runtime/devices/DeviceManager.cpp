@@ -3,9 +3,11 @@
 #include <QMetaType>
 #include <QDebug>
 #include <QDataStream>
+#include <QUuid>
 
 #include "devices/DeviceConstants.h"
 #include "devices/Device.h"
+#include "devices/DeviceCommand.h"
 #include "devices/DeviceModel.h"
 #include "devices/DeviceParamSpec.h"
 #include "devices/DeviceTemplate.h"
@@ -276,6 +278,42 @@ bool DeviceManager::updateDevice(Device *device,
             device->setParamValue(it.key(), it.value());
     }
     return true;
+}
+
+void DeviceManager::setDevicePower(const QString &deviceId, bool powerOn)
+{
+    Device *device = m_deviceModel ? m_deviceModel->deviceById(deviceId) : nullptr;
+    DeviceCommand *command = device
+        ? device->commandByName(powerOn ? DeviceKey::SystemOpen : DeviceKey::SystemClose)
+        : nullptr;
+    QString errorMessage;
+    if (!device)
+        errorMessage = tr("目标设备不存在");
+    else if (!command)
+        errorMessage = powerOn ? tr("设备不支持开机") : tr("设备不支持关机");
+    else if (!m_deviceExecutorManager)
+        errorMessage = tr("设备执行器不可用");
+    else
+        errorMessage = command->invalidReason();
+    if (!errorMessage.isEmpty()) {
+        emit devicePowerFinished(deviceId, false, errorMessage);
+        return;
+    }
+
+    const QString executionId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    auto *executionContext = new QObject(this);
+    connect(m_deviceExecutorManager, &DeviceExecutorManager::executionFinished,
+            executionContext,
+            [this, executionContext, executionId, deviceId](const QString &finishedExecutionId,
+                                                           DeviceCommand *,
+                                                           bool success,
+                                                           const QString &message) {
+        if (finishedExecutionId != executionId)
+            return;
+        executionContext->deleteLater();
+        emit devicePowerFinished(deviceId, success, message);
+    });
+    m_deviceExecutorManager->execute(executionId, command);
 }
 
 void DeviceManager::refreshDmx512AdapterOptions()

@@ -164,13 +164,20 @@ void TimelineRuntime::flushPcVideoPreview()
             continue;
 
         const auto state = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);
+//         {
+//             const auto oldState = PcVideoStateCalculator::stateAt(commands, device->id(), m_pendingPcVideoTimeline->currentTimeMs());
+//             const auto newState = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);
+//             auto cmds = PcVideoStateCalculator::commandsBetween(oldState, newState);
+//         }
+        //for(con)
+        
         if (state.videos.isEmpty())
             continue;
 
         for (const QVariant &value : device->commands()) {
             DeviceCommand *command = value.value<DeviceCommand *>();
             if (command->protocol() != DeviceProtocol::Pc
-                || command->commandType() != DeviceKey::CommandSeekVideo)
+                /*|| command->commandType() != DeviceKey::CommandSeekVideo*/)
                 continue;
 
             // 暂停拖动只同步视频进度，不执行播放指令。
@@ -211,11 +218,11 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand,
         timelineCommand->setState(TimelineCommand::Failed);
         return;
     }
-    if (!targetDevice->supportsProtocol(deviceCommand->protocol())) {
-        timelineCommand->setErrorMessage(tr("设备不支持该协议"));
-        timelineCommand->setState(TimelineCommand::Failed);
-        return;
-    }
+    //if (!targetDevice->supportsProtocol(deviceCommand->protocol())) {
+    //    timelineCommand->setErrorMessage(tr("设备不支持该协议"));
+    //    timelineCommand->setState(TimelineCommand::Failed);
+    //    return;
+    //}
     const QString invalidReason = deviceCommand->invalidReason();
     if (!invalidReason.isEmpty()) {
         timelineCommand->setErrorMessage(invalidReason);

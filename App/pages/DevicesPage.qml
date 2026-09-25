@@ -33,6 +33,15 @@ Item {
         && selectedDevice.commands
         ? selectedDevice.commands
         : []
+    readonly property bool supportsPowerOn: selectedDeviceCommands.some(function(command) {
+        return command.name === "系统开机"
+    })
+    readonly property bool supportsPowerOff: selectedDeviceCommands.some(function(command) {
+        return command.name === "系统关机"
+    })
+    property string powerControlDeviceId: ""
+    property string powerControlDeviceName: ""
+    property string powerControlStatus: ""
     property int selectedCommandIndex: -1
     property int expandedCommandIndex: -1
     property string deviceSearchText: ""
@@ -65,6 +74,28 @@ Item {
     onFilteredDevicesChanged: Qt.callLater(ensureSelectedDeviceForView)
 
     Component.onCompleted: ensureSelectedCommandForDevice()
+
+    Connections {
+        target: root.deviceManager
+        onDevicePowerFinished: {
+            if (deviceId !== root.powerControlDeviceId)
+                return
+            root.powerControlDeviceId = ""
+            root.powerControlStatus = success
+                ? qsTr("%1：指令已发送").arg(root.powerControlDeviceName)
+                : qsTr("%1：失败，%2").arg(root.powerControlDeviceName).arg(errorMessage)
+        }
+    }
+
+    function setDevicePower(deviceId, deviceName, powerOn) {
+        if (!deviceManager || powerControlDeviceId.length > 0)
+            return
+        powerControlDeviceId = deviceId
+        powerControlDeviceName = deviceName
+        powerControlStatus = qsTr("%1：正在发送%2指令…")
+            .arg(deviceName).arg(powerOn ? qsTr("开机") : qsTr("关机"))
+        deviceManager.setDevicePower(deviceId, powerOn)
+    }
 
     function objectValue(object, field, fallback) {
         if (!object || object[field] === undefined || object[field] === null)
@@ -982,6 +1013,45 @@ Item {
                                     fieldData: ({ "label": qsTr("描述"), "value": root.objectValue(root.selectedDevice, "description", "") })
                                 }
                             }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: root.pageTheme.density.controlGap
+
+                                Base.AppButton {
+                                    objectName: "devicePowerOnButton"
+                                    size: UiStyle.ButtonSize.Small
+                                    text: qsTr("开机")
+                                    enabled: root.deviceManager && root.supportsPowerOn
+                                        && root.powerControlDeviceId.length === 0
+                                    onClicked: root.setDevicePower(String(root.selectedDevice.id),
+                                                                   String(root.selectedDevice.name), true)
+                                }
+
+                                Base.AppButton {
+                                    objectName: "devicePowerOffButton"
+                                    size: UiStyle.ButtonSize.Small
+                                    variant: UiStyle.ButtonVariant.Danger
+                                    text: qsTr("关机")
+                                    enabled: root.deviceManager && root.supportsPowerOff
+                                        && root.powerControlDeviceId.length === 0
+                                    onClicked: {
+                                        powerOffDialog.deviceId = String(root.selectedDevice.id)
+                                        powerOffDialog.deviceName = String(root.selectedDevice.name)
+                                        powerOffDialog.open()
+                                    }
+                                }
+                            }
+
+                            Base.AppText {
+                                objectName: "devicePowerStatus"
+                                Layout.fillWidth: true
+                                visible: root.powerControlStatus.length > 0
+                                text: root.powerControlStatus
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: UiStyle.TextTone.Secondary
+                                wrapMode: Text.Wrap
+                            }
                         }
                     }
 
@@ -1467,6 +1537,25 @@ Item {
         }
             }
         }
+    }
+
+    Base.AppDialog {
+        id: powerOffDialog
+        objectName: "devicePowerOffDialog"
+
+        property string deviceId: ""
+        property string deviceName: ""
+
+        parent: root
+        width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        title: qsTr("设备关机")
+        message: qsTr("确定关闭 %1？该设备上正在运行的任务将被中断。").arg(deviceName)
+        rejectText: qsTr("取消")
+        acceptText: qsTr("关机")
+        acceptButtonVariant: UiStyle.ButtonVariant.Danger
+        onAccepted: root.setDevicePower(deviceId, deviceName, false)
     }
 
     Loader {

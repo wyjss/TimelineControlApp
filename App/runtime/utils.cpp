@@ -52,7 +52,7 @@ namespace Utils
 	void AVOptionsMgr::refreshOptions()
 	{
 		auto videos = getOptions(DeviceConstants::LocalVideoPrefix,
-								 { "*.mp4", "*.avi" , "*.flv" });
+								 { "*.mp4", "*.avi" , "*.flv", "*.png", "*.jpg"});
 		auto audios = getOptions(DeviceConstants::LocalAudioPrefix, 
 								 { "*.mp3","*.wav" ,"*.aac"});
 

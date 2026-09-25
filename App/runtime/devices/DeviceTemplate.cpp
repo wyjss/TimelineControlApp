@@ -20,6 +20,7 @@ DeviceTemplate::DeviceTemplate(const QString &name,
     , m_commands(commands)
 {
     m_configSpecs.prepend(DeviceParamSpec::createForKey(DeviceKey::Ip));
+    m_configSpecs.prepend(DeviceParamSpec::createForKey(DeviceKey::MacAddress));
 
     for (auto spec : m_configSpecs) {
         spec->setParent(this);

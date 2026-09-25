@@ -34,7 +34,6 @@ CrossConditionModel::CrossConditionModel(Timeline* sourceTimeline, QObject* pare
 				[this](Timeline::State state) {
 					if (state == Timeline::Stopped
 						) {
-						LOG_DEBUG("aaa" << m_sourceTimeline->name() << state);
 						deactivate();
 					}
 				});

@@ -80,6 +80,7 @@ public:
 	{
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoFile));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoTimeSec));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::AVLoop));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowX));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowY));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowW));
@@ -122,6 +123,7 @@ public:
 		QUrlQuery query;
 		query.addQueryItem("mode", "virtual");
 		query.addQueryItem("url", url);
+		query.addQueryItem("loop", params[DeviceKey::AVLoop].toString());
 		query.addQueryItem("play", executionInputValues.value("play", true).toString());
 		query.addQueryItem("rect", sVideoRect);
 		query.addQueryItem("srcRect", sVideoSrcRect);
@@ -255,6 +257,56 @@ public:
 		getField(DeviceKey::ApiPath)->setValue("/audio/stop");
 	}
 };
+
+class SystemOpenCommand : public DeviceCommand_Udp
+{
+public:
+	explicit SystemOpenCommand(QObject* parent)
+		: DeviceCommand_Udp(DeviceProtocol::Udp,
+							DeviceKey::SystemOpen,
+						   "",
+						   parent)
+	{
+		// 占位
+		getField(DeviceKey::Payload)->setValue("ffffffff");
+	}
+
+	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+	{
+		auto params = DeviceCommand_Udp::resolvedParams(executionInputValues);
+
+		auto ip = params[DeviceKey::Ip].toString();
+		auto mac = params[DeviceKey::MacAddress].toString();
+		mac = mac.remove("-");
+
+		// Wake-on-LAN 固定
+		params[DeviceKey::Ip] = "255.255.255.255";
+		params[DeviceKey::Port] = 9;
+		
+		// 生成唤醒数据
+		QByteArray payload(6, 0xff);
+		QByteArray bMac;
+		Utils::toHexData(mac, &bMac);
+		for (int i = 0; i < 16; ++i) {
+			payload.push_back(bMac);
+		}
+		
+		params[DeviceKey::Payload] = payload;
+		return params;
+	}
+};
+
+class SystemCloseCommand : public DeviceCommand_PC
+{
+public:
+	explicit SystemCloseCommand(QObject* parent)
+		: DeviceCommand_PC(DeviceKey::SystemClose,
+						   "",
+						   parent)
+	{
+		getField(DeviceKey::ApiPath)->setValue("/system/shutdown");
+	}
+};
 //class PlayDomeVideoCommand final : public DeviceCommand_PC
 //{
 //public:
@@ -331,6 +383,8 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(new PlayAudioCommand(device));
 	device->appendCommand(new PauseAudioCommand(device));
 	device->appendCommand(new StopAudioCommand(device));
+
+	
 	//device->appendCommand(new PlayDomeVideoCommand(device));
 
 	// 系统
@@ -346,7 +400,9 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 		_createSystemCommand(DeviceKey::SystemResume, "/video/systemResume"));
 	device->appendCommand(
 		_createSystemCommand(DeviceKey::SystemStop, "/video/systemStop"));
-	
+
+	device->appendCommand(new SystemOpenCommand(device));
+	device->appendCommand(new SystemCloseCommand(device));
 
 	return device;
 }

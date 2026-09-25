@@ -591,18 +591,20 @@ Item {
 
                                 MouseArea {
                                     function seek(positionX) {
-                                        if (!root.timelineStopped
-                                                || root.overviewDurationMs <= 0)
+                                        if (/*!root.timelineStopped
+                                                || */root.overviewDurationMs <= 0)
                                             return
                                         var timeMs = Math.round(Math.max(0,
                                             Math.min(width, positionX)) / width
                                             * root.overviewDurationMs)
-                                        root.setTimelineCurrentTimeMs(timeMs)
+                                        // 取消时间跳转
+                                        //root.setTimelineCurrentTimeMs(timeMs)
                                         root.positionControlTrackAtTime(timeMs)
                                     }
 
                                     anchors.fill: parent
-                                    enabled: root.timelineStopped
+                                    // 在不关联时间后，可以一直启用
+                                    //enabled: root.timelineStopped
                                     cursorShape: pressed
                                         ? Qt.SizeHorCursor
                                         : Qt.PointingHandCursor

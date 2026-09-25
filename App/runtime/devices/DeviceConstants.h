@@ -47,6 +47,7 @@ namespace DeviceKey {
 
 
 	inline const QString Ip = "ip";
+	inline const QString MacAddress = "macAddress";
 	inline const QString HttpMethod = "httpMethod";
 	//inline const QString HttpQueryParams = "httpQueryParams";
 	inline const QString HttpBody = "httpBody";
@@ -76,6 +77,7 @@ namespace DeviceKey {
 	inline const QString AudioFile = "audioFile";
 	inline const QString VideoTimeSec = "videoTimeSec";
 	inline const QString VideoSeekTimeSec = "videoSeekTimeSec";
+	inline const QString AVLoop = "avLoop";
 
 	// 已废弃，用VideoWindow*代替。
 	// @todo 目前只用来做兼容，后期删除
@@ -126,6 +128,8 @@ namespace DeviceKey {
 	inline const QString SystemPause = "系统暂停";
 	inline const QString SystemResume = "系统恢复";
 	inline const QString SystemStop = "系统停止";
+	inline const QString SystemOpen = "系统开机";
+	inline const QString SystemClose = "系统关机";
 } // namespace DeviceKey
 
 namespace DeviceConstants {
@@ -147,6 +151,7 @@ namespace DeviceProtocol {
 //! 通用的patterns
 namespace DevicePattern {
 	inline const QString Ip = "^\\d{1,3}(?:\\.\\d{1,3}){3}$";
+	inline const QString MacAddress = "^[0-9A-Fa-f]{2}(-[0-9A-Fa-f]{2}){5}$";
 	inline const QString Rect = "^\\d+(,\\d+){3}$";
 	inline const QString Dmx = R"(^(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(?:,(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d))*$)";
 }

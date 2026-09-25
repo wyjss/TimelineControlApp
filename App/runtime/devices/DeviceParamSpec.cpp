@@ -191,6 +191,17 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
+	if (deviceKey == DeviceKey::MacAddress) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("物理地址"),
+										 QStringLiteral("00-00-00-00-00-00"),
+										 StringType,
+										 TextEditor);
+		spec->setPattern(DevicePattern::MacAddress);
+		spec->setPlaceholderText(QStringLiteral("00-00-00-00-00-00"));
+		return spec;
+	}
+
     if (deviceKey == DeviceKey::Port) {
         auto *spec = new DeviceParamSpec(deviceKey,
                                          QStringLiteral("端口"),
@@ -452,7 +463,7 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		spec->setMinimum(0);
 		spec->setMaximum(60 * 60 * 6);
 		spec->setValue(0);
-		spec->setDefaultValue(9.5);
+		spec->setDefaultValue(0);
 		return spec;
 	}
 
@@ -467,6 +478,17 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		spec->setMaximum(60 * 60 * 6);
 		spec->setValue(0);
 		spec->setDefaultValue(0);
+		return spec;
+	}
+
+	if (deviceKey == DeviceKey::AVLoop) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("循环播放"),
+										 "false",
+										 SelectType,
+										 SelectEditor);
+		spec->setReadOnly(false);
+		spec->setOptions({ "true", "false" });
 		return spec;
 	}
 

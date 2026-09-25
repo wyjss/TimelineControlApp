@@ -24,31 +24,40 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
                                      DeviceCommand *command,
                                      const QVariantMap &params)
 {
-    const QString payload = params.value(DeviceKey::Payload).toString();
+    QByteArray payload;
+    auto varData = params.value(DeviceKey::Payload);
+
+    if (varData.type() == QVariant::ByteArray) {
+        payload = varData.toByteArray();
+    } else {
+        payload = varData.toString().toUtf8();
+    }
+
     if (m_ip.isEmpty() || payload.isEmpty()) {
         emit executionFinished(executionId, command, false, tr("HTTP 地址或路径为空"));
         return;
     }
-
-    QByteArray data;
+    
 	if (params.value(DeviceKey::PayloadType, "").toString() == DeviceKey::PayloadType_Hex) {
-		if (!Utils::toHexData(payload, &data)) {
+		QByteArray data;
+        if (!Utils::toHexData(payload, &data)) {
 			emit executionFinished(executionId, command, false, tr("无效的hex数据"));
 			return;
 		}
 		LOG_DEBUG("转换16进制数据:" << payload);
+        payload = data;
 	} else
     {
-        data = payload.toUtf8();
+        
     }
-    
+   
     QUdpSocket sock;
-    auto size = sock.writeDatagram(data, QHostAddress(m_ip), m_port);
+    auto size = sock.writeDatagram(payload, QHostAddress(m_ip), m_port);
 
-	LOG_DEBUG("send udp order: " << data);
+	LOG_DEBUG("send udp order: " << payload);
 	LOG_DEBUG("send udp order ip: " << m_ip << m_port);
 
-    if (size == data.size()) {
+    if (size == payload.size()) {
         emit executionFinished(executionId, command, true, "");
     } else {
         emit executionFinished(executionId, command, false, "发送失败");

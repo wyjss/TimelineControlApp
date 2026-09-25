@@ -42,6 +42,11 @@ public:
                                   const QVariantMap &configValues,
                                   const QStringList &groupNames);
 
+    Q_INVOKABLE void setDevicePower(const QString &deviceId, bool powerOn);
+
+signals:
+    void devicePowerFinished(const QString &deviceId, bool success, const QString &errorMessage);
+
 private:
     void refreshDmx512AdapterOptions();
     Device *makeDeviceFromTemplate(const QString &templateName,
