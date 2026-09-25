@@ -26,6 +26,7 @@ Item {
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceTemplates: deviceTemplateModel ? deviceTemplateModel.templates : []
     readonly property var deviceTypes: deviceModel ? deviceModel.deviceTypes : []
+    readonly property var deviceGroupNames: deviceModel && deviceModel.groupNames ? deviceModel.groupNames : []
     readonly property var manualDeviceTypes: buildManualDeviceTypes()
     readonly property var selectedDevice: deviceModel ? deviceModel.currentDevice : ({})
     readonly property var selectedDeviceCommands: selectedDeviceInCurrentView
@@ -42,16 +43,49 @@ Item {
     property string powerControlDeviceId: ""
     property string powerControlDeviceName: ""
     property string powerControlStatus: ""
+    readonly property var groupPowerOnDevices: groupPowerDevices(true)
+    readonly property var groupPowerOffDevices: groupPowerDevices(false)
+    property string groupPowerName: ""
+    property bool groupPowerOn: true
+    property int groupPowerTotalCount: 0
+    property int groupPowerSentCount: 0
+    property var groupPowerPendingDevices: []
+    property var groupPowerErrors: []
+    readonly property bool groupPowerBusy: groupPowerPendingDevices.length > 0
     property int selectedCommandIndex: -1
     property int expandedCommandIndex: -1
     property string deviceSearchText: ""
     property string deviceStatusFilter: "all"
     property bool compactDevices: false
+    property bool selectingDevices: false
+    property var batchSelectedDeviceIds: []
+    readonly property int visibleBatchSelectionCount: {
+        var count = 0
+        for (var index = 0; index < filteredDevices.length; ++index) {
+            if (batchSelectedDeviceIds.indexOf(String(filteredDevices[index].id)) >= 0)
+                ++count
+        }
+        return count
+    }
     property string deviceDisplayMode: "template"
     property string selectedTemplateName: deviceTemplates.length > 0 ? String(deviceTemplates[0].name) : ""
     property string selectedDeviceType: deviceTypes.length > 0 ? String(deviceTypes[0]) : ""
     readonly property var selectedTemplate: findTemplate(selectedTemplateName)
-    readonly property var groupItems: deviceDisplayMode === "type" ? deviceTypes : deviceTemplates
+    property string selectedGroupKind: "all"
+    property string selectedGroupName: ""
+    readonly property string selectedGroupTitle: selectedGroupKind === "all" ? qsTr("全部设备")
+        : (selectedGroupKind === "ungrouped" ? qsTr("未分组") : selectedGroupName)
+    readonly property var groupItems: {
+        if (deviceDisplayMode === "type")
+            return deviceTypes
+        if (deviceDisplayMode !== "group")
+            return deviceTemplates
+        var groups = [{ "kind": "all", "name": qsTr("全部设备") },
+                      { "kind": "ungrouped", "name": qsTr("未分组") }]
+        for (var index = 0; index < deviceGroupNames.length; ++index)
+            groups.push({ "kind": "named", "name": deviceGroupNames[index] })
+        return groups
+    }
     readonly property var filteredDevices: buildFilteredDevices()
     readonly property bool selectedDeviceInCurrentView: selectedDevice
         && selectedDevice.id !== undefined
@@ -59,9 +93,32 @@ Item {
             return String(device.id) === String(selectedDevice.id)
         })
 
+    onSelectingDevicesChanged: {
+        if (!selectingDevices)
+            batchSelectedDeviceIds = []
+    }
+    onDeviceDisplayModeChanged: selectingDevices = false
+    onDevicesChanged: {
+        var ids = []
+        for (var index = 0; index < devices.length; ++index) {
+            var id = String(devices[index].id)
+            if (batchSelectedDeviceIds.indexOf(id) >= 0)
+                ids.push(id)
+        }
+        if (ids.length !== batchSelectedDeviceIds.length)
+            batchSelectedDeviceIds = ids
+    }
+
     onDeviceTypesChanged: {
         if (selectedDeviceType.length === 0 && deviceTypes.length > 0)
             selectedDeviceType = String(deviceTypes[0])
+    }
+
+    onDeviceGroupNamesChanged: {
+        if (selectedGroupKind === "named" && deviceGroupNames.indexOf(selectedGroupName) < 0) {
+            selectedGroupKind = "all"
+            selectedGroupName = ""
+        }
     }
 
     onSelectedDeviceChanged: {
@@ -78,6 +135,20 @@ Item {
     Connections {
         target: root.deviceManager
         onDevicePowerFinished: {
+            for (var index = 0; index < root.groupPowerPendingDevices.length; ++index) {
+                if (root.groupPowerPendingDevices[index].id !== deviceId)
+                    continue
+                var pending = root.groupPowerPendingDevices.slice(0)
+                var finishedDevice = pending.splice(index, 1)[0]
+                if (success)
+                    ++root.groupPowerSentCount
+                else
+                    root.groupPowerErrors = root.groupPowerErrors.concat([
+                        qsTr("%1：%2").arg(finishedDevice.name).arg(errorMessage)
+                    ])
+                root.groupPowerPendingDevices = pending
+                return
+            }
             if (deviceId !== root.powerControlDeviceId)
                 return
             root.powerControlDeviceId = ""
@@ -88,13 +159,46 @@ Item {
     }
 
     function setDevicePower(deviceId, deviceName, powerOn) {
-        if (!deviceManager || powerControlDeviceId.length > 0)
+        if (!deviceManager || powerControlDeviceId.length > 0 || groupPowerBusy)
             return
         powerControlDeviceId = deviceId
         powerControlDeviceName = deviceName
         powerControlStatus = qsTr("%1：正在发送%2指令…")
             .arg(deviceName).arg(powerOn ? qsTr("开机") : qsTr("关机"))
         deviceManager.setDevicePower(deviceId, powerOn)
+    }
+
+    function groupPowerDevices(powerOn) {
+        var result = []
+        if (deviceDisplayMode !== "group" || selectedGroupKind !== "named")
+            return result
+        var commandName = powerOn ? "系统开机" : "系统关机"
+        for (var index = 0; index < devices.length; ++index) {
+            var device = devices[index]
+            if ((device.groupNames || []).indexOf(selectedGroupName) < 0)
+                continue
+            var commands = device.commands || []
+            for (var commandIndex = 0; commandIndex < commands.length; ++commandIndex) {
+                if (commands[commandIndex].name === commandName) {
+                    result.push({ "id": String(device.id), "name": String(device.name) })
+                    break
+                }
+            }
+        }
+        return result
+    }
+
+    function setGroupPower(groupName, targetDevices, powerOn) {
+        if (!deviceManager || powerControlDeviceId.length > 0 || groupPowerBusy || targetDevices.length === 0)
+            return
+        groupPowerName = groupName
+        groupPowerOn = powerOn
+        groupPowerTotalCount = targetDevices.length
+        groupPowerSentCount = 0
+        groupPowerErrors = []
+        groupPowerPendingDevices = targetDevices.slice(0)
+        for (var index = 0; index < targetDevices.length; ++index)
+            deviceManager.setDevicePower(targetDevices[index].id, powerOn)
     }
 
     function objectValue(object, field, fallback) {
@@ -161,7 +265,13 @@ Item {
                 continue
             if (deviceStatusFilter !== "all" && !!device.online !== (deviceStatusFilter === "online"))
                 continue
-            if (deviceDisplayMode === "type") {
+            if (deviceDisplayMode === "group") {
+                var names = device.groupNames || []
+                if (selectedGroupKind === "all"
+                    || (selectedGroupKind === "ungrouped" && names.length === 0)
+                    || (selectedGroupKind === "named" && names.indexOf(selectedGroupName) >= 0))
+                    result.push(device)
+            } else if (deviceDisplayMode === "type") {
                 if (String(device.deviceType || "") === selectedDeviceType)
                     result.push(device)
             } else if (String(device.templateName) === selectedTemplateName) {
@@ -312,7 +422,10 @@ Item {
     }
 
     function selectGroup(groupData) {
-        if (deviceDisplayMode === "type")
+        if (deviceDisplayMode === "group") {
+            selectedGroupName = groupData.kind === "named" ? String(groupData.name) : ""
+            selectedGroupKind = groupData.kind
+        } else if (deviceDisplayMode === "type")
             selectDeviceType(groupData)
         else
             selectTemplate(groupData.name)
@@ -333,7 +446,7 @@ Item {
     }
 
     function groupDescription(groupData) {
-        if (deviceDisplayMode === "type")
+        if (deviceDisplayMode === "type" || deviceDisplayMode === "group")
             return qsTr("%1 台设备").arg(deviceCountForGroup(groupData))
 
         var deviceType = String(groupData.deviceType || "")
@@ -344,6 +457,8 @@ Item {
     }
 
     function groupFootnote(groupData) {
+        if (deviceDisplayMode === "group")
+            return groupData.kind === "named" ? qsTr("自定义分组") : qsTr("设备分组")
         if (deviceDisplayMode === "type")
             return qsTr("设备类型")
 
@@ -370,6 +485,9 @@ Item {
     }
 
     function groupSelected(groupData) {
+        if (deviceDisplayMode === "group")
+            return groupData.kind === selectedGroupKind
+                && (groupData.kind !== "named" || groupData.name === selectedGroupName)
         return deviceDisplayMode === "type"
             ? String(groupData || "") === selectedDeviceType
             : String(groupData.name || "") === selectedTemplateName
@@ -381,6 +499,14 @@ Item {
             : String(groupData.name || "")
         var count = 0
         for (var index = 0; index < devices.length; ++index) {
+            if (deviceDisplayMode === "group") {
+                var names = devices[index].groupNames || []
+                if (groupData.kind === "all"
+                    || (groupData.kind === "ungrouped" && names.length === 0)
+                    || (groupData.kind === "named" && names.indexOf(groupData.name) >= 0))
+                    ++count
+                continue
+            }
             var nextValue = deviceDisplayMode === "type"
                 ? String(devices[index].deviceType || "")
                 : String(devices[index].templateName || "")
@@ -392,6 +518,16 @@ Item {
     }
 
     function selectDevice(deviceId) {
+        if (selectingDevices) {
+            var ids = batchSelectedDeviceIds.slice(0)
+            var index = ids.indexOf(String(deviceId))
+            if (index < 0)
+                ids.push(String(deviceId))
+            else
+                ids.splice(index, 1)
+            batchSelectedDeviceIds = ids
+            return
+        }
         if (deviceModel)
             deviceModel.selectDevice(String(deviceId))
     }
@@ -446,25 +582,29 @@ Item {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            text: root.deviceDisplayMode === "type" ? qsTr("设备类型") : qsTr("设备模板")
+                            text: root.deviceDisplayMode === "group" ? qsTr("设备分组")
+                                : (root.deviceDisplayMode === "type" ? qsTr("设备类型") : qsTr("设备模板"))
                             styleRole: UiStyle.TypographyRole.SectionTitle
                         }
 
                         Base.AppText {
-                            text: root.deviceDisplayMode === "type"
-                                ? qsTr("%1 个类型").arg(root.groupItems.length)
-                                : qsTr("%1 个模板").arg(root.deviceTemplates.length)
+                            text: root.deviceDisplayMode === "group" ? qsTr("%1 个分组").arg(root.deviceGroupNames.length)
+                                : (root.deviceDisplayMode === "type"
+                                    ? qsTr("%1 个类型").arg(root.groupItems.length)
+                                    : qsTr("%1 个模板").arg(root.deviceTemplates.length))
                             styleRole: UiStyle.TypographyRole.BodyS
                             textTone: UiStyle.TextTone.Secondary
                         }
                     }
 
                     Base.AppSegmentedControl {
+                        objectName: "deviceDisplayModeSelector"
                         Layout.fillWidth: true
                         surfaceTone: UiStyle.SurfaceTone.Section
                         options: [
                             { "label": qsTr("模板"), "value": "template" },
-                            { "label": qsTr("类型"), "value": "type" }
+                            { "label": qsTr("类型"), "value": "type" },
+                            { "label": qsTr("分组"), "value": "group" }
                         ]
                         value: root.deviceDisplayMode
                         onValueSelected: root.setDeviceDisplayMode(String(nextValue))
@@ -490,6 +630,7 @@ Item {
 
                                     delegate: Base.AppCard {
                                         id: groupRow
+                                        objectName: "deviceCategory_" + index
 
                                         readonly property bool selected: root.groupSelected(modelData)
 
@@ -513,8 +654,17 @@ Item {
                                             spacing: root.pageTheme.density.controlGap
 
                                             AppComponents.DeviceIcon {
+                                                visible: root.deviceDisplayMode !== "group"
                                                 size: 32
-                                                name: root.groupIconName(modelData)
+                                                name: root.deviceDisplayMode === "group" ? "" : root.groupIconName(modelData)
+                                            }
+
+                                            Base.AppIcon {
+                                                visible: root.deviceDisplayMode === "group"
+                                                size: 32
+                                                name: "resources"
+                                                color: groupRow.selected ? root.pageTheme.colors.highlightText
+                                                    : root.pageTheme.colors.subtleText
                                             }
 
                                             ColumnLayout {
@@ -583,14 +733,105 @@ Item {
                         spacing: root.pageTheme.density.paneSpacing
 
                         Base.AppText {
-                            text: qsTr("设备实例")
+                            Layout.fillWidth: root.deviceDisplayMode === "group"
+                            text: root.deviceDisplayMode === "group" ? root.selectedGroupTitle : qsTr("设备实例")
                             styleRole: UiStyle.TypographyRole.SectionTitle
+                            elide: Text.ElideRight
                         }
 
                         Base.AppText {
                             text: qsTr("%1 台").arg(root.filteredDevices.length)
                             styleRole: UiStyle.TypographyRole.BodyS
                             textTone: UiStyle.TextTone.Secondary
+                        }
+
+                        Base.AppButton {
+                            objectName: "deviceSelectModeButton"
+                            visible: root.deviceDisplayMode === "group"
+                            text: root.selectingDevices ? qsTr("退出多选") : qsTr("选择设备")
+                            variant: root.selectingDevices ? UiStyle.ButtonVariant.Tonal : UiStyle.ButtonVariant.Secondary
+                            enabled: root.devices.length > 0 || root.selectingDevices
+                            onClicked: root.selectingDevices = !root.selectingDevices
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: root.deviceDisplayMode === "group" && !root.selectingDevices
+                            && (root.selectedGroupKind === "named" || root.groupPowerTotalCount > 0)
+                        spacing: root.pageTheme.density.controlGap
+
+                        RowLayout {
+                            objectName: "deviceGroupPowerActions"
+                            Layout.fillWidth: true
+                            visible: root.selectedGroupKind === "named"
+                            spacing: root.pageTheme.density.controlGap
+
+                            Base.AppButton {
+                                objectName: "deviceGroupPowerOnButton"
+                                text: qsTr("整组开机")
+                                enabled: root.deviceManager && root.groupPowerOnDevices.length > 0
+                                    && root.powerControlDeviceId.length === 0 && !root.groupPowerBusy
+                                onClicked: {
+                                    groupPowerDialog.groupName = root.selectedGroupName
+                                    groupPowerDialog.targetDevices = root.groupPowerOnDevices.slice(0)
+                                    groupPowerDialog.powerOn = true
+                                    groupPowerDialog.open()
+                                }
+                            }
+
+                            Base.AppButton {
+                                objectName: "deviceGroupPowerOffButton"
+                                text: qsTr("整组关机")
+                                variant: UiStyle.ButtonVariant.Danger
+                                enabled: root.deviceManager && root.groupPowerOffDevices.length > 0
+                                    && root.powerControlDeviceId.length === 0 && !root.groupPowerBusy
+                                onClicked: {
+                                    groupPowerDialog.groupName = root.selectedGroupName
+                                    groupPowerDialog.targetDevices = root.groupPowerOffDevices.slice(0)
+                                    groupPowerDialog.powerOn = false
+                                    groupPowerDialog.open()
+                                }
+                            }
+                        }
+
+                        Base.AppText {
+                            Layout.fillWidth: true
+                            visible: root.selectedGroupKind === "named"
+                            text: qsTr("整组执行，不受筛选影响 · 可开机 %1 台 / 可关机 %2 台")
+                                .arg(root.groupPowerOnDevices.length).arg(root.groupPowerOffDevices.length)
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                            wrapMode: Text.Wrap
+                        }
+
+                        Base.AppScrollPane {
+                            objectName: "deviceGroupPowerResults"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: Math.min(96, availableContentHeight)
+                            visible: root.groupPowerTotalCount > 0
+
+                            Base.AppText {
+                                objectName: "deviceGroupPowerStatus"
+                                Layout.fillWidth: true
+                                text: {
+                                    var action = root.groupPowerOn ? qsTr("开机") : qsTr("关机")
+                                    var summary = root.groupPowerBusy
+                                        ? qsTr("“%1”整组%2：正在发送，已完成 %3/%4 台")
+                                            .arg(root.groupPowerName).arg(action)
+                                            .arg(root.groupPowerTotalCount - root.groupPowerPendingDevices.length)
+                                            .arg(root.groupPowerTotalCount)
+                                        : qsTr("“%1”整组%2：已发送 %3 台，失败 %4 台")
+                                            .arg(root.groupPowerName).arg(action)
+                                            .arg(root.groupPowerSentCount).arg(root.groupPowerErrors.length)
+                                    return root.groupPowerErrors.length > 0
+                                        ? summary + "\n" + root.groupPowerErrors.join("\n") : summary
+                                }
+                                styleRole: UiStyle.TypographyRole.BodyS
+                                textTone: root.groupPowerErrors.length > 0
+                                    ? UiStyle.TextTone.Danger : UiStyle.TextTone.Secondary
+                                wrapMode: Text.Wrap
+                            }
                         }
                     }
 
@@ -599,6 +840,7 @@ Item {
                         spacing: root.pageTheme.density.controlGap
 
                         Base.AppTextField {
+                            objectName: "deviceSearchInput"
                             Layout.fillWidth: true
                             Layout.minimumWidth: 120
                             placeholderText: qsTr("搜索名称或地址")
@@ -624,6 +866,85 @@ Item {
                             onClicked: root.compactDevices = !root.compactDevices
                             ToolTip.visible: hovered
                             ToolTip.text: root.compactDevices ? qsTr("切换为卡片视图") : qsTr("切换为紧凑视图")
+                        }
+                    }
+
+                    Base.AppText {
+                        objectName: "deviceSearchScope"
+                        Layout.fillWidth: true
+                        visible: root.deviceDisplayMode === "group"
+                        text: qsTr("搜索范围：%1").arg(root.selectedGroupTitle)
+                        styleRole: UiStyle.TypographyRole.BodyS
+                        textTone: UiStyle.TextTone.Secondary
+                        elide: Text.ElideRight
+                    }
+
+                    ColumnLayout {
+                        objectName: "deviceBatchActions"
+                        Layout.fillWidth: true
+                        visible: root.selectingDevices
+                        spacing: root.pageTheme.density.controlGap
+
+                        Base.AppText {
+                            objectName: "deviceBatchSelectionSummary"
+                            Layout.fillWidth: true
+                            text: root.batchSelectedDeviceIds.length > 0
+                                ? qsTr("已选 %1 台 · 当前可见 %2 台")
+                                    .arg(root.batchSelectedDeviceIds.length).arg(root.visibleBatchSelectionCount)
+                                : qsTr("点击设备卡片进行多选，可继续搜索其他设备")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
+                            wrapMode: Text.WordWrap
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            visible: root.batchSelectedDeviceIds.length > 0
+                            spacing: root.pageTheme.density.controlGap
+
+                            Base.AppButton {
+                                objectName: "deviceBatchAddGroupsButton"
+                                text: qsTr("加入分组")
+                                variant: UiStyle.ButtonVariant.Primary
+                                onClicked: addToGroupsDialog.open()
+                            }
+
+                            Base.AppButton {
+                                objectName: "deviceBatchRemoveGroupButton"
+                                visible: root.selectedGroupKind === "named"
+                                text: qsTr("移出当前组")
+                                enabled: {
+                                    for (var index = 0; index < root.devices.length; ++index) {
+                                        var device = root.devices[index]
+                                        if (root.batchSelectedDeviceIds.indexOf(String(device.id)) >= 0
+                                            && (device.groupNames || []).indexOf(root.selectedGroupName) >= 0)
+                                            return true
+                                    }
+                                    return false
+                                }
+                                onClicked: {
+                                    var groupName = root.selectedGroupName
+                                    for (var index = 0; index < root.devices.length; ++index) {
+                                        var device = root.devices[index]
+                                        if (root.batchSelectedDeviceIds.indexOf(String(device.id)) < 0)
+                                            continue
+                                        var names = (device.groupNames || []).slice(0)
+                                        var groupIndex = names.indexOf(groupName)
+                                        if (groupIndex >= 0) {
+                                            names.splice(groupIndex, 1)
+                                            device.groupNames = names
+                                        }
+                                    }
+                                    root.selectingDevices = false
+                                }
+                            }
+
+                            Base.AppButton {
+                                objectName: "deviceBatchClearSelectionButton"
+                                text: qsTr("清空选择")
+                                variant: UiStyle.ButtonVariant.Ghost
+                                onClicked: root.batchSelectedDeviceIds = []
+                            }
                         }
                     }
 
@@ -663,13 +984,17 @@ Item {
                                         id: deviceCardSlot
 
                                         width: deviceCardFlow.cardWidth
-                                        height: root.compactDevices ? 96 : 180
+                                        height: (root.compactDevices ? 96 : 180) + deviceGroupTags.implicitHeight + 8
 
                                         Base.AppCard {
                                             id: deviceRow
+                                            objectName: "deviceCard_" + modelData.id
 
-                                        readonly property bool selected: modelData.id === root.deviceValue("id", "")
+                                        readonly property bool selected: root.selectingDevices
+                                            ? root.batchSelectedDeviceIds.indexOf(String(modelData.id)) >= 0
+                                            : modelData.id === root.deviceValue("id", "")
                                         readonly property bool online: modelData.online
+                                        readonly property var groupNames: modelData.groupNames || []
                                         readonly property var deviceConfig: modelData.configValues || ({})
                                         readonly property int screenColumns: Math.max(0, Number(deviceConfig.screenColumns || 0))
                                         readonly property int screenRows: Math.max(0, Number(deviceConfig.screenRows || 0))
@@ -684,8 +1009,8 @@ Item {
                                         contentSpacing: 0
                                         checkable: true
                                         checked: selected
-                                        emphasizedSelection: false
-                                        selectionTransition: deviceCardSelectionTransition
+                                        emphasizedSelection: root.selectingDevices
+                                        selectionTransition: root.selectingDevices ? null : deviceCardSelectionTransition
                                         animateScale: false
                                         onClicked: root.selectDevice(modelData.id)
                                         ToolTip.visible: hovered
@@ -723,12 +1048,21 @@ Item {
                                                                 ? UiStyle.SurfaceTone.Highlight
                                                                 : UiStyle.SurfaceTone.Control
                                                             shapeRole: UiStyle.ShapeRole.Control
-                                                            strokeWidth: 0
+                                                            strokeWidth: root.selectingDevices ? 1 : 0
 
                                                             AppComponents.DeviceIcon {
                                                                 anchors.centerIn: parent
+                                                                visible: !root.selectingDevices
                                                                 size: 20
                                                                 name: String(modelData.deviceType || "")
+                                                            }
+
+                                                            Base.AppText {
+                                                                anchors.centerIn: parent
+                                                                visible: root.selectingDevices
+                                                                text: deviceRow.selected ? "✓" : ""
+                                                                styleRole: UiStyle.TypographyRole.BodyM
+                                                                textTone: UiStyle.TextTone.Accent
                                                             }
                                                         }
 
@@ -796,6 +1130,39 @@ Item {
                                                                 textTone: UiStyle.TextTone.Secondary
                                                                 elide: Text.ElideRight
                                                             }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            Flow {
+                                                id: deviceGroupTags
+                                                objectName: "deviceGroups_" + modelData.id
+                                                Layout.fillWidth: true
+                                                Layout.leftMargin: root.pageTheme.density.panePaddingCompact
+                                                Layout.rightMargin: root.pageTheme.density.panePaddingCompact
+                                                Layout.bottomMargin: 8
+                                                spacing: 4
+
+                                                Repeater {
+                                                    model: deviceRow.groupNames.length > 0 ? deviceRow.groupNames : [qsTr("未分组")]
+                                                    delegate: Base.AppSurface {
+                                                        width: Math.min(cardGroupLabel.implicitWidth + 16, deviceGroupTags.width)
+                                                        height: 24
+                                                        sizeToContent: false
+                                                        surfaceTone: UiStyle.SurfaceTone.Control
+                                                        shapeRole: UiStyle.ShapeRole.Control
+
+                                                        Base.AppText {
+                                                            id: cardGroupLabel
+                                                            anchors.fill: parent
+                                                            anchors.leftMargin: 8
+                                                            anchors.rightMargin: 8
+                                                            text: modelData
+                                                            styleRole: UiStyle.TypographyRole.BodyS
+                                                            textTone: UiStyle.TextTone.Secondary
+                                                            verticalAlignment: Text.AlignVCenter
+                                                            elide: Text.ElideRight
                                                         }
                                                     }
                                                 }
@@ -902,23 +1269,25 @@ Item {
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: root.deviceDisplayMode === "type" ? qsTr("类型详情") : qsTr("模板详情")
+                                text: root.deviceDisplayMode === "group" ? qsTr("分组详情")
+                                    : (root.deviceDisplayMode === "type" ? qsTr("类型详情") : qsTr("模板详情"))
                                 styleRole: UiStyle.TypographyRole.SectionTitle
                                 elide: Text.ElideRight
                             }
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: root.deviceDisplayMode === "type"
-                                    ? (root.selectedDeviceType.length > 0 ? root.selectedDeviceType : qsTr("无类型"))
-                                    : root.templateValue("name", qsTr("无模板"))
+                                text: root.deviceDisplayMode === "group" ? root.selectedGroupTitle
+                                    : (root.deviceDisplayMode === "type"
+                                        ? (root.selectedDeviceType.length > 0 ? root.selectedDeviceType : qsTr("无类型"))
+                                        : root.templateValue("name", qsTr("无模板")))
                                 styleRole: UiStyle.TypographyRole.BodyM
                                 elide: Text.ElideRight
                             }
 
                             Base.AppText {
                                 Layout.fillWidth: true
-                                text: root.deviceDisplayMode === "type"
+                                text: root.deviceDisplayMode === "type" || root.deviceDisplayMode === "group"
                                     ? qsTr("%1 台设备").arg(root.filteredDevices.length)
                                     : root.protocolsText(root.selectedTemplate && root.selectedTemplate.supportedProtocols ? root.selectedTemplate.supportedProtocols : []) + " - " + root.templateValue("description", "")
                                 styleRole: UiStyle.TypographyRole.BodyS
@@ -963,6 +1332,7 @@ Item {
                                 Base.AppButton {
                                     raised: true
                                     size: UiStyle.ButtonSize.Small
+                                    objectName: "deviceEditButton"
                                     text: qsTr("编辑")
                                     enabled: root.selectedDeviceInCurrentView
                                     onClicked: root.requestEditSelectedDevice()
@@ -1007,6 +1377,48 @@ Item {
                                             ? (root.selectedDevice.online ? qsTr("在线") : qsTr("离线")) : ""
                                     } })
                                 }
+                                ColumnLayout {
+                                    objectName: "deviceProfileGroups"
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    Base.AppText {
+                                        text: qsTr("所属分组")
+                                        styleRole: UiStyle.TypographyRole.BodyS
+                                        textTone: UiStyle.TextTone.Secondary
+                                    }
+
+                                    Flow {
+                                        id: profileGroupTags
+                                        Layout.fillWidth: true
+                                        spacing: 4
+
+                                        Repeater {
+                                            model: root.selectedDevice && root.selectedDevice.groupNames
+                                                && root.selectedDevice.groupNames.length > 0
+                                                ? root.selectedDevice.groupNames : [qsTr("未分组")]
+                                            delegate: Base.AppSurface {
+                                                width: Math.min(profileGroupLabel.implicitWidth + 16, profileGroupTags.width)
+                                                height: 24
+                                                sizeToContent: false
+                                                surfaceTone: UiStyle.SurfaceTone.Control
+                                                shapeRole: UiStyle.ShapeRole.Control
+
+                                                Base.AppText {
+                                                    id: profileGroupLabel
+                                                    anchors.fill: parent
+                                                    anchors.leftMargin: 8
+                                                    anchors.rightMargin: 8
+                                                    text: modelData
+                                                    styleRole: UiStyle.TypographyRole.BodyS
+                                                    verticalAlignment: Text.AlignVCenter
+                                                    elide: Text.ElideRight
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 DeviceReadOnlyField {
                                     objectName: "deviceProfileDescription"
                                     Layout.fillWidth: true
@@ -1023,9 +1435,13 @@ Item {
                                     size: UiStyle.ButtonSize.Small
                                     text: qsTr("开机")
                                     enabled: root.deviceManager && root.supportsPowerOn
-                                        && root.powerControlDeviceId.length === 0
-                                    onClicked: root.setDevicePower(String(root.selectedDevice.id),
-                                                                   String(root.selectedDevice.name), true)
+                                        && root.powerControlDeviceId.length === 0 && !root.groupPowerBusy
+                                    onClicked: {
+                                        powerDialog.deviceId = String(root.selectedDevice.id)
+                                        powerDialog.deviceName = String(root.selectedDevice.name)
+                                        powerDialog.powerOn = true
+                                        powerDialog.open()
+                                    }
                                 }
 
                                 Base.AppButton {
@@ -1034,11 +1450,12 @@ Item {
                                     variant: UiStyle.ButtonVariant.Danger
                                     text: qsTr("关机")
                                     enabled: root.deviceManager && root.supportsPowerOff
-                                        && root.powerControlDeviceId.length === 0
+                                        && root.powerControlDeviceId.length === 0 && !root.groupPowerBusy
                                     onClicked: {
-                                        powerOffDialog.deviceId = String(root.selectedDevice.id)
-                                        powerOffDialog.deviceName = String(root.selectedDevice.name)
-                                        powerOffDialog.open()
+                                        powerDialog.deviceId = String(root.selectedDevice.id)
+                                        powerDialog.deviceName = String(root.selectedDevice.name)
+                                        powerDialog.powerOn = false
+                                        powerDialog.open()
                                     }
                                 }
                             }
@@ -1311,251 +1728,89 @@ Item {
         }
 
         sourceComponent: Component {
-            Base.AppDialog {
+            DeviceEditDialog {
                 id: createDevicePopup
                 parent: root
+                pageTheme: root.pageTheme
+                deviceManager: root.deviceManager
+                manualDeviceTypes: root.manualDeviceTypes
+                availableGroupNames: root.deviceGroupNames
+                preferredDeviceType: root.deviceDisplayMode === "type" ? root.selectedDeviceType : ""
+                templateProtocolsText: root.protocolsText(createDevicePopup.deviceTemplate
+                    ? createDevicePopup.deviceTemplate.supportedProtocols : [])
+                onDeviceCreated: root.selectedDeviceType = createdDeviceType
                 onClosed: createDevicePopupLoader.active = false
-
-        property var deviceTemplate: null
-        property var editingDevice: null
-        property var fieldSpecs: []
-        property string deviceName: ""
-        property string selectedDeviceTypeOption: ""
-        property string customDeviceType: ""
-        readonly property string customDeviceTypeOption: "__custom__"
-        readonly property bool editing: editingDevice !== null
-        readonly property bool templateHasDeviceType: templateDeviceType(deviceTemplate).length > 0
-        readonly property bool customDeviceTypeSelected: selectedDeviceTypeOption === customDeviceTypeOption
-        readonly property string deviceType: editing
-            ? String(editingDevice.deviceType || "")
-            : (templateHasDeviceType
-                ? templateDeviceType(deviceTemplate)
-                : (customDeviceTypeSelected ? customDeviceType : selectedDeviceTypeOption))
-        readonly property var deviceTypeOptions: buildDeviceTypeOptions()
-        readonly property bool formValid: firstInvalidReason().length === 0
-
-        function openForTemplate(nextTemplate, nextFieldSpecs) {
-            open()
-
-            Qt.callLater(function() {
-                editingDevice = null
-                deviceTemplate = nextTemplate
-                fieldSpecs = nextFieldSpecs || []
-                deviceName = defaultDeviceName(nextTemplate)
-                selectedDeviceTypeOption = defaultDeviceType(nextTemplate)
-                customDeviceType = ""
-                createDeviceFieldForm.resetValues()
-            })
-        }
-
-        function openForDevice(nextDevice, nextTemplate, nextFieldSpecs) {
-            if (!nextDevice || !nextTemplate)
-                return
-
-            open()
-
-            Qt.callLater(function() {
-                editingDevice = nextDevice
-                deviceTemplate = nextTemplate
-                fieldSpecs = nextFieldSpecs || []
-                deviceName = String(nextDevice.name || "")
-                selectedDeviceTypeOption = String(nextDevice.deviceType || "")
-                customDeviceType = ""
-                createDeviceFieldForm.values = nextDevice.configValues || ({})
-            })
-        }
-
-        function defaultDeviceName(nextTemplate) {
-            return nextTemplate ? qsTr("新建%1").arg(String(nextTemplate.name)) : qsTr("新设备")
-        }
-
-        function templateDeviceType(nextTemplate) {
-            if (!nextTemplate || nextTemplate.deviceType === undefined || nextTemplate.deviceType === null)
-                return ""
-
-            return String(nextTemplate.deviceType).trim()
-        }
-
-        function defaultDeviceType(nextTemplate) {
-            var lockedType = templateDeviceType(nextTemplate)
-            if (lockedType.length > 0)
-                return lockedType
-
-            if (root.deviceDisplayMode === "type" && root.selectedDeviceType.length > 0)
-                return root.selectedDeviceType
-
-            return root.manualDeviceTypes.length > 0 ? String(root.manualDeviceTypes[0]) : ""
-        }
-
-        function buildDeviceTypeOptions() {
-            var result = []
-            for (var index = 0; index < root.manualDeviceTypes.length; ++index) {
-                var nextType = String(root.manualDeviceTypes[index])
-                result.push({ "label": nextType, "value": nextType })
-            }
-            result.push({ "label": qsTr("自定义类型…"), "value": customDeviceTypeOption })
-            return result
-        }
-
-        function isBlank(value) {
-            return value === undefined || value === null || String(value).trim().length === 0
-        }
-
-        function firstInvalidReason() {
-            if (deviceManager) {
-                var deviceReason = editing
-                    ? deviceManager.validateDeviceUpdate(editingDevice, deviceName)
-                    : deviceManager.validateDeviceCreation(
-                        deviceType,
-                        deviceName,
-                        deviceTemplate ? String(deviceTemplate.name) : ""
-                    )
-                if (deviceReason.length > 0)
-                    return deviceReason
-            } else if (isBlank(deviceName)) {
-                return qsTr("设备名称必填")
-            }
-
-            return createDeviceFieldForm.firstInvalidReason()
-        }
-
-        function buildConfigValues() {
-            return createDeviceFieldForm.valueMap()
-        }
-
-        function commit() {
-            if (!deviceManager || !deviceTemplate || !formValid)
-                return
-
-            if (editing) {
-                if (deviceManager.updateDevice(editingDevice, deviceName, buildConfigValues(), editingDevice.groupNames))
-                    close()
-                return
-            }
-
-            var created = deviceManager.createDeviceFromTemplate(
-                String(deviceTemplate.name),
-                buildConfigValues(),
-                deviceName,
-                deviceType
-            )
-            if (created) {
-                root.selectedDeviceType = deviceType
-                close()
-            }
-        }
-
-        width: Math.min(560, Math.max(420, parent ? parent.width - 96 : 520))
-        maximumDialogHeight: Math.min(620, Math.max(360, parent ? parent.height - 96 : 480))
-        x: parent ? Math.round((parent.width - width) / 2) : 0
-        y: parent ? Math.round((parent.height - height) / 2) : 0
-        title: editing ? qsTr("编辑设备") : qsTr("创建设备")
-        message: deviceTemplate
-            ? String(deviceTemplate.name) + " / " + root.protocolsText(deviceTemplate.supportedProtocols)
-            : ""
-        rejectText: qsTr("取消")
-        acceptText: editing ? qsTr("保存") : qsTr("创建")
-        acceptIconName: "resources"
-        acceptEnabled: formValid
-        closeOnAccepted: false
-        onAccepted: commit()
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: root.pageTheme.density.paneHeaderSpacing
-
-            Base.AppText {
-                text: qsTr("名称") + " *"
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-            }
-
-            Base.AppTextField {
-                Layout.fillWidth: true
-                text: createDevicePopup.deviceName
-                placeholderText: qsTr("设备名称")
-                onTextChanged: createDevicePopup.deviceName = text
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: root.pageTheme.density.paneHeaderSpacing
-
-            Base.AppText {
-                text: qsTr("设备类型") + " *"
-                styleRole: UiStyle.TypographyRole.BodyS
-                textTone: UiStyle.TextTone.Secondary
-            }
-
-            Base.AppTextField {
-                visible: createDevicePopup.editing || createDevicePopup.templateHasDeviceType
-                Layout.fillWidth: true
-                enabled: false
-                text: createDevicePopup.deviceType
-            }
-
-            RowLayout {
-                visible: !createDevicePopup.editing && !createDevicePopup.templateHasDeviceType
-                Layout.fillWidth: true
-                spacing: root.pageTheme.density.controlGap
-
-                Base.AppSelect {
-                    Layout.fillWidth: true
-                    placeholderText: qsTr("现有类型")
-                    options: createDevicePopup.deviceTypeOptions
-                    value: createDevicePopup.selectedDeviceTypeOption
-                    onValueSelected: createDevicePopup.selectedDeviceTypeOption = String(nextValue)
-                }
-
-                Base.AppTextField {
-                    visible: createDevicePopup.customDeviceTypeSelected
-                    Layout.fillWidth: true
-                    text: createDevicePopup.customDeviceType
-                    placeholderText: qsTr("设备类型")
-                    onTextChanged: createDevicePopup.customDeviceType = text
-                }
-            }
-        }
-
-        Base.AppText {
-            Layout.fillWidth: true
-            visible: text.length > 0
-            text: createDevicePopup.firstInvalidReason()
-            styleRole: UiStyle.TypographyRole.BodyS
-            textTone: UiStyle.TextTone.Danger
-            elide: Text.ElideRight
-        }
-
-        DeviceFieldForm {
-            id: createDeviceFieldForm
-
-            Layout.fillWidth: true
-            fields: createDevicePopup.fieldSpecs
-            writeBack: false
-            emptyText: qsTr("无初始参数")
-        }
             }
         }
     }
 
+    DeviceGroupPickerDialog {
+        id: addToGroupsDialog
+        parent: root
+        pageTheme: root.pageTheme
+        availableGroupNames: root.deviceGroupNames
+        selectedDeviceCount: root.batchSelectedDeviceIds.length
+        onAccepted: {
+            for (var index = 0; index < root.devices.length; ++index) {
+                var device = root.devices[index]
+                if (root.batchSelectedDeviceIds.indexOf(String(device.id)) < 0)
+                    continue
+                var names = (device.groupNames || []).slice(0)
+                for (var groupIndex = 0; groupIndex < addToGroupsDialog.groupNames.length; ++groupIndex) {
+                    if (names.indexOf(addToGroupsDialog.groupNames[groupIndex]) < 0)
+                        names.push(addToGroupsDialog.groupNames[groupIndex])
+                }
+                device.groupNames = names
+            }
+            root.selectingDevices = false
+        }
+    }
+
     Base.AppDialog {
-        id: powerOffDialog
-        objectName: "devicePowerOffDialog"
+        id: groupPowerDialog
+        objectName: "deviceGroupPowerDialog"
+
+        property string groupName: ""
+        property var targetDevices: []
+        property bool powerOn: false
+
+        parent: root
+        width: Math.min(460, Math.max(320, parent ? parent.width - 96 : 420))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        title: powerOn ? qsTr("整组开机") : qsTr("整组关机")
+        message: powerOn
+            ? qsTr("确定向“%1”组中支持开机的 %2 台设备发送开机指令？").arg(groupName).arg(targetDevices.length)
+            : qsTr("确定向“%1”组中支持关机的 %2 台设备发送关机指令？这些设备上正在运行的任务将被中断。")
+                .arg(groupName).arg(targetDevices.length)
+        rejectText: qsTr("取消")
+        acceptText: title
+        acceptButtonVariant: powerOn ? UiStyle.ButtonVariant.Primary : UiStyle.ButtonVariant.Danger
+        acceptEnabled: root.deviceManager && targetDevices.length > 0
+            && root.powerControlDeviceId.length === 0 && !root.groupPowerBusy
+        onAccepted: root.setGroupPower(groupName, targetDevices, powerOn)
+    }
+
+    Base.AppDialog {
+        id: powerDialog
+        objectName: "devicePowerDialog"
 
         property string deviceId: ""
         property string deviceName: ""
+        property bool powerOn: false
 
         parent: root
         width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
         x: parent ? Math.round((parent.width - width) / 2) : 0
         y: parent ? Math.round((parent.height - height) / 2) : 0
-        title: qsTr("设备关机")
-        message: qsTr("确定关闭 %1？该设备上正在运行的任务将被中断。").arg(deviceName)
+        title: powerOn ? qsTr("设备开机") : qsTr("设备关机")
+        message: powerOn
+            ? qsTr("确定向 %1 发送开机指令？").arg(deviceName)
+            : qsTr("确定关闭 %1？该设备上正在运行的任务将被中断。").arg(deviceName)
         rejectText: qsTr("取消")
-        acceptText: qsTr("关机")
-        acceptButtonVariant: UiStyle.ButtonVariant.Danger
-        onAccepted: root.setDevicePower(deviceId, deviceName, false)
+        acceptText: powerOn ? qsTr("开机") : qsTr("关机")
+        acceptButtonVariant: powerOn ? UiStyle.ButtonVariant.Primary : UiStyle.ButtonVariant.Danger
+        onAccepted: root.setDevicePower(deviceId, deviceName, powerOn)
     }
 
     Loader {

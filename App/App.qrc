@@ -12,6 +12,8 @@
         <file alias="App/assets/icons/音响.png">assets/icons/音响.png</file>
         <file alias="App/pages/DevicesPage.qml">pages/DevicesPage.qml</file>
         <file alias="App/pages/DeviceCommandDialog.qml">pages/DeviceCommandDialog.qml</file>
+        <file alias="App/pages/DeviceEditDialog.qml">pages/DeviceEditDialog.qml</file>
+        <file alias="App/pages/DeviceGroupPickerDialog.qml">pages/DeviceGroupPickerDialog.qml</file>
         <file alias="App/pages/DeviceFieldForm.qml">pages/DeviceFieldForm.qml</file>
         <file alias="App/pages/DeviceProfilePairField.qml">pages/DeviceProfilePairField.qml</file>
         <file alias="App/pages/DeviceReadOnlyField.qml">pages/DeviceReadOnlyField.qml</file>

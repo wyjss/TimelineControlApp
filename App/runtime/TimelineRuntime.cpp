@@ -113,6 +113,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
         if (state != TimelineManager::Paused) {
             m_pcVideoSeekTimer.stop();
             m_pendingPcVideoTimeline.clear();
+            m_pcVideoPreviewStates.clear();
         }
         if (state != TimelineManager::Stopped)
             return;
@@ -142,6 +143,17 @@ void TimelineRuntime::seekPcVideoPreview(qint64 timeMs)
         || !timeline || timeline->state() != Timeline::Running)
         return;
 
+    // 首次拖动时记录原状态，避免松手提交时间后才计算比较基准。
+    auto &states = m_pcVideoPreviewStates[timeline->id()];
+    const QList<TimelineCommand *> commands = timeline->commandModel()->commands();
+    for (Device *device : m_deviceModel->items()) {
+        if (device->filteredOut() || !device->supportsProtocol(DeviceProtocol::Pc)
+            || states.contains(device->id()))
+            continue;
+        states.insert(device->id(), PcVideoStateCalculator::stateAt(
+            commands, device->id(), timeline->currentTimeMs()));
+    }
+
     m_pendingPcVideoTimeline = timeline;
     m_pendingPcVideoTimeMs = timeMs;
     // 窗口内只覆盖目标位置，不重启定时器，持续拖动时仍定期同步。
@@ -159,36 +171,44 @@ void TimelineRuntime::flushPcVideoPreview()
         return;
 
     const QList<TimelineCommand *> commands = timeline->commandModel()->commands();
-    for (Device *device : m_deviceModel->items()) {
-        if (device->filteredOut() || !device->supportsProtocol(DeviceProtocol::Pc))
+    auto &states = m_pcVideoPreviewStates[timeline->id()];
+    for (auto state = states.begin(); state != states.end(); ++state) {
+        Device *device = m_deviceModel->deviceById(state.key());
+        if (!device || device->filteredOut() || !device->supportsProtocol(DeviceProtocol::Pc))
             continue;
 
-        const auto state = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);
-//         {
-//             const auto oldState = PcVideoStateCalculator::stateAt(commands, device->id(), m_pendingPcVideoTimeline->currentTimeMs());
-//             const auto newState = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);
-//             auto cmds = PcVideoStateCalculator::commandsBetween(oldState, newState);
-//         }
-        //for(con)
-        
-        if (state.videos.isEmpty())
-            continue;
-
-        for (const QVariant &value : device->commands()) {
-            DeviceCommand *command = value.value<DeviceCommand *>();
-            if (command->protocol() != DeviceProtocol::Pc
-                /*|| command->commandType() != DeviceKey::CommandSeekVideo*/)
+        const auto after = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);
+        const auto controlCommands = PcVideoStateCalculator::commandsBetween(state.value(), after);
+        bool sentAllCommands = true;
+        for (const auto &controlCommand : controlCommands) {
+            // 暂停期间保留加载、关闭、布局和进度变化，但不启动播放。
+            if (controlCommand.commandType == DeviceKey::CommandPlayVideo)
                 continue;
 
-            // 暂停拖动只同步视频进度，不执行播放指令。
-            for (const auto &video : state.videos) {
-                m_deviceExecutorManager->execute(
-                    QUuid::createUuid().toString(QUuid::WithoutBraces), command,
-                    {{DeviceKey::VideoFile, video.source},
-                     {DeviceKey::VideoSeekTimeSec, static_cast<double>(video.positionMs) / 1000.0}});
+            DeviceCommand *targetCommand = nullptr;
+            for (const QVariant &value : device->commands()) {
+                DeviceCommand *command = value.value<DeviceCommand *>();
+                if (command->protocol() == DeviceProtocol::Pc
+                    && command->commandType() == controlCommand.commandType) {
+                    targetCommand = command;
+                    break;
+                }
             }
-            break;
+            if (!targetCommand) {
+                LOG_WARN("PC 视频同步缺少指令：" << device->name() << controlCommand.commandType);
+                sentAllCommands = false;
+                break;
+            }
+
+            QVariantMap input = controlCommand.executionInputValues;
+            if (controlCommand.commandType == DeviceKey::CommandOpenVideo)
+                input.insert(QStringLiteral("play"), false);
+            m_deviceExecutorManager->execute(
+                QUuid::createUuid().toString(QUuid::WithoutBraces), targetCommand, input);
         }
+        // 保存本轮已发送的目标，下一轮不能再使用尚未提交的时间线位置。
+        if (sentAllCommands)
+            state.value() = after;
     }
 }
 

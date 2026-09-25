@@ -3,6 +3,9 @@
 #include <UICore/Shell/BaseRuntime.h>
 #include <UICore/Task/TaskManager.h>
 
+#include "video/PcVideoStateCalculator.h"
+
+#include <QHash>
 #include <QPointer>
 #include <QString>
 #include <QTimer>
@@ -79,6 +82,7 @@ private:
     QTimer m_pcVideoSeekTimer;
     QPointer<Timeline> m_pendingPcVideoTimeline;
     qint64 m_pendingPcVideoTimeMs = 0;
+    QHash<QString, QHash<QString, PcVideoStateCalculator::State>> m_pcVideoPreviewStates;
     QString m_currentPlanFilePath;
     int m_runId = 0;
 };
