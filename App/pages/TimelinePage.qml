@@ -44,9 +44,7 @@ Item {
     }
     readonly property var currentTimeline: timelineManager ? timelineManager.currentTimeline : null
     readonly property var timelineCommandModel: currentTimeline ? currentTimeline.commandModel : null
-    readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands
-        ? timelineCommandModel.commands
-        : []
+    readonly property var commandRows: editor ? editor.commandRows : []
     readonly property var devices: deviceModel && deviceModel.devices ? deviceModel.devices : []
     readonly property string selectedTimelineCommandId: timelineCommandModel
         ? timelineCommandModel.selectedCommandId
@@ -625,7 +623,7 @@ Item {
                     }
 
                     Base.AppText {
-                        text: qsTr("%1 条指令").arg(root.timelineCommands.length)
+                        text: qsTr("%1 条指令").arg(root.commandRows.length)
                         styleRole: UiStyle.TypographyRole.BodyS
                         textTone: UiStyle.TextTone.Secondary
                     }
@@ -703,7 +701,7 @@ Item {
                                 anchors.fill: parent
                                 theme: root.pageTheme
                                 ruler: overviewRuler
-                                commands: root.timelineCommands
+                                commandRows: root.commandRows
                                 devices: root.devices
                                 deviceIdFilter: ""
                                 selectedCommandId: root.selectedTimelineCommandId
@@ -750,7 +748,7 @@ Item {
 
                         anchors.fill: parent
                         theme: root.pageTheme
-                        commands: root.timelineCommands
+                        commandRows: root.commandRows
                         devices: root.devices
                         deviceIdFilter: ""
                         selectedCommandId: root.selectedTimelineCommandId

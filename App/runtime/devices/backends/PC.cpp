@@ -224,6 +224,7 @@ public:
 
 		QUrlQuery query;
 		query.addQueryItem("url", url);
+		query.addQueryItem("loop", "true");
 
 		QString api = QString("/audio/play?") + query.toString();
 		params[DeviceKey::Name] = this->name() + "-" + url;

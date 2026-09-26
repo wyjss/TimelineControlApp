@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QAbstractItemModel>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -13,6 +14,8 @@ class TimelineModel;
 class Device;
 class DeviceCommand;
 class DeviceModel;
+class DeviceFilterModel;
+class TimelineCommandFilterModel;
 
 // 时间线管理器
 //! 实例由 TimelineRuntime 创建并管理。
@@ -28,6 +31,12 @@ class TimelineManager final : public QObject
     Q_PROPERTY(QStringList playQueue READ playQueue NOTIFY playQueueChanged FINAL)
     Q_PROPERTY(int playQueueIndex READ playQueueIndex NOTIFY playQueueIndexChanged FINAL)
     Q_PROPERTY(QStringList playbackDevices READ getPlaybackDevices WRITE setPlaybackDevices NOTIFY playbackDevicesChanged FINAL)
+    Q_PROPERTY(QStringList filterDeviceIds READ filterDeviceIds WRITE setFilterDeviceIds NOTIFY filterDeviceIdsChanged FINAL)
+    Q_PROPERTY(QStringList filterGroupNames READ filterGroupNames WRITE setFilterGroupNames NOTIFY filterGroupNamesChanged FINAL)
+    Q_PROPERTY(bool executionFilterEnabled READ executionFilterEnabled WRITE setExecutionFilterEnabled NOTIFY executionFilterEnabledChanged FINAL)
+    Q_PROPERTY(bool showFilteredOut READ showFilteredOut WRITE setShowFilteredOut NOTIFY showFilteredOutChanged FINAL)
+    Q_PROPERTY(QAbstractItemModel *filteredDeviceModel READ filteredDeviceModel CONSTANT FINAL)
+    Q_PROPERTY(QAbstractItemModel *filteredCommandModel READ filteredCommandModel CONSTANT FINAL)
 
 public:
     enum PlaybackState
@@ -74,6 +83,27 @@ public:
     void setPlaybackDevices(const QStringList& ids);
     QStringList getPlaybackDevices() const;
 
+    // 过滤设置；设备和组条件为空时不限制
+    // 满足任一过滤条件都通过
+    // 
+    // 设备id过滤，空表示不过滤
+    QStringList filterDeviceIds() const;
+    void setFilterDeviceIds(const QStringList &deviceIds);
+    // 设备组过滤，空表示不过滤
+    QStringList filterGroupNames() const;
+    void setFilterGroupNames(const QStringList &groupNames);
+    // 被过滤指令是否执行
+    bool executionFilterEnabled() const;
+    void setExecutionFilterEnabled(bool enabled);
+    // 被过滤设备和指令是否显示
+    bool showFilteredOut() const;
+    void setShowFilteredOut(bool show);
+    // 过滤后的代理模型
+    QAbstractItemModel *filteredDeviceModel() const;
+    QAbstractItemModel *filteredCommandModel() const;
+    // 判断设备是否过滤通过
+    bool matchesDeviceFilter(const QString &deviceId) const;
+
     void writeToStream(QDataStream &stream) const;
     bool readFromStream(QDataStream &stream);
 signals:
@@ -86,6 +116,10 @@ signals:
     void commandTriggered(Timeline *timeline, TimelineCommand *command);
     void deviceCommandTriggered(DeviceCommand *command);
     void playbackDevicesChanged(QStringList);
+    void filterDeviceIdsChanged();
+    void filterGroupNamesChanged();
+    void executionFilterEnabledChanged();
+    void showFilteredOutChanged();
 private:
     bool startTimeline(const QString &id, qint64 startTimeMs = 0);
     void updateTimeline(Timeline *timeline, qint64 clockTimeMs);
@@ -102,6 +136,12 @@ private:
     QStringList m_playQueue;
     int m_playQueueIndex = -1;
     QStringList m_playbackDevices;
+    QStringList m_filterDeviceIds;
+    QStringList m_filterGroupNames;
+    bool m_executionFilterEnabled = false;
+    bool m_showFilteredOut = true;
+    DeviceFilterModel *m_filteredDeviceModel = nullptr;
+    TimelineCommandFilterModel *m_filteredCommandModel = nullptr;
 };
 
 

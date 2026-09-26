@@ -55,6 +55,9 @@ namespace Utils
 								 { "*.mp4", "*.avi" , "*.flv", "*.png", "*.jpg"});
 		auto audios = getOptions(DeviceConstants::LocalAudioPrefix, 
 								 { "*.mp3","*.wav" ,"*.aac"});
+		// 空，等于全部
+		videos.insert(0, "");
+		audios.insert(0, "");
 
 		bool dirty = false;
 

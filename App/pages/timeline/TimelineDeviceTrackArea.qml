@@ -12,7 +12,8 @@ Item {
         : null
     property var ruler
     property var devices: []
-    property var commandModel: null
+    property var deviceRows: []
+    property var commandRows: []
     property var childTracksByParentId: ({})
     property var expandedParentTrackIds: ({})
     property string selectedDeviceId: ""
@@ -31,7 +32,7 @@ Item {
     signal locateRequested(var command)
     signal commandMoveRequested(var command, real startTimeMs)
 
-    implicitHeight: Math.max(220, devices.length * (rowHeight + rowSpacing) - rowSpacing)
+    implicitHeight: Math.max(220, deviceRows.length * (rowHeight + rowSpacing) - rowSpacing)
     clip: true
 
     function colorValue(name, fallback) {
@@ -81,7 +82,7 @@ Item {
 
     function rebuildTrackModel() {
         trackModel.clear()
-        for (var index = 0; index < root.devices.length; ++index)
+        for (var index = 0; index < root.deviceRows.length; ++index)
             trackModel.append({ "sourceIndex": index })
 
         Qt.callLater(positionSelectedTrack)
@@ -90,8 +91,8 @@ Item {
     function positionSelectedTrack() {
         for (var index = 0; index < trackModel.count; ++index) {
             var sourceIndex = Number(trackModel.get(index).sourceIndex)
-            var device = sourceIndex >= 0 && sourceIndex < root.devices.length
-                ? root.devices[sourceIndex]
+            var device = sourceIndex >= 0 && sourceIndex < root.deviceRows.length
+                ? root.deviceRows[sourceIndex].item
                 : null
             if (device && String(device.id || "") === root.selectedDeviceId) {
                 trackList.positionViewAtIndex(index, ListView.Contain)
@@ -119,7 +120,7 @@ Item {
         }
     }
 
-    onDevicesChanged: rebuildTrackModel()
+    onDeviceRowsChanged: rebuildTrackModel()
     onSelectedDeviceIdChanged: Qt.callLater(positionSelectedTrack)
     Component.onCompleted: rebuildTrackModel()
 
@@ -189,13 +190,14 @@ Item {
             readonly property int sourceTrackIndex: index >= 0 && index < trackModel.count
                 ? Number(trackModel.get(index).sourceIndex)
                 : -1
-            property var trackData: sourceTrackIndex >= 0 && sourceTrackIndex < root.devices.length
-                ? root.devices[sourceTrackIndex]
+            property var trackData: sourceTrackIndex >= 0 && sourceTrackIndex < root.deviceRows.length
+                ? root.deviceRows[sourceTrackIndex].item
                 : ({})
             readonly property string targetDeviceId: String(trackData.id || "")
             readonly property bool selected: root.trackSelectedState(trackData)
             readonly property bool online: Boolean(trackData.online)
-            readonly property bool filteredOut: Boolean(trackData && trackData.filteredOut)
+            readonly property bool filteredOut: sourceTrackIndex >= 0 && sourceTrackIndex < root.deviceRows.length
+                && (!root.deviceRows[sourceTrackIndex].matchesFilter || Boolean(trackData && trackData.filteredOut))
             readonly property var childTracks: root.childTracksForParent(targetDeviceId)
             readonly property bool expanded: childTracks.length > 0
                 && root.parentTrackExpanded(targetDeviceId)
@@ -354,9 +356,7 @@ Item {
                 clip: true
                 theme: root.theme
                 ruler: root.ruler
-                commands: root.commandModel && root.commandModel.commands
-                    ? root.commandModel.commands
-                    : []
+                commandRows: root.commandRows
                 devices: root.devices
                 deviceIdFilter: trackRow.targetDeviceId
                 selectedCommandId: root.selectedCommandId
@@ -484,6 +484,14 @@ Item {
             }
 
         }
+    }
+
+    Base.AppText {
+        anchors.centerIn: parent
+        visible: root.deviceRows.length === 0
+        text: root.devices.length > 0 ? qsTr("没有符合筛选条件的设备") : qsTr("暂无设备")
+        styleRole: UiStyle.TypographyRole.BodyS
+        textTone: UiStyle.TextTone.Secondary
     }
 
     Rectangle {

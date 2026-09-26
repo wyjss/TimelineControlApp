@@ -3,10 +3,12 @@
 #include "timeline/Timeline.h"
 #include "timeline/TimelineClock.h"
 #include "timeline/TimelineModel.h"
+#include "timeline/TimelineCommandFilterModel.h"
 #include "devices/CrossCondition.h"
 #include "devices/CrossConditionModel.h"
 #include "devices/Device.h"
 #include "devices/DeviceModel.h"
+#include "devices/DeviceFilterModel.h"
 #include "devices/DeviceConstants.h"
 
 #include "LogMacros.h"
@@ -27,6 +29,9 @@ TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
     , m_timelineModel(new TimelineModel(this))
     , m_deviceModel(deviceModel)
 {
+    m_filteredDeviceModel = new DeviceFilterModel(m_deviceModel, this);
+    m_filteredCommandModel = new TimelineCommandFilterModel(m_deviceModel, this);
+
     connect(m_timelineModel, &TimelineModel::selectedItemChanged, this, [this]() {
         emit currentTimelineChanged(currentTimeline());
     });
@@ -458,6 +463,98 @@ void TimelineManager::setPlaybackDevices(const QStringList& ids)
 QStringList TimelineManager::getPlaybackDevices() const
 {
     return m_playbackDevices;
+}
+
+QStringList TimelineManager::filterDeviceIds() const
+{
+    return m_filterDeviceIds;
+}
+
+void TimelineManager::setFilterDeviceIds(const QStringList &deviceIds)
+{
+    if (m_filterDeviceIds == deviceIds)
+        return;
+
+    m_filterDeviceIds = deviceIds;
+    emit filterDeviceIdsChanged();
+}
+
+QStringList TimelineManager::filterGroupNames() const
+{
+    return m_filterGroupNames;
+}
+
+void TimelineManager::setFilterGroupNames(const QStringList &groupNames)
+{
+    if (m_filterGroupNames == groupNames)
+        return;
+
+    m_filterGroupNames = groupNames;
+    emit filterGroupNamesChanged();
+}
+
+bool TimelineManager::executionFilterEnabled() const
+{
+    return m_executionFilterEnabled;
+}
+
+void TimelineManager::setExecutionFilterEnabled(bool enabled)
+{
+    if (m_executionFilterEnabled == enabled)
+        return;
+
+    m_executionFilterEnabled = enabled;
+    emit executionFilterEnabledChanged();
+}
+
+bool TimelineManager::showFilteredOut() const
+{
+    return m_showFilteredOut;
+}
+
+void TimelineManager::setShowFilteredOut(bool show)
+{
+    if (m_showFilteredOut == show)
+        return;
+
+    m_showFilteredOut = show;
+    emit showFilteredOutChanged();
+}
+
+QAbstractItemModel *TimelineManager::filteredDeviceModel() const
+{
+    return m_filteredDeviceModel;
+}
+
+QAbstractItemModel *TimelineManager::filteredCommandModel() const
+{
+    return m_filteredCommandModel;
+}
+
+bool TimelineManager::matchesDeviceFilter(const QString &deviceId) const
+{
+    // 无过滤
+    if (m_filterDeviceIds.isEmpty() && m_filterGroupNames.isEmpty()) {
+		return true;
+    }
+
+	// id匹配
+	if (m_filterDeviceIds.contains(deviceId)) {
+		return true;
+	}
+   
+    // 组匹配
+	Device* device = m_deviceModel ? m_deviceModel->deviceById(deviceId) : nullptr;
+    if (!device) {
+		return false;
+    }
+	for (const QString& groupName : device->groupNames()) {
+        if (m_filterGroupNames.contains(groupName)) {
+			return true;
+        }
+	}
+
+    return false;
 }
 
 

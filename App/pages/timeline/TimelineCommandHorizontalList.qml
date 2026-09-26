@@ -10,7 +10,7 @@ Item {
         ? ApplicationWindow.window.appTheme
         : null
     property var ruler: null
-    property var commands: []
+    property var commandRows: []
     property var devices: []
     property string deviceIdFilter: ""
     property string selectedCommandId: ""
@@ -19,14 +19,14 @@ Item {
     property real timelineOffsetX: 0
     property int instantCommandMinWidth: 56
     property int instantCommandMaxWidth: 180
-    readonly property var visibleCommands: filterCommands()
-    readonly property int count: visibleCommands.length
+    readonly property var visibleCommandRows: filterCommands()
+    readonly property int count: visibleCommandRows.length
     readonly property int instantLabelHeight: implicitHeight > 48
         ? Math.min(24, Math.floor((height - 8) / 3)) : 24
 
     // 密集指令保留三层标签空间，普通轨道使用紧凑高度。
-    implicitHeight: visibleCommands.some(function(command) {
-        return instantCommandLayout(command).lane !== 1
+    implicitHeight: visibleCommandRows.some(function(row) {
+        return instantCommandLayout(row.command).lane !== 1
     }) ? 80 : 48
 
     signal commandSelected(var command)
@@ -42,10 +42,10 @@ Item {
 
     function filterCommands() {
         if (deviceIdFilter.length === 0)
-            return commands || []
+            return commandRows
 
-        return (commands || []).filter(function(command) {
-            return String(command && command.targetDeviceId || "") === deviceIdFilter
+        return commandRows.filter(function(row) {
+            return String(row.command.targetDeviceId || "") === deviceIdFilter
         })
     }
 
@@ -143,8 +143,8 @@ Item {
 
     function instantCommandLayout(command) {
         var instantCommands = []
-        for (var index = 0; index < visibleCommands.length; ++index) {
-            var item = visibleCommands[index]
+        for (var index = 0; index < visibleCommandRows.length; ++index) {
+            var item = visibleCommandRows[index].command
             instantCommands.push({ "command": item, "order": index })
         }
         instantCommands.sort(function(left, right) {
@@ -211,7 +211,7 @@ Item {
             }
         }
 
-        key = String(command && command.id || visibleCommands.indexOf(command))
+        key = String(command && command.id || visibleCommandRows.findIndex(function(row) { return row.command === command }))
         return layouts[key] || {
             "lane": 1,
             "visible": true,
@@ -243,15 +243,16 @@ Item {
     }
 
     Repeater {
-        model: root.visibleCommands
+        model: root.visibleCommandRows
 
         delegate: Item {
             id: commandBlock
             objectName: "timelineCommand_" + String(commandData.id || "")
 
-            property var commandData: modelData
-            readonly property bool filteredOut: root.commandFilteredOut(commandData)
-            readonly property color commandColor: root.commandColor(commandData)
+            property var commandData: modelData.command
+            readonly property bool filteredOut: !modelData.matchesFilter || root.commandFilteredOut(commandData)
+            readonly property color commandColor: filteredOut
+                ? root.colorValue("neutralBorder", "#45576b") : root.commandColor(commandData)
             readonly property color stateColor: filteredOut
                 ? root.colorValue("neutralBorder", "#45576b")
                 : (commandData && commandData.stateColor

@@ -21,6 +21,10 @@ Item {
     property var timelineManager: appRuntime && appRuntime.timelineManager ? appRuntime.timelineManager : null
     property var currentTimeline: timelineManager ? timelineManager.currentTimeline : null
     property var timelineCommandModel: currentTimeline ? currentTimeline.commandModel : null
+    readonly property var filteredDeviceModel: timelineManager ? timelineManager.filteredDeviceModel : null
+    readonly property var filteredCommandModel: timelineManager ? timelineManager.filteredCommandModel : null
+    property var deviceRows: []
+    property var commandRows: []
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     property var fenceManager: appRuntime && appRuntime.fenceManager ? appRuntime.fenceManager : null
@@ -42,7 +46,6 @@ Item {
     readonly property int timelineTrackLabelWidth: 200
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var deviceCommands: selectedTimelineDevice && selectedTimelineDevice.commands ? selectedTimelineDevice.commands : []
-    readonly property var timelineCommands: timelineCommandModel && timelineCommandModel.commands ? timelineCommandModel.commands : []
     readonly property string selectedTimelineCommandId: timelineCommandModel ? timelineCommandModel.selectedCommandId : ""
     readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
     readonly property bool commandEditingEnabled: timelineStopped || timelineManager.playbackState === 2
@@ -98,7 +101,29 @@ Item {
         quickTestCommand = result
     }
 
-    onDevicesChanged: ensureSelectedTimelineDevice()
+    onDeviceRowsChanged: ensureSelectedTimelineDevice()
+    onFilteredDeviceModelChanged: refreshDeviceRows()
+    onFilteredCommandModelChanged: refreshCommandRows()
+
+    Connections {
+        target: root.filteredDeviceModel
+        function onRowsInserted() { root.refreshDeviceRows() }
+        function onRowsRemoved() { root.refreshDeviceRows() }
+        function onRowsMoved() { root.refreshDeviceRows() }
+        function onModelReset() { root.refreshDeviceRows() }
+        function onLayoutChanged() { root.refreshDeviceRows() }
+        function onDataChanged() { root.refreshDeviceRows() }
+    }
+
+    Connections {
+        target: root.filteredCommandModel
+        function onRowsInserted() { root.refreshCommandRows() }
+        function onRowsRemoved() { root.refreshCommandRows() }
+        function onRowsMoved() { root.refreshCommandRows() }
+        function onModelReset() { root.refreshCommandRows() }
+        function onLayoutChanged() { root.refreshCommandRows() }
+        function onDataChanged() { root.refreshCommandRows() }
+    }
     onSelectedTimelineDeviceIdChanged: {
         updateSelectedTimelineDevice()
         selectedCommandIndex = -1
@@ -108,6 +133,8 @@ Item {
     onSelectedCommandIndexChanged: executionStatusText = ""
 
     Component.onCompleted: {
+        refreshDeviceRows()
+        refreshCommandRows()
         ensureSelectedTimelineDevice()
         ensureSelectedCommand()
         if (pcPreviewGenerator)
@@ -115,30 +142,76 @@ Item {
     }
 
     onCurrentTimelineChanged: {
+        refreshCommandRows()
         fallbackTimelineCurrentTimeMs = 0
         if (pcPreviewGenerator)
             pcPreviewGenerator.seek(0)
     }
 
+    // 仅从代理读取显示行；保留原对象供现有布局和编辑接口使用。
+    function refreshDeviceRows() {
+        var rows = []
+        var count = filteredDeviceModel ? filteredDeviceModel.rowCount() : 0
+        var changed = count !== deviceRows.length
+        for (var row = 0; row < count; ++row) {
+            var modelIndex = filteredDeviceModel.index(row, 0)
+            var device = filteredDeviceModel.data(modelIndex, Qt.DisplayRole)
+            // 与 DeviceFilterModel::MatchesFilterRole 对应。
+            var matches = filteredDeviceModel.data(modelIndex, Qt.UserRole + 2)
+            rows.push({ "item": device, "matchesFilter": matches })
+            if (!changed && (deviceRows[row].item !== device
+                             || deviceRows[row].matchesFilter !== matches))
+                changed = true
+        }
+        if (changed)
+            deviceRows = rows
+    }
+
+    function refreshCommandRows() {
+        var rows = []
+        var count = filteredCommandModel ? filteredCommandModel.rowCount() : 0
+        var changed = count !== commandRows.length
+        var selectedVisible = false
+        for (var row = 0; row < count; ++row) {
+            var modelIndex = filteredCommandModel.index(row, 0)
+            var command = filteredCommandModel.data(modelIndex, Qt.DisplayRole)
+            // 与 TimelineCommandFilterModel::MatchesFilterRole 对应。
+            var matches = filteredCommandModel.data(modelIndex, Qt.UserRole + 2)
+            rows.push({ "command": command, "matchesFilter": matches })
+            if (!changed && (commandRows[row].command !== command
+                             || commandRows[row].matchesFilter !== matches))
+                changed = true
+            if (command.id === selectedTimelineCommandId)
+                selectedVisible = true
+        }
+        if (changed)
+            commandRows = rows
+        if (timelineCommandModel && filteredCommandModel
+                && filteredCommandModel.sourceModel === timelineCommandModel
+                && selectedTimelineCommandId.length > 0 && !selectedVisible)
+            timelineCommandModel.selectedCommandId = ""
+    }
+
     function deviceForId(deviceId) {
         var normalizedDeviceId = String(deviceId || "")
-        for (var index = 0; index < devices.length; ++index) {
-            if (String(devices[index].id || "") === normalizedDeviceId)
-                return devices[index]
+        for (var index = 0; index < deviceRows.length; ++index) {
+            var device = deviceRows[index].item
+            if (String(device.id || "") === normalizedDeviceId)
+                return device
         }
 
         return null
     }
 
     function ensureSelectedTimelineDevice() {
-        if (devices.length === 0) {
+        if (deviceRows.length === 0) {
             selectedTimelineDeviceId = ""
             selectedTimelineDevice = null
             return
         }
 
         if (!deviceForId(selectedTimelineDeviceId)) {
-            selectTimelineDevice(String(devices[0].id || ""))
+            selectTimelineDevice(String(deviceRows[0].item.id || ""))
             return
         }
 
@@ -429,7 +502,8 @@ Item {
                         Layout.minimumHeight: 220
                         ruler: timelineRuler
                         devices: root.devices
-                        commandModel: root.timelineCommandModel
+                        deviceRows: root.deviceRows
+                        commandRows: root.commandRows
                         childTracksByParentId: root.timelineCommandModel
                             ? root.timelineCommandModel.childTracksByParentId
                             : ({})
@@ -505,10 +579,11 @@ Item {
                                 }
 
                                 Repeater {
-                                    model: root.timelineCommands
+                                    model: root.commandRows
 
                                     delegate: Item {
-                                        readonly property var commandData: modelData
+                                        readonly property var commandData: modelData.command
+                                        readonly property bool filteredOut: !modelData.matchesFilter || commandData.filteredOut
                                         readonly property real startRatio: root.overviewDurationMs > 0
                                             ? Math.max(0, Number(commandData.startTimeMs || 0))
                                                 / root.overviewDurationMs
@@ -542,7 +617,7 @@ Item {
                                             radius: 2
                                             rotation: 45
                                             color: parent.markerColor
-                                            opacity: parent.commandData.filteredOut
+                                            opacity: parent.filteredOut
                                                 ? 0.36
                                                 : (parent.selected ? 1 : 0.82)
                                             border.width: parent.selected ? 1 : 0
@@ -675,7 +750,7 @@ Item {
 
                             anchors.fill: parent
                             theme: root.pageTheme
-                            commands: root.timelineCommands
+                            commandRows: root.commandRows
                             devices: root.devices
                             deviceIdFilter: root.timelineCommandListMode === "device"
                                 ? root.selectedTimelineDeviceId

@@ -12,6 +12,8 @@
 #include "timeline/Timeline.h"
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
+#define LC "[PreviewGenerator] "
+#include "runtime/LogMacros.h"
 
 
 namespace {
@@ -356,6 +358,7 @@ void PcTimelinePreviewWorker::startNextFrame()
         return;
     }
     if (!m_temporaryDir.isValid()) {
+        LOG_ERROR("无法创建预览临时目录");
         m_errors.append(tr("无法创建预览临时目录"));
         finishPreview();
         return;
@@ -367,6 +370,8 @@ void PcTimelinePreviewWorker::startNextFrame()
         QFile::remove(outputPath);
     }
     m_framePending = true;
+
+    LOG_DEBUG("start ff " << m_ffmpegProgram << outputPath);
     m_process.start(m_ffmpegProgram,
                     QStringList{QStringLiteral("-ss"),
                                 QString::number(static_cast<double>(state.positionMs) / 1000.0, 'f', 3),
@@ -378,6 +383,7 @@ void PcTimelinePreviewWorker::startNextFrame()
                                 QStringLiteral("-sn"),
                                 QStringLiteral("-y"),
                                 outputPath});
+    LOG_DEBUG("end ff " << m_ffmpegProgram);
 }
 
 void PcTimelinePreviewWorker::completeFrame(bool success, const QString &errorMessage)

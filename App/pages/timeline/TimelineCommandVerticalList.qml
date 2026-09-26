@@ -11,15 +11,15 @@ Item {
     property QtObject theme: ApplicationWindow.window && ApplicationWindow.window.appTheme
         ? ApplicationWindow.window.appTheme
         : null
-    property var commands: []
+    property var commandRows: []
     property var devices: []
     property string deviceIdFilter: ""
     property string selectedCommandId: ""
     property bool editingEnabled: true
     property bool locatingEnabled: false
     property bool showDeviceName: false
-    readonly property var visibleCommands: filterCommands()
-    readonly property int count: visibleCommands.length
+    readonly property var visibleCommandRows: filterCommands()
+    readonly property int count: visibleCommandRows.length
     readonly property bool compact: width < 600
     readonly property int timeColumnWidth: 100
     readonly property int deviceColumnWidth: showDeviceName ? 112 : 36
@@ -40,10 +40,10 @@ Item {
 
     function filterCommands() {
         if (deviceIdFilter.length === 0)
-            return commands || []
+            return commandRows
 
-        return (commands || []).filter(function(command) {
-            return String(command && command.targetDeviceId || "") === deviceIdFilter
+        return commandRows.filter(function(row) {
+            return String(row.command.targetDeviceId || "") === deviceIdFilter
         })
     }
 
@@ -213,9 +213,9 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
             spacing: 0
-            model: root.visibleCommands
-            currentIndex: root.visibleCommands.findIndex(function(command) {
-                return String(command && command.id || "") === root.selectedCommandId
+            model: root.visibleCommandRows
+            currentIndex: root.visibleCommandRows.findIndex(function(row) {
+                return String(row.command.id || "") === root.selectedCommandId
             })
             onVisibleChanged: {
                 if (visible && currentIndex >= 0)
@@ -228,13 +228,13 @@ Item {
             delegate: AbstractButton {
                 id: commandRow
 
-                readonly property var commandData: modelData
+                readonly property var commandData: modelData.command
                 readonly property var targetDevice: root.deviceForId(commandData
                     ? commandData.targetDeviceId
                     : "")
                 readonly property bool selected: String(commandData && commandData.id || "")
                     === root.selectedCommandId
-                readonly property bool filteredOut: root.commandFilteredOut(commandData)
+                readonly property bool filteredOut: !modelData.matchesFilter || root.commandFilteredOut(commandData)
                 width: commandList.width
                 height: (root.compact ? 60 : 40) + bottomPadding
                 opacity: filteredOut ? 0.46 : 1
@@ -395,7 +395,8 @@ Item {
                             width: 18
                             height: 5
                             radius: height / 2
-                            color: root.resultColor(commandRow.commandData)
+                            color: commandRow.filteredOut
+                                ? root.colorValue("neutralBorder", "#45576b") : root.resultColor(commandRow.commandData)
                         }
                     }
                 }
