@@ -1,4 +1,5 @@
 #include "TimelineRuntime.h"
+#include "ResourceSyncManager.h"
 
 #include <QMetaType>
 
@@ -56,6 +57,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     m_taskManager = (new UICore::TaskManager(this));
     m_deviceModel = (new DeviceModel(this));
     m_fenceManager = (new FenceManager(this));
+    m_resourceSyncManager = (new ResourceSyncManager(m_deviceModel, this));
     m_timelineManager = (new TimelineManager(m_deviceModel, this));
     m_deviceTemplateModel = (new DeviceTemplateModel(m_timelineManager->timelineModel(), this));
     m_deviceExecutorManager = (new DeviceExecutorManager(this));
@@ -72,6 +74,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<CrossCondition *>("CrossCondition*");
     qRegisterMetaType<CrossConditionModel *>("CrossConditionModel*");
     qRegisterMetaType<FenceManager *>("FenceManager*");
+    qRegisterMetaType<ResourceSyncManager *>("ResourceSyncManager*");
     qRegisterMetaType<Timeline *>("Timeline*");
     qRegisterMetaType<TimelineCommand *>("TimelineCommand*");
     qRegisterMetaType<TimelineCommandModel *>("TimelineCommandModel*");
@@ -316,6 +319,11 @@ DeviceTemplateModel *TimelineRuntime::deviceTemplateModel() const
 FenceManager *TimelineRuntime::fenceManager() const
 {
     return m_fenceManager;
+}
+
+ResourceSyncManager *TimelineRuntime::resourceSyncManager() const
+{
+    return m_resourceSyncManager;
 }
 
 TimelineManager *TimelineRuntime::timelineManager() const

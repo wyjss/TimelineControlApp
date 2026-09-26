@@ -746,6 +746,18 @@ Item {
                         }
 
                         Base.AppButton {
+                            objectName: "deviceResourceSyncButton"
+                            text: qsTr("资源同步")
+                            enabled: root.appRuntime && root.appRuntime.resourceSyncManager
+                            onClicked: {
+                                resourceSyncDialog.initialDeviceIds = root.selectingDevices
+                                    ? root.batchSelectedDeviceIds.slice(0)
+                                    : root.selectedDeviceInCurrentView ? [String(root.selectedDevice.id)] : []
+                                resourceSyncDialog.open()
+                            }
+                        }
+
+                        Base.AppButton {
                             objectName: "deviceSelectModeButton"
                             visible: root.deviceDisplayMode === "group"
                             text: root.selectingDevices ? qsTr("退出多选") : qsTr("选择设备")
@@ -1742,6 +1754,14 @@ Item {
                 onClosed: createDevicePopupLoader.active = false
             }
         }
+    }
+
+    ResourceSyncDialog {
+        id: resourceSyncDialog
+        parent: root
+        pageTheme: root.pageTheme
+        resourceSyncManager: root.appRuntime ? root.appRuntime.resourceSyncManager : null
+        deviceModel: root.deviceModel
     }
 
     DeviceGroupPickerDialog {

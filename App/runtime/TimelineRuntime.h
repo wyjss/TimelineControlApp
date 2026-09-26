@@ -20,6 +20,7 @@ class DeviceModel;
 class DeviceTemplateModel;
 class DeviceExecutorManager;
 class FenceManager;
+class ResourceSyncManager;
 class VideoProjectionPlanController;
 class Timeline;
 class TimelineCommand;
@@ -34,6 +35,7 @@ class TimelineRuntime final : public UICore::BaseRuntime
     Q_PROPERTY(DeviceModel *deviceModel READ deviceModel CONSTANT FINAL)
     Q_PROPERTY(DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
     Q_PROPERTY(FenceManager *fenceManager READ fenceManager CONSTANT FINAL)
+    Q_PROPERTY(ResourceSyncManager *resourceSyncManager READ resourceSyncManager CONSTANT FINAL)
     Q_PROPERTY(TimelineManager *timelineManager READ timelineManager CONSTANT FINAL)
     Q_PROPERTY(QString currentPlanFilePath READ currentPlanFilePath NOTIFY currentPlanFilePathChanged FINAL)
     Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanFilePathChanged FINAL)
@@ -48,6 +50,7 @@ public:
     DeviceModel *deviceModel() const;
     DeviceTemplateModel *deviceTemplateModel() const;
     FenceManager *fenceManager() const;
+    ResourceSyncManager *resourceSyncManager() const;
     TimelineManager *timelineManager() const;
     QString currentPlanFilePath() const;
     QString currentPlanName() const;
@@ -78,6 +81,7 @@ private:
     DeviceExecutorManager *m_deviceExecutorManager = nullptr;
     DeviceManager *m_deviceManager = nullptr;
     FenceManager *m_fenceManager = nullptr;
+    ResourceSyncManager *m_resourceSyncManager = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
     QTimer m_pcVideoSeekTimer;
     QPointer<Timeline> m_pendingPcVideoTimeline;
