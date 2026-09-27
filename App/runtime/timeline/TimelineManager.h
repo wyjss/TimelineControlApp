@@ -30,7 +30,6 @@ class TimelineManager final : public QObject
     Q_PROPERTY(qint64 currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged FINAL)
     Q_PROPERTY(QStringList playQueue READ playQueue NOTIFY playQueueChanged FINAL)
     Q_PROPERTY(int playQueueIndex READ playQueueIndex NOTIFY playQueueIndexChanged FINAL)
-    Q_PROPERTY(QStringList playbackDevices READ getPlaybackDevices WRITE setPlaybackDevices NOTIFY playbackDevicesChanged FINAL)
     Q_PROPERTY(QStringList filterDeviceIds READ filterDeviceIds WRITE setFilterDeviceIds NOTIFY filterDeviceIdsChanged FINAL)
     Q_PROPERTY(QStringList filterGroupNames READ filterGroupNames WRITE setFilterGroupNames NOTIFY filterGroupNamesChanged FINAL)
     Q_PROPERTY(bool executionFilterEnabled READ executionFilterEnabled WRITE setExecutionFilterEnabled NOTIFY executionFilterEnabledChanged FINAL)
@@ -79,10 +78,6 @@ public:
     Q_INVOKABLE bool seekTimeline(const QString &id, qint64 timeMs);
     Q_INVOKABLE void stopPlayback(bool notifyDevices = true);
 
-    // 播控-过滤
-    void setPlaybackDevices(const QStringList& ids);
-    QStringList getPlaybackDevices() const;
-
     // 过滤设置；设备和组条件为空时不限制
     // 满足任一过滤条件都通过
     // 
@@ -92,7 +87,7 @@ public:
     // 设备组过滤，空表示不过滤
     QStringList filterGroupNames() const;
     void setFilterGroupNames(const QStringList &groupNames);
-    // 被过滤指令是否执行
+    // 是否仅执行筛选范围内的播放指令
     bool executionFilterEnabled() const;
     void setExecutionFilterEnabled(bool enabled);
     // 被过滤设备和指令是否显示
@@ -115,7 +110,6 @@ signals:
     void playQueueIndexChanged(int index);
     void commandTriggered(Timeline *timeline, TimelineCommand *command);
     void deviceCommandTriggered(DeviceCommand *command);
-    void playbackDevicesChanged(QStringList);
     void filterDeviceIdsChanged();
     void filterGroupNamesChanged();
     void executionFilterEnabledChanged();
@@ -135,7 +129,6 @@ private:
     bool m_queuePlayback = false;
     QStringList m_playQueue;
     int m_playQueueIndex = -1;
-    QStringList m_playbackDevices;
     QStringList m_filterDeviceIds;
     QStringList m_filterGroupNames;
     bool m_executionFilterEnabled = false;

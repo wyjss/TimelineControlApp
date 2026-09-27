@@ -197,7 +197,7 @@ Item {
             readonly property bool selected: root.trackSelectedState(trackData)
             readonly property bool online: Boolean(trackData.online)
             readonly property bool filteredOut: sourceTrackIndex >= 0 && sourceTrackIndex < root.deviceRows.length
-                && (!root.deviceRows[sourceTrackIndex].matchesFilter || Boolean(trackData && trackData.filteredOut))
+                && !root.deviceRows[sourceTrackIndex].matchesFilter
             readonly property var childTracks: root.childTracksForParent(targetDeviceId)
             readonly property bool expanded: childTracks.length > 0
                 && root.parentTrackExpanded(targetDeviceId)

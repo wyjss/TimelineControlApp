@@ -24,7 +24,6 @@ class TimelineCommand final : public QObject
     Q_PROPERTY(QString alias READ alias WRITE setAlias NOTIFY aliasChanged FINAL)
     Q_PROPERTY(QVariantMap executionInputValues READ executionInputValues WRITE setExecutionInputValues NOTIFY executionInputValuesChanged FINAL)
     Q_PROPERTY(DeviceCommand *targetCommand READ targetCommand NOTIFY targetCommandChanged FINAL)
-    Q_PROPERTY(bool filteredOut READ filteredOut NOTIFY filteredOutChanged FINAL)
     Q_PROPERTY(State state READ state WRITE setState NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString stateText READ stateText NOTIFY stateChanged FINAL)
     Q_PROPERTY(QString stateColor READ stateColor NOTIFY stateChanged FINAL)
@@ -65,7 +64,6 @@ public:
 
     DeviceCommand *targetCommand() const;
     void setTargetCommand(DeviceCommand *targetCommand);
-    bool filteredOut() const;
 
     State state() const;
     void setState(State state);
@@ -84,7 +82,6 @@ signals:
     void executionInputValuesChanged();
     void targetCommandChanged();
     void targetCommandDestroyed();
-    void filteredOutChanged();
     void parametersChanged();
     void stateChanged();
     void errorMessageChanged();

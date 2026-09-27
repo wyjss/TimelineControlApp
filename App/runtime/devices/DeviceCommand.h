@@ -22,7 +22,6 @@ class DeviceCommand : public QObject
     //! 指令显示名称。
     Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged FINAL)
     Q_PROPERTY(Device *device READ device NOTIFY deviceChanged FINAL)
-    Q_PROPERTY(bool filteredOut READ filteredOut NOTIFY filteredOutChanged FINAL)
     //! 是否允许编辑指令的创建参数。
     Q_PROPERTY(bool editable READ editable NOTIFY editableChanged FINAL)
     //! 协议标识DeviceProtocol，例如 serial、dmx512、http。
@@ -55,7 +54,6 @@ public:
     QString protocol() const;
     QString commandType() const;
     Device *device() const;
-    bool filteredOut() const;
     bool editable() const;
     Q_INVOKABLE void setEditable(bool editable);
 
@@ -84,7 +82,6 @@ public:
 signals:
     void nameChanged();
     void deviceChanged();
-    void filteredOutChanged();
     void editableChanged();
     void fieldChanged(DeviceParamSpec *field);
 

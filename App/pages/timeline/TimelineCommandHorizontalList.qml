@@ -69,23 +69,7 @@ Item {
             + (seconds < 10 ? "0" : "") + seconds
     }
 
-    function commandFilteredOut(command) {
-        if (command && command.filteredOut)
-            return true
-
-        var deviceId = String(command && command.targetDeviceId || "")
-        for (var index = 0; index < devices.length; ++index) {
-            var device = devices[index]
-            if (String(device.id || "") === deviceId)
-                return device.filteredOut
-        }
-        return false
-    }
-
     function commandColor(command) {
-        if (commandFilteredOut(command))
-            return colorValue("neutralBorder", "#45576b")
-
         var targetCommand = command ? command.targetCommand : null
         switch (String(targetCommand ? targetCommand.protocol : "")) {
         case "dmx512":
@@ -250,7 +234,7 @@ Item {
             objectName: "timelineCommand_" + String(commandData.id || "")
 
             property var commandData: modelData.command
-            readonly property bool filteredOut: !modelData.matchesFilter || root.commandFilteredOut(commandData)
+            readonly property bool filteredOut: !modelData.matchesFilter
             readonly property color commandColor: filteredOut
                 ? root.colorValue("neutralBorder", "#45576b") : root.commandColor(commandData)
             readonly property color stateColor: filteredOut

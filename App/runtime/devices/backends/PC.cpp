@@ -347,6 +347,7 @@ PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
 					QStringList{DeviceProtocol::Pc, DeviceProtocol::Http},
 					"电脑设备",
 					{
+						DeviceParamSpec::createForKey(DeviceKey::MacAddress),
 						DeviceParamSpec::createForKey(DeviceKey::VirtualScreenWidth),
 						DeviceParamSpec::createForKey(DeviceKey::VirtualScreenHeight),
 						DeviceParamSpec::createForKey(DeviceKey::ScreenWidth),

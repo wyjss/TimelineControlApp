@@ -31,7 +31,6 @@ class Device final : public QObject
     Q_PROPERTY(QStringList groupNames READ groupNames WRITE setGroupNames NOTIFY groupNamesChanged FINAL)
     Q_PROPERTY(QStringList supportedProtocols READ supportedProtocols WRITE setSupportedProtocols NOTIFY supportedProtocolsChanged FINAL)
     Q_PROPERTY(bool online READ isOnline WRITE setOnline NOTIFY onlineChanged FINAL)
-    Q_PROPERTY(bool filteredOut READ filteredOut WRITE setFilteredOut NOTIFY filteredOutChanged FINAL)
     Q_PROPERTY(QString description READ description WRITE setDescription NOTIFY descriptionChanged FINAL)
     Q_PROPERTY(QVariantMap configValues READ configValues NOTIFY configValuesChanged FINAL)
     Q_PROPERTY(QVariantList params READ params NOTIFY paramsChanged FINAL)
@@ -58,9 +57,6 @@ public:
 
     bool isOnline() const;
     void setOnline(bool online);
-
-    bool filteredOut() const;
-    void setFilteredOut(bool filteredOut);
 
     QString description() const;
     void setDescription(const QString &description);
@@ -98,7 +94,6 @@ signals:
     void groupNamesChanged();
     void supportedProtocolsChanged();
     void onlineChanged();
-    void filteredOutChanged();
     void descriptionChanged();
     void configValuesChanged();
     void paramsChanged();
@@ -114,7 +109,6 @@ private:
     QStringList m_groupNames;
     QStringList m_supportedProtocols;
     bool m_online = false;
-    bool m_filteredOut = false;
     QString m_description;
     QList<DeviceParamSpec *> m_params;
     QList<DeviceCommand *> m_commands;

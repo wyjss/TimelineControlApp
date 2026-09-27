@@ -298,11 +298,6 @@ Device *DeviceCommand::device() const
     return m_device.data();
 }
 
-bool DeviceCommand::filteredOut() const
-{
-    return m_device && m_device->filteredOut();
-}
-
 bool DeviceCommand::editable() const
 {
     return m_editable;
@@ -322,24 +317,17 @@ void DeviceCommand::setDevice(Device *device)
     if (m_device == device)
         return;
 
-    const bool previousFilteredOut = filteredOut();
-
-    if (m_device) {
+    if (m_device)
         disconnect(m_device, &Device::paramChanged, this, nullptr);
-        disconnect(m_device, &Device::filteredOutChanged, this, &DeviceCommand::filteredOutChanged);
-    }
 
     m_device = device;
 
     if (m_device) {
         connect(m_device, &Device::paramChanged, this, &DeviceCommand::updateParamFromDevice);
-        connect(m_device, &Device::filteredOutChanged, this, &DeviceCommand::filteredOutChanged);
         updateParamFromDevice();
     }
 
     emit deviceChanged();
-    if (previousFilteredOut != filteredOut())
-        emit filteredOutChanged();
 }
 
 DeviceParamSpec* DeviceCommand::getField(const QString& key) const

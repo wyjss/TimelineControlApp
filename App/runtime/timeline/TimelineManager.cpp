@@ -51,17 +51,10 @@ TimelineManager::TimelineManager(DeviceModel *deviceModel, QObject *parent)
             if (!device)
                 return;
 
-            device->setFilteredOut(!m_playbackDevices.isEmpty()
-                                   && !m_playbackDevices.contains(device->id()));
             connect(device, &Device::commandsChanged, this, [this, device]() {
                 bindCommandsForDevice(device);
             });
             bindCommandsForDevice(device);
-        });
-        connect(m_deviceModel, &DeviceModel::deviceRemoved, this, [this](const QString &deviceId) {
-            QStringList playbackDevices = m_playbackDevices;
-            if (playbackDevices.removeAll(deviceId) > 0)
-                setPlaybackDevices(playbackDevices);
         });
     }
 }
@@ -415,7 +408,7 @@ void TimelineManager::triggerSystemCommand(const QString &commandName)
 
     for (Device *device : m_deviceModel->items()) {
         // 被过滤的
-        if (device->filteredOut()) {
+        if (m_executionFilterEnabled && !matchesDeviceFilter(device->id())) {
             continue;
         }
         
@@ -434,37 +427,6 @@ void TimelineManager::triggerSystemCommand(const QString &commandName)
     }
 }
 
-void TimelineManager::setPlaybackDevices(const QStringList& ids)
-{
-    if (playbackState() != Stopped)
-        return;
-
-    QStringList playbackDevices;
-    for (const QString &id : ids) {
-        const QString deviceId = id.trimmed();
-        if (!deviceId.isEmpty() && !playbackDevices.contains(deviceId)
-            && (!m_deviceModel || m_deviceModel->deviceById(deviceId)))
-            playbackDevices.append(deviceId);
-    }
-    if (playbackDevices == m_playbackDevices)
-        return;
-
-    m_playbackDevices = playbackDevices;
-    if (m_deviceModel) {
-        for (Device *device : m_deviceModel->items()) {
-            if (device)
-                device->setFilteredOut(!m_playbackDevices.isEmpty()
-                                       && !m_playbackDevices.contains(device->id()));
-        }
-    }
-    emit playbackDevicesChanged(m_playbackDevices);
-}
-
-QStringList TimelineManager::getPlaybackDevices() const
-{
-    return m_playbackDevices;
-}
-
 QStringList TimelineManager::filterDeviceIds() const
 {
     return m_filterDeviceIds;
@@ -472,6 +434,9 @@ QStringList TimelineManager::filterDeviceIds() const
 
 void TimelineManager::setFilterDeviceIds(const QStringList &deviceIds)
 {
+    if (m_executionFilterEnabled && playbackState() != Stopped)
+        return;
+
     if (m_filterDeviceIds == deviceIds)
         return;
 
@@ -486,6 +451,9 @@ QStringList TimelineManager::filterGroupNames() const
 
 void TimelineManager::setFilterGroupNames(const QStringList &groupNames)
 {
+    if (m_executionFilterEnabled && playbackState() != Stopped)
+        return;
+
     if (m_filterGroupNames == groupNames)
         return;
 
@@ -500,6 +468,9 @@ bool TimelineManager::executionFilterEnabled() const
 
 void TimelineManager::setExecutionFilterEnabled(bool enabled)
 {
+    if (playbackState() != Stopped)
+        return;
+
     if (m_executionFilterEnabled == enabled)
         return;
 
@@ -633,7 +604,9 @@ bool TimelineManager::readFromStream(QDataStream &stream)
     }
 
     stopPlayback(false);
-    setPlaybackDevices({});
+    setFilterDeviceIds({});
+    setFilterGroupNames({});
+    setExecutionFilterEnabled(false);
     const QList<Timeline *> oldTimelines = m_timelineModel->items();
     if (!m_timelineModel->resetTimelines(timelines)) {
         qDeleteAll(timelines);
@@ -678,7 +651,7 @@ void TimelineManager::updateTimeline(Timeline *timeline, qint64 clockTimeMs)
     const Timeline::State previousState = timeline->state();
     const QList<TimelineCommand *> commands = timeline->updateTime(clockTimeMs);
     for (TimelineCommand* command : commands) {
-        if (m_playbackDevices.isEmpty() || m_playbackDevices.contains(command->targetDeviceId())) {
+        if (!m_executionFilterEnabled || matchesDeviceFilter(command->targetDeviceId())) {
             emit commandTriggered(timeline, command);
         } else {
             command->setState(TimelineCommand::Skipped);

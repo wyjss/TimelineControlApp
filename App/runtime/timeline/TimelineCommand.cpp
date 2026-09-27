@@ -122,20 +122,16 @@ void TimelineCommand::setTargetCommand(DeviceCommand *targetCommand)
     if (m_targetCommand == targetCommand)
         return;
 
-    const bool previousFilteredOut = filteredOut();
     if (m_targetCommand)
         disconnect(m_targetCommand.data(), nullptr, this, nullptr);
 
     m_targetCommand = targetCommand;
     if (m_targetCommand) {
-        connect(m_targetCommand, &DeviceCommand::filteredOutChanged,
-                this, &TimelineCommand::filteredOutChanged);
         connect(m_targetCommand, &DeviceCommand::fieldChanged,
                 this, &TimelineCommand::parametersChanged);
         connect(m_targetCommand, &QObject::destroyed, this, [this]() {
             m_targetCommand.clear();
             emit targetCommandChanged();
-            emit filteredOutChanged();
             emit parametersChanged();
             emit targetCommandDestroyed();
         });
@@ -143,13 +139,6 @@ void TimelineCommand::setTargetCommand(DeviceCommand *targetCommand)
 
     emit targetCommandChanged();
     emit parametersChanged();
-    if (previousFilteredOut != filteredOut())
-        emit filteredOutChanged();
-}
-
-bool TimelineCommand::filteredOut() const
-{
-    return m_targetCommand && m_targetCommand->filteredOut();
 }
 
 TimelineCommand::State TimelineCommand::state() const

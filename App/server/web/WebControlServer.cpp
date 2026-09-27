@@ -142,7 +142,7 @@ bool WebControlServer::start(const QString &host, quint16 port)
         const int status = updateQueue(document.object().value(QStringLiteral("timelineIds")).toArray(), body);
         sendJson(response, status, body);
     });
-    m_server->Post("/api/v1/playback-devices", [this](const httplib::Request &request, httplib::Response &response) {
+    m_server->Post("/api/v1/device-filter", [this](const httplib::Request &request, httplib::Response &response) {
         if (!authorize(request, response))
             return;
 
@@ -156,8 +156,7 @@ bool WebControlServer::start(const QString &host, quint16 port)
         }
 
         QJsonObject body;
-        const int status = updatePlaybackDevices(
-            document.object().value(QStringLiteral("deviceIds")).toArray(), body);
+        const int status = updateDeviceFilter(document.object(), body);
         sendJson(response, status, body);
     });
     m_server->Post("/api/v1/control", [this](const httplib::Request &request, httplib::Response &response) {
@@ -307,6 +306,7 @@ QJsonObject WebControlServer::statusSnapshot() const
                     {QStringLiteral("id"), command->id()},
                     {QStringLiteral("name"), command->commandName()},
                     {QStringLiteral("deviceId"), command->targetDeviceId()},
+                    {QStringLiteral("matchesFilter"), manager->matchesDeviceFilter(command->targetDeviceId())},
                     {QStringLiteral("startTimeMs"), command->startTimeMs()},
                     {QStringLiteral("executionParameters"), executionParameters},
                     {QStringLiteral("state"), commandStateName(command->state())},
@@ -348,7 +348,8 @@ QJsonObject WebControlServer::statusSnapshot() const
                 {QStringLiteral("id"), device->id()},
                 {QStringLiteral("name"), device->name()},
                 {QStringLiteral("type"), device->deviceType()},
-                {QStringLiteral("online"), device->isOnline()}
+                {QStringLiteral("online"), device->isOnline()},
+                {QStringLiteral("matchesFilter"), manager->matchesDeviceFilter(device->id())}
             });
         }
 
@@ -366,8 +367,10 @@ QJsonObject WebControlServer::statusSnapshot() const
             {QStringLiteral("queuePlayback"), manager->queuePlayback()},
             {QStringLiteral("queueIndex"), manager->playQueueIndex()},
             {QStringLiteral("playQueue"), QJsonArray::fromStringList(playQueue)},
-            {QStringLiteral("playbackDevices"),
-             QJsonArray::fromStringList(manager->getPlaybackDevices())},
+            {QStringLiteral("filterDeviceIds"), QJsonArray::fromStringList(manager->filterDeviceIds())},
+            {QStringLiteral("filterGroupNames"), QJsonArray::fromStringList(manager->filterGroupNames())},
+            {QStringLiteral("executionFilterEnabled"), manager->executionFilterEnabled()},
+            {QStringLiteral("showFilteredOut"), manager->showFilteredOut()},
             {QStringLiteral("timelines"), timelines},
             {QStringLiteral("devices"), devices}
         };
@@ -410,25 +413,43 @@ int WebControlServer::updateQueue(const QJsonArray &timelineIds,
     return 200;
 }
 
-int WebControlServer::updatePlaybackDevices(const QJsonArray &deviceIds,
-                                            QJsonObject &response) const
+int WebControlServer::updateDeviceFilter(const QJsonObject &request,
+                                         QJsonObject &response) const
 {
     QStringList ids;
-    for (const QJsonValue &value : deviceIds) {
-        const QString id = value.toString().trimmed();
-        if (id.isEmpty() || ids.contains(id)) {
-            response = errorResponse(QStringLiteral("invalid_devices"),
-                                     QStringLiteral("设备选择包含无效或重复项目"));
+    QStringList groups;
+    for (const QString &key : {QStringLiteral("deviceIds"), QStringLiteral("groupNames")}) {
+        if (!request.contains(key))
+            continue;
+        if (!request.value(key).isArray()) {
+            response = errorResponse(QStringLiteral("invalid_filter"), QStringLiteral("筛选条件必须为数组"));
             return 400;
         }
-        ids.append(id);
+        QStringList &values = key == QStringLiteral("deviceIds") ? ids : groups;
+        for (const QJsonValue &value : request.value(key).toArray()) {
+            if (!value.isString() || value.toString().isEmpty() || values.contains(value.toString())) {
+                response = errorResponse(QStringLiteral("invalid_filter"), QStringLiteral("筛选条件包含无效或重复项目"));
+                return 400;
+            }
+            values.append(value.toString());
+        }
+    }
+    for (const QString &key : {QStringLiteral("executionFilterEnabled"), QStringLiteral("showFilteredOut")}) {
+        if (request.contains(key) && !request.value(key).isBool()) {
+            response = errorResponse(QStringLiteral("invalid_filter"),
+                                     QStringLiteral("筛选开关必须为布尔值"));
+            return 400;
+        }
     }
 
-    bool stopped = false;
+    bool locked = false;
     bool valid = false;
-    if (!invokeRuntime([&stopped, &valid, &ids](TimelineRuntime *runtime) {
+    if (!invokeRuntime([&locked, &valid, &ids, &groups, &request](TimelineRuntime *runtime) {
         TimelineManager *manager = runtime->timelineManager();
-        stopped = manager->playbackState() == TimelineManager::Stopped;
+        locked = manager->playbackState() != TimelineManager::Stopped
+            && (request.contains(QStringLiteral("executionFilterEnabled"))
+                || (manager->executionFilterEnabled()
+                    && (request.contains(QStringLiteral("deviceIds")) || request.contains(QStringLiteral("groupNames")))));
         valid = true;
         for (const QString &id : ids) {
             if (!runtime->deviceModel()->deviceById(id)) {
@@ -436,8 +457,16 @@ int WebControlServer::updatePlaybackDevices(const QJsonArray &deviceIds,
                 break;
             }
         }
-        if (stopped && valid)
-            manager->setPlaybackDevices(ids);
+        if (!locked && valid) {
+            if (request.contains(QStringLiteral("deviceIds")))
+                manager->setFilterDeviceIds(ids);
+            if (request.contains(QStringLiteral("groupNames")))
+                manager->setFilterGroupNames(groups);
+            if (request.contains(QStringLiteral("executionFilterEnabled")))
+                manager->setExecutionFilterEnabled(request.value(QStringLiteral("executionFilterEnabled")).toBool());
+            if (request.contains(QStringLiteral("showFilteredOut")))
+                manager->setShowFilteredOut(request.value(QStringLiteral("showFilteredOut")).toBool());
+        }
     })) {
         response = errorResponse(QStringLiteral("runtime_unavailable"),
                                  QStringLiteral("播控运行时不可用"));
@@ -448,9 +477,9 @@ int WebControlServer::updatePlaybackDevices(const QJsonArray &deviceIds,
                                  QStringLiteral("选择的设备不存在"));
         return 400;
     }
-    if (!stopped) {
+    if (locked) {
         response = errorResponse(QStringLiteral("devices_locked"),
-                                 QStringLiteral("仅停止状态可修改播控设备"));
+                                 QStringLiteral("播放期间不能修改执行范围或执行开关"));
         return 409;
     }
 

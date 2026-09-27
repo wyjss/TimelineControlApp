@@ -35,10 +35,10 @@ Item {
         ? selectedDevice.commands
         : []
     readonly property bool supportsPowerOn: selectedDeviceCommands.some(function(command) {
-        return command.name === "系统开机"
+        return command.name === "$开机"
     })
     readonly property bool supportsPowerOff: selectedDeviceCommands.some(function(command) {
-        return command.name === "系统关机"
+        return command.name === "$关机"
     })
     property string powerControlDeviceId: ""
     property string powerControlDeviceName: ""
@@ -172,7 +172,7 @@ Item {
         var result = []
         if (deviceDisplayMode !== "group" || selectedGroupKind !== "named")
             return result
-        var commandName = powerOn ? "系统开机" : "系统关机"
+        var commandName = powerOn ? "$开机" : "$关机"
         for (var index = 0; index < devices.length; ++index) {
             var device = devices[index]
             if ((device.groupNames || []).indexOf(selectedGroupName) < 0)
@@ -1015,7 +1015,6 @@ Item {
                                         anchors.right: parent.right
                                         width: deviceCardFlow.cardWidth
                                         height: parent.height
-                                        opacity: modelData.filteredOut ? 0.46 : 1
                                         text: modelData.name
                                         padding: 0
                                         contentSpacing: 0
@@ -1029,10 +1028,6 @@ Item {
                                         ToolTip.delay: 600
                                         ToolTip.text: String(modelData.name || "") + "\n"
                                             + root.deviceAddress(modelData) + " · " + root.protocolsText(modelData && modelData.supportedProtocols)
-
-                                        Behavior on opacity {
-                                            NumberAnimation { duration: 120 }
-                                        }
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
@@ -1560,11 +1555,6 @@ Item {
 
                                             Layout.fillWidth: true
                                             spacing: 0
-                                            opacity: commandData && commandData.filteredOut ? 0.46 : 1
-
-                                            Behavior on opacity {
-                                                NumberAnimation { duration: 120 }
-                                            }
 
                                             Base.AppCard {
                                                 id: commandRow

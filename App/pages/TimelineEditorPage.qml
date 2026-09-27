@@ -583,7 +583,7 @@ Item {
 
                                     delegate: Item {
                                         readonly property var commandData: modelData.command
-                                        readonly property bool filteredOut: !modelData.matchesFilter || commandData.filteredOut
+                                        readonly property bool filteredOut: !modelData.matchesFilter
                                         readonly property real startRatio: root.overviewDurationMs > 0
                                             ? Math.max(0, Number(commandData.startTimeMs || 0))
                                                 / root.overviewDurationMs

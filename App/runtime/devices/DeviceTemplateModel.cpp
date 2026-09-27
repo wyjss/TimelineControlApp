@@ -9,6 +9,7 @@
 #include "devices/backends/XB809.h"
 #include "devices/backends/LMI.h"
 #include "devices/backends/Lighting.h"
+#include "devices/backends/GF_T.h"
 
 
 DeviceTemplateModel::DeviceTemplateModel(TimelineModel *timelineModel,
@@ -35,6 +36,7 @@ void DeviceTemplateModel::loadDefaultTemplates()
     appendTemplate(new XB809DeviceTemplate(this));
     appendTemplate(new LMIDeviceTemplate(this));
     appendTemplate(new LightingDeviceTemplate(this));
+    appendTemplate(new GFTDeviceTemplate(this));
 }
 
 QVariantList DeviceTemplateModel::templates() const

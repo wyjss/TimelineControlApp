@@ -6,7 +6,7 @@ const elements = Object.fromEntries([
     "empty-timelines", "queue-panel", "queue-count", "queue-list", "queue-status",
     "queue-play-button", "queue-stop-button", "clear-queue-button", "device-count",
     "device-list", "empty-devices", "device-selection", "reset-devices-button", "command-program", "command-count", "command-list",
-    "empty-commands", "toast"
+    "empty-commands", "toast", "show-filtered-out", "execution-filter"
 ].map(id => [id, document.getElementById(id)]));
 
 const state = {
@@ -257,38 +257,43 @@ function renderQueue(data) {
 }
 
 function renderDevices(data) {
-    const selectedIds = data.playbackDevices || [];
+    const selectedIds = data.filterDeviceIds;
+    const selectedGroups = data.filterGroupNames;
+    const locked = data.executionFilterEnabled && data.playbackState !== "stopped";
     const signature = JSON.stringify(data.devices.map(device => [
         device.id,
         device.name,
         device.type,
         device.online,
-        selectedIds.includes(device.id)
-    ]).concat([[data.playbackState, state.busy]]));
+        selectedIds.includes(device.id),
+        device.matchesFilter
+    ]).concat([[data.playbackState, state.busy, selectedIds, selectedGroups, data.executionFilterEnabled, data.showFilteredOut]]));
     if (state.renderSignatures.devices === signature) return;
     state.renderSignatures.devices = signature;
     elements["device-list"].replaceChildren();
     elements["device-count"].textContent = String(data.devices.length);
     elements["empty-devices"].hidden = data.devices.length > 0;
     elements["reset-devices-button"].disabled = state.busy
-        || data.playbackState !== "stopped"
-        || selectedIds.length === 0;
-    const selectedNames = data.devices
-        .filter(device => selectedIds.includes(device.id))
-        .map(device => device.name || device.id);
-    elements["device-selection"].textContent = selectedNames.length
-        ? `当前：${selectedNames.join("、")}`
+        || locked
+        || (selectedIds.length === 0 && selectedGroups.length === 0);
+    elements["show-filtered-out"].checked = data.showFilteredOut;
+    elements["show-filtered-out"].disabled = state.busy;
+    elements["execution-filter"].checked = data.executionFilterEnabled;
+    elements["execution-filter"].disabled = state.busy || data.playbackState !== "stopped";
+    const selectedNames = selectedIds.map(id => data.devices.find(device => device.id === id)?.name || id);
+    elements["device-selection"].textContent = selectedIds.length || selectedGroups.length
+        ? `设备：${selectedNames.join("、") || "未指定"}；分组：${selectedGroups.join("、") || "未指定"}`
         : "当前：全部设备";
 
     for (const device of data.devices) {
         const selected = selectedIds.includes(device.id);
         const status = device.online ? "在线" : "离线";
-        const row = createElement("button", `device-row${selected ? " selected" : selectedIds.length ? " filtered" : ""}`);
+        const row = createElement("button", `device-row${selected ? " selected" : !device.matchesFilter ? " filtered" : ""}`);
         row.type = "button";
-        row.disabled = state.busy || data.playbackState !== "stopped";
+        row.disabled = state.busy || locked;
         row.setAttribute("aria-pressed", String(selected));
         row.addEventListener("click", () => post(
-            "/api/v1/playback-devices",
+            "/api/v1/device-filter",
             { deviceIds: selected
                 ? selectedIds.filter(id => id !== device.id)
                 : [...selectedIds, device.id] },
@@ -305,9 +310,9 @@ function renderDevices(data) {
 }
 
 function renderCommands(data, timeline) {
-    const commands = timeline ? [...timeline.commands].sort((left, right) => left.startTimeMs - right.startTimeMs) : [];
+    const commands = timeline ? timeline.commands.filter(command => data.showFilteredOut || command.matchesFilter)
+        .sort((left, right) => left.startTimeMs - right.startTimeMs) : [];
     const devices = new Map(data.devices.map(device => [device.id, device.name || device.id]));
-    const selectedIds = data.playbackDevices || [];
     const nextCommand = commands.find(command => command.state === "idle"
         && command.startTimeMs >= (data.playbackState === "stopped" ? state.startTimeMs : timeline?.currentTimeMs || 0));
     const signature = JSON.stringify([
@@ -321,10 +326,10 @@ function renderCommands(data, timeline) {
             command.startTimeMs,
             command.executionParameters,
             command.state,
-            command.error
+            command.error,
+            command.matchesFilter
         ]),
-        [...devices],
-        selectedIds
+        [...devices]
     ]);
     if (state.renderSignatures.commands === signature) return;
     state.renderSignatures.commands = signature;
@@ -332,10 +337,12 @@ function renderCommands(data, timeline) {
     elements["command-count"].textContent = String(commands.length);
     elements["command-list"].replaceChildren();
     elements["empty-commands"].hidden = commands.length > 0;
-    elements["empty-commands"].textContent = timeline ? "该节目没有指令" : "选择节目后查看指令";
+    elements["empty-commands"].textContent = timeline
+        ? (timeline.commands.length ? "当前范围内没有指令" : "该节目没有指令")
+        : "选择节目后查看指令";
 
     for (const command of commands) {
-        const filtered = selectedIds.length > 0 && !selectedIds.includes(command.deviceId);
+        const filtered = !command.matchesFilter;
         const row = createElement("div", `command-grid command-row ${command.state}${command === nextCommand ? " next" : ""}${filtered ? " filtered" : ""}`);
         row.append(createElement("span", "command-time", formatTime(command.startTimeMs)));
         const copy = createElement("span", "command-copy");
@@ -466,7 +473,11 @@ elements["queue-stop-button"].addEventListener("click", () =>
 elements["stop-button"].addEventListener("click", () =>
     post("/api/v1/control", { action: "stop" }, "播放已停止"));
 elements["reset-devices-button"].addEventListener("click", () =>
-    post("/api/v1/playback-devices", { deviceIds: [] }, "已重置为全部设备"));
+    post("/api/v1/device-filter", { deviceIds: [], groupNames: [] }, "已重置为全部设备"));
+elements["show-filtered-out"].addEventListener("change", event =>
+    post("/api/v1/device-filter", { showFilteredOut: event.target.checked }, "显示方式已更新"));
+elements["execution-filter"].addEventListener("change", event =>
+    post("/api/v1/device-filter", { executionFilterEnabled: event.target.checked }, "播放设备范围已更新"));
 elements["refresh-button"].addEventListener("click", () => refresh(true));
 
 setInterval(() => {

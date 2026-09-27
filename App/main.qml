@@ -9,6 +9,7 @@ import "qrc:/UICore/qml/components/base" as Base
 import "qrc:/UICore/qml/components/shell" as Shell
 import "qrc:/UICore/qml/theme" as Theme
 import "qrc:/TimelineControlApp/App/pages" as Pages
+import "qrc:/TimelineControlApp/App/pages/timeline" as Timeline
 
 ApplicationWindow {
     id: window
@@ -40,13 +41,6 @@ ApplicationWindow {
     readonly property bool timelinePaused: timelineManager && timelineManager.playbackState === 2
     readonly property bool timelineCompleted: timelineManager && timelineManager.playbackState === 3
     readonly property bool queuePlayback: timelineManager && timelineManager.queuePlayback
-    readonly property var availablePlaybackDevices: appRuntime && appRuntime.deviceModel
-        ? appRuntime.deviceModel.devices
-        : []
-    readonly property var playbackDeviceIds: timelineManager
-        ? timelineManager.playbackDevices
-        : []
-    readonly property int playbackDeviceCount: playbackDeviceIds.length
     readonly property string playbackStateText: timelineRunning
         ? qsTr("播放中")
         : (timelinePaused
@@ -57,29 +51,6 @@ ApplicationWindow {
         : (!queuePlayback && timelinePaused
             ? qsTr("继续播放")
             : qsTr("播放当前节目"))
-
-    function playbackDeviceSelected(deviceId) {
-        return playbackDeviceIds.indexOf(String(deviceId || "")) >= 0
-    }
-
-    function setPlaybackDevices(deviceIds) {
-        if (timelineManager && timelineStopped)
-            timelineManager.playbackDevices = deviceIds
-    }
-
-    function togglePlaybackDevice(deviceId) {
-        if (!timelineManager || !timelineStopped)
-            return
-
-        var id = String(deviceId || "")
-        var deviceIds = playbackDeviceIds.slice()
-        var index = deviceIds.indexOf(id)
-        if (index >= 0)
-            deviceIds.splice(index, 1)
-        else
-            deviceIds.push(id)
-        setPlaybackDevices(deviceIds)
-    }
 
     function activateNavigation(key) {
         var items = shell.navigationItems || []
@@ -323,26 +294,29 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
-                        id: playbackDeviceButton
+                        id: deviceScopeButton
+                        objectName: "deviceScopeButton"
 
                         raised: variant === UiStyle.ButtonVariant.Secondary
                         size: UiStyle.ButtonSize.Medium
-                        variant: window.playbackDeviceCount > 0
+                        variant: deviceScopePopup.filterActive
                             ? UiStyle.ButtonVariant.Tonal
                             : UiStyle.ButtonVariant.Secondary
                         minWidth: 116
-                        text: window.playbackDeviceCount > 0
-                            ? qsTr("过滤中 · %1 台").arg(window.playbackDeviceCount)
-                            : qsTr("设备过滤")
+                        text: deviceScopePopup.filterActive
+                            ? qsTr("设备范围 · %1/%2").arg(deviceScopePopup.matchedDeviceCount)
+                                .arg(deviceScopePopup.devices.length)
+                            : qsTr("设备范围")
                         iconName: "resources"
-                        onClicked: playbackDevicePopup.opened
-                            ? playbackDevicePopup.close()
-                            : playbackDevicePopup.open()
+                        enabled: !!window.timelineManager
+                        onClicked: deviceScopePopup.visible
+                            ? deviceScopePopup.close()
+                            : deviceScopePopup.open()
 
                         ToolTip.visible: hovered
-                        ToolTip.text: window.timelineStopped
-                            ? qsTr("设置参与播放的设备")
-                            : qsTr("播放期间不能修改设备过滤")
+                        ToolTip.text: window.timelineManager && window.timelineManager.executionFilterEnabled
+                            ? qsTr("已限制播放设备；点击设置设备范围与时间轴显示")
+                            : qsTr("设置时间轴显示范围；当前全部设备参与播放")
                     }
 
                     Rectangle {
@@ -387,90 +361,12 @@ ApplicationWindow {
                     }
                 }
 
-                Base.AppPopup {
-                    id: playbackDevicePopup
-
+                Timeline.TimelineFilterPopup {
+                    id: deviceScopePopup
                     parent: window.contentItem
-                    width: 280
-                    modal: false
-                    showModalOverlay: false
-                    surfaceTone: UiStyle.SurfaceTone.SurfaceOverlay
-                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-                    onAboutToShow: {
-                        var origin = playbackDeviceButton.mapToItem(
-                            parent,
-                            0,
-                            playbackDeviceButton.height + 8
-                        )
-                        x = origin.x
-                        y = origin.y
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: qsTr("播放设备")
-                        styleRole: UiStyle.TypographyRole.BodyM
-                        overrideWeight: window.appTheme.typography.weightBold
-                    }
-
-                    Base.AppText {
-                        Layout.fillWidth: true
-                        text: window.timelineStopped
-                            ? qsTr("不勾选设备时播放全部设备")
-                            : qsTr("播放期间已锁定过滤范围")
-                        styleRole: UiStyle.TypographyRole.BodyS
-                        textTone: UiStyle.TextTone.Secondary
-                    }
-
-                    Base.AppButton {
-                        Layout.fillWidth: true
-                        text: qsTr("全部设备")
-                        iconSymbol: window.playbackDeviceCount === 0 ? "✓" : ""
-                        contentAlignment: "start"
-                        variant: window.playbackDeviceCount === 0
-                            ? UiStyle.ButtonVariant.Tonal
-                            : UiStyle.ButtonVariant.Ghost
-                        enabled: window.timelineStopped
-                        onClicked: window.setPlaybackDevices([])
-                    }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 1
-                        color: window.appTheme.colors.border
-                    }
-
-                    ListView {
-                        id: playbackDeviceList
-
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: Math.min(240,
-                            Math.max(36, window.availablePlaybackDevices.length * 36))
-                        clip: true
-                        boundsBehavior: Flickable.StopAtBounds
-                        model: window.availablePlaybackDevices
-                        ScrollBar.vertical: ScrollBar {
-                            policy: ScrollBar.AsNeeded
-                        }
-
-                        delegate: Base.AppCheckBox {
-                            readonly property string deviceId: String(modelData.id || "")
-
-                            width: playbackDeviceList.width
-                            text: String(modelData.name || deviceId || qsTr("未命名设备"))
-                            checked: window.playbackDeviceSelected(deviceId)
-                            enabled: window.timelineStopped
-                            onClicked: window.togglePlaybackDevice(deviceId)
-                        }
-
-                        Base.AppText {
-                            anchors.centerIn: parent
-                            visible: window.availablePlaybackDevices.length === 0
-                            text: qsTr("暂无设备")
-                            styleRole: UiStyle.TypographyRole.BodyS
-                            textTone: UiStyle.TextTone.Secondary
-                        }
-                    }
+                    timelineManager: window.timelineManager
+                    deviceModel: window.appRuntime ? window.appRuntime.deviceModel : null
+                    anchorItem: deviceScopeButton
                 }
 
                 Rectangle {

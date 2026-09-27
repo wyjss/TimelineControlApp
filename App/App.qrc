@@ -31,6 +31,7 @@
         <file alias="App/pages/timeline/TimelineCommandHorizontalList.qml">pages/timeline/TimelineCommandHorizontalList.qml</file>
         <file alias="App/pages/timeline/TimelineCommandVerticalList.qml">pages/timeline/TimelineCommandVerticalList.qml</file>
         <file alias="App/pages/timeline/TimelineDeviceTrackArea.qml">pages/timeline/TimelineDeviceTrackArea.qml</file>
+        <file alias="App/pages/timeline/TimelineFilterPopup.qml">pages/timeline/TimelineFilterPopup.qml</file>
         <file alias="App/pages/timeline/TimelineExternalTriggerEditor.qml">pages/timeline/TimelineExternalTriggerEditor.qml</file>
         <file alias="App/pages/timeline/TimelineCard.qml">pages/timeline/TimelineCard.qml</file>
         <file alias="App/pages/timeline/TimelinePlayQueue.qml">pages/timeline/TimelinePlayQueue.qml</file>

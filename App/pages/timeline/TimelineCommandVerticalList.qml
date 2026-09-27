@@ -63,13 +63,6 @@ Item {
         return name.length > 0 ? name : String(deviceId || qsTr("未分配"))
     }
 
-    function commandFilteredOut(command) {
-        if (command && command.filteredOut)
-            return true
-        var device = deviceForId(command ? command.targetDeviceId : "")
-        return device && device.filteredOut
-    }
-
     function padNumber(value, width) {
         var text = String(value)
         while (text.length < width)
@@ -89,9 +82,6 @@ Item {
     }
 
     function resultColor(command) {
-        if (commandFilteredOut(command))
-            return root.colorValue("neutralBorder", "#45576b")
-
         return command && command.stateColor
             ? String(command.stateColor)
             : root.colorValue("neutralBorder", "#45576b")
@@ -234,7 +224,7 @@ Item {
                     : "")
                 readonly property bool selected: String(commandData && commandData.id || "")
                     === root.selectedCommandId
-                readonly property bool filteredOut: !modelData.matchesFilter || root.commandFilteredOut(commandData)
+                readonly property bool filteredOut: !modelData.matchesFilter
                 width: commandList.width
                 height: (root.compact ? 60 : 40) + bottomPadding
                 opacity: filteredOut ? 0.46 : 1

@@ -150,7 +150,9 @@ void TimelineRuntime::seekPcVideoPreview(qint64 timeMs)
     auto &states = m_pcVideoPreviewStates[timeline->id()];
     const QList<TimelineCommand *> commands = timeline->commandModel()->commands();
     for (Device *device : m_deviceModel->items()) {
-        if (device->filteredOut() || !device->supportsProtocol(DeviceProtocol::Pc)
+        if ((m_timelineManager->executionFilterEnabled()
+             && !m_timelineManager->matchesDeviceFilter(device->id()))
+            || !device->supportsProtocol(DeviceProtocol::Pc)
             || states.contains(device->id()))
             continue;
         states.insert(device->id(), PcVideoStateCalculator::stateAt(
@@ -177,7 +179,9 @@ void TimelineRuntime::flushPcVideoPreview()
     auto &states = m_pcVideoPreviewStates[timeline->id()];
     for (auto state = states.begin(); state != states.end(); ++state) {
         Device *device = m_deviceModel->deviceById(state.key());
-        if (!device || device->filteredOut() || !device->supportsProtocol(DeviceProtocol::Pc))
+        if (!device || (m_timelineManager->executionFilterEnabled()
+                        && !m_timelineManager->matchesDeviceFilter(device->id()))
+            || !device->supportsProtocol(DeviceProtocol::Pc))
             continue;
 
         const auto after = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);

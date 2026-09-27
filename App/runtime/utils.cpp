@@ -1,6 +1,8 @@
 #include "utils.h"
 
 #include "devices/DeviceConstants.h"
+#define LC "[utils] "
+#include "runtime/LogMacros.h"
 
 #include <QTime>
 #include <QDateTime>
@@ -189,8 +191,12 @@ namespace Utils
 		return {{"label", label}, {"value", value}};
 	}
 
-	bool toHexData(const QString& ss, QByteArray* data)
+	bool toHexData(const QString& _ss, QByteArray* data)
 	{
+		// 标准化
+		QString ss = _ss;
+		ss = ss.remove(" ").remove("-").remove(":");
+
 		if (ss.isEmpty() || ss.size() % 2 != 0) {
 			return false;
 		}
@@ -210,7 +216,11 @@ namespace Utils
 
 		if (data) {
 			*data = QByteArray::fromHex(ss.toLatin1());
+
+			LOG_DEBUG("conv hex to bit:" << ss.toLatin1());
 		}
+
+		
 		return true;
 	}
 

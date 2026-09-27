@@ -7,7 +7,8 @@
 - 查看当前方案、播控状态、主时钟和节目进度
 - 查看节目库、触发规则状态、指令数量、执行状态和节目时长
 - 查看当前节目的指令时间、目标设备、执行参数、状态和错误信息
-- 选择播控设备并与 C++ `TimelineManager::playbackDevices` 双向同步
+- 选择设备范围并与桌面共用 `filterDeviceIds`、`filterGroupNames`；网页点选设备时保留已有分组条件，重置时清空两者
+- 独立控制范围外指令的灰显/隐藏与播放执行；开启执行过滤后，播放期间锁定范围，显示方式仍可调整
 - 选中节目与加入队列分离，显式加入、移除、排序和清空队列；已入队节目显示角标
 - 单节目与队列分别开始、暂停、继续和停止，队列为空时隐藏队列面板
 - 停止时拖动进度条选择当前节目的起播时间，之前的指令跳过；播放队列从第一项的 0 开始
@@ -36,7 +37,7 @@ webControlServer.start(QStringLiteral("0.0.0.0"), 8080);
 
 - `GET /api/v1/status`：完整播控快照
 - `POST /api/v1/queue`：请求体为 `{ "timelineIds": ["..."] }`
-- `POST /api/v1/playback-devices`：请求体为 `{ "deviceIds": ["..."] }`
+- `POST /api/v1/device-filter`：支持可选字段 `deviceIds`、`groupNames`（字符串数组）、`executionFilterEnabled`、`showFilteredOut`（布尔值）；仅修改传入的字段。空设备和组条件表示全部设备，非空条件按并集匹配。播放期间不能修改执行开关，开启执行过滤时也不能修改设备或组条件
 - `POST /api/v1/control`：支持下表中的 `action`
 
 | action | 参数及行为 |

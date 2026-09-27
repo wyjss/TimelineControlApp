@@ -23,9 +23,39 @@ namespace DeviceType {
 
 //! 公共key定义，包括DeviceParamSpec::createForKey和指令CommandType
 namespace DeviceKey {
+	//////////////////////////////////////////////////////////////////////////
+	// 通用设备参数
+	// 设备名称
 	inline const QString Name = "name";
-	inline const QString CommandType = "commandType";
+	// 设备协议
 	inline const QString Protocol = "protocol";
+	// 设备ip
+	inline const QString Ip = "ip";
+	// 设备载荷数据校验算法，默认none
+	// 在发送数据前（payload二进制化之后）自动处理
+	// 1: 累加取余和模，uint32 sum = sum(bits);sum/256,sum%256
+	inline const QString PayloadVerify = "payloadVerify";
+	inline const QString PayloadVerify_None = "payloadVerify_None";
+	inline const QString PayloadVerify_1 = "payloadVerify_1";
+	// 载荷类型，默认Text
+	// 只用于提示数据处理（数据发送和模板key），不能控制ui输入模式
+	// 内部通过此参数对载荷进行转换，如果是Hex，通过utils转为二进制
+	// @todo 所有协议需要统一处理，目前是拆分各自处理
+	// 串口默认hex，不需要这个参数
+	// udp根据PayloadType理解Payload
+	inline const QString PayloadType = "payloadType";
+	inline const QString PayloadType_Text = "Text";
+	inline const QString PayloadType_Hex = "Hex";
+	// 设备指令载荷，如果是http则表示body
+	// 通过QVariant::type判断类型，外部指令只能是string，但是内部指令支持bit
+	// @todo 可以代替 SerialPayload/HttpBody ?
+	inline const QString Payload = "payload";
+
+	//////////////////////////////////////////////////////////////////////////
+	
+	//
+	inline const QString CommandType = "commandType";
+	
 	//! 通过模板拼接url，支持http/udp/serial
 	//! 模板：xxxx${paramName}xxx 
 	//! 通过查询param.name == paramName进行插入
@@ -45,8 +75,6 @@ namespace DeviceKey {
 	// dmx512指令的实时数据，宽度等于Dmx512BitCount
 	inline const QString Dmx512CommandBits = "dmx512CommandBits";
 
-
-	inline const QString Ip = "ip";
 	inline const QString MacAddress = "macAddress";
 	inline const QString HttpMethod = "httpMethod";
 	//inline const QString HttpQueryParams = "httpQueryParams";
@@ -54,16 +82,10 @@ namespace DeviceKey {
 	inline const QString ApiPath = "apiPath";
 	inline const QString KeystoneCorrection = "keystoneCorrection";
 	inline const QString SerialPayload = "serialPayload";
-	// @todo 可以代替 SerialPayload/HttpBody ?
-	// 内部使用QString承载
-	inline const QString Payload = "payload";
-	// 载荷类型，Text（默认）、Hex
-	// 只用于提示数据处理（数据发送和模板key），不能控制ui输入模式
-	// 串口默认hex，不需要这个参数
-	// udp根据PayloadType理解Payload
-	inline const QString PayloadType = "payloadType";
-	inline const QString PayloadType_Text = "Text";
-	inline const QString PayloadType_Hex = "Hex";
+	
+	
+	
+	
 	//
 	inline const QString Port = "port";
 	inline const QString VirtualScreenWidth = "virtualScreenWidth";
@@ -125,11 +147,11 @@ namespace DeviceKey {
 
 	//////////////////////////////////////////////////////////////////////////
 	// 系统控制指令，为了兼容外部创建，只用作名称
-	inline const QString SystemPause = "系统暂停";
-	inline const QString SystemResume = "系统恢复";
-	inline const QString SystemStop = "系统停止";
-	inline const QString SystemOpen = "系统开机";
-	inline const QString SystemClose = "系统关机";
+	inline const QString SystemPause = "$暂停";
+	inline const QString SystemResume = "$恢复";
+	inline const QString SystemStop = "$停止";
+	inline const QString SystemOpen = "$开机";
+	inline const QString SystemClose = "$关机";
 } // namespace DeviceKey
 
 namespace DeviceConstants {
