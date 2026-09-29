@@ -170,6 +170,16 @@ DeviceParamSpec *Device::getParam(const QString &key) const
     return nullptr;
 }
 
+DeviceParamSpec* Device::getParamByNameOrId(const QString& key) const
+{
+	for (DeviceParamSpec* param : m_params) {
+        if (param->key() == key || param->label() == key) {
+			return param;
+        }
+	}
+	return nullptr;
+}
+
 bool Device::addParam(DeviceParamSpec *param)
 {
     if (!param || param->key().isEmpty() || getParam(param->key()))

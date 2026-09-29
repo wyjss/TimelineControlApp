@@ -9,6 +9,9 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFileSystemWatcher>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 namespace Utils 
 {
@@ -56,7 +59,7 @@ namespace Utils
 		auto videos = getOptions(DeviceConstants::LocalVideoPrefix,
 								 { "*.mp4", "*.avi" , "*.flv", "*.png", "*.jpg"});
 		auto audios = getOptions(DeviceConstants::LocalAudioPrefix, 
-								 { "*.mp3", "*.mp4","*.wav" ,"*.aac"});
+								 { "*.mp3","*.wav" ,"*.aac"});
 		// 空，等于全部
 		videos.insert(0, "");
 		audios.insert(0, "");
@@ -238,4 +241,56 @@ namespace Utils
 		assert(s.size() == 1);
 		return s.toUInt(nullptr, 16);
 	}
+
+	bool timelinesFromJson(const QString& json, QList<TL>& tls)
+	{
+		auto document = QJsonDocument::fromJson(json.toUtf8());
+		if (!document.isObject()) {
+			return false;
+		}
+
+		auto timelines = document.object().value("timelines");
+		if (!timelines.isArray()) {
+			return false;
+		}
+
+		QList<TL> parsedTls;
+		for (const auto& timelineValue : timelines.toArray()) {
+			if (!timelineValue.isObject()) {
+				return false;
+			}
+			auto timeline = timelineValue.toObject();
+			if (!timeline.value("name").isString() || !timeline.value("cmds").isArray()) {
+				return false;
+			}
+
+			TL tl;
+			tl.name = timeline.value("name").toString();
+			for (const auto& commandValue : timeline.value("cmds").toArray()) {
+				if (!commandValue.isObject()) {
+					return false;
+				}
+				auto command = commandValue.toObject();
+				if (!command.value("time").isString() ||
+					!command.value("deviceName").isString() ||
+					!command.value("cmdName").isString() ||
+					!command.value("simName").isString() ||
+					!command.value("params").isObject()) {
+					return false;
+				}
+
+				TLCmd cmd;
+				cmd.time = command.value("time").toString();
+				cmd.deviceName = command.value("deviceName").toString();
+				cmd.cmdName = command.value("cmdName").toString();
+				cmd.simName = command.value("simName").toString();
+				cmd.params = command.value("params").toObject().toVariantMap();
+				tl.cmds.push_back(cmd);
+			}
+			parsedTls.push_back(tl);
+		}
+		tls.swap(parsedTls);
+		return true;
+	}
+
 } // namespace Utils

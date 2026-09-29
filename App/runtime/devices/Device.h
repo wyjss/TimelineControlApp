@@ -65,6 +65,8 @@ public:
 
     QVariantList params() const;
     Q_INVOKABLE DeviceParamSpec *getParam(const QString &key) const;
+    // 通过名称或label查找指令
+    Q_INVOKABLE DeviceParamSpec *getParamByNameOrId(const QString &s) const;
     bool addParam(DeviceParamSpec *param);
     Q_INVOKABLE bool setParamValue(const QString &key, const QVariant &value);
 

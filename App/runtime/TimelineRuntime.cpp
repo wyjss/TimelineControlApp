@@ -462,9 +462,9 @@ bool TimelineRuntime::loadPlanFromFile(const QString &filePath)
 }
 
 #include <QSettings>
+#include "runtime/utils.h"
 void TimelineRuntime::temp_loadConfig()
 {
-    return;
     LOG_ERROR("----------------------temp_loadConfig----------------");
     QSettings settings(R"(D:\Program\RA\TimelineControlApp\docs\auto-create.ini)",
                        QSettings::IniFormat);
@@ -472,94 +472,173 @@ void TimelineRuntime::temp_loadConfig()
 
     auto gs = settings.childGroups();
 
-    // 设备
-    for (auto g : gs) {
-        if (g.startsWith("--") || g.startsWith("timeline-")) {
-            continue;
+
+    { // 设备
+        settings.beginGroup("device");
+        auto keys = settings.childGroups();
+        settings.endGroup();
+
+        // 读取
+        QList<QVariantMap> devices;
+        for (const auto& key : keys) {
+            QString deviceName = QString::fromUtf8(key.toLatin1());
+            QString fullGroupKey = "device/" + key;
+            settings.beginGroup(fullGroupKey);
+			auto childKeys = settings.childKeys();
+            QVariantMap params;
+            params[DeviceKey::Name] = deviceName;
+            for (auto childKey : childKeys) {
+                auto var = settings.value(childKey);
+                QString paramName = QString::fromUtf8(childKey.toLatin1());
+				if (paramName.startsWith("虚拟")) {
+					int a = 0;
+				}
+                params[paramName] = var;
+            }
+            devices.push_back(params);
+            settings.endGroup();
+        }
+        
+        // 配置
+        for (const auto& params : devices) {
+            QString deviceName = params.value(DeviceKey::Name).toString();
+			QString templateName = params.value("template").toString();
+			QString deviceType = params.value("deviceType").toString();
+
+			if (deviceName.isEmpty()) {
+				LOG_ERROR("缺少设备名称");
+				continue;
+			}
+
+			if (templateName.isEmpty()) {
+				LOG_ERROR("缺少设备模板名称");
+				continue;
+			}
+            auto groups = params.value("group", "").toString().split(",", Qt::SkipEmptyParts);
+			// 设备-仅在不存在时创建
+			auto device = m_deviceModel->deviceByName(deviceName);
+			if (!device) { // 创建
+                bool createResult = m_deviceManager->createDeviceFromTemplate(
+                    templateName,
+                    params,
+                    deviceName,
+                    deviceType,
+                    groups
+                );
+                if (!createResult) {
+					LOG_ERROR("创建设备失败" << params);
+					continue;
+                } else {
+                    device = m_deviceModel->deviceByName(deviceName);
+                }
+            } 
+            
+			// 更新
+			for (auto itr = params.begin(); itr != params.end(); ++itr) {
+				if (itr.key().startsWith("虚拟")) {
+					int a = 0;
+				}
+				auto param = device->getParamByNameOrId(itr.key());
+				if (param) {
+					param->setValue(itr.value());
+				}
+			}
+
+            // 设备指令
+			for (auto itr = params.begin(); itr != params.end(); ++itr) {
+                QString k = itr.key();
+                if (k.startsWith("cmd-") == false) {
+                    continue;
+                }
+
+                QString cmdName = k.mid(4);
+                if (cmdName.isEmpty()) {
+                    continue;
+                }
+
+                bool useText = false;
+                if (cmdName.startsWith("-text")) {
+                    useText = true;
+                    cmdName = cmdName.mid(5);
+                }
+
+                auto cmd = device->commandByName(cmdName);
+                bool isNew = !cmd;
+                // 创建指令
+                if (isNew) {
+					cmd = device->createCommandDraft("");
+					cmd->setName(cmdName);
+                }
+                // 更新载荷
+				auto payload = cmd->getField(DeviceKey::Payload);
+				if (!payload) {
+                    LOG_ERROR("不支持payload");
+
+                    cmd->deleteLater();
+                    continue;
+                } else {
+                    payload->setValue(itr.value());
+                }
+
+                // 自动判断hex or text
+				auto payloadType = cmd->getField(DeviceKey::PayloadType);
+                if (payloadType) {
+                    payloadType->setValue(useText ?
+                                          DeviceKey::PayloadType_Text :
+                                          DeviceKey::PayloadType_Hex
+                    );
+                }
+                
+                // append
+                if (isNew) {
+                    device->appendCommand(cmd);
+                }
+			}
+            
+        }// end for devices
+    }// end device
+   
+    QList<Utils::TL> tls;
+
+    for (const auto& tl : tls) {
+        auto items = m_timelineManager->timelineModel()->items();
+       
+        Timeline* timeline = nullptr;
+        // 查找目标时间线
+        for (auto item : items) {
+            if (item->name() == tl.name) {
+                timeline = item;
+                break;
+            }
         }
 
-         const QString name = QString::fromUtf8(g.toLatin1());
-         const QString templateName = settings.value(g + "/template").toString();
-         const QString deviceType = settings.value(g + "/deviceType").toString();
-         
-         QVariantMap params;
-         QList<QPair<QString, QString>> cmds;
-		 settings.beginGroup(g);
-		 auto keys = settings.allKeys();
-         for (const auto& k : keys) {
-             if (k.startsWith("cmd-")) {
-                  auto v = settings.value(k).toString();
-                 auto cmd = QString::fromUtf8(k.toLatin1());
-                 cmds << qMakePair(cmd.remove("cmd-"), v);
-             } else {
-                 params[k] = settings.value(k);
-             }
-         }
-		 settings.endGroup();
-
-		 auto devTemplate = m_deviceTemplateModel->templateByName(templateName);
-
-         // 仅在不存在时创建
-         auto device = m_deviceModel->deviceByName(name);
-         if (device) {
-             LOG_INFO("已存在设备" << name);
-         } else {
-              LOG_INFO("创建设备" << name);
-			  device = devTemplate->createDevice(nullptr, params);
-			  device->setName(name);
-			  if (!deviceType.isEmpty()) {
-				  device->setDeviceType(deviceType);
-			  }
-         }
-
-         // 
-         for (const auto& cmd : cmds) {
-             auto newCmd = device->commandByName(cmd.first);
-             bool needAppend = !newCmd;
-             if (!newCmd) {
-				 newCmd = device->createCommandDraft("");
-				 newCmd->setName(cmd.first);
-				 newCmd->getField(DeviceKey::Payload)->setValue(cmd.second);
-				 newCmd->getField(DeviceKey::PayloadType)->setValue(DeviceKey::PayloadType_Hex);
-				 device->appendCommand(newCmd);
-             }
-         }
-         m_deviceModel->appendDevice(device);
-    }
-
-	// 时间线
-    for (auto g : gs) {
-        if (g.startsWith("timeline-") == false) {
-            continue;
+        // 删除重建
+        if (timeline) {
+            m_timelineManager->removeTimeline(timeline->id());
         }
+        timeline = m_timelineManager->createTimeline(tl.name);
 
-        QString timelineName = QString::fromUtf8(g.toLatin1()).remove("timeline-");
-
-        settings.beginGroup(g);
-        auto keys = settings.childKeys();
-        for (auto k : keys) {
-            bool ok;
-            int timeMSec = k.toInt(&ok);
-            if (!ok) {
-                LOG_ERROR("解析时间轴指令时间失败" << k);
+        // 添加指令
+        for (const auto& tlCmd : tl.cmds) {
+            auto device = m_deviceModel->deviceByName(tlCmd.deviceName);
+            if (!device) {
+                LOG_ERROR("缺少设备" << tlCmd.deviceName);
                 continue;
             }
 
-            QVariantMap cmdParams;
-            for (auto param : settings.value(k).toString().split(",", Qt::SkipEmptyParts)) {
-				auto ss = param.split(":");
-                if (ss.size() != 2) {
-                    LOG_ERROR("时间轴指令不合规" << param);
-                    continue;
-                }
-                cmdParams[ss[0]] = ss[1];
-            }
+            auto cmd = device->commandByName(tlCmd.cmdName);
+			if (!cmd) {
+				LOG_ERROR("缺少指令" << tlCmd.cmdName);
+				continue;
+			}
 
-            QString cmdName = cmdParams.value("name", "").toString();
-            
+            timeline->commandModel()->addCommand(
+                0,
+                device->id(),
+                tlCmd.cmdName,
+                tlCmd.params,
+                cmd
+            );
         }
-
-        settings.endGroup();
-        m_timelineManager->createTimeline(timelineName);
     }
 }

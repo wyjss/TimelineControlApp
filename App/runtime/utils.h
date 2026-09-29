@@ -1,11 +1,29 @@
 #pragma once
 
+#include <QList>
 #include <QRect>
 #include <QSize>
 #include <QString>
 #include <QVariantMap>
 
 namespace Utils {
+
+	struct TLCmd {
+		QString time;
+		QString deviceName;
+		QString cmdName;
+		QString simName;
+		QVariantMap params;
+	};
+
+	struct TL {
+		QString name;
+		QList<TLCmd> cmds;
+	};
+
+	// JSON格式：{"timelines":[{"name":"名称","cmds":[...]}]}
+	// 成功时替换tls；JSON语法、结构或字段类型错误时返回false，tls保持不变。
+	bool timelinesFromJson(const QString& json, QList<TL>& tls);
 
 	class AVOptionsMgr : public QObject
 	{
