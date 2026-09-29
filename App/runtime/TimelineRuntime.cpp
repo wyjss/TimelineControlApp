@@ -455,5 +455,111 @@ bool TimelineRuntime::loadPlanFromFile(const QString &filePath)
         m_currentPlanFilePath = file.fileName();
         emit currentPlanFilePathChanged();
     }
+
+	temp_loadConfig();
+
     return true;
+}
+
+#include <QSettings>
+void TimelineRuntime::temp_loadConfig()
+{
+    return;
+    LOG_ERROR("----------------------temp_loadConfig----------------");
+    QSettings settings(R"(D:\Program\RA\TimelineControlApp\docs\auto-create.ini)",
+                       QSettings::IniFormat);
+    settings.setIniCodec("utf-8");
+
+    auto gs = settings.childGroups();
+
+    // 设备
+    for (auto g : gs) {
+        if (g.startsWith("--") || g.startsWith("timeline-")) {
+            continue;
+        }
+
+         const QString name = QString::fromUtf8(g.toLatin1());
+         const QString templateName = settings.value(g + "/template").toString();
+         const QString deviceType = settings.value(g + "/deviceType").toString();
+         
+         QVariantMap params;
+         QList<QPair<QString, QString>> cmds;
+		 settings.beginGroup(g);
+		 auto keys = settings.allKeys();
+         for (const auto& k : keys) {
+             if (k.startsWith("cmd-")) {
+                  auto v = settings.value(k).toString();
+                 auto cmd = QString::fromUtf8(k.toLatin1());
+                 cmds << qMakePair(cmd.remove("cmd-"), v);
+             } else {
+                 params[k] = settings.value(k);
+             }
+         }
+		 settings.endGroup();
+
+		 auto devTemplate = m_deviceTemplateModel->templateByName(templateName);
+
+         // 仅在不存在时创建
+         auto device = m_deviceModel->deviceByName(name);
+         if (device) {
+             LOG_INFO("已存在设备" << name);
+         } else {
+              LOG_INFO("创建设备" << name);
+			  device = devTemplate->createDevice(nullptr, params);
+			  device->setName(name);
+			  if (!deviceType.isEmpty()) {
+				  device->setDeviceType(deviceType);
+			  }
+         }
+
+         // 
+         for (const auto& cmd : cmds) {
+             auto newCmd = device->commandByName(cmd.first);
+             bool needAppend = !newCmd;
+             if (!newCmd) {
+				 newCmd = device->createCommandDraft("");
+				 newCmd->setName(cmd.first);
+				 newCmd->getField(DeviceKey::Payload)->setValue(cmd.second);
+				 newCmd->getField(DeviceKey::PayloadType)->setValue(DeviceKey::PayloadType_Hex);
+				 device->appendCommand(newCmd);
+             }
+         }
+         m_deviceModel->appendDevice(device);
+    }
+
+	// 时间线
+    for (auto g : gs) {
+        if (g.startsWith("timeline-") == false) {
+            continue;
+        }
+
+        QString timelineName = QString::fromUtf8(g.toLatin1()).remove("timeline-");
+
+        settings.beginGroup(g);
+        auto keys = settings.childKeys();
+        for (auto k : keys) {
+            bool ok;
+            int timeMSec = k.toInt(&ok);
+            if (!ok) {
+                LOG_ERROR("解析时间轴指令时间失败" << k);
+                continue;
+            }
+
+            QVariantMap cmdParams;
+            for (auto param : settings.value(k).toString().split(",", Qt::SkipEmptyParts)) {
+				auto ss = param.split(":");
+                if (ss.size() != 2) {
+                    LOG_ERROR("时间轴指令不合规" << param);
+                    continue;
+                }
+                cmdParams[ss[0]] = ss[1];
+            }
+
+            QString cmdName = cmdParams.value("name", "").toString();
+            
+        }
+
+        settings.endGroup();
+        m_timelineManager->createTimeline(timelineName);
+    }
 }

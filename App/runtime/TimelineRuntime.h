@@ -73,7 +73,7 @@ private:
     void executeTimelineCommand(TimelineCommand *timelineCommand,
                                 const QVariantMap &executionInputValues,
                                 bool isTest);
-
+    void temp_loadConfig();
     UICore::TaskManager *m_taskManager = nullptr;
     DeviceModel *m_deviceModel = nullptr;
     TimelineManager *m_timelineManager = nullptr;

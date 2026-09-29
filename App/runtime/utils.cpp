@@ -56,7 +56,7 @@ namespace Utils
 		auto videos = getOptions(DeviceConstants::LocalVideoPrefix,
 								 { "*.mp4", "*.avi" , "*.flv", "*.png", "*.jpg"});
 		auto audios = getOptions(DeviceConstants::LocalAudioPrefix, 
-								 { "*.mp3","*.wav" ,"*.aac"});
+								 { "*.mp3", "*.mp4","*.wav" ,"*.aac"});
 		// 空，等于全部
 		videos.insert(0, "");
 		audios.insert(0, "");

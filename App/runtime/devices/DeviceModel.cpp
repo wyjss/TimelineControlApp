@@ -65,6 +65,17 @@ Device *DeviceModel::deviceById(const QString &deviceId) const
     return deviceAt(row);
 }
 
+Device* DeviceModel::deviceByName(const QString& deviceName)
+{
+	const QList<Device*> currentItems = items();
+	for (int row = 0; row < currentItems.size(); ++row) {
+		Device* device = currentItems.at(row);
+		if (device && device->name() == deviceName)
+			return device;
+	}
+    return nullptr;
+}
+
 int DeviceModel::indexOfDevice(Device *device) const
 {
     return device ? indexOfItem(device) : -1;

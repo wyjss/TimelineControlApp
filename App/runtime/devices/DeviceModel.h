@@ -32,6 +32,8 @@ public:
     void setCurrentDeviceId(const QString &deviceId);
     Device *currentDevice() const;
     Device *deviceById(const QString &deviceId) const;
+    // 0928临时添加，可能重复
+    Device *deviceByName(const QString &deviceName);
     bool hasDeviceName(const QString &deviceType,
                        const QString &deviceName,
                        const QString &excludedDeviceId = QString()) const;

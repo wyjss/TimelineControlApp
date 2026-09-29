@@ -19,6 +19,14 @@ namespace {
 			getField(DeviceKey::PayloadType)->setValue(DeviceKey::PayloadType_Hex);
         }
     };
+
+	QList<DeviceParamSpec*> createGFTParams()
+	{
+		auto* port = DeviceParamSpec::createForKey(DeviceKey::Port);
+		port->setValue(23);
+		port->setDefaultValue(23);
+		return { port };
+	}
 } // namespace
 
 GFTDeviceTemplate::GFTDeviceTemplate(QObject *parent)
@@ -26,7 +34,7 @@ GFTDeviceTemplate::GFTDeviceTemplate(QObject *parent)
                      DeviceType::Projector,
                      QStringList{DeviceProtocol::Udp},
                      QStringLiteral("基于UDP协议的光峰T系列投影机"),
-                     {},
+                     createGFTParams(),
                      {},
                      parent)
 {
@@ -41,7 +49,7 @@ Device* GFTDeviceTemplate::createDevice(QObject* parent, const QVariantMap& conf
 	
 		QString payload = "EF FE 01 01 01 01 00 00 00 00 01 00 00 00 08 11 00 00 22 2B 41 54 2B 53 79 73 74 65 6D 3D 4F 6E 0D 0A";
 		payload = payload.remove(" ");
-		auto cmd = new BaseGFTCommand("开机（网络待机）", payload);
+		auto cmd = new BaseGFTCommand(DeviceKey::SystemOpen, payload);
 
 		device->appendCommand(cmd);
     }
@@ -49,7 +57,7 @@ Device* GFTDeviceTemplate::createDevice(QObject* parent, const QVariantMap& conf
 	{// 关机	EF FE 01 01 01 01 00 00 00 00 01 01 00 00 08 11 00 00 23 45 41 54 2B 53 79 73 74 65 6D 3D 4F 66 66 0D 0A
 		QString payload = "EF FE 01 01 01 01 00 00 00 00 01 01 00 00 08 11 00 00 23 45 41 54 2B 53 79 73 74 65 6D 3D 4F 66 66 0D 0A";
 		payload = payload.remove(" ");
-		auto cmd = new BaseGFTCommand("关机", payload);
+		auto cmd = new BaseGFTCommand(DeviceKey::SystemClose, payload);
 		device->appendCommand(cmd);
 	}
 

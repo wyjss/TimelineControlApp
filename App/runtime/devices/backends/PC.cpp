@@ -214,6 +214,7 @@ public:
 						   parent)
 	{
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::AudioFile));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::AVLoop));
 	}
 
 	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
@@ -224,7 +225,7 @@ public:
 
 		QUrlQuery query;
 		query.addQueryItem("url", url);
-		query.addQueryItem("loop", "true");
+		query.addQueryItem("loop", params[DeviceKey::AVLoop].toString());
 
 		QString api = QString("/audio/play?") + query.toString();
 		params[DeviceKey::Name] = this->name() + "-" + url;
