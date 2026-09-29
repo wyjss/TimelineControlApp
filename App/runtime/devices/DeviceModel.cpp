@@ -141,13 +141,19 @@ QStringList DeviceModel::deviceTypes(bool manual) const
             continue;
 
         const QString deviceType = device->deviceType();
-        if (manual && (deviceType == DeviceType::PC || deviceType == DeviceType::Dmx512Adapter))
+        if (manual && (deviceType == DeviceType::PC || deviceType == DeviceType::Dmx512Adapter
+                       || deviceType == DeviceType::Fusion3 || deviceType == DeviceType::Locator))
             continue;
 
         if (!types.contains(deviceType))
             types << deviceType;
     }
     return types;
+}
+
+QStringList DeviceModel::manualDeviceTypes() const
+{
+    return deviceTypes(true);
 }
 
 QStringList DeviceModel::groupNames() const

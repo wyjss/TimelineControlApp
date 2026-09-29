@@ -22,8 +22,40 @@ Item {
     readonly property int count: visibleCommandRows.length
     readonly property bool compact: width < 600
     readonly property int timeColumnWidth: 100
-    readonly property int deviceColumnWidth: showDeviceName ? 112 : 36
-    readonly property int nameColumnWidth: 180
+    // 扣除外边距、行内边距和列间距，为执行参数预留 100 像素。
+    readonly property int contentColumnsWidth: Math.max(112 + 180,
+        width - timeColumnWidth - resultColumnWidth - 12 - 20 - 32 - 100)
+    readonly property int deviceColumnWidth: {
+        if (!showDeviceName)
+            return 36
+        if (compact)
+            return 112
+
+        // 显式依赖字体，确保字体变化时重新测量。
+        deviceFontMetrics.font
+        var widest = 112
+        for (var index = 0; index < visibleCommandRows.length; ++index) {
+            var command = visibleCommandRows[index].command
+            var name = deviceName(command ? command.targetDeviceId : "")
+            widest = Math.max(widest, Math.ceil(deviceFontMetrics.advanceWidth(name)) + 18 + 6)
+        }
+        // 设备列最多使用一半新增空间，给指令名称留出余量。
+        return Math.min(widest, 112 + Math.floor((contentColumnsWidth - 112 - 180) / 2))
+    }
+    readonly property int nameColumnWidth: {
+        if (compact)
+            return 180
+
+        // 显式依赖字体，确保字体变化时重新测量。
+        nameFontMetrics.font
+        var widest = 180
+        for (var index = 0; index < visibleCommandRows.length; ++index) {
+            var command = visibleCommandRows[index].command
+            var name = String(command && command.alias ? command.alias : qsTr("指令"))
+            widest = Math.max(widest, Math.ceil(nameFontMetrics.advanceWidth(name)))
+        }
+        return Math.min(widest, contentColumnsWidth - deviceColumnWidth)
+    }
     readonly property int resultColumnWidth: 32
 
     signal commandSelected(var command)
@@ -119,6 +151,18 @@ Item {
             .arg(String(command.stateText || qsTr("待执行")))
     }
 
+    FontMetrics {
+        id: deviceFontMetrics
+        font: deviceColumnHeader.font
+    }
+
+    FontMetrics {
+        id: nameFontMetrics
+        font.family: deviceColumnHeader.font.family
+        font.pixelSize: deviceColumnHeader.typographyValue("bodyM")
+        font.weight: deviceColumnHeader.font.weight
+    }
+
     TimelineCommandContextMenu {
         id: commandMenu
         locatingEnabled: root.locatingEnabled
@@ -150,6 +194,8 @@ Item {
                 }
 
                 Base.AppText {
+                    id: deviceColumnHeader
+
                     visible: !root.compact
                     Layout.preferredWidth: root.deviceColumnWidth
                     horizontalAlignment: root.showDeviceName

@@ -19,7 +19,8 @@ namespace {
 bool isTemplateOnlyDeviceType(const QString &deviceType)
 {
     return deviceType.compare(DeviceType::PC, Qt::CaseInsensitive) == 0
-        || deviceType.compare(DeviceType::Dmx512Adapter, Qt::CaseInsensitive) == 0;
+        || deviceType.compare(DeviceType::Dmx512Adapter, Qt::CaseInsensitive) == 0
+        || deviceType.compare(DeviceType::Fusion3, Qt::CaseInsensitive) == 0;
 }
 
 } // namespace

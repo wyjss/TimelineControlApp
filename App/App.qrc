@@ -40,5 +40,10 @@
         <file alias="App/assets/icons/分布式融合器3.0.png">assets/icons/分布式融合器3.0.png</file>
         <file alias="App/assets/icons/serial.png">assets/icons/serial.png</file>
         <file alias="App/assets/icons/串口协议.png">assets/icons/串口协议.png</file>
+        <file alias="App/assets/icons/Dmx512适配器.png">assets/icons/DMX512适配器.png</file>
+        <file alias="App/assets/icons/DMX512协议.png">assets/icons/DMX512协议.png</file>
+        <file alias="App/assets/icons/HTTP协议.png">assets/icons/HTTP协议.png</file>
+        <file alias="App/assets/icons/UDP协议.png">assets/icons/UDP协议.png</file>
+        <file alias="App/assets/icons/水幕.png">assets/icons/水幕.png</file>
     </qresource>
 </RCC>

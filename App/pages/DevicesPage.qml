@@ -27,7 +27,7 @@ Item {
     readonly property var deviceTemplates: deviceTemplateModel ? deviceTemplateModel.templates : []
     readonly property var deviceTypes: deviceModel ? deviceModel.deviceTypes : []
     readonly property var deviceGroupNames: deviceModel && deviceModel.groupNames ? deviceModel.groupNames : []
-    readonly property var manualDeviceTypes: buildManualDeviceTypes()
+    readonly property var manualDeviceTypes: deviceModel ? deviceModel.manualDeviceTypes : []
     readonly property var selectedDevice: deviceModel ? deviceModel.currentDevice : ({})
     readonly property var selectedDeviceCommands: selectedDeviceInCurrentView
         && selectedDevice
@@ -227,32 +227,6 @@ Item {
         }
 
         return deviceTemplates.length > 0 ? deviceTemplates[0] : null
-    }
-
-    function buildManualDeviceTypes() {
-        var result = []
-        for (var index = 0; index < deviceTypes.length; ++index) {
-            var nextType = String(deviceTypes[index])
-            if (!isTemplateOnlyDeviceType(nextType))
-                result.push(nextType)
-        }
-        return result
-    }
-
-    function isTemplateOnlyDeviceType(deviceType) {
-        var normalizedDeviceType = String(deviceType || "").trim()
-        if (normalizedDeviceType.length === 0)
-            return false
-
-        for (var index = 0; index < deviceTemplates.length; ++index) {
-            var deviceTemplate = deviceTemplates[index]
-            if (!deviceTemplate || deviceTemplate.deviceType === undefined || deviceTemplate.deviceType === null)
-                continue
-
-            if (String(deviceTemplate.deviceType).trim() === normalizedDeviceType)
-                return true
-        }
-        return false
     }
 
     function buildFilteredDevices() {

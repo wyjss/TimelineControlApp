@@ -832,6 +832,19 @@ Item {
             ? targetCommand.executionInputFields || []
             : []
         readonly property bool formValid: executionFieldForm.valid
+        readonly property string timeInvalidReason: {
+            if (!editing)
+                return ""
+            if (!/^\d{2}:[0-5]\d:[0-5]\d\.\d{3}$/.test(commandStartTimeField.text))
+                return qsTr("请输入有效的开始时间，格式为 时:分:秒.毫秒")
+
+            var parts = commandStartTimeField.text.split(/[:.]/)
+            var timeMs = Number(parts[0]) * 3600000 + Number(parts[1]) * 60000
+                + Number(parts[2]) * 1000 + Number(parts[3])
+            var maximumTimeMs = Math.max(root.timelineDurationMs, targetStartTimeMs)
+            return timeMs > maximumTimeMs
+                ? qsTr("开始时间不能超过 %1").arg(root.formatTimelineMs(maximumTimeMs)) : ""
+        }
 
         function openForCommand(nextDevice, nextCommand, nextStartTimeMs) {
             open()
@@ -866,6 +879,8 @@ Item {
 
                 targetDevice = root.deviceForId(String(command.targetDeviceId || ""))
                 targetStartTimeMs = Number(command.startTimeMs || 0)
+                commandStartTimeField.text = (targetStartTimeMs < 3600000 ? "00:" : "")
+                    + root.formatTimelineMs(targetStartTimeMs)
                 commandAliasField.text = command.alias
                 validationVisible = false
                 executionFieldForm.values = command.executionInputValues || ({})
@@ -874,12 +889,16 @@ Item {
 
         function commit() {
             validationVisible = true
-            if (!root.commandEditingEnabled || !formValid || !targetDevice || !targetCommand)
+            if (!root.commandEditingEnabled || !formValid || timeInvalidReason.length > 0
+                    || !targetDevice || !targetCommand)
                 return
 
             if (editing) {
+                var parts = commandStartTimeField.text.split(/[:.]/)
+                var timeMs = Number(parts[0]) * 3600000 + Number(parts[1]) * 60000
+                    + Number(parts[2]) * 1000 + Number(parts[3])
                 if (timelineCommandModel.updateCommand(editingTimelineCommand,
-                                                       targetStartTimeMs,
+                                                       timeMs,
                                                        executionFieldForm.valueMap())) {
                     editingTimelineCommand.alias = commandAliasField.text
                     close()
@@ -904,7 +923,7 @@ Item {
         rejectText: qsTr("取消")
         acceptText: editing ? qsTr("保存") : qsTr("添加")
         acceptIconName: "workflow"
-        acceptEnabled: root.commandEditingEnabled && formValid
+        acceptEnabled: root.commandEditingEnabled && formValid && timeInvalidReason.length === 0
         closeOnAccepted: false
         onAccepted: commit()
         onClosed: {
@@ -944,22 +963,20 @@ Item {
                 textTone: UiStyle.TextTone.Primary
             }
 
-            Base.AppNumberField {
+            Base.AppTextField {
+                id: commandStartTimeField
+                objectName: "timelineCommandStartTime"
+
                 Layout.fillWidth: true
-                value: addTimelineCommandPopup.targetStartTimeMs
-                integerMode: true
-                minimum: 0
-                maximum: Math.max(root.timelineDurationMs,
-                                  addTimelineCommandPopup.targetStartTimeMs)
-                suffix: "ms"
-                onValueEdited: addTimelineCommandPopup.targetStartTimeMs = nextValue
+                placeholderText: "00:00:00.000"
             }
         }
 
         Base.AppText {
             Layout.fillWidth: true
-            text: executionFieldForm.firstInvalidReason()
-            visible: addTimelineCommandPopup.validationVisible && text.length > 0
+            text: addTimelineCommandPopup.timeInvalidReason || executionFieldForm.firstInvalidReason()
+            visible: text.length > 0 && (addTimelineCommandPopup.validationVisible
+                || addTimelineCommandPopup.timeInvalidReason.length > 0)
             styleRole: UiStyle.TypographyRole.BodyS
             textTone: UiStyle.TextTone.Danger
             elide: Text.ElideRight
