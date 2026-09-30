@@ -209,6 +209,14 @@ DeviceCommand* DeviceCommand::createForProtocol(const QString& protocol, QObject
         return new DeviceCommand_Internal(parent);
     if (value == DeviceProtocol::Udp)
         return new DeviceCommand_Udp(parent);
+    if (value == DeviceProtocol::Tcp) {
+        auto *command = new DeviceCommand(DeviceProtocol::Tcp, QStringLiteral("TCP指令"), parent);
+        command->addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Ip));
+        command->addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
+        command->addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Payload));
+        command->addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::PayloadType));
+        return command;
+    }
     if (value == DeviceProtocol::Http)
         return new DeviceCommand_Http(parent);
     if (value == DeviceProtocol::Pc)

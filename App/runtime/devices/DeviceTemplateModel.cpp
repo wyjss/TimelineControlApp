@@ -30,12 +30,17 @@ void DeviceTemplateModel::loadDefaultTemplates()
     appendTemplate(createDefaultDeviceTemplateHttp());
     appendTemplate(createDefaultDeviceTemplateSerial());
     appendTemplate(createDefaultDeviceTemplateUdp());
+    appendTemplate(makeDeviceTemplate(tr("TCP协议"),
+                                      QString(),
+                                      QStringList{DeviceProtocol::Tcp},
+                                      tr("TCP协议设备"),
+                                      {DeviceParamSpec::createForKey(DeviceKey::Port)}));
     appendTemplate(new Fusion3DeviceTemplate(this));
     appendTemplate(new LocatorDeviceTemplate(m_timelineModel, this));
-    appendTemplate(new SerialPowerDeviceTemplate);
-    appendTemplate(new XB809DeviceTemplate(this));
-    appendTemplate(new LMIDeviceTemplate(this));
-    appendTemplate(new LightingDeviceTemplate(this));
+    //appendTemplate(new SerialPowerDeviceTemplate);
+    //appendTemplate(new XB809DeviceTemplate(this));
+    //appendTemplate(new LMIDeviceTemplate(this));
+    //appendTemplate(new LightingDeviceTemplate(this));
     appendTemplate(new GFTDeviceTemplate(this));
 }
 

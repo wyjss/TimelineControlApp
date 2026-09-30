@@ -8,6 +8,7 @@
 #include "devices/executors/NetworkPing.h"
 #include "devices/executors/SerialCommandExecutor.h"
 #include "devices/executors/UdpCommandExecutor.h"
+#include "devices/executors/TcpCommandExecutor.h"
 #include "devices/executors/DmxCommandExecutor.h"
 
 #include "LogMacros.h"
@@ -61,6 +62,7 @@ void DeviceExecutorManager::bindDevice(Device *device)
         if (protocolValue != DeviceProtocol::Http
             && protocolValue != DeviceProtocol::Dmx512
             && protocolValue != DeviceProtocol::Udp
+            && protocolValue != DeviceProtocol::Tcp
             && protocolValue != DeviceProtocol::Serial
             && protocolValue != DeviceProtocol::Pc)
             continue;
@@ -230,6 +232,18 @@ DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protoco
         executor = m_executors.value(key);
         if (!executor)
             executor = new UdpCommandExecutor(ip, port);
+    } else if (protocolValue == DeviceProtocol::Tcp) {
+        const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
+        const int port = params.value(DeviceKey::Port).toInt();
+        if (ip.isEmpty() || port <= 0)
+            return nullptr;
+
+        key = QStringLiteral("tcp:%1:%2").arg(ip).arg(port);
+        if (executorKey)
+            *executorKey = key;
+        executor = m_executors.value(key);
+        if (!executor)
+            executor = new TcpCommandExecutor(ip, port);
     } else if (protocolValue == DeviceProtocol::Dmx512) {
         const QString ip = params.value(DeviceKey::Ip).toString().trimmed();
         const int port = params.value(DeviceKey::Port, 80).toInt();

@@ -80,9 +80,9 @@ function requestHeaders() {
     return headers;
 }
 
-async function api(path, options = {}) {
+async function api(path, options = {}, promptForToken = true) {
     const response = await fetch(path, { ...options, headers: requestHeaders() });
-    if (response.status === 401) {
+    if (response.status === 401 && promptForToken) {
         const token = window.prompt("请输入播控访问令牌");
         if (token) {
             sessionStorage.setItem("timeline-control-token", token.trim());
@@ -105,7 +105,7 @@ function renderTimelineList(data) {
     const deviceNames = new Map(data.devices.map(device => [device.id, device.name || device.id]));
     const timelineNames = new Map(data.timelines.map(timeline => [timeline.id, timeline.name || timeline.id]));
     const signature = JSON.stringify([
-        editable,
+        data.playbackState,
         state.busy,
         data.currentTimelineId,
         data.playQueue,
@@ -408,7 +408,7 @@ async function refresh(showError = false) {
     state.refreshing = true;
     const version = state.updateVersion;
     try {
-        const data = await api("/api/v1/status");
+        const data = await api("/api/v1/status", {}, showError);
         if (version !== state.updateVersion) return;
         state.connected = true;
         elements.connection.className = "connection";

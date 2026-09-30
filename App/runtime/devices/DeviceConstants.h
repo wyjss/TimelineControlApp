@@ -165,6 +165,7 @@ namespace DeviceProtocol {
 	inline const QString Dmx512 = "dmx512";
 	inline const QString Http = "http";
 	inline const QString Udp = "udp";
+	inline const QString Tcp = "tcp";
 	inline const QString Serial = "serial";
 	inline const QString Pc = "pc";
 	inline const QString Internal = "internal";

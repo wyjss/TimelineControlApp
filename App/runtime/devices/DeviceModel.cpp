@@ -214,7 +214,20 @@ void DeviceModel::appendDevice(Device *device)
     if (device->parent() != this)
         device->setParent(this);
 
-    if (appendItem(device)) {
+    // 临近
+    auto deviceType = device->deviceType();
+    int targetIndex = 1;
+    for (; targetIndex < rowCount(); ++targetIndex) {
+        if (itemAt(targetIndex - 1)->deviceType() == deviceType &&
+            itemAt(targetIndex)->deviceType() != deviceType) {
+            break;
+        }
+    }
+    if (targetIndex >= rowCount()) {
+        targetIndex = rowCount();
+    }
+ 
+    if (insertItem(targetIndex, device)) {
         emit devicesChanged();
         emit deviceAdded(device);
     }

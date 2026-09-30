@@ -17,6 +17,7 @@ Base.AppDialog {
         { "label": qsTr("无协议"), "value": "internal" },
         { "label": qsTr("串口"), "value": "serial" },
         { "label": qsTr("UDP"), "value": "udp" },
+        { "label": qsTr("TCP"), "value": "tcp" },
         { "label": qsTr("HTTP"), "value": "http" },
         { "label": qsTr("PC"), "value": "pc" },
         { "label": qsTr("DMX512"), "value": "dmx512" }

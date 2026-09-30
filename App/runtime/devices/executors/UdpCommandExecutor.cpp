@@ -33,8 +33,8 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
         payload = varData.toString().toUtf8();
     }
 
-    if (m_ip.isEmpty() || payload.isEmpty()) {
-        emit executionFinished(executionId, command, false, tr("HTTP 地址或路径为空"));
+	if (m_ip.isEmpty() || payload.isEmpty()) {
+		emit executionFinished(executionId, command, false, tr("UDP 地址或数据为空"));
         return;
     }
     

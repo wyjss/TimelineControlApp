@@ -458,6 +458,40 @@ ApplicationWindow {
                             loadPlanDialog.open()
                         }
                     }
+
+                    Rectangle {
+                        Layout.fillWidth: true
+                        height: 1
+                        color: window.appTheme.colors.border
+                    }
+
+                    Base.AppButton {
+                        raised: true
+                        Layout.fillWidth: true
+                        text: qsTr("导入设备")
+                        enabled: window.timelineStopped
+                        onClicked: {
+                            planPopup.close()
+                            importDevicesDialog.open()
+                        }
+
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("将设备配置导入到当前工程")
+                    }
+
+                    Base.AppButton {
+                        raised: true
+                        Layout.fillWidth: true
+                        text: qsTr("导入时间线")
+                        enabled: window.timelineStopped
+                        onClicked: {
+                            planPopup.close()
+                            importTimelinesDialog.open()
+                        }
+
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("导入到当前工程；同名时间线将重新创建")
+                    }
                 }
 
                 FileDialog {
@@ -483,6 +517,34 @@ ApplicationWindow {
                     onAccepted: {
                         if (window.timelineStopped && window.shellController)
                             window.shellController.handleUiAction("timeline.plan.load", {
+                                "filePath": fileUrl
+                            })
+                    }
+                }
+
+                FileDialog {
+                    id: importDevicesDialog
+
+                    title: qsTr("导入设备到当前工程")
+                    selectExisting: true
+                    nameFilters: [qsTr("设备配置 (*.ini)")]
+                    onAccepted: {
+                        if (window.timelineStopped && window.shellController)
+                            window.shellController.handleUiAction("timeline.plan.importDevices", {
+                                "filePath": fileUrl
+                            })
+                    }
+                }
+
+                FileDialog {
+                    id: importTimelinesDialog
+
+                    title: qsTr("导入时间线到当前工程")
+                    selectExisting: true
+                    nameFilters: [qsTr("时间线配置 (*.json)")]
+                    onAccepted: {
+                        if (window.timelineStopped && window.shellController)
+                            window.shellController.handleUiAction("timeline.plan.importTimelines", {
                                 "filePath": fileUrl
                             })
                     }

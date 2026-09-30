@@ -29,6 +29,7 @@
 #include <QIODevice>
 #include <QJsonObject>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QTemporaryFile>
 #include <QUuid>
 #include <QUrl>
@@ -456,21 +457,32 @@ bool TimelineRuntime::loadPlanFromFile(const QString &filePath)
         emit currentPlanFilePathChanged();
     }
 
-	temp_loadConfig();
-
     return true;
 }
 
 #include <QSettings>
 #include "runtime/utils.h"
-void TimelineRuntime::temp_loadConfig()
+bool TimelineRuntime::importDevicesFromIni(const QString &filePath)
 {
-    LOG_ERROR("----------------------temp_loadConfig----------------");
-    QSettings settings(R"(D:\Program\RA\TimelineControlApp\docs\auto-create.ini)",
-                       QSettings::IniFormat);
+    const QString normalizedFilePath = filePath.trimmed();
+    if (normalizedFilePath.isEmpty())
+        return false;
+
+    const QUrl fileUrl(normalizedFilePath);
+    QFile file(fileUrl.isLocalFile() ? fileUrl.toLocalFile() : normalizedFilePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        LOG_ERROR("无法读取设备配置：" << file.fileName() << file.errorString());
+        return false;
+    }
+
+    QSettings settings(file.fileName(), QSettings::IniFormat);
     settings.setIniCodec("utf-8");
 
     auto gs = settings.childGroups();
+    if (settings.status() != QSettings::NoError) {
+        LOG_ERROR("设备 INI 配置格式错误：" << file.fileName());
+        return false;
+    }
 
 
     { // 设备
@@ -490,9 +502,6 @@ void TimelineRuntime::temp_loadConfig()
             for (auto childKey : childKeys) {
                 auto var = settings.value(childKey);
                 QString paramName = QString::fromUtf8(childKey.toLatin1());
-				if (paramName.startsWith("虚拟")) {
-					int a = 0;
-				}
                 params[paramName] = var;
             }
             devices.push_back(params);
@@ -557,7 +566,8 @@ void TimelineRuntime::temp_loadConfig()
                 }
 
                 bool useText = false;
-                if (cmdName.startsWith("-text")) {
+           
+                if (cmdName.startsWith("text-")) {
                     useText = true;
                     cmdName = cmdName.mid(5);
                 }
@@ -567,6 +577,7 @@ void TimelineRuntime::temp_loadConfig()
                 // 创建指令
                 if (isNew) {
 					cmd = device->createCommandDraft("");
+                    cmd->setEditable(true);
 					cmd->setName(cmdName);
                 }
                 // 更新载荷
@@ -597,9 +608,30 @@ void TimelineRuntime::temp_loadConfig()
             
         }// end for devices
     }// end device
-   
-    QList<Utils::TL> tls;
+    return true;
+}
 
+bool TimelineRuntime::importTimelinesFromJson(const QString &filePath)
+{
+    const QString normalizedFilePath = filePath.trimmed();
+    if (normalizedFilePath.isEmpty())
+        return false;
+
+    const QUrl fileUrl(normalizedFilePath);
+    QFile file(fileUrl.isLocalFile() ? fileUrl.toLocalFile() : normalizedFilePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        LOG_ERROR("无法读取时间线配置：" << file.fileName() << file.errorString());
+        return false;
+    }
+
+    QList<Utils::TL> tls;
+    if (!Utils::timelinesFromJson(QString::fromUtf8(file.readAll()), tls)) {
+        LOG_ERROR("时间线 JSON 配置格式错误：" << file.fileName());
+        return false;
+    }
+
+    bool success = true;
+    const QRegularExpression timePattern(QStringLiteral(R"(^(\d{2}):([0-5]\d):([0-5]\d)\.(\d{3})$)"));
     for (const auto& tl : tls) {
         auto items = m_timelineManager->timelineModel()->items();
        
@@ -617,28 +649,48 @@ void TimelineRuntime::temp_loadConfig()
             m_timelineManager->removeTimeline(timeline->id());
         }
         timeline = m_timelineManager->createTimeline(tl.name);
+        if (!timeline) {
+            LOG_ERROR("创建时间线失败：" << tl.name);
+            success = false;
+            continue;
+        }
 
         // 添加指令
         for (const auto& tlCmd : tl.cmds) {
+            const auto timeMatch = timePattern.match(tlCmd.time);
+            if (!timeMatch.hasMatch()) {
+                LOG_ERROR("时间格式错误，应为 hh:mm:ss.zzz：" << tlCmd.time);
+                success = false;
+                continue;
+            }
+            const qint64 timeMs = timeMatch.captured(1).toLongLong() * 3600000
+                + timeMatch.captured(2).toLongLong() * 60000
+                + timeMatch.captured(3).toLongLong() * 1000
+                + timeMatch.captured(4).toLongLong();
+
             auto device = m_deviceModel->deviceByName(tlCmd.deviceName);
             if (!device) {
                 LOG_ERROR("缺少设备" << tlCmd.deviceName);
+                success = false;
                 continue;
             }
 
             auto cmd = device->commandByName(tlCmd.cmdName);
 			if (!cmd) {
 				LOG_ERROR("缺少指令" << tlCmd.cmdName);
+				success = false;
 				continue;
 			}
 
             timeline->commandModel()->addCommand(
-                0,
+                timeMs,
                 device->id(),
                 tlCmd.cmdName,
                 tlCmd.params,
-                cmd
+                cmd,
+                tlCmd.simName
             );
         }
     }
+    return success;
 }

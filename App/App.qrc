@@ -45,5 +45,9 @@
         <file alias="App/assets/icons/HTTP协议.png">assets/icons/HTTP协议.png</file>
         <file alias="App/assets/icons/UDP协议.png">assets/icons/UDP协议.png</file>
         <file alias="App/assets/icons/水幕.png">assets/icons/水幕.png</file>
+        <file alias="App/assets/icons/配电箱.png">assets/icons/配电箱.png</file>
+        <file alias="App/assets/icons/TCP协议.png">assets/icons/TCP协议.png</file>
+        <file alias="App/assets/icons/LED.png">assets/icons/LED.png</file>
+        <file alias="App/assets/icons/激光.png">assets/icons/激光.png</file>
     </qresource>
 </RCC>

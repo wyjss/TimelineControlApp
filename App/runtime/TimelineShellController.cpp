@@ -80,6 +80,12 @@ void TimelineShellController::handleUiAction(const QString &actionId, const QVar
     } else if (actionId == QStringLiteral("timeline.plan.load")) {
         if (timelineManager->playbackState() == TimelineManager::Stopped)
             runtime->loadPlanFromFile(payload.value(QStringLiteral("filePath")).toString());
+    } else if (actionId == QStringLiteral("timeline.plan.importDevices")) {
+        if (timelineManager->playbackState() == TimelineManager::Stopped)
+            runtime->importDevicesFromIni(payload.value(QStringLiteral("filePath")).toString());
+    } else if (actionId == QStringLiteral("timeline.plan.importTimelines")) {
+        if (timelineManager->playbackState() == TimelineManager::Stopped)
+            runtime->importTimelinesFromJson(payload.value(QStringLiteral("filePath")).toString());
     } else if (actionId == QStringLiteral("timeline.start")) {
         if (timelineManager->playbackState() == TimelineManager::Paused
             && !timelineManager->queuePlayback())
