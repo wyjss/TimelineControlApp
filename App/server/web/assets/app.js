@@ -180,7 +180,8 @@ function renderTimelineList(data) {
         if (timeline.state !== "running") {
             const triggerButton = createElement("button", "manual-trigger", "⚡ 触发");
             triggerButton.type = "button";
-            triggerButton.disabled = state.busy || data.playbackState !== "running";
+
+
             triggerButton.title = data.playbackState === "running"
                 ? `手动触发 ${timeline.name}`
                 : "开始或继续播放后可手动触发";

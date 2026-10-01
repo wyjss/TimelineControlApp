@@ -215,6 +215,7 @@ public:
 	{
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::AudioFile));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::AVLoop));
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoTimeSec));
 	}
 
 	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
@@ -226,6 +227,9 @@ public:
 		QUrlQuery query;
 		query.addQueryItem("url", url);
 		query.addQueryItem("loop", params[DeviceKey::AVLoop].toString());
+
+		int seek = params[DeviceKey::VideoTimeSec].toDouble() * 1000;
+		query.addQueryItem("seek", QString::number(seek));
 
 		QString api = QString("/audio/play?") + query.toString();
 		params[DeviceKey::Name] = this->name() + "-" + url;
@@ -245,6 +249,30 @@ public:
 							   parent)
 	{
 		getField(DeviceKey::ApiPath)->setValue("/audio/pause");
+	}
+};
+
+class SeekAudioCommand : public DeviceCommand_PC
+{
+public:
+	explicit SeekAudioCommand(QObject* parent)
+		: DeviceCommand_PC("跳转音频",
+						   DeviceKey::CommandSeekAudio,
+						   parent)
+	{
+		getField(DeviceKey::ApiPath)->setValue("/audio/seek");
+
+		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoTimeSec));
+	}
+
+	virtual QVariantMap resolvedParams(const QVariantMap& executionInputValues = QVariantMap()) const override
+	{
+		auto params = DeviceCommand_PC::resolvedParams(executionInputValues);
+
+		QString api = QString("/audio/seek?seek=") + 
+			params.value(DeviceKey::VideoTimeSec).toDouble() * 1000;
+		params[DeviceKey::ApiPath] = api;
+		return params;
 	}
 };
 
@@ -385,6 +413,7 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(new ClosePlayerCommand(device));
 	device->appendCommand(new PlayAudioCommand(device));
 	device->appendCommand(new PauseAudioCommand(device));
+	//device->appendCommand(new SeekAudioCommand(device));
 	device->appendCommand(new StopAudioCommand(device));
 
 	
@@ -430,6 +459,8 @@ DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
 		return new PlayAudioCommand(parent);
 	if (commandType == DeviceKey::CommandPauseAudio)
 		return new PauseAudioCommand(parent);
+	if (commandType == DeviceKey::CommandSeekAudio)
+		return new SeekAudioCommand(parent);
 	if (commandType == DeviceKey::CommandStopAudio)
 		return new StopAudioCommand(parent);
 // 	if (commandType == DeviceKey::CommandPlayDomeVideo)

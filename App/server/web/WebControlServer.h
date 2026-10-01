@@ -27,7 +27,7 @@ public:
     WebControlServer(TimelineRuntime *runtime, const QString &webRoot);
     ~WebControlServer();
 
-    bool start(const QString &host = QStringLiteral("127.0.0.1"), quint16 port = 8080);
+    bool start(const QString &host = QStringLiteral("0.0.0.0"), quint16 port = 8080);
     void stop();
     bool isRunning() const;
 

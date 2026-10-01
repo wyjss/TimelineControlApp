@@ -77,12 +77,13 @@ void TcpCommandExecutor::executeImpl(const QString &executionId,
         emit executionFinished(executionId, command, true, "");
     });
     connect(sock, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::error),
-            this, [this, executionId, command, sock, timer](QAbstractSocket::SocketError) {
+            this, [this, executionId, command, sock, timer](QAbstractSocket::SocketError errCode) {
         const QString message = sock->errorString();
         timer->stop();
         sock->disconnect(this);
         sock->abort();
         sock->deleteLater();
+        LOG_ERROR(errCode << message);
         emit executionFinished(executionId, command, false, message);
     });
     connect(timer, &QTimer::timeout, this, [this, executionId, command, sock]() {

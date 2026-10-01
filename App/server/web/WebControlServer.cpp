@@ -531,7 +531,8 @@ int WebControlServer::control(const QJsonObject &request,
             if (accepted)
                 manager->stopPlayback();
         } else if (action == QStringLiteral("trigger")) {
-            accepted = manager->playbackState() == TimelineManager::Running
+
+
                 && manager->triggerTimeline(
                     request.value(QStringLiteral("timelineId")).toString());
         }

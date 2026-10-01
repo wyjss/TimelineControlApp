@@ -142,8 +142,8 @@ namespace DeviceKey {
 	// PC-音频控制指令
 	inline const QString CommandPlayAudio = "playAudio";
 	inline const QString CommandPauseAudio = "pauseAudio";
+	inline const QString CommandSeekAudio = "seekAudio";
 	inline const QString CommandStopAudio = "stopAudio";
-	//inline const QString CommandSeekAudio = "seekAudio";
 
 	//////////////////////////////////////////////////////////////////////////
 	// 系统控制指令，为了兼容外部创建，只用作名称

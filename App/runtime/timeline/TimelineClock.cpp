@@ -1,4 +1,5 @@
 #include "timeline/TimelineClock.h"
+#include "runtime/LogMacros.h"
 #include <QtGlobal>
 
 
@@ -46,10 +47,6 @@ void TimelineClock::setCurrentTimeMs(qint64 currentTimeMs)
         return;
 
     m_currentTimeMs = currentTimeMs;
-    if (m_state == Running) {
-        m_runBaseTimeMs = m_currentTimeMs;
-        m_elapsedTimer.restart();
-    }
     emit currentTimeMsChanged();
 }
 
