@@ -391,6 +391,15 @@ Item {
                             onTriggered: root.timelineManager.triggerTimeline(root.timelineId)
                         }
 
+                        MenuItem {
+                            objectName: "stopTimelineMenuItem"
+                            visible: root.running
+                            height: visible ? implicitHeight : 0
+                            enabled: root.running && root.timelineManager
+                            text: qsTr("停止此时间线")
+                            onTriggered: root.timelineManager.stopTimeline(root.timelineId)
+                        }
+
                         MenuSeparator {
                             visible: root.waiting
                             height: visible ? implicitHeight : 0

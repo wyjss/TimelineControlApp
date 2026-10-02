@@ -142,6 +142,8 @@ function renderTimelineList(data) {
         main.append(createElement("span", "timeline-name", timeline.name));
         main.append(createElement("span", `state-chip ${timeline.state}`, stateLabel(timeline.state)));
         const meta = createElement("span", "timeline-meta");
+        if (timeline.state === "running")
+            meta.append(createElement("span", "", `当前时间 ${formatTime(timeline.currentTimeMs)}`));
         meta.append(createElement("span", "", `${timeline.commands.length} 条指令`));
         const failedCount = timeline.commands.filter(command => command.state === "failed").length;
         meta.append(createElement("span", "", failedCount ? `${failedCount} 条异常` : "指令正常"));
@@ -180,17 +182,26 @@ function renderTimelineList(data) {
         if (timeline.state !== "running") {
             const triggerButton = createElement("button", "manual-trigger", "⚡ 触发");
             triggerButton.type = "button";
-
-
-            triggerButton.title = data.playbackState === "running"
-                ? `手动触发 ${timeline.name}`
-                : "开始或继续播放后可手动触发";
+            triggerButton.disabled = state.busy;
+            triggerButton.title = `手动触发 ${timeline.name}`;
             triggerButton.addEventListener("click", () => post(
                 "/api/v1/control",
                 { action: "trigger", timelineId: timeline.id },
                 `已触发 ${timeline.name}`
             ));
             entry.append(triggerButton);
+        } else {
+            const stopButton = createElement("button", "manual-trigger timeline-stop", "■ 停止");
+            stopButton.type = "button";
+            stopButton.disabled = state.busy;
+            stopButton.title = `仅停止 ${timeline.name} 的后续指令下发`;
+            stopButton.setAttribute("aria-label", `停止时间线 ${timeline.name}`);
+            stopButton.addEventListener("click", () => post(
+                "/api/v1/control",
+                { action: "stop-timeline", timelineId: timeline.id },
+                `已停止时间线 ${timeline.name}`
+            ));
+            entry.append(stopButton);
         }
         elements["timeline-list"].append(entry);
     }

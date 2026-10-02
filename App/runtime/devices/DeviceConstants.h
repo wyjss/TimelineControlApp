@@ -145,6 +145,8 @@ namespace DeviceKey {
 	inline const QString CommandSeekAudio = "seekAudio";
 	inline const QString CommandStopAudio = "stopAudio";
 
+	inline const QString CommandPlaceholder = "placeholder";
+
 	//////////////////////////////////////////////////////////////////////////
 	// 系统控制指令，为了兼容外部创建，只用作名称
 	inline const QString SystemPause = "$暂停";

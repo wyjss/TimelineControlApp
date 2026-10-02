@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QVariantList>
 
 
 class QDataStream;
@@ -30,6 +31,7 @@ class TimelineManager final : public QObject
     Q_PROPERTY(qint64 currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged FINAL)
     Q_PROPERTY(QStringList playQueue READ playQueue NOTIFY playQueueChanged FINAL)
     Q_PROPERTY(int playQueueIndex READ playQueueIndex NOTIFY playQueueIndexChanged FINAL)
+    Q_PROPERTY(int copiedDeviceCommandCount READ copiedDeviceCommandCount NOTIFY copiedDeviceCommandsChanged FINAL)
     Q_PROPERTY(QStringList filterDeviceIds READ filterDeviceIds WRITE setFilterDeviceIds NOTIFY filterDeviceIdsChanged FINAL)
     Q_PROPERTY(QStringList filterGroupNames READ filterGroupNames WRITE setFilterGroupNames NOTIFY filterGroupNamesChanged FINAL)
     Q_PROPERTY(bool executionFilterEnabled READ executionFilterEnabled WRITE setExecutionFilterEnabled NOTIFY executionFilterEnabledChanged FINAL)
@@ -67,9 +69,16 @@ public:
     Q_INVOKABLE bool moveTimeline(int fromIndex, int toIndex);
     Q_INVOKABLE bool setCurrentTimelineId(const QString &id);
 
+    int copiedDeviceCommandCount() const;
+    //! 拷贝当前时间线的设备指令快照；粘贴按原时间追加，返回空字符串表示成功。
+    Q_INVOKABLE QString copyCommandsForDevice(const QString &deviceId);
+    Q_INVOKABLE QString pasteCommandsForDevice(const QString &deviceId);
+
     // 播控
     Q_INVOKABLE bool waitForTrigger(const QString &id);
     Q_INVOKABLE bool triggerTimeline(const QString &id);
+    //! 仅停止指定时间线的调度，不发送设备停止指令。
+    Q_INVOKABLE bool stopTimeline(const QString &id);
     Q_INVOKABLE bool setPlayQueue(const QStringList &timelineIds);
     Q_INVOKABLE bool startCurrentPlayback(qint64 startTimeMs = 0);
     Q_INVOKABLE bool startPlayback(const QStringList &timelineIds, qint64 startTimeMs = 0);
@@ -103,6 +112,7 @@ public:
     bool readFromStream(QDataStream &stream);
 signals:
     void currentTimelineChanged(Timeline *timeline);
+    void copiedDeviceCommandsChanged();
     void playbackChanged();
     void playbackStateChanged(PlaybackState state);
     void currentTimeMsChanged(qint64 currentTimeMs);
@@ -129,6 +139,9 @@ private:
     bool m_queuePlayback = false;
     QStringList m_playQueue;
     int m_playQueueIndex = -1;
+    QString m_copiedDeviceType;
+    QStringList m_copiedDeviceProtocols;
+    QVariantList m_copiedDeviceCommands;
     QStringList m_filterDeviceIds;
     QStringList m_filterGroupNames;
     bool m_executionFilterEnabled = false;

@@ -288,6 +288,18 @@ public:
 	}
 };
 
+class PlaceholderCommand : public DeviceCommand_PC
+{
+public:
+	explicit PlaceholderCommand(QObject* parent)
+		: DeviceCommand_PC("占位",
+						   DeviceKey::CommandPlaceholder,
+						   parent)
+	{
+		getField(DeviceKey::ApiPath)->setValue("/version");
+	}
+};
+
 class SystemOpenCommand : public DeviceCommand_Udp
 {
 public:
@@ -433,6 +445,8 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(
 		_createSystemCommand(DeviceKey::SystemStop, "/video/systemStop"));
 
+	device->appendCommand(new PlaceholderCommand(device));
+
 	device->appendCommand(new SystemOpenCommand(device));
 	device->appendCommand(new SystemCloseCommand(device));
 
@@ -463,6 +477,9 @@ DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
 		return new SeekAudioCommand(parent);
 	if (commandType == DeviceKey::CommandStopAudio)
 		return new StopAudioCommand(parent);
+
+	if (commandType == DeviceKey::CommandPlaceholder)
+		return new PlaceholderCommand(parent);
 // 	if (commandType == DeviceKey::CommandPlayDomeVideo)
 // 		return new PlayDomeVideoCommand(parent);
 	return nullptr;

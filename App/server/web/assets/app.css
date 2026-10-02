@@ -209,6 +209,8 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 }
 .manual-trigger:hover:not(:disabled) { transform: translateY(-1px); border-color: var(--amber); background: rgba(246, 200, 95, .14); }
 .manual-trigger:disabled { cursor: not-allowed; opacity: .35; }
+.manual-trigger.timeline-stop { color: var(--red); border-color: rgba(255, 97, 116, .35); background: rgba(255, 97, 116, .08); }
+.manual-trigger.timeline-stop:hover:not(:disabled) { border-color: var(--red); background: rgba(255, 97, 116, .14); }
 
 .timeline-card:hover:not(:disabled) { transform: translateY(-1px); border-color: #3b495a; background: rgba(255, 255, 255, .032); }
 .timeline-card.selected { border-color: rgba(66, 230, 164, .45); background: rgba(66, 230, 164, .055); }

@@ -530,11 +530,12 @@ int WebControlServer::control(const QJsonObject &request,
             accepted = sourceMatches && manager->playbackState() != TimelineManager::Stopped;
             if (accepted)
                 manager->stopPlayback();
+        } else if (action == QStringLiteral("stop-timeline")) {
+            accepted = manager->stopTimeline(
+                request.value(QStringLiteral("timelineId")).toString());
         } else if (action == QStringLiteral("trigger")) {
-
-
-                && manager->triggerTimeline(
-                    request.value(QStringLiteral("timelineId")).toString());
+            accepted = manager->triggerTimeline(
+                request.value(QStringLiteral("timelineId")).toString());
         }
     })) {
         response = errorResponse(QStringLiteral("runtime_unavailable"),

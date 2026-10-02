@@ -142,6 +142,7 @@ Item {
     }
 
     onCurrentTimelineChanged: {
+        clearDeviceCommandsPopup.close()
         refreshCommandRows()
         fallbackTimelineCurrentTimeMs = 0
         if (pcPreviewGenerator)
@@ -504,6 +505,8 @@ Item {
                         devices: root.devices
                         deviceRows: root.deviceRows
                         commandRows: root.commandRows
+                        timelineCommandModel: root.timelineCommandModel
+                        copiedCommandCount: root.timelineManager ? root.timelineManager.copiedDeviceCommandCount : 0
                         childTracksByParentId: root.timelineCommandModel
                             ? root.timelineCommandModel.childTracksByParentId
                             : ({})
@@ -515,6 +518,33 @@ Item {
                         onTrackSelected: function(targetDeviceId) {
                             root.selectTimelineDevice(targetDeviceId)
                             root.deviceTrackSelected()
+                        }
+                        onCopyCommandsRequested: function(targetDeviceId) {
+                            if (!root.timelineManager)
+                                return
+                            var error = root.timelineManager.copyCommandsForDevice(targetDeviceId)
+                            if (error.length > 0) {
+                                deviceCommandsErrorPopup.title = qsTr("无法拷贝指令")
+                                deviceCommandsErrorPopup.message = error
+                                deviceCommandsErrorPopup.open()
+                            }
+                        }
+                        onPasteCommandsRequested: function(targetDeviceId) {
+                            if (!root.commandEditingEnabled || !root.timelineManager)
+                                return
+                            var error = root.timelineManager.pasteCommandsForDevice(targetDeviceId)
+                            if (error.length > 0) {
+                                deviceCommandsErrorPopup.title = qsTr("无法粘贴指令")
+                                deviceCommandsErrorPopup.message = error
+                                deviceCommandsErrorPopup.open()
+                            }
+                        }
+                        onClearCommandsRequested: function(targetDeviceId) {
+                            if (!root.commandEditingEnabled || !root.currentTimeline)
+                                return
+                            clearDeviceCommandsPopup.targetTimeline = root.currentTimeline
+                            clearDeviceCommandsPopup.targetDevice = root.deviceForId(targetDeviceId)
+                            clearDeviceCommandsPopup.open()
                         }
                         onCommandSelected: function(command) {
                             root.selectTimelineCommand(command)
@@ -779,6 +809,57 @@ Item {
                 }
             }
         }
+    }
+
+    Base.AppDialog {
+        id: clearDeviceCommandsPopup
+        objectName: "clearDeviceTimelineCommandsPopup"
+
+        parent: root
+        property var targetTimeline: null
+        property var targetDevice: null
+        readonly property int commandCount: {
+            var commands = targetTimeline ? targetTimeline.commandModel.commands : []
+            var count = 0
+            for (var index = 0; targetDevice && index < commands.length; ++index) {
+                if (commands[index].targetDeviceId === targetDevice.id)
+                    ++count
+            }
+            return count
+        }
+
+        width: Math.min(460, Math.max(320, parent ? parent.width - 96 : 420))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        title: qsTr("清空设备时间线指令")
+        message: targetTimeline && targetDevice
+            ? qsTr("确定删除时间线“%1”中设备“%2”的全部 %3 条指令？\n设备及其指令配置保留，其他时间线不受影响。")
+                .arg(targetTimeline.name).arg(root.deviceName(targetDevice)).arg(commandCount)
+            : ""
+        rejectText: qsTr("取消")
+        acceptText: qsTr("删除全部")
+        acceptButtonVariant: UiStyle.ButtonVariant.Danger
+        acceptEnabled: root.commandEditingEnabled && targetTimeline === root.currentTimeline
+            && targetDevice !== null && commandCount > 0
+        onAccepted: {
+            if (acceptEnabled)
+                targetTimeline.commandModel.removeCommandsForDevice(targetDevice.id)
+        }
+        onClosed: {
+            targetTimeline = null
+            targetDevice = null
+        }
+    }
+
+    Base.AppDialog {
+        id: deviceCommandsErrorPopup
+        objectName: "deviceTimelineCommandsErrorPopup"
+
+        parent: root
+        width: Math.min(420, Math.max(320, parent ? parent.width - 96 : 380))
+        x: parent ? Math.round((parent.width - width) / 2) : 0
+        y: parent ? Math.round((parent.height - height) / 2) : 0
+        acceptText: qsTr("知道了")
     }
 
     Base.AppDialog {

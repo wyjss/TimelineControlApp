@@ -14,6 +14,8 @@ Item {
     property var devices: []
     property var deviceRows: []
     property var commandRows: []
+    property var timelineCommandModel: null
+    property int copiedCommandCount: 0
     property var childTracksByParentId: ({})
     property var expandedParentTrackIds: ({})
     property string selectedDeviceId: ""
@@ -27,6 +29,9 @@ Item {
     property int moveAnimationDuration: 220
 
     signal trackSelected(string targetDeviceId)
+    signal copyCommandsRequested(string targetDeviceId)
+    signal pasteCommandsRequested(string targetDeviceId)
+    signal clearCommandsRequested(string targetDeviceId)
     signal commandSelected(var command)
     signal commandTestRequested(var command)
     signal locateRequested(var command)
@@ -120,9 +125,51 @@ Item {
         }
     }
 
+    onTimelineCommandModelChanged: deviceTrackMenu.close()
     onDeviceRowsChanged: rebuildTrackModel()
     onSelectedDeviceIdChanged: Qt.callLater(positionSelectedTrack)
     Component.onCompleted: rebuildTrackModel()
+
+    Menu {
+        id: deviceTrackMenu
+        objectName: "timelineDeviceTrackMenu"
+
+        property string targetDeviceId: ""
+        readonly property int commandCount: {
+            var commands = root.timelineCommandModel ? root.timelineCommandModel.commands : []
+            var count = 0
+            for (var index = 0; index < commands.length; ++index) {
+                if (commands[index].targetDeviceId === targetDeviceId)
+                    ++count
+            }
+            return count
+        }
+
+        MenuItem {
+            objectName: "copyDeviceTimelineCommandsMenuItem"
+            text: qsTr("拷贝此设备的时间线指令")
+            enabled: deviceTrackMenu.commandCount > 0
+            onTriggered: root.copyCommandsRequested(deviceTrackMenu.targetDeviceId)
+        }
+
+        MenuItem {
+            objectName: "pasteDeviceTimelineCommandsMenuItem"
+            text: root.copiedCommandCount > 0
+                ? qsTr("粘贴时间线指令（%1 条）").arg(root.copiedCommandCount)
+                : qsTr("粘贴时间线指令")
+            enabled: root.editingEnabled && root.copiedCommandCount > 0
+            onTriggered: root.pasteCommandsRequested(deviceTrackMenu.targetDeviceId)
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            objectName: "clearDeviceTimelineCommandsMenuItem"
+            text: qsTr("清空此设备的时间线指令")
+            enabled: root.editingEnabled && deviceTrackMenu.commandCount > 0
+            onTriggered: root.clearCommandsRequested(deviceTrackMenu.targetDeviceId)
+        }
+    }
 
     ListModel {
         id: trackModel
@@ -282,8 +329,19 @@ Item {
                 width: parent.width
                 height: trackRow.mainRowHeight
                 hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                onPressed: {
+                    if (mouse.button === Qt.RightButton && mouse.x >= root.labelWidth)
+                        mouse.accepted = false
+                }
                 onClicked: {
                     root.trackSelected(trackRow.targetDeviceId)
+                    if (mouse.button === Qt.RightButton) {
+                        deviceTrackMenu.targetDeviceId = trackRow.targetDeviceId
+                        var position = mapToItem(root, mouse.x, mouse.y)
+                        deviceTrackMenu.popup(position.x, position.y)
+                        return
+                    }
                     if (mouse.x < root.labelWidth && trackRow.childTracks.length > 0)
                         root.toggleParentTrack(trackRow.targetDeviceId)
                 }

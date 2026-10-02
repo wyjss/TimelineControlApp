@@ -144,7 +144,7 @@ public:
     void writeToStream(QDataStream &stream) const;
     void readFromStream(QDataStream &stream);
 
-    void removeCommandsForDevice(const QString &deviceId);
+    Q_INVOKABLE void removeCommandsForDevice(const QString &deviceId);
 
 signals:
     void commandsChanged();

@@ -544,14 +544,18 @@ bool TimelineRuntime::importDevicesFromIni(const QString &filePath)
             
 			// 更新
 			for (auto itr = params.begin(); itr != params.end(); ++itr) {
-				if (itr.key().startsWith("虚拟")) {
-					int a = 0;
-				}
 				auto param = device->getParamByNameOrId(itr.key());
 				if (param) {
 					param->setValue(itr.value());
 				}
 			}
+
+            // 更新group
+            if(params.contains("group"))
+            {
+                auto gs = params.value("group", "").toString().split(",", Qt::SkipEmptyParts);
+				device->setGroupNames(gs);
+            }
 
             // 设备指令
 			for (auto itr = params.begin(); itr != params.end(); ++itr) {
@@ -633,22 +637,30 @@ bool TimelineRuntime::importTimelinesFromJson(const QString &filePath)
     bool success = true;
     const QRegularExpression timePattern(QStringLiteral(R"(^(\d{2}):([0-5]\d):([0-5]\d)\.(\d{3})$)"));
     for (const auto& tl : tls) {
+        const QStringList AutoTLNames = {"上半场", "下半场", "暖场"};
+        QStringList AutogenSubTLNames;
+
+		// 自动线自动创建分组
+		bool needAutogen = AutoTLNames.contains(tl.name);
+//         if(needAutogen) {
+//             AutogenSubTLNames <<  (tl.name + "-九歌天汉");
+//             AutogenSubTLNames <<  (tl.name + "-安康秦巴");
+//         }
+        
+
         auto items = m_timelineManager->timelineModel()->items();
        
-        Timeline* timeline = nullptr;
-        // 查找目标时间线
-        for (auto item : items) {
-            if (item->name() == tl.name) {
-                timeline = item;
-                break;
-            }
-        }
+        // 删除目标时间线和子线
+		for (auto item : items) {
+			if (item->name() == tl.name ||
+                AutogenSubTLNames.contains(item->name())
+                ) {
+				m_timelineManager->removeTimeline(item->id());
+			}
+		}
 
-        // 删除重建
-        if (timeline) {
-            m_timelineManager->removeTimeline(timeline->id());
-        }
-        timeline = m_timelineManager->createTimeline(tl.name);
+        // 创建主线
+        Timeline* timeline = m_timelineManager->createTimeline(tl.name);
         if (!timeline) {
             LOG_ERROR("创建时间线失败：" << tl.name);
             success = false;
@@ -691,6 +703,11 @@ bool TimelineRuntime::importTimelinesFromJson(const QString &filePath)
                 tlCmd.simName
             );
         }
-    }
+
+        // 创建子线
+        if (needAutogen) {
+
+        }
+    }// for tls
     return success;
 }

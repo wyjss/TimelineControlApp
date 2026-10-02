@@ -8,6 +8,7 @@
 #include "devices/CrossConditionModel.h"
 #include "devices/Device.h"
 #include "devices/DeviceModel.h"
+#include "devices/DeviceCommand.h"
 #include "devices/DeviceFilterModel.h"
 #include "devices/DeviceConstants.h"
 
@@ -225,6 +226,88 @@ bool TimelineManager::setCurrentTimelineId(const QString &id)
     return true;
 }
 
+int TimelineManager::copiedDeviceCommandCount() const
+{
+    return m_copiedDeviceCommands.size();
+}
+
+QString TimelineManager::copyCommandsForDevice(const QString &deviceId)
+{
+    Timeline *timeline = currentTimeline();
+    Device *device = m_deviceModel ? m_deviceModel->deviceById(deviceId) : nullptr;
+    if (!timeline || !device)
+        return tr("时间线或设备不存在");
+
+    QVariantList commands;
+    for (TimelineCommand *command : timeline->commandModel()->commands()) {
+        if (command->targetDeviceId() != device->id())
+            continue;
+        DeviceCommand *targetCommand = command->targetCommand();
+        if (!targetCommand)
+            return tr("指令“%1”未关联设备指令，无法拷贝").arg(command->alias());
+        commands.append(QVariantMap{
+            {QStringLiteral("startTimeMs"), command->startTimeMs()},
+            {QStringLiteral("commandName"), targetCommand->name()},
+            {QStringLiteral("protocol"), targetCommand->protocol()},
+            {QStringLiteral("commandType"), targetCommand->commandType()},
+            {QStringLiteral("executionInputValues"), command->executionInputValues()},
+            {QStringLiteral("alias"), command->alias()}
+        });
+    }
+    if (commands.isEmpty())
+        return tr("此设备在当前时间线中没有指令");
+
+    m_copiedDeviceType = device->deviceType();
+    m_copiedDeviceProtocols = device->supportedProtocols();
+    m_copiedDeviceProtocols.sort();
+    m_copiedDeviceCommands = commands;
+    emit copiedDeviceCommandsChanged();
+    return QString();
+}
+
+QString TimelineManager::pasteCommandsForDevice(const QString &deviceId)
+{
+    if (playbackState() != Stopped && playbackState() != Paused)
+        return tr("请先停止或暂停播放，再粘贴指令");
+    Timeline *timeline = currentTimeline();
+    Device *device = m_deviceModel ? m_deviceModel->deviceById(deviceId) : nullptr;
+    if (!timeline || !device)
+        return tr("时间线或设备不存在");
+    if (m_copiedDeviceCommands.isEmpty())
+        return tr("请先拷贝设备的时间线指令");
+    if (device->deviceType() != m_copiedDeviceType)
+        return tr("设备类型不一致，无法粘贴");
+    QStringList protocols = device->supportedProtocols();
+    protocols.sort();
+    if (protocols != m_copiedDeviceProtocols)
+        return tr("设备协议不一致，无法粘贴");
+
+    // 整批检查通过后再添加，全部绑定目标设备自己的指令。
+    QList<DeviceCommand *> targetCommands;
+    for (const QVariant &value : m_copiedDeviceCommands) {
+        const QVariantMap command = value.toMap();
+        const QString name = command.value(QStringLiteral("commandName")).toString();
+        DeviceCommand *targetCommand = device->commandByName(name);
+        if (!targetCommand)
+            return tr("目标设备缺少指令“%1”，无法粘贴").arg(name);
+        if (targetCommand->protocol() != command.value(QStringLiteral("protocol")).toString()
+            || targetCommand->commandType() != command.value(QStringLiteral("commandType")).toString()
+            || !device->supportsProtocol(targetCommand->protocol()))
+            return tr("目标设备的指令“%1”协议或类型不一致，无法粘贴").arg(name);
+        targetCommands.append(targetCommand);
+    }
+
+    for (int index = 0; index < m_copiedDeviceCommands.size(); ++index) {
+        const QVariantMap command = m_copiedDeviceCommands.at(index).toMap();
+        timeline->commandModel()->addDeviceCommand(
+            command.value(QStringLiteral("startTimeMs")).toLongLong(),
+            device->id(), targetCommands.at(index),
+            command.value(QStringLiteral("executionInputValues")).toMap(),
+            command.value(QStringLiteral("alias")).toString());
+    }
+    return QString();
+}
+
 bool TimelineManager::waitForTrigger(const QString &id)
 {
     Timeline *timeline = timelineById(id);
@@ -244,6 +327,28 @@ bool TimelineManager::triggerTimeline(const QString &id)
         return false;
 
     return startTimeline(id);
+}
+
+bool TimelineManager::stopTimeline(const QString &id)
+{
+    Timeline *timeline = timelineById(id);
+    if (!timeline || timeline->state() != Timeline::Running)
+        return false;
+
+    timeline->stop();
+    const bool running = hasRunningTimeline();
+    if (m_playbackTimeline == timeline || !running) {
+        if (m_playQueueIndex != -1) {
+            m_playQueueIndex = -1;
+            emit playQueueIndexChanged(m_playQueueIndex);
+        }
+        m_playbackTimeline = nullptr;
+        m_queuePlayback = false;
+        emit playbackChanged();
+    }
+    if (!running)
+        m_clock->stop();
+    return true;
 }
 
 bool TimelineManager::startTimeline(const QString &id, qint64 startTimeMs)
