@@ -51,6 +51,9 @@ namespace DeviceKey {
 	// @todo 可以代替 SerialPayload/HttpBody ?
 	inline const QString Payload = "payload";
 
+	// 冗余传输，间隔20毫秒、发送3次
+	// 目前只支持udp，做为udp参数
+	inline const QString RedundantTransmission = "redundantTransmission"; 
 	//////////////////////////////////////////////////////////////////////////
 	
 	//

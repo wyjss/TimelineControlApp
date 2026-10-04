@@ -125,7 +125,8 @@ Item {
         return parts.join(" · ")
     }
 
-    function instantCommandLayout(command) {
+    // 整组布局统一计算，指令块和轨道高度共用结果。
+    readonly property var instantCommandLayouts: {
         var instantCommands = []
         for (var index = 0; index < visibleCommandRows.length; ++index) {
             var item = visibleCommandRows[index].command
@@ -195,8 +196,12 @@ Item {
             }
         }
 
-        key = String(command && command.id || visibleCommandRows.findIndex(function(row) { return row.command === command }))
-        return layouts[key] || {
+        return layouts
+    }
+
+    function instantCommandLayout(command) {
+        var key = String(command && command.id || visibleCommandRows.findIndex(function(row) { return row.command === command }))
+        return instantCommandLayouts[key] || {
             "lane": 1,
             "visible": true,
             "overflowCount": 0,

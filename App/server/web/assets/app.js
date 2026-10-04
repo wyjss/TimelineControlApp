@@ -6,7 +6,8 @@ const elements = Object.fromEntries([
     "empty-timelines", "queue-panel", "queue-count", "queue-list", "queue-status",
     "queue-play-button", "queue-stop-button", "clear-queue-button", "device-count",
     "device-list", "empty-devices", "device-selection", "reset-devices-button", "command-program", "command-count", "command-list",
-    "empty-commands", "toast", "show-filtered-out", "execution-filter"
+    "empty-commands", "toast", "show-filtered-out", "execution-filter",
+    "confirm-dialog", "confirm-message"
 ].map(id => [id, document.getElementById(id)]));
 
 const state = {
@@ -71,6 +72,16 @@ function showToast(message, error = false) {
     elements.toast.textContent = message;
     elements.toast.className = `toast visible${error ? " error" : ""}`;
     state.toastTimer = setTimeout(() => elements.toast.className = "toast", 2600);
+}
+
+function confirmAction(message) {
+    const dialog = elements["confirm-dialog"];
+    elements["confirm-message"].textContent = message;
+    dialog.returnValue = "cancel";
+    return new Promise(resolve => {
+        dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), { once: true });
+        dialog.showModal();
+    });
 }
 
 function requestHeaders() {
@@ -184,11 +195,14 @@ function renderTimelineList(data) {
             triggerButton.type = "button";
             triggerButton.disabled = state.busy;
             triggerButton.title = `手动触发 ${timeline.name}`;
-            triggerButton.addEventListener("click", () => post(
-                "/api/v1/control",
-                { action: "trigger", timelineId: timeline.id },
-                `已触发 ${timeline.name}`
-            ));
+            triggerButton.addEventListener("click", async () => {
+                if (!await confirmAction(`确定触发时间线“${timeline.name}”？`)) return;
+                post(
+                    "/api/v1/control",
+                    { action: "trigger", timelineId: timeline.id },
+                    `已触发 ${timeline.name}`
+                );
+            });
             entry.append(triggerButton);
         } else {
             const stopButton = createElement("button", "manual-trigger timeline-stop", "■ 停止");
@@ -196,11 +210,14 @@ function renderTimelineList(data) {
             stopButton.disabled = state.busy;
             stopButton.title = `仅停止 ${timeline.name} 的后续指令下发`;
             stopButton.setAttribute("aria-label", `停止时间线 ${timeline.name}`);
-            stopButton.addEventListener("click", () => post(
-                "/api/v1/control",
-                { action: "stop-timeline", timelineId: timeline.id },
-                `已停止时间线 ${timeline.name}`
-            ));
+            stopButton.addEventListener("click", async () => {
+                if (!await confirmAction(`确定停止时间线“${timeline.name}”的后续指令下发？`)) return;
+                post(
+                    "/api/v1/control",
+                    { action: "stop-timeline", timelineId: timeline.id },
+                    `已停止时间线 ${timeline.name}`
+                );
+            });
             entry.append(stopButton);
         }
         elements["timeline-list"].append(entry);
@@ -480,10 +497,14 @@ elements["queue-play-button"].addEventListener("click", () => {
         : state.data?.queuePlayback && playback === "running" ? "pause" : "start-queue";
     post("/api/v1/control", { action, source: "queue" }, "队列播控状态已更新");
 });
-elements["queue-stop-button"].addEventListener("click", () =>
-    post("/api/v1/control", { action: "stop", source: "queue" }, "队列播放已停止"));
-elements["stop-button"].addEventListener("click", () =>
-    post("/api/v1/control", { action: "stop" }, "播放已停止"));
+elements["queue-stop-button"].addEventListener("click", async () => {
+    if (!await confirmAction("确定停止所有时间线，并向相关设备发送停止指令？")) return;
+    post("/api/v1/control", { action: "stop", source: "queue" }, "队列播放已停止");
+});
+elements["stop-button"].addEventListener("click", async () => {
+    if (!await confirmAction("确定停止所有时间线，并向相关设备发送停止指令？")) return;
+    post("/api/v1/control", { action: "stop" }, "播放已停止");
+});
 elements["reset-devices-button"].addEventListener("click", () =>
     post("/api/v1/device-filter", { deviceIds: [], groupNames: [] }, "已重置为全部设备"));
 elements["show-filtered-out"].addEventListener("change", event =>

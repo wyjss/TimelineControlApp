@@ -301,6 +301,18 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
         return spec;
     }
 
+	if (deviceKey == DeviceKey::RedundantTransmission) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("冗余传输"),
+										 "false",
+										 SelectType,
+										 SelectEditor);
+		spec->setReadOnly(false);
+		spec->setOptions({ "true", "false" });
+		return spec;
+
+	}
+
     if (deviceKey == DeviceKey::PayloadType) {
         auto* spec = new DeviceParamSpec(deviceKey,
                                          QStringLiteral("载荷类型"),

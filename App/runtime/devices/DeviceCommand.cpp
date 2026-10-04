@@ -610,6 +610,7 @@ DeviceCommand_Udp::DeviceCommand_Udp(const QString& protocol,
     addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Port));
     addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Payload));
     addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::PayloadType));
+    addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::RedundantTransmission));
 }
 
 //////////////////////////////////////////////////////////////////////////
