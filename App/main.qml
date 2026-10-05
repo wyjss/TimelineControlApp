@@ -149,6 +149,17 @@ ApplicationWindow {
         }
     }
 
+    Timeline.TimelineStopConfirmDialog {
+        id: stopConfirmDialog
+
+        parent: window.contentItem
+        stopped: window.timelineStopped
+        onStopRequested: {
+            if (window.shellController)
+                window.shellController.handleUiAction("timeline.stop", {})
+        }
+    }
+
     Ui.AppShell {
         id: shell
 
@@ -355,7 +366,9 @@ ApplicationWindow {
                         iconName: "stop"
                         enabled: !window.timelineStopped
                         onClicked: {
-                            if (window.shellController)
+                            if (window.timelineRunning || window.timelinePaused)
+                                stopConfirmDialog.open()
+                            else if (window.shellController)
                                 window.shellController.handleUiAction("timeline.stop", {})
                         }
                     }

@@ -247,15 +247,6 @@ Item {
                     shapeRole: UiStyle.ShapeRole.Control
                     strokeWidth: 1
                 }
-
-                Base.AppButton {
-                    objectName: "addTimelineToQueue_" + root.timelineId
-                    visible: root.current && root.stopped
-                    text: root.queued ? qsTr("移除队列") : qsTr("加入队列")
-                    size: UiStyle.ButtonSize.Small
-                    variant: UiStyle.ButtonVariant.Tonal
-                    onClicked: root.queueRequested()
-                }
             }
 
             RowLayout {
@@ -381,6 +372,14 @@ Item {
 
                     Menu {
                         id: timelineMenu
+
+                        MenuItem {
+                            objectName: "addTimelineToQueue_" + root.timelineId
+                            visible: root.current && root.stopped
+                            height: visible ? implicitHeight : 0
+                            text: root.queued ? qsTr("移除队列") : qsTr("加入队列")
+                            onTriggered: root.queueRequested()
+                        }
 
                         MenuItem {
                             //为了支持重复触发，非running都可以点击

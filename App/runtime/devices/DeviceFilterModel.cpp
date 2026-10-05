@@ -13,9 +13,13 @@ DeviceFilterModel::DeviceFilterModel(DeviceModel *deviceModel, TimelineManager *
             this, &DeviceFilterModel::refreshFilter);
     connect(timelineManager, &TimelineManager::filterGroupNamesChanged,
             this, &DeviceFilterModel::refreshFilter);
+    connect(timelineManager, &TimelineManager::filterDeviceTypesChanged,
+            this, &DeviceFilterModel::refreshFilter);
     connect(timelineManager, &TimelineManager::showFilteredOutChanged,
             this, &DeviceFilterModel::refreshFilter);
     if (deviceModel) {
+        connect(deviceModel, &DeviceModel::deviceTypesChanged,
+                this, &DeviceFilterModel::refreshFilter);
         connect(deviceModel, &DeviceModel::groupNamesChanged,
                 this, &DeviceFilterModel::refreshFilter);
     }

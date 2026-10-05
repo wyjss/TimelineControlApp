@@ -45,6 +45,14 @@ Base.AppSurface {
             + (seconds % 60 < 10 ? "0" : "") + seconds % 60
     }
 
+    TimelineStopConfirmDialog {
+        id: stopConfirmDialog
+
+        parent: root.ApplicationWindow.window.contentItem
+        stopped: root.stopped
+        onStopRequested: root.timelineManager.stopPlayback()
+    }
+
     ColumnLayout {
         id: content
         anchors.fill: parent
@@ -141,7 +149,12 @@ Base.AppSurface {
                 enabled: root.queuePlayback && !root.stopped
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("停止本次播放及其触发节目，保留队列")
-                onClicked: root.timelineManager.stopPlayback()
+                onClicked: {
+                    if (root.running || root.paused)
+                        stopConfirmDialog.open()
+                    else
+                        root.timelineManager.stopPlayback()
+                }
             }
         }
 

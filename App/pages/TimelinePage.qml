@@ -703,7 +703,6 @@ Item {
                                 ruler: overviewRuler
                                 commandRows: root.commandRows
                                 devices: root.devices
-                                deviceIdFilter: ""
                                 selectedCommandId: root.selectedTimelineCommandId
                                 locatingEnabled: !!root.editor && root.editor.currentTimeEditingEnabled
                                 timelineOffsetX: 0

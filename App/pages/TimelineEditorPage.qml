@@ -124,6 +124,10 @@ Item {
         function onLayoutChanged() { root.refreshCommandRows() }
         function onDataChanged() { root.refreshCommandRows() }
     }
+    Connections {
+        target: root.timelineCommandModel
+        function onCommandScheduleChanged() { root.refreshCommandRows() }
+    }
     onSelectedTimelineDeviceIdChanged: {
         updateSelectedTimelineDevice()
         selectedCommandIndex = -1

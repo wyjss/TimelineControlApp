@@ -34,6 +34,7 @@ class TimelineManager final : public QObject
     Q_PROPERTY(int copiedDeviceCommandCount READ copiedDeviceCommandCount NOTIFY copiedDeviceCommandsChanged FINAL)
     Q_PROPERTY(QStringList filterDeviceIds READ filterDeviceIds WRITE setFilterDeviceIds NOTIFY filterDeviceIdsChanged FINAL)
     Q_PROPERTY(QStringList filterGroupNames READ filterGroupNames WRITE setFilterGroupNames NOTIFY filterGroupNamesChanged FINAL)
+    Q_PROPERTY(QStringList filterDeviceTypes READ filterDeviceTypes WRITE setFilterDeviceTypes NOTIFY filterDeviceTypesChanged FINAL)
     Q_PROPERTY(bool executionFilterEnabled READ executionFilterEnabled WRITE setExecutionFilterEnabled NOTIFY executionFilterEnabledChanged FINAL)
     Q_PROPERTY(bool showFilteredOut READ showFilteredOut WRITE setShowFilteredOut NOTIFY showFilteredOutChanged FINAL)
     Q_PROPERTY(QAbstractItemModel *filteredDeviceModel READ filteredDeviceModel CONSTANT FINAL)
@@ -87,7 +88,7 @@ public:
     Q_INVOKABLE bool seekTimeline(const QString &id, qint64 timeMs);
     Q_INVOKABLE void stopPlayback(bool notifyDevices = true);
 
-    // 过滤设置；设备和组条件为空时不限制
+    // 过滤设置；设备、自定义组和类型条件均为空时不限制
     // 满足任一过滤条件都通过
     // 
     // 设备id过滤，空表示不过滤
@@ -96,6 +97,9 @@ public:
     // 设备组过滤，空表示不过滤
     QStringList filterGroupNames() const;
     void setFilterGroupNames(const QStringList &groupNames);
+    //! 类型分组过滤，与同名自定义组独立。
+    QStringList filterDeviceTypes() const;
+    void setFilterDeviceTypes(const QStringList &deviceTypes);
     // 是否仅执行筛选范围内的播放指令
     bool executionFilterEnabled() const;
     void setExecutionFilterEnabled(bool enabled);
@@ -122,6 +126,7 @@ signals:
     void deviceCommandTriggered(DeviceCommand *command);
     void filterDeviceIdsChanged();
     void filterGroupNamesChanged();
+    void filterDeviceTypesChanged();
     void executionFilterEnabledChanged();
     void showFilteredOutChanged();
 private:
@@ -144,6 +149,7 @@ private:
     QVariantList m_copiedDeviceCommands;
     QStringList m_filterDeviceIds;
     QStringList m_filterGroupNames;
+    QStringList m_filterDeviceTypes;
     bool m_executionFilterEnabled = false;
     bool m_showFilteredOut = true;
     DeviceFilterModel *m_filteredDeviceModel = nullptr;

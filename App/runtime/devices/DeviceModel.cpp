@@ -134,7 +134,7 @@ QStringList DeviceModel::deviceTypes(bool manual) const
     if (!manual)
         types << DeviceType::PC << DeviceType::Dmx512Adapter << DeviceType::Fusion3 << DeviceType::Locator;
 
-    types << DeviceType::Projector << DeviceType::Light << DeviceType::Sound << "1111";
+    types << DeviceType::Projector << DeviceType::Light << DeviceType::Sound;
     
     for (Device *device : items()) {
         if (!device)

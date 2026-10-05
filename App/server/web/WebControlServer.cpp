@@ -369,6 +369,7 @@ QJsonObject WebControlServer::statusSnapshot() const
             {QStringLiteral("playQueue"), QJsonArray::fromStringList(playQueue)},
             {QStringLiteral("filterDeviceIds"), QJsonArray::fromStringList(manager->filterDeviceIds())},
             {QStringLiteral("filterGroupNames"), QJsonArray::fromStringList(manager->filterGroupNames())},
+            {QStringLiteral("filterDeviceTypes"), QJsonArray::fromStringList(manager->filterDeviceTypes())},
             {QStringLiteral("executionFilterEnabled"), manager->executionFilterEnabled()},
             {QStringLiteral("showFilteredOut"), manager->showFilteredOut()},
             {QStringLiteral("timelines"), timelines},
@@ -418,14 +419,16 @@ int WebControlServer::updateDeviceFilter(const QJsonObject &request,
 {
     QStringList ids;
     QStringList groups;
-    for (const QString &key : {QStringLiteral("deviceIds"), QStringLiteral("groupNames")}) {
+    QStringList types;
+    for (const QString &key : {QStringLiteral("deviceIds"), QStringLiteral("groupNames"), QStringLiteral("deviceTypes")}) {
         if (!request.contains(key))
             continue;
         if (!request.value(key).isArray()) {
             response = errorResponse(QStringLiteral("invalid_filter"), QStringLiteral("筛选条件必须为数组"));
             return 400;
         }
-        QStringList &values = key == QStringLiteral("deviceIds") ? ids : groups;
+        QStringList &values = key == QStringLiteral("deviceIds") ? ids
+            : (key == QStringLiteral("groupNames") ? groups : types);
         for (const QJsonValue &value : request.value(key).toArray()) {
             if (!value.isString() || value.toString().isEmpty() || values.contains(value.toString())) {
                 response = errorResponse(QStringLiteral("invalid_filter"), QStringLiteral("筛选条件包含无效或重复项目"));
@@ -444,12 +447,13 @@ int WebControlServer::updateDeviceFilter(const QJsonObject &request,
 
     bool locked = false;
     bool valid = false;
-    if (!invokeRuntime([&locked, &valid, &ids, &groups, &request](TimelineRuntime *runtime) {
+    if (!invokeRuntime([&locked, &valid, &ids, &groups, &types, &request](TimelineRuntime *runtime) {
         TimelineManager *manager = runtime->timelineManager();
         locked = manager->playbackState() != TimelineManager::Stopped
             && (request.contains(QStringLiteral("executionFilterEnabled"))
                 || (manager->executionFilterEnabled()
-                    && (request.contains(QStringLiteral("deviceIds")) || request.contains(QStringLiteral("groupNames")))));
+                    && (request.contains(QStringLiteral("deviceIds")) || request.contains(QStringLiteral("groupNames"))
+                        || request.contains(QStringLiteral("deviceTypes")))));
         valid = true;
         for (const QString &id : ids) {
             if (!runtime->deviceModel()->deviceById(id)) {
@@ -462,6 +466,8 @@ int WebControlServer::updateDeviceFilter(const QJsonObject &request,
                 manager->setFilterDeviceIds(ids);
             if (request.contains(QStringLiteral("groupNames")))
                 manager->setFilterGroupNames(groups);
+            if (request.contains(QStringLiteral("deviceTypes")))
+                manager->setFilterDeviceTypes(types);
             if (request.contains(QStringLiteral("executionFilterEnabled")))
                 manager->setExecutionFilterEnabled(request.value(QStringLiteral("executionFilterEnabled")).toBool());
             if (request.contains(QStringLiteral("showFilteredOut")))

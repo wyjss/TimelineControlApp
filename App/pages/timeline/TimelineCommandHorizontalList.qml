@@ -12,20 +12,18 @@ Item {
     property var ruler: null
     property var commandRows: []
     property var devices: []
-    property string deviceIdFilter: ""
     property string selectedCommandId: ""
     property bool editingEnabled: false
     property bool locatingEnabled: false
     property real timelineOffsetX: 0
     property int instantCommandMinWidth: 56
     property int instantCommandMaxWidth: 180
-    readonly property var visibleCommandRows: filterCommands()
-    readonly property int count: visibleCommandRows.length
+    readonly property int count: commandRows.length
     readonly property int instantLabelHeight: implicitHeight > 48
         ? Math.min(24, Math.floor((height - 8) / 3)) : 24
 
     // 密集指令保留三层标签空间，普通轨道使用紧凑高度。
-    implicitHeight: visibleCommandRows.some(function(row) {
+    implicitHeight: commandRows.some(function(row) {
         return instantCommandLayout(row.command).lane !== 1
     }) ? 80 : 48
 
@@ -38,15 +36,6 @@ Item {
         return theme && theme.colors && theme.colors[name] !== undefined
             ? theme.colors[name]
             : fallback
-    }
-
-    function filterCommands() {
-        if (deviceIdFilter.length === 0)
-            return commandRows
-
-        return commandRows.filter(function(row) {
-            return String(row.command.targetDeviceId || "") === deviceIdFilter
-        })
     }
 
     function timeToX(ms) {
@@ -128,8 +117,8 @@ Item {
     // 整组布局统一计算，指令块和轨道高度共用结果。
     readonly property var instantCommandLayouts: {
         var instantCommands = []
-        for (var index = 0; index < visibleCommandRows.length; ++index) {
-            var item = visibleCommandRows[index].command
+        for (var index = 0; index < commandRows.length; ++index) {
+            var item = commandRows[index].command
             instantCommands.push({ "command": item, "order": index })
         }
         instantCommands.sort(function(left, right) {
@@ -200,7 +189,7 @@ Item {
     }
 
     function instantCommandLayout(command) {
-        var key = String(command && command.id || visibleCommandRows.findIndex(function(row) { return row.command === command }))
+        var key = String(command && command.id || commandRows.findIndex(function(row) { return row.command === command }))
         return instantCommandLayouts[key] || {
             "lane": 1,
             "visible": true,
@@ -232,7 +221,7 @@ Item {
     }
 
     Repeater {
-        model: root.visibleCommandRows
+        model: root.commandRows
 
         delegate: Item {
             id: commandBlock

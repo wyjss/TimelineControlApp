@@ -181,13 +181,13 @@ function renderTimelineList(data) {
         progress.append(progressFill);
         card.append(progress);
         entry.append(card);
-        if (editable && selected) {
-            const queueButton = createElement("button", "text-button queue-toggle", queued ? "移除队列" : "加入队列");
+        if (editable && selected && queued) {
+            const queueButton = createElement("button", "text-button queue-toggle", "移除队列");
             queueButton.type = "button";
             queueButton.disabled = state.busy;
             queueButton.addEventListener("click", () => post("/api/v1/queue", {
-                timelineIds: queued ? data.playQueue.filter(id => id !== timeline.id) : [...data.playQueue, timeline.id]
-            }, queued ? "已移出队列" : "已加入队列"));
+                timelineIds: data.playQueue.filter(id => id !== timeline.id)
+            }, "已移出队列"));
             entry.append(queueButton);
         }
         if (timeline.state !== "running") {
@@ -287,7 +287,7 @@ function renderQueue(data) {
 
 function renderDevices(data) {
     const selectedIds = data.filterDeviceIds;
-    const selectedGroups = data.filterGroupNames;
+    const selectedGroups = data.filterGroupNames.concat(data.filterDeviceTypes.map(type => `${type}（类型分组）`));
     const locked = data.executionFilterEnabled && data.playbackState !== "stopped";
     const signature = JSON.stringify(data.devices.map(device => [
         device.id,
@@ -407,7 +407,7 @@ function render(data) {
     elements["now-title"].textContent = timeline?.name || (active ? "触发节目" : "等待选择节目");
     elements["now-summary"].textContent = timeline
         ? `${active ? (data.queuePlayback ? `队列第 ${data.queueIndex + 1} / ${data.playQueue.length} 项` : "单节目播放") : "当前节目"} · ${timeline.commands.length} 条设备指令`
-        : (active ? "主队列已结束，等待触发节目结束" : "从节目库中选择节目，可单独播放或加入队列");
+        : (active ? "主队列已结束，等待触发节目结束" : "从节目库中选择节目，可单独播放");
     elements["master-time"].textContent = formatTime(data.currentTimeMs);
     elements["timeline-seek"].max = duration;
     elements["timeline-seek"].value = currentTime;
@@ -506,7 +506,7 @@ elements["stop-button"].addEventListener("click", async () => {
     post("/api/v1/control", { action: "stop" }, "播放已停止");
 });
 elements["reset-devices-button"].addEventListener("click", () =>
-    post("/api/v1/device-filter", { deviceIds: [], groupNames: [] }, "已重置为全部设备"));
+    post("/api/v1/device-filter", { deviceIds: [], groupNames: [], deviceTypes: [] }, "已重置为全部设备"));
 elements["show-filtered-out"].addEventListener("change", event =>
     post("/api/v1/device-filter", { showFilteredOut: event.target.checked }, "显示方式已更新"));
 elements["execution-filter"].addEventListener("change", event =>

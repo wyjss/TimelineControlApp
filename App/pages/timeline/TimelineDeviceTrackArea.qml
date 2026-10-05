@@ -128,7 +128,6 @@ Item {
     onTimelineCommandModelChanged: deviceTrackMenu.close()
     onDeviceRowsChanged: rebuildTrackModel()
     onSelectedDeviceIdChanged: Qt.callLater(positionSelectedTrack)
-    Component.onCompleted: rebuildTrackModel()
 
     Menu {
         id: deviceTrackMenu
@@ -414,9 +413,11 @@ Item {
                 clip: true
                 theme: root.theme
                 ruler: root.ruler
-                commandRows: root.commandRows
+                commandRows: trackRow.targetDeviceId.length === 0 ? []
+                    : root.commandRows.filter(function(row) {
+                        return String(row.command.targetDeviceId || "") === trackRow.targetDeviceId
+                    })
                 devices: root.devices
-                deviceIdFilter: trackRow.targetDeviceId
                 selectedCommandId: root.selectedCommandId
                 editingEnabled: root.editingEnabled
                 locatingEnabled: root.locatingEnabled

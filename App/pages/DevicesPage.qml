@@ -74,7 +74,8 @@ Item {
     property string selectedGroupKind: "all"
     property string selectedGroupName: ""
     readonly property string selectedGroupTitle: selectedGroupKind === "all" ? qsTr("全部设备")
-        : (selectedGroupKind === "ungrouped" ? qsTr("未分组") : selectedGroupName)
+        : (selectedGroupKind === "ungrouped" ? qsTr("未分组")
+            : (selectedGroupKind === "type" ? qsTr("%1（类型分组）").arg(selectedGroupName) : selectedGroupName))
     readonly property var groupItems: {
         if (deviceDisplayMode === "type")
             return deviceTypes
@@ -82,6 +83,14 @@ Item {
             return deviceTemplates
         var groups = [{ "kind": "all", "name": qsTr("全部设备") },
                       { "kind": "ungrouped", "name": qsTr("未分组") }]
+        var types = []
+        for (var deviceIndex = 0; deviceIndex < devices.length; ++deviceIndex) {
+            var type = String(devices[deviceIndex].deviceType || "")
+            if (type.length > 0 && types.indexOf(type) < 0) {
+                types.push(type)
+                groups.push({ "kind": "type", "name": type })
+            }
+        }
         for (var index = 0; index < deviceGroupNames.length; ++index)
             groups.push({ "kind": "named", "name": deviceGroupNames[index] })
         return groups
@@ -114,11 +123,15 @@ Item {
             selectedDeviceType = String(deviceTypes[0])
     }
 
-    onDeviceGroupNamesChanged: {
-        if (selectedGroupKind === "named" && deviceGroupNames.indexOf(selectedGroupName) < 0) {
-            selectedGroupKind = "all"
-            selectedGroupName = ""
+    onGroupItemsChanged: {
+        if (deviceDisplayMode !== "group" || (selectedGroupKind !== "named" && selectedGroupKind !== "type"))
+            return
+        for (var index = 0; index < groupItems.length; ++index) {
+            if (groupItems[index].kind === selectedGroupKind && groupItems[index].name === selectedGroupName)
+                return
         }
+        selectedGroupKind = "all"
+        selectedGroupName = ""
     }
 
     onSelectedDeviceChanged: {
@@ -170,12 +183,14 @@ Item {
 
     function groupPowerDevices(powerOn) {
         var result = []
-        if (deviceDisplayMode !== "group" || selectedGroupKind !== "named")
+        if (deviceDisplayMode !== "group" || (selectedGroupKind !== "named" && selectedGroupKind !== "type"))
             return result
         var commandName = powerOn ? "$开机" : "$关机"
         for (var index = 0; index < devices.length; ++index) {
             var device = devices[index]
-            if ((device.groupNames || []).indexOf(selectedGroupName) < 0)
+            if (selectedGroupKind === "type"
+                ? String(device.deviceType || "") !== selectedGroupName
+                : (device.groupNames || []).indexOf(selectedGroupName) < 0)
                 continue
             var commands = device.commands || []
             for (var commandIndex = 0; commandIndex < commands.length; ++commandIndex) {
@@ -243,6 +258,7 @@ Item {
                 var names = device.groupNames || []
                 if (selectedGroupKind === "all"
                     || (selectedGroupKind === "ungrouped" && names.length === 0)
+                    || (selectedGroupKind === "type" && String(device.deviceType || "") === selectedGroupName)
                     || (selectedGroupKind === "named" && names.indexOf(selectedGroupName) >= 0))
                     result.push(device)
             } else if (deviceDisplayMode === "type") {
@@ -397,7 +413,7 @@ Item {
 
     function selectGroup(groupData) {
         if (deviceDisplayMode === "group") {
-            selectedGroupName = groupData.kind === "named" ? String(groupData.name) : ""
+            selectedGroupName = groupData.kind === "named" || groupData.kind === "type" ? String(groupData.name) : ""
             selectedGroupKind = groupData.kind
         } else if (deviceDisplayMode === "type")
             selectDeviceType(groupData)
@@ -406,6 +422,8 @@ Item {
     }
 
     function groupName(groupData) {
+        if (deviceDisplayMode === "group" && groupData.kind === "type")
+            return qsTr("%1（类型分组）").arg(groupData.name)
         return deviceDisplayMode === "type"
             ? String(groupData || "")
             : String(groupData.name || "")
@@ -432,7 +450,8 @@ Item {
 
     function groupFootnote(groupData) {
         if (deviceDisplayMode === "group")
-            return groupData.kind === "named" ? qsTr("自定义分组") : qsTr("设备分组")
+            return groupData.kind === "named" ? qsTr("自定义分组")
+                : (groupData.kind === "type" ? qsTr("类型分组") : qsTr("设备分组"))
         if (deviceDisplayMode === "type")
             return qsTr("设备类型")
 
@@ -461,7 +480,7 @@ Item {
     function groupSelected(groupData) {
         if (deviceDisplayMode === "group")
             return groupData.kind === selectedGroupKind
-                && (groupData.kind !== "named" || groupData.name === selectedGroupName)
+                && ((groupData.kind !== "named" && groupData.kind !== "type") || groupData.name === selectedGroupName)
         return deviceDisplayMode === "type"
             ? String(groupData || "") === selectedDeviceType
             : String(groupData.name || "") === selectedTemplateName
@@ -477,6 +496,7 @@ Item {
                 var names = devices[index].groupNames || []
                 if (groupData.kind === "all"
                     || (groupData.kind === "ungrouped" && names.length === 0)
+                    || (groupData.kind === "type" && String(devices[index].deviceType || "") === groupData.name)
                     || (groupData.kind === "named" && names.indexOf(groupData.name) >= 0))
                     ++count
                 continue
@@ -562,7 +582,7 @@ Item {
                         }
 
                         Base.AppText {
-                            text: root.deviceDisplayMode === "group" ? qsTr("%1 个分组").arg(root.deviceGroupNames.length)
+                            text: root.deviceDisplayMode === "group" ? qsTr("%1 个分组").arg(root.groupItems.length - 2)
                                 : (root.deviceDisplayMode === "type"
                                     ? qsTr("%1 个类型").arg(root.groupItems.length)
                                     : qsTr("%1 个模板").arg(root.deviceTemplates.length))
@@ -744,13 +764,13 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth: true
                         visible: root.deviceDisplayMode === "group" && !root.selectingDevices
-                            && (root.selectedGroupKind === "named" || root.groupPowerTotalCount > 0)
+                            && (root.selectedGroupKind === "named" || root.selectedGroupKind === "type" || root.groupPowerTotalCount > 0)
                         spacing: root.pageTheme.density.controlGap
 
                         RowLayout {
                             objectName: "deviceGroupPowerActions"
                             Layout.fillWidth: true
-                            visible: root.selectedGroupKind === "named"
+                            visible: root.selectedGroupKind === "named" || root.selectedGroupKind === "type"
                             spacing: root.pageTheme.density.controlGap
 
                             Base.AppButton {
@@ -759,7 +779,7 @@ Item {
                                 enabled: root.deviceManager && root.groupPowerOnDevices.length > 0
                                     && root.powerControlDeviceId.length === 0 && !root.groupPowerBusy
                                 onClicked: {
-                                    groupPowerDialog.groupName = root.selectedGroupName
+                                    groupPowerDialog.groupName = root.selectedGroupTitle
                                     groupPowerDialog.targetDevices = root.groupPowerOnDevices.slice(0)
                                     groupPowerDialog.powerOn = true
                                     groupPowerDialog.open()
@@ -773,7 +793,7 @@ Item {
                                 enabled: root.deviceManager && root.groupPowerOffDevices.length > 0
                                     && root.powerControlDeviceId.length === 0 && !root.groupPowerBusy
                                 onClicked: {
-                                    groupPowerDialog.groupName = root.selectedGroupName
+                                    groupPowerDialog.groupName = root.selectedGroupTitle
                                     groupPowerDialog.targetDevices = root.groupPowerOffDevices.slice(0)
                                     groupPowerDialog.powerOn = false
                                     groupPowerDialog.open()
@@ -783,7 +803,7 @@ Item {
 
                         Base.AppText {
                             Layout.fillWidth: true
-                            visible: root.selectedGroupKind === "named"
+                            visible: root.selectedGroupKind === "named" || root.selectedGroupKind === "type"
                             text: qsTr("整组执行，不受筛选影响 · 可开机 %1 台 / 可关机 %2 台")
                                 .arg(root.groupPowerOnDevices.length).arg(root.groupPowerOffDevices.length)
                             styleRole: UiStyle.TypographyRole.BodyS

@@ -15,23 +15,41 @@ Base.AppPopup {
     readonly property var devices: deviceModel ? deviceModel.devices : []
     readonly property var selectedDeviceIds: timelineManager ? timelineManager.filterDeviceIds : []
     readonly property var selectedGroupNames: timelineManager ? timelineManager.filterGroupNames : []
+    readonly property var selectedDeviceTypes: timelineManager ? timelineManager.filterDeviceTypes : []
     readonly property bool filterActive: selectedDeviceIds.length > 0 || selectedGroupNames.length > 0
+        || selectedDeviceTypes.length > 0
     readonly property bool timelineStopped: !timelineManager || timelineManager.playbackState === 0
     readonly property bool selectionEditable: timelineStopped || !timelineManager.executionFilterEnabled
     readonly property int matchedDeviceCount: devices.filter(function(device) {
         return !root.filterActive || root.selectedDeviceIds.indexOf(device.id) >= 0
+            || root.selectedDeviceTypes.indexOf(device.deviceType) >= 0
             || device.groupNames.some(function(name) {
                 return root.selectedGroupNames.indexOf(name) >= 0
             })
     }).length
-    readonly property var groupNames: {
-        var names = deviceModel ? deviceModel.groupNames.slice(0) : []
-        // 保留已选但已不存在的组，便于取消条件。
-        for (var index = 0; index < selectedGroupNames.length; ++index) {
-            if (names.indexOf(selectedGroupNames[index]) < 0)
-                names.push(selectedGroupNames[index])
+    readonly property var groupItems: {
+        var groups = []
+        var types = []
+        for (var deviceIndex = 0; deviceIndex < devices.length; ++deviceIndex) {
+            var type = String(devices[deviceIndex].deviceType || "")
+            if (type.length > 0 && types.indexOf(type) < 0)
+                types.push(type)
         }
-        return names
+        // 保留已选但已不存在的类型和自定义组，便于取消条件。
+        for (var typeIndex = 0; typeIndex < selectedDeviceTypes.length; ++typeIndex) {
+            if (types.indexOf(selectedDeviceTypes[typeIndex]) < 0)
+                types.push(selectedDeviceTypes[typeIndex])
+        }
+        for (var index = 0; index < types.length; ++index)
+            groups.push({ "kind": "type", "name": types[index] })
+        var names = deviceModel ? deviceModel.groupNames.slice(0) : []
+        for (var groupIndex = 0; groupIndex < selectedGroupNames.length; ++groupIndex) {
+            if (names.indexOf(selectedGroupNames[groupIndex]) < 0)
+                names.push(selectedGroupNames[groupIndex])
+        }
+        for (var nameIndex = 0; nameIndex < names.length; ++nameIndex)
+            groups.push({ "kind": "named", "name": names[nameIndex] })
+        return groups
     }
 
     width: Math.min(460, parent ? Math.max(0, parent.width - 24) : 460)
@@ -94,7 +112,7 @@ Base.AppPopup {
             }
 
             Base.AppText {
-                text: qsTr("已选 %1 组").arg(root.selectedGroupNames.length)
+                text: qsTr("已选 %1 组").arg(root.selectedGroupNames.length + root.selectedDeviceTypes.length)
                 styleRole: UiStyle.TypographyRole.BodyS
                 textTone: UiStyle.TextTone.Secondary
             }
@@ -106,40 +124,44 @@ Base.AppPopup {
             spacing: 8
 
             Repeater {
-                model: root.groupNames
+                model: root.groupItems
 
                 delegate: Base.AppButton {
-                    readonly property string groupName: String(modelData)
+                    readonly property bool typeGroup: modelData.kind === "type"
+                    readonly property string groupName: String(modelData.name)
                     readonly property int deviceCount: root.devices.filter(function(device) {
-                        return device.groupNames.indexOf(groupName) >= 0
+                        return typeGroup ? device.deviceType === groupName : device.groupNames.indexOf(groupName) >= 0
                     }).length
-                    objectName: "timelineFilterGroup_" + groupName
+                    objectName: (typeGroup ? "timelineFilterType_" : "timelineFilterGroup_") + groupName
                     width: Math.min(implicitWidth, groupTags.width)
-                    text: groupName + "  " + deviceCount
+                    text: (typeGroup ? qsTr("%1（类型分组）").arg(groupName) : groupName) + "  " + deviceCount
                     iconSymbol: checked ? "✓" : ""
                     size: UiStyle.ButtonSize.Small
                     checkable: true
                     enabled: root.selectionEditable
-                    checked: root.selectedGroupNames.indexOf(groupName) >= 0
+                    checked: (typeGroup ? root.selectedDeviceTypes : root.selectedGroupNames).indexOf(groupName) >= 0
                     variant: checked ? UiStyle.ButtonVariant.Primary : UiStyle.ButtonVariant.Secondary
                     onClicked: {
-                        var names = root.selectedGroupNames.slice(0)
+                        var names = (typeGroup ? root.selectedDeviceTypes : root.selectedGroupNames).slice(0)
                         var selectedIndex = names.indexOf(groupName)
                         if (selectedIndex < 0)
                             names.push(groupName)
                         else
                             names.splice(selectedIndex, 1)
-                        root.timelineManager.filterGroupNames = names
+                        if (typeGroup)
+                            root.timelineManager.filterDeviceTypes = names
+                        else
+                            root.timelineManager.filterGroupNames = names
                     }
                     ToolTip.visible: hovered
-                    ToolTip.text: groupName
+                    ToolTip.text: typeGroup ? qsTr("%1（类型分组）").arg(groupName) : groupName
                 }
             }
         }
 
         Base.AppText {
             Layout.fillWidth: true
-            visible: root.groupNames.length === 0
+            visible: root.groupItems.length === 0
             text: qsTr("暂无分组，可直接选择设备")
             styleRole: UiStyle.TypographyRole.BodyS
             textTone: UiStyle.TextTone.Secondary
@@ -380,6 +402,7 @@ Base.AppPopup {
             onClicked: {
                 root.timelineManager.filterDeviceIds = []
                 root.timelineManager.filterGroupNames = []
+                root.timelineManager.filterDeviceTypes = []
                 deviceSearchInput.clear()
             }
         }

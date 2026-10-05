@@ -11,8 +11,6 @@
 #include <QTimer>
 #include <QUrl>
 
-
-
 UdpCommandExecutor::UdpCommandExecutor(const QString &ip, int port, QObject *parent)
     : DeviceCommandExecutor(parent)
     , m_ip(ip)
@@ -51,15 +49,23 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
         
     }
    
-    QUdpSocket sock;
-    auto size = sock.writeDatagram(payload, QHostAddress(m_ip), m_port);
+    bool rt= params.value(DeviceKey::RedundantTransmission, "").toBool();
 
-	LOG_DEBUG("send udp order: " << payload);
-	LOG_DEBUG("send udp order ip: " << m_ip << m_port);
+    if (!rt) {
+		QUdpSocket sock;
+		auto size = sock.writeDatagram(payload, QHostAddress(m_ip), m_port);
 
-    if (size == payload.size()) {
-        emit executionFinished(executionId, command, true, "");
-    } else {
-        emit executionFinished(executionId, command, false, "发送失败");
+		LOG_DEBUG("send udp order: " << payload);
+		LOG_DEBUG("send udp order ip: " << m_ip << m_port);
+
+		if (size == payload.size()) {
+			emit executionFinished(executionId, command, true, "");
+		} else {
+			emit executionFinished(executionId, command, false, "发送失败");
+		}
+
+        return;
     }
+ 
+    
 }

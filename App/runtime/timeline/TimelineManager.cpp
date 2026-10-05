@@ -566,6 +566,23 @@ void TimelineManager::setFilterGroupNames(const QStringList &groupNames)
     emit filterGroupNamesChanged();
 }
 
+QStringList TimelineManager::filterDeviceTypes() const
+{
+    return m_filterDeviceTypes;
+}
+
+void TimelineManager::setFilterDeviceTypes(const QStringList &deviceTypes)
+{
+    if (m_executionFilterEnabled && playbackState() != Stopped)
+        return;
+
+    if (m_filterDeviceTypes == deviceTypes)
+        return;
+
+    m_filterDeviceTypes = deviceTypes;
+    emit filterDeviceTypesChanged();
+}
+
 bool TimelineManager::executionFilterEnabled() const
 {
     return m_executionFilterEnabled;
@@ -610,7 +627,7 @@ QAbstractItemModel *TimelineManager::filteredCommandModel() const
 bool TimelineManager::matchesDeviceFilter(const QString &deviceId) const
 {
     // 无过滤
-    if (m_filterDeviceIds.isEmpty() && m_filterGroupNames.isEmpty()) {
+    if (m_filterDeviceIds.isEmpty() && m_filterGroupNames.isEmpty() && m_filterDeviceTypes.isEmpty()) {
 		return true;
     }
 
@@ -624,6 +641,9 @@ bool TimelineManager::matchesDeviceFilter(const QString &deviceId) const
     if (!device) {
 		return false;
     }
+    if (m_filterDeviceTypes.contains(device->deviceType()))
+        return true;
+
 	for (const QString& groupName : device->groupNames()) {
         if (m_filterGroupNames.contains(groupName)) {
 			return true;

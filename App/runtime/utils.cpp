@@ -12,6 +12,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 
 namespace Utils 
 {
@@ -21,6 +22,12 @@ namespace Utils
 		refreshOptions();
 
 		QFileSystemWatcher* watcher = new QFileSystemWatcher(this);
+		if (QDir(DeviceConstants::LocalVideoPrefix).exists() == false) {
+			QDir().mkpath(DeviceConstants::LocalVideoPrefix);
+		}
+		if (QDir(DeviceConstants::LocalAudioPrefix).exists() == false) {
+			QDir().mkpath(DeviceConstants::LocalAudioPrefix);
+		}
 		watcher->addPath(DeviceConstants::LocalVideoPrefix);
 		watcher->addPath(DeviceConstants::LocalAudioPrefix);
 		connect(watcher, &QFileSystemWatcher::directoryChanged,
@@ -244,7 +251,12 @@ namespace Utils
 
 	bool timelinesFromJson(const QString& json, QList<TL>& tls)
 	{
-		auto document = QJsonDocument::fromJson(json.toUtf8());
+		QJsonParseError parseError;
+		auto document = QJsonDocument::fromJson(json.toUtf8(), &parseError);
+		if (parseError.error != QJsonParseError::NoError) {
+			LOG_ERROR("时间线 JSON 解析错误：" << parseError.errorString() << "字节偏移：" << parseError.offset);
+			return false;
+		}
 		if (!document.isObject()) {
 			return false;
 		}
@@ -266,6 +278,15 @@ namespace Utils
 
 			TL tl;
 			tl.name = timeline.value("name").toString();
+			if (timeline.contains("refs")) {
+				for (const auto& ref : timeline.value("refs").toArray()) {
+					tl.refs << ref.toString();
+				}
+				tl.refs = tl.refs.toSet().toList();
+			}
+			if (timeline.contains("refOnly")) {
+				tl.refOnly = timeline.value("refOnly").toBool();
+			}
 			for (const auto& commandValue : timeline.value("cmds").toArray()) {
 				if (!commandValue.isObject()) {
 					return false;
@@ -288,7 +309,38 @@ namespace Utils
 				tl.cmds.push_back(cmd);
 			}
 			parsedTls.push_back(tl);
+		} // end for timelines
+		
+
+		// 处理refs
+		auto _findTL = [&parsedTls](const QString& name)->int {
+			for (int i = 0; i < parsedTls.size(); ++i) {
+				if (parsedTls[i].name == name) {
+					return i;
+				}
+			}
+			return -1;
+		};
+		for (auto& tl : parsedTls) {
+			for (const auto& refName : tl.refs) {
+				auto idx = _findTL(refName);
+				if (idx == -1) {
+					LOG_ERROR(tl.name << " 缺少引用对象 " << refName);
+					return false;
+				}
+
+				tl.cmds += parsedTls[idx].cmds;
+			}
 		}
+
+		// 移除refOnly
+		for (int i = parsedTls.size() - 1; i >= 0; --i) {
+			if (parsedTls[i].refOnly) {
+				parsedTls.removeAt(i);
+			}
+		}
+
+
 		tls.swap(parsedTls);
 		return true;
 	}

@@ -18,6 +18,11 @@ namespace Utils {
 
 	struct TL {
 		QString name;
+		// 仅作为内部解析参数：引用的其它时间线
+		QStringList refs;
+		// 仅作为内部解析参数：是否仅作为引用对象
+		bool refOnly = false;
+		//
 		QList<TLCmd> cmds;
 	};
 

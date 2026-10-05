@@ -689,7 +689,7 @@ bool TimelineRuntime::importTimelinesFromJson(const QString &filePath)
 
             auto cmd = device->commandByName(tlCmd.cmdName);
 			if (!cmd) {
-				LOG_ERROR("缺少指令" << tlCmd.cmdName);
+				LOG_ERROR(tlCmd.deviceName << " 缺少指令" << tlCmd.cmdName);
 				success = false;
 				continue;
 			}
