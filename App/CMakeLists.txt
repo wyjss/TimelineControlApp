@@ -16,7 +16,7 @@ COLLECT_SOURCES(${CMAKE_CURRENT_SOURCE_DIR}/runtime TIMELINE_APP_SOURCES video)
 list(REMOVE_ITEM TIMELINE_APP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/runtime/LogMacros.cpp")
 qt5_add_resources(TIMELINE_APP_RESOURCES App.qrc)
 
-add_executable(TimelineControlApp
+add_executable(TimelineControlApp WIN32
     ${TIMELINE_APP_SOURCES}
     ${TIMELINE_APP_RESOURCES}
 )

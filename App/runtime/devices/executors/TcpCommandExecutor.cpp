@@ -51,48 +51,29 @@ void TcpCommandExecutor::executeImpl(const QString &executionId,
         
     }
    
-    QTcpSocket* sock = new QTcpSocket(this);
-    QTimer* timer = new QTimer(sock);
-    timer->setSingleShot(true);
+	QTcpSocket* sock = new QTcpSocket(nullptr);
+    // 由于配电箱延迟极大，必须定时延迟关闭
+    QTimer::singleShot(10000, sock, &QTcpSocket::deleteLater);
 
-    connect(sock, &QTcpSocket::connected, this, [this, executionId, command, payload, sock, timer]() {
+    connect(sock, &QTcpSocket::connected, this, [this, executionId, command, payload, sock]() {
         LOG_DEBUG("send tcp order: " << payload);
         LOG_DEBUG("send tcp order ip: " << m_ip << m_port);
 
         if (sock->write(payload) != payload.size()) {
-            timer->stop();
-            sock->disconnect(this);
-            sock->abort();
-            sock->deleteLater();
             emit executionFinished(executionId, command, false, tr("TCP 发送失败"));
             return;
         }
-
-        // 等待写缓冲区的数据全部发出后断开连接。
-        sock->disconnectFromHost();
-    });
-    connect(sock, &QTcpSocket::disconnected, this, [this, executionId, command, sock, timer]() {
-        timer->stop();
-        sock->deleteLater();
         emit executionFinished(executionId, command, true, "");
+        // 取消，配电箱必须保持连接一段时间
+        // 等待写缓冲区的数据全部发出后断开连接。
+       // sock->disconnectFromHost();
     });
     connect(sock, QOverload<QAbstractSocket::SocketError>::of(&QTcpSocket::error),
-            this, [this, executionId, command, sock, timer](QAbstractSocket::SocketError errCode) {
+            this, [this, executionId, command, sock](QAbstractSocket::SocketError errCode) {
         const QString message = sock->errorString();
-        timer->stop();
-        sock->disconnect(this);
-        sock->abort();
-        sock->deleteLater();
         LOG_ERROR(errCode << message);
         emit executionFinished(executionId, command, false, message);
     });
-    connect(timer, &QTimer::timeout, this, [this, executionId, command, sock]() {
-        sock->disconnect(this);
-        sock->abort();
-        sock->deleteLater();
-        emit executionFinished(executionId, command, false, tr("TCP 连接或发送超时"));
-    });
 
-    timer->start(5000);
     sock->connectToHost(m_ip, m_port);
 }
