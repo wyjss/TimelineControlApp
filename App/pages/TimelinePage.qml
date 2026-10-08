@@ -638,6 +638,18 @@ Item {
                     }
                 }
 
+                Base.AppTextField {
+                    objectName: "timelineOverviewSearchInput"
+                    Layout.fillWidth: true
+                    visible: !root.controlTrackVisible
+                    placeholderText: qsTr("搜索设备名称或地址")
+                    text: root.editor ? root.editor.deviceSearchText : ""
+                    onTextEdited: {
+                        if (root.editor)
+                            root.editor.deviceSearchText = text
+                    }
+                }
+
                 Base.AppSurface {
                     Layout.fillWidth: true
                     Layout.preferredHeight: visible ? 124 : 0

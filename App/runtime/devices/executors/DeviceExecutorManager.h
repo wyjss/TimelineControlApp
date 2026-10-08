@@ -58,4 +58,5 @@ private:
     QHash<QString, OnlineCheck> m_onlineChecks;
     QHash<QString, QStringList> m_deviceIdsByExecutorKey;
     bool m_onlineCheckRequested = false;
+    bool m_onlineCheckRunning = false;
 };

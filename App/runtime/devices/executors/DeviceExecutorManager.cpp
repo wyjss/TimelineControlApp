@@ -31,7 +31,7 @@ DeviceExecutorManager::DeviceExecutorManager(QObject *parent)
     connect(&m_onlineCheckThread, &QThread::finished,
             m_networkPing, &QObject::deleteLater);
     m_onlineCheckTimer.setInterval(15000);
-    connect(&m_onlineCheckTimer, &QTimer::timeout, this, &DeviceExecutorManager::checkOnline);
+    connect(&m_onlineCheckTimer, &QTimer::timeout, this, &DeviceExecutorManager::requestOnlineCheck);
     m_onlineCheckTimer.start();
     m_onlineCheckThread.start();
     m_thread.start();
@@ -55,6 +55,10 @@ void DeviceExecutorManager::bindDevice(Device *device)
     unbindDevice(device);
     disconnect(this, &DeviceExecutorManager::onlineChecked, device, nullptr);
     disconnect(device, &QObject::destroyed, this, nullptr);
+
+    // 定位器单独通过接收定位数据时间判断在线
+    if (device->deviceType() == DeviceType::Locator)
+        return;
 
     QString executorKey;
     for (const QString &protocol : device->supportedProtocols()) {
@@ -91,11 +95,6 @@ void DeviceExecutorManager::bindDevice(Device *device)
     }
 
     connect(this, &DeviceExecutorManager::onlineChecked, device, [this, device, deviceId](const QString &checkedDeviceId, bool online) {
-        // 定位器单独通过接收定位数据时间判断在线
-        if (device->deviceType() == DeviceType::Locator) {
-            return;
-        }
-
         if (checkedDeviceId == deviceId)
             device->setOnline(online);
     });
@@ -151,6 +150,10 @@ void DeviceExecutorManager::checkOnline()
             checksByTarget.insert(targetKey, check);
     }
 
+    if (requestIdsByTarget.isEmpty())
+        return;
+
+    m_onlineCheckRunning = true;
     for (auto it = requestIdsByTarget.cbegin(); it != requestIdsByTarget.cend(); ++it) {
         NetworkPing *networkPing = m_networkPing;
         const QStringList deviceIds = it.value();
@@ -159,6 +162,15 @@ void DeviceExecutorManager::checkOnline()
             networkPing->checkOnline(deviceIds, check.ip, check.tcpPort);
         }, Qt::QueuedConnection);
     }
+
+    // 本轮全部探测完成后才允许启动下一轮。
+    QMetaObject::invokeMethod(m_networkPing, [this]() {
+        QMetaObject::invokeMethod(this, [this]() {
+            m_onlineCheckRunning = false;
+            if (m_onlineCheckRequested)
+                checkOnline();
+        }, Qt::QueuedConnection);
+    }, Qt::QueuedConnection);
 }
 
 void DeviceExecutorManager::unbindDeviceId(const QString &deviceId)
@@ -186,7 +198,8 @@ void DeviceExecutorManager::requestOnlineCheck()
         return;
 
     m_onlineCheckRequested = true;
-    QTimer::singleShot(0, this, &DeviceExecutorManager::checkOnline);
+    if (!m_onlineCheckRunning)
+        QTimer::singleShot(0, this, &DeviceExecutorManager::checkOnline);
 }
 
 DeviceCommandExecutor *DeviceExecutorManager::executorFor(const QString &protocol,

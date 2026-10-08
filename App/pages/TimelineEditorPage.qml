@@ -25,6 +25,7 @@ Item {
     readonly property var filteredCommandModel: timelineManager ? timelineManager.filteredCommandModel : null
     property var deviceRows: []
     property var commandRows: []
+    property string deviceSearchText: ""
     property var deviceManager: appRuntime && appRuntime.deviceManager ? appRuntime.deviceManager : null
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     property var fenceManager: appRuntime && appRuntime.fenceManager ? appRuntime.fenceManager : null
@@ -102,6 +103,7 @@ Item {
     }
 
     onDeviceRowsChanged: ensureSelectedTimelineDevice()
+    onDeviceSearchTextChanged: refreshDeviceRows()
     onFilteredDeviceModelChanged: refreshDeviceRows()
     onFilteredCommandModelChanged: refreshCommandRows()
 
@@ -153,43 +155,62 @@ Item {
             pcPreviewGenerator.seek(0)
     }
 
-    // 仅从代理读取显示行；保留原对象供现有布局和编辑接口使用。
+    // 从代理读取显示行并应用搜索；保留原对象供现有布局和编辑接口使用。
     function refreshDeviceRows() {
+        var query = deviceSearchText.trim().toLowerCase()
         var rows = []
         var count = filteredDeviceModel ? filteredDeviceModel.rowCount() : 0
-        var changed = count !== deviceRows.length
+        var changed = false
         for (var row = 0; row < count; ++row) {
             var modelIndex = filteredDeviceModel.index(row, 0)
             var device = filteredDeviceModel.data(modelIndex, Qt.DisplayRole)
+            if (query.length > 0) {
+                var values = device.configValues || {}
+                var ip = String(values.ip || "").trim()
+                var port = String(values.port || "").trim()
+                var address = ip.length > 0 && port.length > 0 ? ip + ":" + port : ip
+                if (address.length === 0)
+                    address = String(values.serialPort || "").trim()
+                if (address.length === 0)
+                    address = qsTr("未分配")
+                if ((String(device.name || "") + " " + address).toLowerCase().indexOf(query) < 0)
+                    continue
+            }
             // 与 DeviceFilterModel::MatchesFilterRole 对应。
             var matches = filteredDeviceModel.data(modelIndex, Qt.UserRole + 2)
+            var previousRow = deviceRows[rows.length]
             rows.push({ "item": device, "matchesFilter": matches })
-            if (!changed && (deviceRows[row].item !== device
-                             || deviceRows[row].matchesFilter !== matches))
+            if (!changed && (!previousRow || previousRow.item !== device
+                             || previousRow.matchesFilter !== matches))
                 changed = true
         }
-        if (changed)
+        if (changed || rows.length !== deviceRows.length)
             deviceRows = rows
+        refreshCommandRows()
     }
 
     function refreshCommandRows() {
         var rows = []
         var count = filteredCommandModel ? filteredCommandModel.rowCount() : 0
-        var changed = count !== commandRows.length
+        var changed = false
+        var searchActive = deviceSearchText.trim().length > 0
         var selectedVisible = false
         for (var row = 0; row < count; ++row) {
             var modelIndex = filteredCommandModel.index(row, 0)
             var command = filteredCommandModel.data(modelIndex, Qt.DisplayRole)
+            if (searchActive && !deviceForId(command.targetDeviceId))
+                continue
             // 与 TimelineCommandFilterModel::MatchesFilterRole 对应。
             var matches = filteredCommandModel.data(modelIndex, Qt.UserRole + 2)
+            var previousRow = commandRows[rows.length]
             rows.push({ "command": command, "matchesFilter": matches })
-            if (!changed && (commandRows[row].command !== command
-                             || commandRows[row].matchesFilter !== matches))
+            if (!changed && (!previousRow || previousRow.command !== command
+                             || previousRow.matchesFilter !== matches))
                 changed = true
             if (command.id === selectedTimelineCommandId)
                 selectedVisible = true
         }
-        if (changed)
+        if (changed || rows.length !== commandRows.length)
             commandRows = rows
         if (timelineCommandModel && filteredCommandModel
                 && filteredCommandModel.sourceModel === timelineCommandModel
@@ -467,6 +488,14 @@ Item {
                         currentTimeline: root.currentTimeline
                         dialogParent: root
                         editable: root.timelineStopped
+                    }
+
+                    Base.AppTextField {
+                        objectName: "timelineDeviceSearchInput"
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("搜索设备名称或地址")
+                        text: root.deviceSearchText
+                        onTextEdited: root.deviceSearchText = text
                     }
 
                     Timeline.TimelineRuler {
