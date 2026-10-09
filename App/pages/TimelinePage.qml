@@ -76,12 +76,15 @@ Item {
     readonly property var queueEditorTimelines: orderedQueueTimelines()
     Connections {
         target: root.timelineModel
+        // 删除或重置时先清除旧显示行，避免延后刷新前对象已被销毁。
+        function onRowsRemoved() { root.timelines = [] }
+        function onModelReset() { root.timelines = [] }
         function onTimelinesChanged() {
-            root.rebuildTimelines()
+            Qt.callLater(root.rebuildTimelines)
         }
     }
 
-    Component.onCompleted: rebuildTimelines()
+    Component.onCompleted: Qt.callLater(root.rebuildTimelines)
 
     function rebuildTimelines() {
         var items = []

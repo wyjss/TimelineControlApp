@@ -105,7 +105,7 @@ Item {
     onDeviceRowsChanged: ensureSelectedTimelineDevice()
     onDeviceSearchTextChanged: refreshDeviceRows()
     onFilteredDeviceModelChanged: refreshDeviceRows()
-    onFilteredCommandModelChanged: refreshCommandRows()
+    onFilteredCommandModelChanged: Qt.callLater(root.refreshCommandRows)
 
     Connections {
         target: root.filteredDeviceModel
@@ -119,16 +119,23 @@ Item {
 
     Connections {
         target: root.filteredCommandModel
-        function onRowsInserted() { root.refreshCommandRows() }
-        function onRowsRemoved() { root.refreshCommandRows() }
-        function onRowsMoved() { root.refreshCommandRows() }
-        function onModelReset() { root.refreshCommandRows() }
-        function onLayoutChanged() { root.refreshCommandRows() }
-        function onDataChanged() { root.refreshCommandRows() }
+        function onRowsInserted() { Qt.callLater(root.refreshCommandRows) }
+        // 删除或重置时先清除旧显示行，避免延后刷新前对象已被销毁。
+        function onRowsRemoved() {
+            root.commandRows = []
+            Qt.callLater(root.refreshCommandRows)
+        }
+        function onRowsMoved() { Qt.callLater(root.refreshCommandRows) }
+        function onModelReset() {
+            root.commandRows = []
+            Qt.callLater(root.refreshCommandRows)
+        }
+        function onLayoutChanged() { Qt.callLater(root.refreshCommandRows) }
+        function onDataChanged() { Qt.callLater(root.refreshCommandRows) }
     }
     Connections {
         target: root.timelineCommandModel
-        function onCommandScheduleChanged() { root.refreshCommandRows() }
+        function onCommandScheduleChanged() { Qt.callLater(root.refreshCommandRows) }
     }
     onSelectedTimelineDeviceIdChanged: {
         updateSelectedTimelineDevice()
@@ -140,7 +147,7 @@ Item {
 
     Component.onCompleted: {
         refreshDeviceRows()
-        refreshCommandRows()
+        Qt.callLater(root.refreshCommandRows)
         ensureSelectedTimelineDevice()
         ensureSelectedCommand()
         if (pcPreviewGenerator)
@@ -149,7 +156,7 @@ Item {
 
     onCurrentTimelineChanged: {
         clearDeviceCommandsPopup.close()
-        refreshCommandRows()
+        Qt.callLater(root.refreshCommandRows)
         fallbackTimelineCurrentTimeMs = 0
         if (pcPreviewGenerator)
             pcPreviewGenerator.seek(0)
@@ -186,7 +193,7 @@ Item {
         }
         if (changed || rows.length !== deviceRows.length)
             deviceRows = rows
-        refreshCommandRows()
+        Qt.callLater(root.refreshCommandRows)
     }
 
     function refreshCommandRows() {

@@ -23,17 +23,13 @@ Item {
     property var deviceModel: appRuntime && appRuntime.deviceModel ? appRuntime.deviceModel : null
     property var deviceTemplateModel: appRuntime && appRuntime.deviceTemplateModel ? appRuntime.deviceTemplateModel : null
 
-    readonly property var devices: deviceModel ? deviceModel.devices : []
+    property var devices: []
     readonly property var deviceTemplates: deviceTemplateModel ? deviceTemplateModel.templates : []
     readonly property var deviceTypes: deviceModel ? deviceModel.deviceTypes : []
     readonly property var deviceGroupNames: deviceModel && deviceModel.groupNames ? deviceModel.groupNames : []
     readonly property var manualDeviceTypes: deviceModel ? deviceModel.manualDeviceTypes : []
-    readonly property var selectedDevice: deviceModel ? deviceModel.currentDevice : ({})
-    readonly property var selectedDeviceCommands: selectedDeviceInCurrentView
-        && selectedDevice
-        && selectedDevice.commands
-        ? selectedDevice.commands
-        : []
+    property var selectedDevice: null
+    property var selectedDeviceCommands: []
     readonly property bool supportsPowerOn: selectedDeviceCommands.some(function(command) {
         return command.name === "$开机"
     })
@@ -95,13 +91,64 @@ Item {
             groups.push({ "kind": "named", "name": deviceGroupNames[index] })
         return groups
     }
-    readonly property var filteredDevices: buildFilteredDevices()
+    property var filteredDevices: []
     readonly property bool selectedDeviceInCurrentView: selectedDevice
         && selectedDevice.id !== undefined
         && filteredDevices.some(function(device) {
             return String(device.id) === String(selectedDevice.id)
         })
 
+    // 合并同一轮事件中的刷新，避免导入时反复重建设备卡片和指令项。
+    Binding {
+        target: root
+        property: "devices"
+        value: root.deviceModel ? root.deviceModel.devices : []
+        delayed: true
+    }
+    Binding {
+        target: root
+        property: "selectedDevice"
+        value: root.deviceModel ? root.deviceModel.currentDevice : null
+    }
+    Binding {
+        target: root
+        property: "selectedDeviceCommands"
+        value: root.selectedDeviceInCurrentView && root.selectedDevice
+            ? root.selectedDevice.commands : []
+        delayed: true
+    }
+    Binding {
+        target: root
+        property: "filteredDevices"
+        value: root.buildFilteredDevices()
+        delayed: true
+    }
+    // 删除和模型重置时及时替换旧引用，避免延后刷新访问已销毁的对象。
+    Connections {
+        target: root.deviceModel
+        function onRowsRemoved() {
+            if (root.selectedDevice !== root.deviceModel.currentDevice) {
+                root.selectedDevice = null
+                root.selectedDeviceCommands = []
+            }
+            root.devices = root.deviceModel.devices
+            root.filteredDevices = root.buildFilteredDevices()
+        }
+        function onModelReset() {
+            root.selectedDevice = null
+            root.selectedDeviceCommands = []
+            root.devices = root.deviceModel.devices
+            root.filteredDevices = root.buildFilteredDevices()
+        }
+    }
+    Connections {
+        target: root.selectedDevice
+        function onCommandsChanged() {
+            var commands = root.selectedDevice.commands
+            if (commands.length < root.selectedDeviceCommands.length)
+                root.selectedDeviceCommands = commands
+        }
+    }
     onSelectingDevicesChanged: {
         if (!selectingDevices)
             batchSelectedDeviceIds = []
@@ -1886,7 +1933,8 @@ Item {
                         return
 
                     Qt.callLater(function() {
-                        root.selectedCommandIndex = root.selectedDeviceCommands.length - 1
+                        root.selectedCommandIndex = root.selectedDevice
+                            ? root.selectedDevice.commands.length - 1 : -1
                     })
                 }
             }
