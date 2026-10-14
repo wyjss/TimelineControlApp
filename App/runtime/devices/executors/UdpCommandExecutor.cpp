@@ -51,21 +51,22 @@ void UdpCommandExecutor::executeImpl(const QString &executionId,
    
     bool rt= params.value(DeviceKey::RedundantTransmission, "").toBool();
 
-    if (!rt) {
-		QUdpSocket sock;
-		auto size = sock.writeDatagram(payload, QHostAddress(m_ip), m_port);
-
-		LOG_DEBUG("send udp order: " << payload);
-		LOG_DEBUG("send udp order ip: " << m_ip << m_port);
-
-		if (size == payload.size()) {
-			emit executionFinished(executionId, command, true, "");
-		} else {
-			emit executionFinished(executionId, command, false, "发送失败");
+	QUdpSocket sock;
+	auto size = sock.writeDatagram(payload, QHostAddress(m_ip), m_port);
+	
+	if (rt) {
+		for (int i = 0; i < 2; ++i) {
+			LOG_DEBUG("指令额外增量发送" << i);
+			sock.writeDatagram(payload, QHostAddress(m_ip), m_port);
 		}
+	}
+	
+	LOG_DEBUG("send udp order: " << payload);
+	LOG_DEBUG("send udp order ip: " << m_ip << m_port);
 
-        return;
-    }
- 
-    
+	if (size == payload.size()) {
+		emit executionFinished(executionId, command, true, "");
+	} else {
+		emit executionFinished(executionId, command, false, "发送失败");
+	}
 }
