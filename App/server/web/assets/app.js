@@ -2,7 +2,7 @@ const elements = Object.fromEntries([
     "plan-name", "clock", "connection", "playback-label", "playback-dot",
     "now-title", "now-summary", "master-time", "timeline-seek", "elapsed-time",
     "remaining-time", "stop-button", "primary-button", "primary-icon", "primary-label",
-    "refresh-button", "selection-count", "timeline-list",
+    "refresh-button", "selection-count", "timeline-search", "timeline-list",
     "empty-timelines", "queue-panel", "queue-count", "queue-list", "queue-status",
     "queue-play-button", "queue-stop-button", "clear-queue-button", "device-count",
     "device-list", "empty-devices", "device-selection", "reset-devices-button", "command-program", "command-count", "command-list",
@@ -112,10 +112,13 @@ function currentTimeline(data) {
 }
 
 function renderTimelineList(data) {
+    const query = elements["timeline-search"].value.trim().toLowerCase();
+    const timelines = data.timelines.filter(timeline => timeline.name.toLowerCase().includes(query));
     const editable = data.playbackState === "stopped";
     const deviceNames = new Map(data.devices.map(device => [device.id, device.name || device.id]));
     const timelineNames = new Map(data.timelines.map(timeline => [timeline.id, timeline.name || timeline.id]));
     const signature = JSON.stringify([
+        query,
         data.playbackState,
         state.busy,
         data.currentTimelineId,
@@ -133,9 +136,11 @@ function renderTimelineList(data) {
     if (state.renderSignatures.timelines === signature) return;
     state.renderSignatures.timelines = signature;
     elements["timeline-list"].replaceChildren();
-    elements["empty-timelines"].hidden = data.timelines.length > 0;
+    elements["selection-count"].textContent = query ? `匹配 ${timelines.length} / 共 ${data.timelines.length}` : `${data.timelines.length} 个节目`;
+    elements["empty-timelines"].hidden = timelines.length > 0;
+    elements["empty-timelines"].textContent = data.timelines.length ? "没有匹配的时间轴" : "当前方案中还没有节目";
 
-    for (const timeline of data.timelines) {
+    for (const timeline of timelines) {
         const selected = data.currentTimelineId === timeline.id;
         const queued = data.playQueue.includes(timeline.id);
         const entry = createElement("div", "timeline-entry");
@@ -424,7 +429,6 @@ function render(data) {
     elements["primary-button"].title = data.queuePlayback && active ? "请使用播放队列中的控制按钮" : "";
     elements["stop-button"].disabled = state.busy || stopped;
     elements["refresh-button"].disabled = state.busy;
-    elements["selection-count"].textContent = `${data.timelines.length} 个节目`;
 
     renderTimelineList(data);
     renderQueue(data);
@@ -470,6 +474,11 @@ async function post(path, body, successMessage) {
         if (state.data) render(state.data);
     }
 }
+
+elements["timeline-search"].addEventListener("input", () => {
+    if (state.data) renderTimelineList(state.data);
+    elements["timeline-list"].scrollTop = 0;
+});
 
 elements["timeline-seek"].addEventListener("input", () => {
     if (state.busy || state.data?.playbackState !== "stopped") return;

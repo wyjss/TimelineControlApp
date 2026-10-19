@@ -36,11 +36,11 @@
                 </div>
             </div>
 
-            <input id="timeline-seek" class="progress-track" type="range"
-                   min="0" max="0" step="100" value="0" aria-label="起播时间"
-                   title="停止时拖动选择起播时间，再点击播放当前节目" disabled>
-            <div class="progress-meta">
+            <div class="hero-progress">
                 <span id="elapsed-time">00:00:00</span>
+                <input id="timeline-seek" class="progress-track" type="range"
+                       min="0" max="0" step="100" value="0" aria-label="起播时间"
+                       title="停止时拖动选择起播时间，再点击播放当前节目" disabled>
                 <span id="remaining-time">剩余 00:00:00</span>
             </div>
 
@@ -60,6 +60,10 @@
                     </div>
                     <div class="queue-actions">
                         <span id="selection-count">0 个节目</span>
+                        <label class="library-search">
+                            <span aria-hidden="true">⌕</span>
+                            <input id="timeline-search" type="search" placeholder="搜索时间轴名称" aria-label="搜索时间轴名称">
+                        </label>
                     </div>
                 </div>
                 <div id="timeline-list" class="timeline-list"></div>

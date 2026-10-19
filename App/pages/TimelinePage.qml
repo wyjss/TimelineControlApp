@@ -31,6 +31,18 @@ Item {
         ? appRuntime.deviceModel
         : null
     property var timelines: []
+    property string timelineSearchText: ""
+    readonly property var filteredTimelines: {
+        var query = timelineSearchText.trim().toLowerCase()
+        if (query.length === 0)
+            return timelines
+        var items = []
+        for (var index = 0; index < timelines.length; ++index) {
+            if (timelines[index].name.toLowerCase().indexOf(query) >= 0)
+                items.push(timelines[index])
+        }
+        return items
+    }
     property bool controlTrackVisible: false
     property string commandPanelMode: "device"
     readonly property var editor: timelineEditorLoader.item
@@ -310,6 +322,14 @@ Item {
                         }
                     }
 
+                    Base.AppTextField {
+                        objectName: "timelineSearchInput"
+                        Layout.fillWidth: true
+                        placeholderText: qsTr("搜索时间轴名称")
+                        text: root.timelineSearchText
+                        onTextEdited: root.timelineSearchText = text
+                    }
+
                     ListView {
                         id: timelineGrid
                         objectName: "timelineGrid"
@@ -318,9 +338,17 @@ Item {
                         Layout.fillHeight: true
                         clip: true
                         boundsBehavior: Flickable.StopAtBounds
-                        model: root.timelines
+                        model: root.filteredTimelines
                         ScrollBar.vertical: ScrollBar {
                             policy: ScrollBar.AsNeeded
+                        }
+
+                        Base.AppText {
+                            anchors.centerIn: parent
+                            visible: root.timelines.length > 0 && timelineGrid.count === 0
+                            text: qsTr("没有匹配的时间轴")
+                            styleRole: UiStyle.TypographyRole.BodyS
+                            textTone: UiStyle.TextTone.Secondary
                         }
 
                         footer: Item {
@@ -350,7 +378,7 @@ Item {
                                 anchors.fill: parent
                                 timeline: timelineCell.timeline
                                 timelineManager: root.timelineManager
-                                displayIndex: index + 1
+                                displayIndex: root.timelines.indexOf(timelineCell.timeline) + 1
                                 onQueueRequested: root.toggleTimelineQueued(timelineCell.timeline.id)
                                 onOpenRequested: root.openTimelineControl(timelineCell.timeline)
                                 onCloneRequested: cloneTimelinePopupLoader.openForTimeline(timelineCell.timeline)
