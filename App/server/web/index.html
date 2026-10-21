@@ -28,7 +28,7 @@
                 <div>
                     <p class="eyebrow"><span id="playback-dot"></span><span id="playback-label">停止</span></p>
                     <h1 id="now-title">等待选择节目</h1>
-                    <p id="now-summary" class="muted">从节目库中选择节目，可单独播放</p>
+                    <p id="now-summary" class="muted">从节目库中选择节目查看指令</p>
                 </div>
                 <div class="master-time">
                     <span>主时钟</span>
@@ -36,7 +36,9 @@
                 </div>
             </div>
 
-            <div class="hero-progress">
+            <div id="active-timelines" class="active-timelines" aria-label="运行中的时间线" hidden></div>
+
+            <div id="hero-progress" class="hero-progress">
                 <span id="elapsed-time">00:00:00</span>
                 <input id="timeline-seek" class="progress-track" type="range"
                        min="0" max="0" step="100" value="0" aria-label="起播时间"
@@ -46,7 +48,7 @@
 
             <div class="transport" aria-label="播控操作">
                 <button id="stop-button" class="button danger" type="button"><span>■</span>停止</button>
-                <button id="primary-button" class="button primary" type="button"><span id="primary-icon">▶</span><span id="primary-label">播放当前节目</span></button>
+                <button id="primary-button" class="button primary" type="button" disabled><span id="primary-icon">▶</span><span id="primary-label">播放当前节目</span></button>
                 <button id="refresh-button" class="button ghost" type="button">↻ 刷新</button>
             </div>
         </section>
@@ -129,12 +131,18 @@
     </main>
 
     <dialog id="confirm-dialog" class="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
-        <form method="dialog">
+        <form id="confirm-form" method="dialog">
             <h2 id="confirm-title">操作确认</h2>
             <p id="confirm-message"></p>
+            <div id="confirm-password-field" class="confirm-password" hidden>
+                <label for="confirm-password">操作密码</label>
+                <input id="confirm-password" type="password" placeholder="请输入操作密码"
+                       inputmode="numeric" autocomplete="off" required disabled>
+                <small>密码正确后才可确认操作</small>
+            </div>
             <div class="confirm-actions">
-                <button class="button ghost" type="submit" value="cancel" autofocus>取消</button>
-                <button class="button primary" type="submit" value="confirm">确认</button>
+                <button id="confirm-cancel" class="button ghost" type="button" autofocus>取消</button>
+                <button id="confirm-accept" class="button primary" type="submit" value="confirm">确认</button>
             </div>
         </form>
     </dialog>

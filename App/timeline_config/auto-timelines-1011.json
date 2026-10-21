@@ -1,0 +1,1396 @@
+{
+	"timelines": [
+		{
+			"name": "主时间轴",
+			"cmds": [
+				{
+					"time": "59:59:59.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "占位",
+					"simName": "占位",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "伴游船音乐45",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "凤镜船视频音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "龙舟船2号音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "龙舟船1号音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "马车船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "金丝船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "银丝船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "知音船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "卷轴船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				}
+			]
+		},
+		{
+			"name": "伴游船音乐30",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:01:58.000",
+					"deviceName": "凤镜船视频音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:02:00.000",
+					"deviceName": "凤镜船视频音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "120"
+					}
+				},
+				{
+					"time": "00:11:26.000",
+					"deviceName": "凤镜船视频音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:23:46.000",
+					"deviceName": "龙舟船2号音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:23:48.000",
+					"deviceName": "龙舟船2号音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1428"
+					}
+				},
+				{
+					"time": "00:27:11.000",
+					"deviceName": "龙舟船2号音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:23:46.000",
+					"deviceName": "龙舟船1号音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:23:48.000",
+					"deviceName": "龙舟船1号音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1428"
+					}
+				},
+				{
+					"time": "00:27:11.000",
+					"deviceName": "龙舟船1号音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:33:14.000",
+					"deviceName": "马车船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:33:16.000",
+					"deviceName": "马车船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1996"
+					}
+				},
+				{
+					"time": "00:37:44.000",
+					"deviceName": "马车船音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:18:54.000",
+					"deviceName": "知音船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:18:56.000",
+					"deviceName": "知音船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1136"
+					}
+				},
+				{
+					"time": "00:23:55.000",
+					"deviceName": "知音船音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:27:02.000",
+					"deviceName": "金丝船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:27:04.000",
+					"deviceName": "金丝船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1624"
+					}
+				},
+				{
+					"time": "00:33:23.000",
+					"deviceName": "金丝船音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:27:02.000",
+					"deviceName": "银丝船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:27:04.000",
+					"deviceName": "银丝船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1624"
+					}
+				},
+				{
+					"time": "00:33:23.000",
+					"deviceName": "银丝船音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:37:35.000",
+					"deviceName": "卷轴船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:37:37.000",
+					"deviceName": "卷轴船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "2257"
+					}
+				},
+				{
+					"time": "00:44:41.000",
+					"deviceName": "卷轴船音乐",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "全场运行基线",
+			"refOnly": true,
+			"refs": [
+				"伴游船音乐30"
+			],
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光控台",
+					"cmdName": "夜游上半场灯光",
+					"simName": "夜游上半场灯光",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "亲水广场音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:07:55.000",
+					"deviceName": "激光控台",
+					"cmdName": "$停止",
+					"simName": "$停止",
+					"params": {}
+				},
+				{
+					"time": "00:08:00.000",
+					"deviceName": "激光控台",
+					"cmdName": "总节目",
+					"simName": "播放激光",
+					"params": {
+						"redundantTransmission": "true"
+						
+					}
+				},
+				{
+					"time": "00:34:43.000",
+					"deviceName": "激光控台",
+					"cmdName": "$停止",
+					"simName": "$停止",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "风扇屏",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西阁城网格屏",
+					"cmdName": "黑场",
+					"simName": "黑场",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁LED服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:06:24.000",
+					"deviceName": "西城阁LED服务器",
+					"cmdName": "加载视频",
+					"simName": "加载视频",
+					"params": {
+						"videoWindowY": 0,
+						"videoWindowX": 0,
+						"videoWindowW": 1920,
+						"videoWindowH": 1080,
+						"videoTimeSec": 0.0,
+						"videoSrcY": 0,
+						"videoSrcX": 0,
+						"videoSrcW": 0,
+						"videoSrcH": 0,
+						"videoFile": "$西城阁圆形.mp4",
+						"play": false,
+						"avLoop": "false"
+					}
+				},
+				{
+					"time": "00:06:27.060",
+					"deviceName": "西城阁LED服务器",
+					"cmdName": "播放视频",
+					"simName": "播放视频",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:06:24.000",
+					"deviceName": "西城阁网格屏服务器",
+					"cmdName": "加载视频",
+					"simName": "加载视频",
+					"params": {
+						"videoWindowY": 0,
+						"videoWindowX": 0,
+						"videoWindowW": 0,
+						"videoWindowH": 0,
+						"videoTimeSec": 0.0,
+						"videoSrcY": 0,
+						"videoSrcX": 0,
+						"videoSrcW": 0,
+						"videoSrcH": 0,
+						"videoFile": "$西城阁长条.mp4",
+						"play": false,
+						"avLoop": "false"
+					}
+				},
+				{
+					"time": "00:06:27.060",
+					"deviceName": "西城阁网格屏服务器",
+					"cmdName": "播放视频",
+					"simName": "播放视频",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:06:27.060",
+					"deviceName": "西阁城网格屏",
+					"cmdName": "视频",
+					"simName": "视频",
+					"params": {}
+				},
+				{
+					"time": "00:06:27.060",
+					"deviceName": "西城阁音响",
+					"cmdName": "播放第几个播单",
+					"simName": "西城阁音乐",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:15:48.000",
+					"deviceName": "西城阁音响",
+					"cmdName": "停止",
+					"simName": "关闭音响",
+					"params": {}
+				},
+				{
+					"time": "00:15:48.000",
+					"deviceName": "西城阁LED服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:15:48.000",
+					"deviceName": "西城阁网格屏服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:15:48.000",
+					"deviceName": "西阁城网格屏",
+					"cmdName": "黑场",
+					"simName": "黑场",
+					"params": {}
+				},
+				{
+					"time": "00:23:59.000",
+					"deviceName": "灯光控台",
+					"cmdName": "夜游下半场灯光",
+					"simName": "夜游下半场灯光",
+					"params": {}
+				},
+				{
+					"time": "00:25:00.000",
+					"deviceName": "水幕控台",
+					"cmdName": "启动水幕",
+					"simName": "启动水幕",
+					"params": {}
+				},
+				{
+					"time": "00:25:55.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "加载视频",
+					"simName": "加载视频",
+					"params": {
+						"videoWindowY": 0,
+						"videoWindowX": 0,
+						"videoWindowW": 0,
+						"videoWindowH": 0,
+						"videoTimeSec": 0.0,
+						"videoSrcY": 0,
+						"videoSrcX": 0,
+						"videoSrcW": 0,
+						"videoSrcH": 0,
+						"videoFile": "$汉水长歌-织锦谣.mp4",
+						"play": false,
+						"avLoop": "false"
+					}
+				},
+				{
+					"time": "00:26:01.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "播放视频",
+					"simName": "播放视频",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:35:43.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:32:55.000",
+					"deviceName": "扇形栈道投影服务器",
+					"cmdName": "加载视频",
+					"simName": "加载视频",
+					"params": {
+						"videoWindowY": 0,
+						"videoWindowX": 0,
+						"videoWindowW": 0,
+						"videoWindowH": 0,
+						"videoTimeSec": 0.0,
+						"videoSrcY": 0,
+						"videoSrcX": 0,
+						"videoSrcW": 0,
+						"videoSrcH": 0,
+						"videoFile": "$汉水长歌-扇形水秀.mp4",
+						"play": false,
+						"avLoop": "false"
+					}
+				},
+				{
+					"time": "00:33:00.000",
+					"deviceName": "扇形栈道投影服务器",
+					"cmdName": "播放视频",
+					"simName": "播放视频",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:39:08.000",
+					"deviceName": "扇形栈道投影服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:40:08.000",
+					"deviceName": "水幕控台",
+					"cmdName": "关闭水幕",
+					"simName": "关闭水幕",
+					"params": {}
+				},
+				{
+					"time": "00:37:37.000",
+					"deviceName": "移民博物馆LED",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": 0.0
+					}
+				},
+				{
+					"time": "00:41:07.000",
+					"deviceName": "四桥网格屏",
+					"cmdName": "视频",
+					"simName": "四桥网格播放",
+					"params": {}
+				},
+				{
+					"time": "00:50:00.000",
+					"deviceName": "四桥网格屏",
+					"cmdName": "黑场",
+					"simName": "四桥网格黑场",
+					"params": {}
+				},
+				{
+					"time": "00:50:00.000",
+					"deviceName": "移民博物馆LED",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {
+						"playIndex": 0.0
+					}
+				}
+			]
+		},
+		{
+			"name": "九歌运行基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号提词器",
+					"cmdName": "播放第几个播单",
+					"simName": "打开提词器",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号服务器",
+					"cmdName": "播放音频",
+					"simName": "全程音频",
+					"params": {
+						"avLoop": "false",
+						"audioFile": "$音乐总和.wav"
+					}
+				},
+				{
+					"time": "00:49:00.000",
+					"deviceName": "九歌号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				}
+			]
+		},
+		{
+			"name": "安康运行基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号提词器",
+					"cmdName": "播放第几个播单",
+					"simName": "打开提词器",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号服务器",
+					"cmdName": "播放音频",
+					"simName": "全程音频",
+					"params": {
+						"avLoop": "false",
+						"audioFile": "$音乐总和.wav"
+					}
+				},
+				{
+					"time": "00:49:00.000",
+					"deviceName": "安康号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				}
+			]
+		},
+		{
+			"name": "秦巴运行基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号提词器",
+					"cmdName": "播放第几个播单",
+					"simName": "打开提词器",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号服务器",
+					"cmdName": "播放音频",
+					"simName": "全程音频",
+					"params": {
+						"avLoop": "false",
+						"audioFile": "$音乐总和.wav"
+					}
+				},
+				{
+					"time": "00:49:00.000",
+					"deviceName": "秦巴号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				}
+			]
+		},
+		{
+			"name": "天汉运行基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号提词器",
+					"cmdName": "播放第几个播单",
+					"simName": "打开提词器",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号服务器",
+					"cmdName": "播放音频",
+					"simName": "全程音频",
+					"params": {
+						"avLoop": "false",
+						"audioFile": "$音乐总和.wav"
+					}
+				},
+				{
+					"time": "00:49:00.000",
+					"deviceName": "天汉号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				}
+			]
+		},
+		{
+			"name": "九歌暖场基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$暖场循环音乐.wav"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "安康暖场基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$暖场循环音乐.wav"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "秦巴暖场基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$暖场循环音乐.wav"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "天汉暖场基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$暖场循环音乐.wav"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "九歌备案基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "安康备案基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "秦巴备案基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "天汉备案基线",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号服务器",
+					"cmdName": "播放音频",
+					"simName": "播放音频",
+					"params": {
+						"avLoop": "true",
+						"audioFile": "$备案音乐.mp3"
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "九歌安康-暖场",
+			"refOnly": true,
+			"refs": [
+				"九歌暖场基线",
+				"安康暖场基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "九歌安康-全场",
+			"refOnly": true,
+			"refs": [
+				"九歌运行基线",
+				"安康运行基线",
+				"全场运行基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "天汉秦巴-暖场",
+			"refOnly": true,
+			"refs": [
+				"天汉暖场基线",
+				"秦巴暖场基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "天汉秦巴-全场",
+			"refOnly": true,
+			"refs": [
+				"天汉运行基线",
+				"秦巴运行基线",
+				"全场运行基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "九歌天汉-暖场",
+			"refOnly": true,
+			"refs": [
+				"天汉暖场基线",
+				"九歌暖场基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "九歌天汉-全场",
+			"refOnly": true,
+			"refs": [
+				"天汉运行基线",
+				"九歌运行基线",
+				"全场运行基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "九歌单线-暖场",
+			"refOnly": false,
+			"refs": [
+				"九歌暖场基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "九歌单线-全场",
+			"refOnly": false,
+			"refs": [
+				"九歌运行基线",
+				"全场运行基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "安康单线-暖场",
+			"refOnly": false,
+			"refs": [
+				"安康暖场基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "安康单线-全场",
+			"refOnly": false,
+			"refs": [
+				"安康运行基线",
+				"全场运行基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "天汉单线-暖场",
+			"refOnly": false,
+			"refs": [
+				"天汉暖场基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "天汉单线-全场",
+			"refOnly": false,
+			"refs": [
+				"天汉运行基线",
+				"全场运行基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "秦巴单线-暖场",
+			"refOnly": false,
+			"refs": [
+				"秦巴暖场基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "秦巴单线-全场",
+			"refOnly": false,
+			"refs": [
+				"秦巴运行基线",
+				"全场运行基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "九歌-备案音乐",
+			"refOnly": false,
+			"refs": [
+				"九歌备案基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "安康-备案音乐",
+			"refOnly": false,
+			"refs": [
+				"安康备案基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "天汉-备案音乐",
+			"refOnly": false,
+			"refs": [
+				"天汉备案基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "秦巴-备案音乐",
+			"refOnly": false,
+			"refs": [
+				"秦巴备案基线"
+			],
+			"cmds": []
+		},
+		{
+			"name": "所有设备开机",
+			"refOnly": false,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁LED服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁网格屏服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影1",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影2",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影3",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影3",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影4",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影1",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影2",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影3",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影4",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影5",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "码头LED-A配电箱",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁LED配电箱",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "移民博物馆LED配电箱",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:30.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				},
+				{
+					"time": "00:00:30.000",
+					"deviceName": "扇形栈道投影服务器",
+					"cmdName": "$开机",
+					"simName": "$开机",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "所有设备关机",
+			"refOnly": false,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁LED服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁网格屏服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影1",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影2",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影3",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影3",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水西门投影4",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影1",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影2",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影3",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影4",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "水幕投影5",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "码头LED-A配电箱",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁LED配电箱",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "移民博物馆LED配电箱",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:05.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				},
+				{
+					"time": "00:00:05.000",
+					"deviceName": "扇形栈道投影服务器",
+					"cmdName": "$关机",
+					"simName": "$关机",
+					"params": {}
+				}
+			]
+		}
+	]
+}

@@ -1,13 +1,14 @@
 const elements = Object.fromEntries([
     "plan-name", "clock", "connection", "playback-label", "playback-dot",
-    "now-title", "now-summary", "master-time", "timeline-seek", "elapsed-time",
+    "now-title", "now-summary", "master-time", "active-timelines", "hero-progress", "timeline-seek", "elapsed-time",
     "remaining-time", "stop-button", "primary-button", "primary-icon", "primary-label",
     "refresh-button", "selection-count", "timeline-search", "timeline-list",
     "empty-timelines", "queue-panel", "queue-count", "queue-list", "queue-status",
     "queue-play-button", "queue-stop-button", "clear-queue-button", "device-count",
     "device-list", "empty-devices", "device-selection", "reset-devices-button", "command-program", "command-count", "command-list",
     "empty-commands", "toast", "show-filtered-out", "execution-filter",
-    "confirm-dialog", "confirm-message"
+    "confirm-dialog", "confirm-form", "confirm-title", "confirm-message", "confirm-password-field",
+    "confirm-password", "confirm-cancel", "confirm-accept"
 ].map(id => [id, document.getElementById(id)]));
 
 const state = {
@@ -74,13 +75,28 @@ function showToast(message, error = false) {
     state.toastTimer = setTimeout(() => elements.toast.className = "toast", 2600);
 }
 
-function confirmAction(message) {
+function confirmAction(message, action = "", title = "操作确认") {
     const dialog = elements["confirm-dialog"];
+    const requiresPassword = action !== "";
+    dialog.classList.toggle("warning", requiresPassword);
+    dialog.classList.toggle("pause", action === "pause");
+    dialog.classList.toggle("trigger", action === "trigger");
+    elements["confirm-title"].textContent = title;
     elements["confirm-message"].textContent = message;
+    elements["confirm-accept"].textContent = action === "pause" ? "确认暂停"
+        : action === "stop" ? "确认停止" : action === "trigger" ? "确认触发" : "确认";
+    elements["confirm-password-field"].hidden = !requiresPassword;
+    elements["confirm-password"].value = "";
+    elements["confirm-password"].disabled = !requiresPassword;
+    elements["confirm-accept"].disabled = requiresPassword;
     dialog.returnValue = "cancel";
     return new Promise(resolve => {
-        dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), { once: true });
+        dialog.addEventListener("close", () => {
+            elements["confirm-password"].value = "";
+            resolve(dialog.returnValue === "confirm");
+        }, { once: true });
         dialog.showModal();
+        if (requiresPassword) elements["confirm-password"].focus();
     });
 }
 
@@ -201,7 +217,10 @@ function renderTimelineList(data) {
             triggerButton.disabled = state.busy;
             triggerButton.title = `手动触发 ${timeline.name}`;
             triggerButton.addEventListener("click", async () => {
-                if (!await confirmAction(`确定触发时间线“${timeline.name}”？`)) return;
+                if (!await confirmAction(
+                    "将立即启动该时间线，并按编排向相关设备下发指令。",
+                    "trigger", `触发时间线「${timeline.name}」？`
+                )) return;
                 post(
                     "/api/v1/control",
                     { action: "trigger", timelineId: timeline.id },
@@ -216,7 +235,10 @@ function renderTimelineList(data) {
             stopButton.title = `仅停止 ${timeline.name} 的后续指令下发`;
             stopButton.setAttribute("aria-label", `停止时间线 ${timeline.name}`);
             stopButton.addEventListener("click", async () => {
-                if (!await confirmAction(`确定停止时间线“${timeline.name}”的后续指令下发？`)) return;
+                if (!await confirmAction(
+                    "仅停止该时间线后续指令下发，不发送设备停止指令。",
+                    "stop", `停止时间线「${timeline.name}」？`
+                )) return;
                 post(
                     "/api/v1/control",
                     { action: "stop-timeline", timelineId: timeline.id },
@@ -405,14 +427,46 @@ function render(data) {
     state.startTimeMs = Math.min(state.startTimeMs, duration);
     const currentTime = stopped ? state.startTimeMs : timeline?.currentTimeMs || 0;
     const active = playback === "running" || playback === "paused";
+    const runningTimelines = data.timelines.filter(item => item.state === "running")
+        .sort((left, right) => Number(right.id === data.playbackTimelineId) - Number(left.id === data.playbackTimelineId));
 
     elements["plan-name"].textContent = data.planName || "未命名方案";
     elements["playback-label"].textContent = stateLabel(playback);
     elements["playback-dot"].style.color = playback === "running" ? "var(--green)" : playback === "paused" ? "var(--amber)" : "var(--muted)";
-    elements["now-title"].textContent = timeline?.name || (active ? "触发节目" : "等待选择节目");
-    elements["now-summary"].textContent = timeline
-        ? `${active ? (data.queuePlayback ? `队列第 ${data.queueIndex + 1} / ${data.playQueue.length} 项` : "单节目播放") : "当前节目"} · ${timeline.commands.length} 条设备指令`
-        : (active ? "主队列已结束，等待触发节目结束" : "从节目库中选择节目，可单独播放");
+    elements["now-title"].textContent = active
+        ? `${playback === "paused" ? "已暂停" : "正在播放"} · ${runningTimelines.length} 条时间线`
+        : timeline?.name || "等待选择节目";
+    elements["now-summary"].textContent = active ? "当前所有运行中的时间线"
+        : timeline ? `当前节目 · ${timeline.commands.length} 条设备指令` : "从节目库中选择节目查看指令";
+    elements["active-timelines"].hidden = !active;
+    elements["active-timelines"].classList.toggle("paused", playback === "paused");
+    elements["active-timelines"].replaceChildren();
+    for (const item of runningTimelines) {
+        const main = item.id === data.playbackTimelineId;
+        const card = createElement("article", `active-timeline${main ? " main" : ""}`);
+        const heading = createElement("div", "active-timeline-heading");
+        const name = createElement("h2", "", item.name);
+        name.title = item.name;
+        heading.append(name, createElement("span", "active-timeline-role", main ? "主节目" : "触发节目"));
+        const status = createElement("p", "active-timeline-status", stateLabel(playback));
+        const time = createElement("div", "active-timeline-time");
+        time.append(createElement("strong", "", formatTime(item.currentTimeMs)),
+            createElement("span", "", `/ ${formatTime(item.durationMs)}`));
+        const progressValue = item.durationMs ? Math.min(100, item.currentTimeMs / item.durationMs * 100) : 0;
+        const progress = createElement("div", "active-timeline-progress");
+        progress.setAttribute("role", "progressbar");
+        progress.setAttribute("aria-label", `${item.name} 播放进度`);
+        progress.setAttribute("aria-valuemin", "0");
+        progress.setAttribute("aria-valuemax", "100");
+        progress.setAttribute("aria-valuenow", String(progressValue));
+        const fill = createElement("span", "");
+        fill.style.width = `${progressValue}%`;
+        progress.append(fill);
+        card.append(heading, status, time, progress,
+            createElement("p", "active-timeline-remaining", `剩余 ${formatTime(Math.max(0, item.durationMs - item.currentTimeMs))}`));
+        elements["active-timelines"].append(card);
+    }
+    elements["hero-progress"].hidden = active;
     elements["master-time"].textContent = formatTime(data.currentTimeMs);
     elements["timeline-seek"].max = duration;
     elements["timeline-seek"].value = currentTime;
@@ -425,7 +479,7 @@ function render(data) {
     const paused = !data.queuePlayback && playback === "paused";
     elements["primary-icon"].textContent = running ? "Ⅱ" : "▶";
     elements["primary-label"].textContent = running ? "暂停" : paused ? "继续播放" : "播放当前节目";
-    elements["primary-button"].disabled = state.busy || !data.currentTimelineId || (data.queuePlayback && active);
+    elements["primary-button"].disabled = state.busy || !data.currentTimelineId || (!running && !paused);
     elements["primary-button"].title = data.queuePlayback && active ? "请使用播放队列中的控制按钮" : "";
     elements["stop-button"].disabled = state.busy || stopped;
     elements["refresh-button"].disabled = state.busy;
@@ -475,6 +529,17 @@ async function post(path, body, successMessage) {
     }
 }
 
+elements["confirm-password"].addEventListener("input", () => {
+    elements["confirm-accept"].disabled = elements["confirm-password"].value !== "111111";
+});
+
+elements["confirm-form"].addEventListener("submit", event => {
+    if (!elements["confirm-password-field"].hidden && elements["confirm-password"].value !== "111111")
+        event.preventDefault();
+});
+
+elements["confirm-cancel"].addEventListener("click", () => elements["confirm-dialog"].close("cancel"));
+
 elements["timeline-search"].addEventListener("input", () => {
     if (state.data) renderTimelineList(state.data);
     elements["timeline-list"].scrollTop = 0;
@@ -489,9 +554,13 @@ elements["timeline-seek"].addEventListener("input", () => {
 elements["clear-queue-button"].addEventListener("click", () =>
     post("/api/v1/queue", { timelineIds: [] }, "播放队列已清空"));
 
-elements["primary-button"].addEventListener("click", () => {
+elements["primary-button"].addEventListener("click", async () => {
     const playback = state.data?.playbackState;
     const action = playback === "paused" ? "resume" : playback === "running" ? "pause" : "start-current";
+    if (action === "pause" && !await confirmAction(
+        "将暂停所有时间线并向相关设备发送暂停指令，之后可继续播放。",
+        "pause", "暂停播放？"
+    )) return;
     const body = { action, source: "current" };
     if (action === "start-current") {
         body.timelineId = state.data.currentTimelineId;
@@ -500,18 +569,28 @@ elements["primary-button"].addEventListener("click", () => {
     post("/api/v1/control", body, action === "pause" ? "播放已暂停" : "播控状态已更新");
 });
 
-elements["queue-play-button"].addEventListener("click", () => {
+elements["queue-play-button"].addEventListener("click", async () => {
     const playback = state.data?.playbackState;
     const action = state.data?.queuePlayback && playback === "paused" ? "resume"
         : state.data?.queuePlayback && playback === "running" ? "pause" : "start-queue";
+    if (action === "pause" && !await confirmAction(
+        "将暂停所有时间线并向相关设备发送暂停指令，之后可继续播放。",
+        "pause", "暂停播放？"
+    )) return;
     post("/api/v1/control", { action, source: "queue" }, "队列播控状态已更新");
 });
 elements["queue-stop-button"].addEventListener("click", async () => {
-    if (!await confirmAction("确定停止所有时间线，并向相关设备发送停止指令？")) return;
+    if (!await confirmAction(
+        "将停止所有时间线并向相关设备发送停止指令，播放进度将重置，播放队列保留。",
+        "stop", "停止全部播放？"
+    )) return;
     post("/api/v1/control", { action: "stop", source: "queue" }, "队列播放已停止");
 });
 elements["stop-button"].addEventListener("click", async () => {
-    if (!await confirmAction("确定停止所有时间线，并向相关设备发送停止指令？")) return;
+    if (!await confirmAction(
+        "将停止所有时间线并向相关设备发送停止指令，播放进度将重置，播放队列保留。",
+        "stop", "停止全部播放？"
+    )) return;
     post("/api/v1/control", { action: "stop" }, "播放已停止");
 });
 elements["reset-devices-button"].addEventListener("click", () =>
