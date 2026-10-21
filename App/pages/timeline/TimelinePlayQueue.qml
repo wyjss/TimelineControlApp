@@ -37,12 +37,7 @@ Base.AppSurface {
     surfaceTone: UiStyle.SurfaceTone.Surface
 
     function formatDuration(ms) {
-        var seconds = Math.max(0, Math.floor(Number(ms || 0) / 1000))
-        var hours = Math.floor(seconds / 3600)
-        var minutes = Math.floor(seconds / 60) % 60
-        return (hours > 0 ? (hours < 10 ? "0" : "") + hours + ":" : "")
-            + (minutes < 10 ? "0" : "") + minutes + ":"
-            + (seconds % 60 < 10 ? "0" : "") + seconds % 60
+        return app.formatTimeMs(Math.max(0, Math.floor(Number(ms || 0))))
     }
 
     TimelineStopConfirmDialog {

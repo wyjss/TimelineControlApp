@@ -1,5 +1,5 @@
 const elements = Object.fromEntries([
-    "plan-name", "clock", "connection", "playback-label", "playback-dot",
+    "plan-name", "clock", "connection",
     "now-title", "now-summary", "master-time", "active-timelines", "hero-progress", "timeline-seek", "elapsed-time",
     "remaining-time", "stop-button", "primary-button", "primary-icon", "primary-label",
     "refresh-button", "selection-count", "timeline-search", "timeline-list",
@@ -431,15 +431,13 @@ function render(data) {
         .sort((left, right) => Number(right.id === data.playbackTimelineId) - Number(left.id === data.playbackTimelineId));
 
     elements["plan-name"].textContent = data.planName || "未命名方案";
-    elements["playback-label"].textContent = stateLabel(playback);
-    elements["playback-dot"].style.color = playback === "running" ? "var(--green)" : playback === "paused" ? "var(--amber)" : "var(--muted)";
     elements["now-title"].textContent = active
         ? `${playback === "paused" ? "已暂停" : "正在播放"} · ${runningTimelines.length} 条时间线`
         : timeline?.name || "等待选择节目";
-    elements["now-summary"].textContent = active ? "当前所有运行中的时间线"
-        : timeline ? `当前节目 · ${timeline.commands.length} 条设备指令` : "从节目库中选择节目查看指令";
+    elements["now-summary"].textContent = timeline
+        ? `当前节目 · ${timeline.commands.length} 条设备指令` : "从节目库中选择节目查看指令";
+    elements["now-summary"].hidden = active;
     elements["active-timelines"].hidden = !active;
-    elements["active-timelines"].classList.toggle("paused", playback === "paused");
     elements["active-timelines"].replaceChildren();
     for (const item of runningTimelines) {
         const main = item.id === data.playbackTimelineId;
@@ -448,10 +446,10 @@ function render(data) {
         const name = createElement("h2", "", item.name);
         name.title = item.name;
         heading.append(name, createElement("span", "active-timeline-role", main ? "主节目" : "触发节目"));
-        const status = createElement("p", "active-timeline-status", stateLabel(playback));
         const time = createElement("div", "active-timeline-time");
         time.append(createElement("strong", "", formatTime(item.currentTimeMs)),
-            createElement("span", "", `/ ${formatTime(item.durationMs)}`));
+            createElement("span", "", `/ ${formatTime(item.durationMs)}`),
+            createElement("p", "active-timeline-remaining", `剩余 ${formatTime(Math.max(0, item.durationMs - item.currentTimeMs))}`));
         const progressValue = item.durationMs ? Math.min(100, item.currentTimeMs / item.durationMs * 100) : 0;
         const progress = createElement("div", "active-timeline-progress");
         progress.setAttribute("role", "progressbar");
@@ -462,8 +460,7 @@ function render(data) {
         const fill = createElement("span", "");
         fill.style.width = `${progressValue}%`;
         progress.append(fill);
-        card.append(heading, status, time, progress,
-            createElement("p", "active-timeline-remaining", `剩余 ${formatTime(Math.max(0, item.durationMs - item.currentTimeMs))}`));
+        card.append(heading, time, progress);
         elements["active-timelines"].append(card);
     }
     elements["hero-progress"].hidden = active;

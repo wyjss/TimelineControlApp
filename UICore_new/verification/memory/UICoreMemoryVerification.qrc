@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/UICoreVerification">
+        <file alias="QtComboBoxProbe.qml">probes/QtComboBoxProbe.qml</file>
+        <file alias="QtCanvasProbe.qml">probes/QtCanvasProbe.qml</file>
+    </qresource>
+</RCC>

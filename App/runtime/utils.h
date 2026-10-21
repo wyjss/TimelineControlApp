@@ -59,6 +59,13 @@ namespace Utils {
 	QString getVideoRealSource(const QString& source);
 	QString getAudioRealSource(const QString& source);
 
+	// 解析 [[时:]分:]秒[.小数]，分为 1~2 位（0~59），秒为 1~4 位（0~9999）。
+	// 小数为 1~3 位（.1 为 100 毫秒）；格式错误或溢出返回 -1。
+	qint64 parseTimeMs(const QString& text);
+	// 默认输出完整的 时:分:秒.毫秒，小时至少两位且不截断；负数返回空字符串。
+	// trim 时省略零小时并去除小数尾零，至少保留 分:秒，时间精度不变。
+	QString formatTimeMs(qint64 timeMs, bool trim = false);
+
 	// rect <-> variant map转换
 	bool rectFromMap(const QVariantMap& vmap, QRect& rect);
 	bool rectToMap(const QRect& rect, QVariantMap& vmap);

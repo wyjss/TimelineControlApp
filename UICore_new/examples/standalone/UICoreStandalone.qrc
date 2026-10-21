@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/UICore">
+        <file alias="qml/standalone/UICoreStandalone.qml">qml/UICoreStandalone.qml</file>
+        <file alias="qml/standalone/UICoreGallery.qml">qml/UICoreGallery.qml</file>
+        <file alias="qml/standalone/UICoreGalleryBase.qml">qml/UICoreGalleryBase.qml</file>
+        <file alias="qml/standalone/UICoreGalleryContainers.qml">qml/UICoreGalleryContainers.qml</file>
+        <file alias="qml/standalone/UICoreGalleryCustomField.qml">qml/UICoreGalleryCustomField.qml</file>
+        <file alias="qml/standalone/UICoreGalleryFeedback.qml">qml/UICoreGalleryFeedback.qml</file>
+        <file alias="qml/standalone/UICoreGalleryFields.qml">qml/UICoreGalleryFields.qml</file>
+        <file alias="qml/standalone/UICoreGalleryInputs.qml">qml/UICoreGalleryInputs.qml</file>
+        <file alias="qml/standalone/UICoreGalleryShell.qml">qml/UICoreGalleryShell.qml</file>
+        <file alias="qml/standalone/UICoreLayerMenuDemoBlock.qml">qml/UICoreLayerMenuDemoBlock.qml</file>
+        <file alias="qml/standalone/UICoreMenuColorCanvas.qml">qml/UICoreMenuColorCanvas.qml</file>
+        <file alias="qml/standalone/UICoreSidebarDemo.qml">qml/UICoreSidebarDemo.qml</file>
+    </qresource>
+</RCC>

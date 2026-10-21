@@ -13,6 +13,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonParseError>
+#include <limits>
 
 namespace Utils 
 {
@@ -115,6 +116,88 @@ namespace Utils
 		} else {
 			return source;
 		}
+	}
+
+	qint64 parseTimeMs(const QString& text)
+	{
+		// 数值转换会接受空白和正号，这里仅允许时间格式中的字符。
+		for (const auto ch : text) {
+			if ((ch < QLatin1Char('0') || ch > QLatin1Char('9')) && 
+				ch != QLatin1Char(':') 
+				&& ch != QLatin1Char('.')
+				) {
+				return -1;
+			}
+		}
+
+		auto parts = text.split(QLatin1Char(':'), Qt::KeepEmptyParts);
+		if (parts.size() > 3) {
+			return -1;
+		}
+		const auto secondParts = parts.last().split(QLatin1Char('.'), Qt::KeepEmptyParts);
+		if (secondParts.size() > 2) {
+			return -1;
+		}
+		parts.last() = secondParts.first();
+
+		int milliseconds = 0;
+		if (secondParts.size() == 2) {
+			const auto& fraction = secondParts[1];
+			if (fraction.isEmpty() || fraction.size() > 3) {
+				return -1;
+			}
+			milliseconds = fraction.leftJustified(3, QLatin1Char('0')).toInt();
+		}
+
+		qint64 totalSeconds = 0;
+		const qint64 maxSeconds = ((std::numeric_limits<qint64>::max)() - milliseconds) / 1000;
+		for (int i = 0; i < parts.size(); ++i) {
+			bool ok = false;
+			const qint64 value = parts[i].toLongLong(&ok);
+			if (!ok) {
+				return -1;
+			}
+
+			// 秒支持0000~9999
+			if (i == parts.size() - 1) {
+				if (parts[i].size() > 4 || value > 9999) {
+					return -1;
+				}
+			} else if (i == parts.size() - 2) {
+				if (parts[i].size() > 2 || value > 59) {
+					return -1;
+				}
+			}
+			if (value > maxSeconds || totalSeconds > (maxSeconds - value) / 60) {
+				return -1;
+			}
+			totalSeconds = totalSeconds * 60 + value;
+		}
+		return totalSeconds * 1000 + milliseconds;
+	}
+
+	QString formatTimeMs(qint64 timeMs, bool trim)
+	{
+		if (timeMs < 0) {
+			return QString();
+		}
+		QString text = QStringLiteral("%1:%2:%3.%4")
+			.arg(timeMs / 3600000, 2, 10, QLatin1Char('0'))
+			.arg(timeMs / 60000 % 60, 2, 10, QLatin1Char('0'))
+			.arg(timeMs / 1000 % 60, 2, 10, QLatin1Char('0'))
+			.arg(timeMs % 1000, 3, 10, QLatin1Char('0'));
+		if (trim) {
+			if (timeMs < 3600000) {
+				text.remove(0, 3);
+			}
+			while (text.endsWith(QLatin1Char('0'))) {
+				text.chop(1);
+			}
+			if (text.endsWith(QLatin1Char('.'))) {
+				text.chop(1);
+			}
+		}
+		return text;
 	}
 
 	bool rectFromMap(const QVariantMap& vmap, QRect& rect)

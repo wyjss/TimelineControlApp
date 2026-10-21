@@ -95,22 +95,8 @@ Item {
         return name.length > 0 ? name : String(deviceId || qsTr("未分配"))
     }
 
-    function padNumber(value, width) {
-        var text = String(value)
-        while (text.length < width)
-            text = "0" + text
-        return text
-    }
-
-    function formatTime(ms, showMilliseconds) {
-        var totalMs = Math.max(0, Math.round(Number(ms || 0)))
-        var totalSeconds = Math.floor(totalMs / 1000)
-        var hours = Math.floor(totalSeconds / 3600)
-        var minutes = Math.floor(totalSeconds / 60) % 60
-        var seconds = totalSeconds % 60
-        return (hours > 0 ? padNumber(hours, 2) + ":" : "")
-            + padNumber(minutes, 2) + ":" + padNumber(seconds, 2)
-            + (showMilliseconds ? "." + padNumber(totalMs % 1000, 3) : "")
+    function formatTime(ms) {
+        return app.formatTimeMs(Math.max(0, Math.round(Number(ms || 0))), true)
     }
 
     function resultColor(command) {
@@ -144,7 +130,7 @@ Item {
         if (!command)
             return ""
         return qsTr("时间：%1\n设备：%2\n名称：%3\n执行参数：%4\n结果：%5")
-            .arg(formatTime(command.startTimeMs, true))
+            .arg(formatTime(command.startTimeMs))
             .arg(deviceName(command.targetDeviceId))
             .arg(String(command.alias || qsTr("指令")))
             .arg(executionParameters(command))
@@ -334,7 +320,7 @@ Item {
                         Layout.preferredWidth: root.timeColumnWidth
                         text: root.formatTime(commandRow.commandData
                             ? commandRow.commandData.startTimeMs
-                            : 0, true)
+                            : 0)
                         styleRole: UiStyle.TypographyRole.BodyS
                         textTone: UiStyle.TextTone.Secondary
                         elide: Text.ElideRight

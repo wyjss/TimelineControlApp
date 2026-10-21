@@ -108,17 +108,7 @@ Item {
     }
 
     function formatTime(ms) {
-        var totalMs = Math.max(0, Math.round(Number(ms || 0)))
-        var totalSeconds = Math.floor(totalMs / 1000)
-        var hours = Math.floor(totalSeconds / 3600)
-        var minutes = Math.floor(totalSeconds / 60) % 60
-        var seconds = totalSeconds % 60
-        var milliseconds = totalMs % 1000
-        var timeText = (hours < 10 ? "0" : "") + hours + ":"
-            + (minutes < 10 ? "0" : "") + minutes + ":"
-            + (seconds < 10 ? "0" : "") + seconds + "."
-        return timeText + (milliseconds < 10 ? "00" : (milliseconds < 100 ? "0" : ""))
-            + milliseconds
+        return app.formatTimeMs(Math.max(0, Math.round(Number(ms || 0))))
     }
 
     function countCommandsByState(state) {

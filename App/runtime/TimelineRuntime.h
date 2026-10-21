@@ -55,6 +55,9 @@ public:
     QString currentPlanFilePath() const;
     QString currentPlanName() const;
 
+    Q_INVOKABLE qint64 parseTimeMs(const QString &text) const;
+    Q_INVOKABLE QString formatTimeMs(qint64 timeMs, bool trim = false) const;
+
     void writePlanToStream(QDataStream &stream) const;
     void readPlanFromStream(QDataStream &stream);
     Q_INVOKABLE bool savePlanToFile(const QString &filePath);

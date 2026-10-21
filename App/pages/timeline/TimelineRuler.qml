@@ -193,58 +193,9 @@ Item {
         return adjustedSpacing
     }
 
-    function pad2(value) {
-        return value < 10 ? "0" + value : String(value)
-    }
-
-    function pad3(value) {
-        if (value < 10)
-            return "00" + value
-        return value < 100 ? "0" + value : String(value)
-    }
-
-    function formatTime(ms, showMilliseconds) {
-        var totalSeconds = Math.floor(ms / 1000)
-        var hours = Math.floor(totalSeconds / 3600)
-        var minutes = Math.floor((totalSeconds % 3600) / 60)
-        var seconds = totalSeconds % 60
-        var suffix = showMilliseconds ? "." + pad3(Math.floor(ms) % 1000) : ""
-
-        if (hours > 0)
-            return pad2(hours) + ":" + pad2(minutes) + ":" + pad2(seconds) + suffix
-
-        return pad2(minutes) + ":" + pad2(seconds) + suffix
-    }
-
-    function parseTime(text) {
-        var parts = String(text || "").trim().split(":")
-        if (parts.length < 2 || parts.length > 3)
-            return -1
-
-        var secondParts = parts[parts.length - 1].split(".")
-        if (secondParts.length > 2
-                || !/^\d+$/.test(secondParts[0])
-                || (secondParts.length === 2 && !/^\d{1,3}$/.test(secondParts[1])))
-            return -1
-
-        var seconds = Number(secondParts[0])
-        var minutes = Number(parts[parts.length - 2])
-        var hours = parts.length === 3 ? Number(parts[0]) : 0
-        if (!/^\d+$/.test(parts[parts.length - 2])
-                || (parts.length === 3 && !/^\d+$/.test(parts[0]))
-                || seconds >= 60
-                || (parts.length === 3 && minutes >= 60))
-            return -1
-
-        var milliseconds = secondParts.length === 2
-            ? Number((secondParts[1] + "00").slice(0, 3))
-            : 0
-        return ((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds
-    }
-
     function syncCurrentTimeText() {
         if (!currentTimeField.activeFocus) {
-            currentTimeField.text = formatTime(displayedCurrentTimeMs, true)
+            currentTimeField.text = app.formatTimeMs(displayedCurrentTimeMs)
             currentTimeField.cursorPosition = currentTimeField.length
         }
     }
@@ -272,7 +223,7 @@ Item {
                 continue
             result.push({
                 "timeMs": tickMs,
-                "label": formatTime(tickMs, majorTickMs < 1000),
+                "label": app.formatTimeMs(tickMs, true),
                 "x": tickX
             })
             lastLabelRight = labelX + labelWidth
@@ -428,7 +379,7 @@ Item {
             contentPaddingX: 0
             contentPaddingY: 0
             readOnly: !root.currentTimeDragEnabled
-            placeholderText: "00:00.000"
+            placeholderText: "00:00:00.000"
             inputMethodHints: Qt.ImhPreferNumbers
             horizontalAlignment: Text.AlignLeft
             color: root.colorValue("highlightText", "#78afff")
@@ -437,10 +388,10 @@ Item {
             background: Item {}
 
             onEditingFinished: {
-                var timeMs = root.parseTime(text)
+                var timeMs = app.parseTimeMs(text)
                 if (timeMs >= 0)
                     root.requestCurrentTimeMs(timeMs, false)
-                text = root.formatTime(root.displayedCurrentTimeMs, true)
+                text = app.formatTimeMs(root.displayedCurrentTimeMs)
                 cursorPosition = length
             }
             onReadOnlyChanged: root.syncCurrentTimeText()

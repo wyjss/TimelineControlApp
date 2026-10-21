@@ -80,8 +80,8 @@ TestCase {
         verify(label.width >= label.implicitWidth, "Command name is squeezed out")
         var position = label.mapToItem(list, 0, 0)
         verify(position.x + label.width <= list.width, "Command name exceeds the list")
-        compare(list.formatTime(13800, true), "00:13.800")
-        compare(list.formatTime(3613800, true), "01:00:13.800")
+        compare(list.formatTime(13800), "00:13.8")
+        compare(list.formatTime(3613800), "01:00:13.8")
         compare(list.count, 1)
         var commands = []
         for (var index = 0; index < 30; ++index)
@@ -240,7 +240,7 @@ TestCase {
         var palette = findChild(host, "deviceCommandList")
         verify(palette.height > 0)
         compare(palette.count, 6)
-        compare(findChild(host, "commandAddTime").text, "00:13.800")
+        compare(findChild(host, "commandAddTime").text, "00:00:13.800")
         compare(page.formatTimelineMs(3613800), "01:00:13.800")
         verify(!findChild(page, "commandPaletteScroll"))
         for (var index = 0; index < 6; ++index) {

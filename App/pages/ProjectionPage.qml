@@ -235,11 +235,7 @@ Item {
     }
 
     function formatTime(timeMs) {
-        var ms = Math.max(0, Math.round(timeMs))
-        return ("0" + Math.floor(ms / 3600000)).slice(-2) + ":"
-            + ("0" + Math.floor(ms / 60000) % 60).slice(-2) + ":"
-            + ("0" + Math.floor(ms / 1000) % 60).slice(-2) + "."
-            + ("00" + ms % 1000).slice(-3)
+        return app.formatTimeMs(Math.max(0, Math.round(timeMs)))
     }
 
     function videoName(value) {
@@ -752,12 +748,11 @@ Item {
                                     objectName: "videoCommandTime"
                                     Layout.preferredWidth: 138
                                     text: root.formatTime(root.selectedCommand ? root.selectedCommand.startTimeMs : 0)
-                                    validator: RegularExpressionValidator { regularExpression: /\d{2}:[0-5]\d:[0-5]\d\.\d{3}/ }
+                                    validator: RegularExpressionValidator { regularExpression: /\d{2,}:[0-5]\d:[0-5]\d\.\d{3}/ }
                                     onEditingFinished: {
-                                        if (acceptableInput) {
-                                            var parts = text.split(/[:.]/)
-                                            root.updateCommand({ "startTimeMs": Number(parts[0]) * 3600000
-                                                + Number(parts[1]) * 60000 + Number(parts[2]) * 1000 + Number(parts[3]) })
+                                        var timeMs = app.parseTimeMs(text)
+                                        if (acceptableInput && timeMs >= 0) {
+                                            root.updateCommand({ "startTimeMs": timeMs })
                                         } else {
                                             text = Qt.binding(function() {
                                                 return root.formatTime(root.selectedCommand ? root.selectedCommand.startTimeMs : 0)

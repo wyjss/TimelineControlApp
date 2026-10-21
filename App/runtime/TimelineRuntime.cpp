@@ -18,6 +18,7 @@
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
 #include "timeline/TimelineModel.h"
+#include "runtime/utils.h"
 #include "video/PcVideoStateCalculator.h"
 
 #include "LogMacros.h"
@@ -346,6 +347,16 @@ QString TimelineRuntime::currentPlanName() const
     return QFileInfo(m_currentPlanFilePath).completeBaseName();
 }
 
+qint64 TimelineRuntime::parseTimeMs(const QString &text) const
+{
+    return Utils::parseTimeMs(text);
+}
+
+QString TimelineRuntime::formatTimeMs(qint64 timeMs, bool trim) const
+{
+    return Utils::formatTimeMs(timeMs, trim);
+}
+
 void TimelineRuntime::writePlanToStream(QDataStream &stream) const
 {
     stream << kTimelinePlanMagic
@@ -635,7 +646,6 @@ bool TimelineRuntime::importTimelinesFromJson(const QString &filePath)
     }
 
     bool success = true;
-    const QRegularExpression timePattern(QStringLiteral(R"(^(\d{2}):([0-5]\d):([0-5]\d)\.(\d{3})$)"));
     for (const auto& tl : tls) {
         const QStringList AutoTLNames = {"上半场", "下半场", "暖场"};
         QStringList AutogenSubTLNames;
@@ -669,16 +679,12 @@ bool TimelineRuntime::importTimelinesFromJson(const QString &filePath)
 
         // 添加指令
         for (const auto& tlCmd : tl.cmds) {
-            const auto timeMatch = timePattern.match(tlCmd.time);
-            if (!timeMatch.hasMatch()) {
+            const qint64 timeMs = Utils::parseTimeMs(tlCmd.time);
+            if (timeMs < 0 ) {
                 LOG_ERROR("时间格式错误，应为 hh:mm:ss.zzz：" << tlCmd.time);
                 success = false;
                 continue;
             }
-            const qint64 timeMs = timeMatch.captured(1).toLongLong() * 3600000
-                + timeMatch.captured(2).toLongLong() * 60000
-                + timeMatch.captured(3).toLongLong() * 1000
-                + timeMatch.captured(4).toLongLong();
 
             auto device = m_deviceModel->deviceByName(tlCmd.deviceName);
             if (!device) {

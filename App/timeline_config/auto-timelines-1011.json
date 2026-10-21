@@ -583,15 +583,15 @@
 				{
 					"time": "00:41:07.000",
 					"deviceName": "四桥网格屏",
-					"cmdName": "视频",
-					"simName": "四桥网格播放",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
 					"params": {}
 				},
 				{
 					"time": "00:50:00.000",
 					"deviceName": "四桥网格屏",
-					"cmdName": "黑场",
-					"simName": "四桥网格黑场",
+					"cmdName": "停止",
+					"simName": "停止",
 					"params": {}
 				},
 				{
@@ -1224,14 +1224,14 @@
 					"params": {}
 				},
 				{
-					"time": "00:00:30.000",
+					"time": "00:01:00.000",
 					"deviceName": "一维水西门投影服务器",
 					"cmdName": "$开机",
 					"simName": "$开机",
 					"params": {}
 				},
 				{
-					"time": "00:00:30.000",
+					"time": "00:01:00.000",
 					"deviceName": "扇形栈道投影服务器",
 					"cmdName": "$开机",
 					"simName": "$开机",

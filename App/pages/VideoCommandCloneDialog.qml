@@ -62,7 +62,7 @@ Base.AppDialog {
         : !videoOptions.length ? qsTr("目标设备暂无可选视频")
         : !videoOptions.some(function(option) { return option.value === videoFile })
             ? qsTr("目标设备未提供原视频选项，请重新选择")
-        : !cloneTime.acceptableInput ? qsTr("请输入有效的触发时间，格式为 时:分:秒.毫秒") : ""
+        : !cloneTime.acceptableInput || app.parseTimeMs(cloneTime.text) < 0 ? qsTr("请输入有效的触发时间，格式为 时:分:秒.毫秒") : ""
     readonly property bool rectangleOutside: !!sourceCommand && !!targetPc
         && (Number(sourceParameters.videoWindowX || 0) < 0 || Number(sourceParameters.videoWindowY || 0) < 0
             || Number(sourceParameters.videoWindowX || 0) + Number(sourceParameters.videoWindowW || 1920) > targetPc.width
@@ -96,9 +96,7 @@ Base.AppDialog {
         targetDeviceId = sourceCommand.targetDeviceId
         videoFile = String(sourceParameters.videoFile || "")
         var ms = Math.max(0, Math.round(sourceCommand.startTimeMs))
-        cloneTime.text = ("0" + Math.floor(ms / 3600000)).slice(-2) + ":"
-            + ("0" + Math.floor(ms / 60000) % 60).slice(-2) + ":"
-            + ("0" + Math.floor(ms / 1000) % 60).slice(-2) + "." + ("00" + ms % 1000).slice(-3)
+        cloneTime.text = app.formatTimeMs(ms)
         errorText = ""
         open()
     }
@@ -107,9 +105,7 @@ Base.AppDialog {
         if (!acceptEnabled)
             return
         var values = Object.assign({}, sourceParameters, { "videoFile": videoFile })
-        var parts = cloneTime.text.split(/[:.]/)
-        var timeMs = Number(parts[0]) * 3600000 + Number(parts[1]) * 60000
-            + Number(parts[2]) * 1000 + Number(parts[3])
+        var timeMs = app.parseTimeMs(cloneTime.text)
         var command = commandModel.addDeviceCommand(timeMs, targetPc.id, targetPc.loadCommand, values, sourceCommand.alias)
         if (!command) {
             errorText = qsTr("克隆指令失败")
@@ -188,7 +184,7 @@ Base.AppDialog {
             id: cloneTime
             objectName: "cloneVideoTime"
             Layout.fillWidth: true
-            validator: RegularExpressionValidator { regularExpression: /\d{2}:[0-5]\d:[0-5]\d\.\d{3}/ }
+            validator: RegularExpressionValidator { regularExpression: /\d{2,}:[0-5]\d:[0-5]\d\.\d{3}/ }
         }
     }
     Base.AppText {

@@ -415,20 +415,7 @@ Item {
     }
 
     function formatTimelineMs(ms) {
-        var totalMs = Math.max(0, Math.round(Number(ms || 0)))
-        var totalSeconds = Math.floor(totalMs / 1000)
-        var hours = Math.floor(totalSeconds / 3600)
-        var minutes = Math.floor(totalSeconds / 60) % 60
-        var seconds = totalSeconds % 60
-        var milliseconds = totalMs % 1000
-        var millisecondsText = milliseconds < 10
-            ? "00" + milliseconds
-            : (milliseconds < 100 ? "0" + milliseconds : String(milliseconds))
-        return (hours > 0 ? (hours < 10 ? "0" + hours : hours) + ":" : "")
-            + qsTr("%1:%2.%3")
-            .arg(minutes < 10 ? "0" + minutes : minutes)
-            .arg(seconds < 10 ? "0" + seconds : seconds)
-            .arg(millisecondsText)
+        return app.formatTimeMs(Math.max(0, Math.round(Number(ms || 0))))
     }
 
     ColumnLayout {
@@ -940,7 +927,8 @@ Item {
         id: addTimelineCommandPopup
         objectName: "addTimelineCommandPopup"
 
-        parent: root
+        // 概览模式下编辑器隐藏且尺寸为零，弹窗以窗口内容区定位。
+        parent: root.ApplicationWindow.window.contentItem
 
         property var targetDevice: null
         property var targetCommand: null
@@ -956,12 +944,10 @@ Item {
         readonly property string timeInvalidReason: {
             if (!editing)
                 return ""
-            if (!/^\d{2}:[0-5]\d:[0-5]\d\.\d{3}$/.test(commandStartTimeField.text))
+            var timeMs = app.parseTimeMs(commandStartTimeField.text)
+            if (timeMs < 0 || !/^\d{2,}:[0-5]\d:[0-5]\d\.\d{3}$/.test(commandStartTimeField.text))
                 return qsTr("请输入有效的开始时间，格式为 时:分:秒.毫秒")
 
-            var parts = commandStartTimeField.text.split(/[:.]/)
-            var timeMs = Number(parts[0]) * 3600000 + Number(parts[1]) * 60000
-                + Number(parts[2]) * 1000 + Number(parts[3])
             var maximumTimeMs = Math.max(root.timelineDurationMs, targetStartTimeMs)
             return timeMs > maximumTimeMs
                 ? qsTr("开始时间不能超过 %1").arg(root.formatTimelineMs(maximumTimeMs)) : ""
@@ -1000,8 +986,7 @@ Item {
 
                 targetDevice = root.deviceForId(String(command.targetDeviceId || ""))
                 targetStartTimeMs = Number(command.startTimeMs || 0)
-                commandStartTimeField.text = (targetStartTimeMs < 3600000 ? "00:" : "")
-                    + root.formatTimelineMs(targetStartTimeMs)
+                commandStartTimeField.text = app.formatTimeMs(Math.max(0, targetStartTimeMs))
                 commandAliasField.text = command.alias
                 validationVisible = false
                 executionFieldForm.values = command.executionInputValues || ({})
@@ -1015,9 +1000,7 @@ Item {
                 return
 
             if (editing) {
-                var parts = commandStartTimeField.text.split(/[:.]/)
-                var timeMs = Number(parts[0]) * 3600000 + Number(parts[1]) * 60000
-                    + Number(parts[2]) * 1000 + Number(parts[3])
+                var timeMs = app.parseTimeMs(commandStartTimeField.text)
                 if (timelineCommandModel.updateCommand(editingTimelineCommand,
                                                        timeMs,
                                                        executionFieldForm.valueMap())) {

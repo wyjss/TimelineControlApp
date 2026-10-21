@@ -533,7 +533,7 @@ Item {
                             Base.AppText {
                                 objectName: "commandAddTime"
                                 text: root.editor
-                                    ? root.editor.formatTimelineMs(root.editor.timelineCurrentTimeMs) : "00:00.000"
+                                    ? root.editor.formatTimelineMs(root.editor.timelineCurrentTimeMs) : "00:00:00.000"
                                 styleRole: UiStyle.TypographyRole.BodyS
                                 overrideWeight: root.pageTheme.typography.weightStrong
                                 textTone: UiStyle.TextTone.Accent

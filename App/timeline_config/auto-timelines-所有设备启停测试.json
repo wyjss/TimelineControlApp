@@ -467,8 +467,8 @@
 				{
 					"time": "00:00:00.000",
 					"deviceName": "四桥网格屏",
-					"cmdName": "视频",
-					"simName": "四桥网格播放",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
 					"params": {}
 				}
 			]
@@ -649,8 +649,8 @@
 				{
 					"time": "00:00:00.000",
 					"deviceName": "四桥网格屏",
-					"cmdName": "黑场",
-					"simName": "黑场",
+					"cmdName": "停止",
+					"simName": "停止",
 					"params": {}
 				}
 			]

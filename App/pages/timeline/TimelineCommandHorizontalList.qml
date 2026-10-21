@@ -48,16 +48,6 @@ Item {
             : 0
     }
 
-    function formatTime(ms) {
-        var totalSeconds = Math.floor(Math.max(0, Number(ms || 0)) / 1000)
-        var hours = Math.floor(totalSeconds / 3600)
-        var minutes = Math.floor(totalSeconds / 60) % 60
-        var seconds = totalSeconds % 60
-        return (hours < 10 ? "0" : "") + hours + ":"
-            + (minutes < 10 ? "0" : "") + minutes + ":"
-            + (seconds < 10 ? "0" : "") + seconds
-    }
-
     function commandColor(command) {
         var targetCommand = command ? command.targetCommand : null
         switch (String(targetCommand ? targetCommand.protocol : "")) {
@@ -95,7 +85,7 @@ Item {
         }
         if (deviceText.length > 0)
             parts.push(deviceText)
-        parts.push(formatTime(commandStartMs(command)))
+        parts.push(app.formatTimeMs(Math.max(0, Math.floor(commandStartMs(command)))))
         if (String(command.stateText || "").length > 0)
             parts.push(String(command.stateText))
 
@@ -318,7 +308,7 @@ Item {
                 ToolTip.visible: previewing || containsMouse
                 ToolTip.delay: previewing ? 0 : 500
                 ToolTip.text: previewing
-                    ? root.formatTime(previewStartTimeMs) + "." + ("00" + previewStartTimeMs % 1000).slice(-3)
+                    ? app.formatTimeMs(previewStartTimeMs)
                     : commandBlock.overflowCommand
                     ? commandBlock.instantLayout.mergedCommands.map(function(command) {
                         return "• " + root.commandInfo(command)
