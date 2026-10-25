@@ -55,6 +55,7 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
 
     LOG_INFO(command->name() << url);
 
+    auto t = QDateTime::currentMSecsSinceEpoch();
     QNetworkReply *reply = method == QStringLiteral("POST")
         ? m_manager->post(request, params.value(DeviceKey::HttpBody).toString().toUtf8())
         : m_manager->get(request);
@@ -67,7 +68,7 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
         }
     });
 
-    connect(reply, &QNetworkReply::finished, this, [this, executionId, command, reply]() {
+    connect(reply, &QNetworkReply::finished, this, [this, executionId, command, reply, t]() {
         const QVariant status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
         int statusCode = status.isValid() ? status.toInt() : -1;
         
@@ -76,6 +77,8 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
         QString message;
         // 成功
         if (success) {
+            auto et = QDateTime::currentMSecsSinceEpoch() - t;
+            LOG_INFO(reply->url() << " 请求成功，耗时" << et << "ms");
             ;
         } else {
             if (reply->property("timedOut").toBool()) {

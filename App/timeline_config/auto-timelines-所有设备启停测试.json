@@ -1,7 +1,7 @@
 {
 	"timelines": [
 		{
-			"name": "测试-启动所有伴游船音乐",
+			"name": "测试-启动所有伴游船",
 			"cmds": [
 				{
 					"time": "00:00:00.000",
@@ -74,11 +74,32 @@
 					"params": {
 						"playIndex": "0"
 					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光凤船控台",
+					"cmdName": "测试",
+					"simName": "测试",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光龙舟船控台",
+					"cmdName": "测试",
+					"simName": "测试",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光龙舟2船控台",
+					"cmdName": "测试",
+					"simName": "测试",
+					"params": {}
 				}
 			]
 		},
 		{
-			"name": "测试-停止所有伴游船音乐",
+			"name": "测试-停止所有伴游船",
 			"cmds": [
 				{
 					"time": "00:00:00.000",
@@ -151,11 +172,35 @@
 					"params": {
 						"playIndex": "0"
 					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光凤船控台",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光龙舟船控台",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光龙舟2船控台",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
 				}
 			]
 		},
 		{
 			"name": "测试-启动所有设备效果",
+			"refs": [
+				"测试-启动所有伴游船"
+			],
 			"cmds": [
 				{
 					"time": "00:00:00.000",
@@ -245,78 +290,6 @@
 				{
 					"time": "00:00:00.000",
 					"deviceName": "亲水广场音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "凤镜船视频音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "龙舟船2号音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "龙舟船1号音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "马车船音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "知音船音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "金丝船音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "银丝船音乐",
-					"cmdName": "播放第几个播单",
-					"simName": "播放第几个播单",
-					"params": {
-						"playIndex": "0"
-					}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "卷轴船音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
@@ -475,6 +448,9 @@
 		},
 		{
 			"name": "测试-停止所有设备效果",
+			"refs": [
+				"测试-停止所有伴游船"
+			],
 			"cmds": [
 				{
 					"time": "00:00:00.000",
@@ -535,62 +511,6 @@
 				{
 					"time": "00:00:00.000",
 					"deviceName": "亲水广场音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "凤镜船视频音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "龙舟船2号音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "龙舟船1号音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "马车船音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "知音船音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "金丝船音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "银丝船音乐",
-					"cmdName": "停止",
-					"simName": "停止",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "卷轴船音乐",
 					"cmdName": "停止",
 					"simName": "停止",
 					"params": {}

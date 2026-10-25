@@ -95,12 +95,39 @@
 			"refOnly": true,
 			"cmds": [
 				{
-					"time": "00:01:58.000",
+					"time": "00:01:54.000",
 					"deviceName": "凤镜船视频音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:01:56.000",
+					"deviceName": "凤镜船视频音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:01:58.000",
+					"deviceName": "凤镜船视频音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "118"
+					}
+				},
+				{
+					"time": "00:01:59.000",
+					"deviceName": "凤镜船视频音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "119"
 					}
 				},
 				{
@@ -120,12 +147,39 @@
 					"params": {}
 				},
 				{
-					"time": "00:23:46.000",
+					"time": "00:23:42.000",
 					"deviceName": "龙舟船2号音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:23:44.000",
+					"deviceName": "龙舟船2号音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:23:46.000",
+					"deviceName": "龙舟船2号音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1426"
+					}
+				},
+				{
+					"time": "00:23:47.000",
+					"deviceName": "龙舟船2号音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1427"
 					}
 				},
 				{
@@ -145,12 +199,39 @@
 					"params": {}
 				},
 				{
-					"time": "00:23:46.000",
+					"time": "00:23:42.000",
 					"deviceName": "龙舟船1号音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:23:44.000",
+					"deviceName": "龙舟船1号音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:23:46.000",
+					"deviceName": "龙舟船1号音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1426"
+					}
+				},
+				{
+					"time": "00:23:47.000",
+					"deviceName": "龙舟船1号音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1427"
 					}
 				},
 				{
@@ -170,12 +251,39 @@
 					"params": {}
 				},
 				{
-					"time": "00:33:14.000",
+					"time": "00:33:10.000",
 					"deviceName": "马车船音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:33:12.000",
+					"deviceName": "马车船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:33:14.000",
+					"deviceName": "马车船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1994"
+					}
+				},
+				{
+					"time": "00:33:15.000",
+					"deviceName": "马车船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1995"
 					}
 				},
 				{
@@ -195,12 +303,39 @@
 					"params": {}
 				},
 				{
-					"time": "00:18:54.000",
+					"time": "00:18:50.000",
 					"deviceName": "知音船音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:18:52.000",
+					"deviceName": "知音船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:18:54.000",
+					"deviceName": "知音船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1134"
+					}
+				},
+				{
+					"time": "00:18:55.000",
+					"deviceName": "知音船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1135"
 					}
 				},
 				{
@@ -220,12 +355,39 @@
 					"params": {}
 				},
 				{
-					"time": "00:27:02.000",
+					"time": "00:26:58.000",
 					"deviceName": "金丝船音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:27:00.000",
+					"deviceName": "金丝船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:27:02.000",
+					"deviceName": "金丝船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1622"
+					}
+				},
+				{
+					"time": "00:27:03.000",
+					"deviceName": "金丝船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1623"
 					}
 				},
 				{
@@ -245,12 +407,39 @@
 					"params": {}
 				},
 				{
-					"time": "00:27:02.000",
+					"time": "00:26:58.000",
 					"deviceName": "银丝船音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:27:00.000",
+					"deviceName": "银丝船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:27:02.000",
+					"deviceName": "银丝船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1622"
+					}
+				},
+				{
+					"time": "00:27:03.000",
+					"deviceName": "银丝船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "1623"
 					}
 				},
 				{
@@ -270,12 +459,39 @@
 					"params": {}
 				},
 				{
-					"time": "00:37:35.000",
+					"time": "00:37:31.000",
 					"deviceName": "卷轴船音乐",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
 					"params": {
 						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:37:33.000",
+					"deviceName": "卷轴船音乐",
+					"cmdName": "播放第几个播单",
+					"simName": "播放第几个播单",
+					"params": {
+						"playIndex": "0"
+					}
+				},
+				{
+					"time": "00:37:35.000",
+					"deviceName": "卷轴船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "2255"
+					}
+				},
+				{
+					"time": "00:37:36.000",
+					"deviceName": "卷轴船音乐",
+					"cmdName": "视频定位",
+					"simName": "视频定位",
+					"params": {
+						"sec": "2256"
 					}
 				},
 				{
@@ -292,6 +508,40 @@
 					"deviceName": "卷轴船音乐",
 					"cmdName": "停止",
 					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "准备播放器",
+			"refOnly": true,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "打开播放器",
+					"simName": "打开播放器",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "扇形栈道投影服务器",
+					"cmdName": "打开播放器",
+					"simName": "打开播放器",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁LED服务器",
+					"cmdName": "打开播放器",
+					"simName": "打开播放器",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "西城阁网格屏服务器",
+					"cmdName": "打开播放器",
+					"simName": "打开播放器",
 					"params": {}
 				}
 			]
@@ -366,6 +616,30 @@
 					"simName": "停止播放",
 					"params": {
 						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:04:06.000",
+					"deviceName": "灯光凤船控台",
+					"cmdName": "启动",
+					"simName": "启动",
+					"params": {
+					}
+				},
+				{
+					"time": "00:23:56.000",
+					"deviceName": "灯光龙舟船控台",
+					"cmdName": "启动",
+					"simName": "启动",
+					"params": {
+					}
+				},
+				{
+					"time": "00:23:56.000",
+					"deviceName": "灯光龙舟2船控台",
+					"cmdName": "启动",
+					"simName": "启动",
+					"params": {
 					}
 				},
 				{
@@ -482,14 +756,14 @@
 					"params": {}
 				},
 				{
-					"time": "00:25:00.000",
+					"time": "00:27:15.000",
 					"deviceName": "水幕控台",
 					"cmdName": "启动水幕",
 					"simName": "启动水幕",
 					"params": {}
 				},
 				{
-					"time": "00:25:55.000",
+					"time": "00:28:22.000",
 					"deviceName": "一维水西门投影服务器",
 					"cmdName": "加载视频",
 					"simName": "加载视频",
@@ -509,7 +783,7 @@
 					}
 				},
 				{
-					"time": "00:26:01.000",
+					"time": "00:28:27.000",
 					"deviceName": "一维水西门投影服务器",
 					"cmdName": "播放视频",
 					"simName": "播放视频",
@@ -518,7 +792,7 @@
 					}
 				},
 				{
-					"time": "00:35:43.000",
+					"time": "00:32:30.000",
 					"deviceName": "一维水西门投影服务器",
 					"cmdName": "停止播放",
 					"simName": "停止播放",
@@ -527,7 +801,7 @@
 					}
 				},
 				{
-					"time": "00:32:55.000",
+					"time": "00:31:55.000",
 					"deviceName": "扇形栈道投影服务器",
 					"cmdName": "加载视频",
 					"simName": "加载视频",
@@ -547,7 +821,7 @@
 					}
 				},
 				{
-					"time": "00:33:00.000",
+					"time": "00:32:00.000",
 					"deviceName": "扇形栈道投影服务器",
 					"cmdName": "播放视频",
 					"simName": "播放视频",
@@ -556,7 +830,7 @@
 					}
 				},
 				{
-					"time": "00:39:08.000",
+					"time": "00:39:00.000",
 					"deviceName": "扇形栈道投影服务器",
 					"cmdName": "停止播放",
 					"simName": "停止播放",
@@ -572,7 +846,7 @@
 					"params": {}
 				},
 				{
-					"time": "00:37:37.000",
+					"time": "00:38:00.000",
 					"deviceName": "移民博物馆LED",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
@@ -581,7 +855,7 @@
 					}
 				},
 				{
-					"time": "00:41:07.000",
+					"time": "00:40:00.000",
 					"deviceName": "四桥网格屏",
 					"cmdName": "播放第几个播单",
 					"simName": "播放第几个播单",
@@ -595,7 +869,7 @@
 					"params": {}
 				},
 				{
-					"time": "00:50:00.000",
+					"time": "00:40:45.000",
 					"deviceName": "移民博物馆LED",
 					"cmdName": "停止",
 					"simName": "停止",
@@ -1004,6 +1278,29 @@
 			"cmds": []
 		},
 		{
+			"name": "九歌单线-停止",
+			"refOnly": false,
+			"refs": [
+			],
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号服务器",
+					"cmdName": "关闭音频",
+					"simName": "关闭音频",
+					"params": {
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "九歌号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
 			"name": "安康单线-暖场",
 			"refOnly": false,
 			"refs": [
@@ -1019,6 +1316,29 @@
 				"全场运行基线"
 			],
 			"cmds": []
+		},
+		{
+			"name": "安康单线-停止",
+			"refOnly": false,
+			"refs": [
+			],
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号服务器",
+					"cmdName": "关闭音频",
+					"simName": "关闭音频",
+					"params": {
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "安康号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
 		},
 		{
 			"name": "天汉单线-暖场",
@@ -1038,6 +1358,29 @@
 			"cmds": []
 		},
 		{
+			"name": "天汉单线-停止",
+			"refOnly": false,
+			"refs": [
+			],
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号服务器",
+					"cmdName": "关闭音频",
+					"simName": "关闭音频",
+					"params": {
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "天汉号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
+		},
+		{
 			"name": "秦巴单线-暖场",
 			"refOnly": false,
 			"refs": [
@@ -1053,6 +1396,29 @@
 				"全场运行基线"
 			],
 			"cmds": []
+		},
+		{
+			"name": "秦巴单线-停止",
+			"refOnly": false,
+			"refs": [
+			],
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号服务器",
+					"cmdName": "关闭音频",
+					"simName": "关闭音频",
+					"params": {
+					}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "秦巴号提词器",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				}
+			]
 		},
 		{
 			"name": "九歌-备案音乐",
@@ -1142,13 +1508,6 @@
 				{
 					"time": "00:00:00.000",
 					"deviceName": "水西门投影2",
-					"cmdName": "$开机",
-					"simName": "$开机",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
-					"deviceName": "水西门投影3",
 					"cmdName": "$开机",
 					"simName": "$开机",
 					"params": {}
@@ -1286,70 +1645,63 @@
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水西门投影1",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水西门投影2",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水西门投影3",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
-					"deviceName": "水西门投影3",
-					"cmdName": "$关机",
-					"simName": "$关机",
-					"params": {}
-				},
-				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水西门投影4",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水幕投影1",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水幕投影2",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水幕投影3",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水幕投影4",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:00.000",
+					"time": "00:01:00.000",
 					"deviceName": "水幕投影5",
 					"cmdName": "$关机",
 					"simName": "$关机",
@@ -1377,14 +1729,14 @@
 					"params": {}
 				},
 				{
-					"time": "00:00:05.000",
+					"time": "00:00:00.000",
 					"deviceName": "一维水西门投影服务器",
 					"cmdName": "$关机",
 					"simName": "$关机",
 					"params": {}
 				},
 				{
-					"time": "00:00:05.000",
+					"time": "00:00:00.000",
 					"deviceName": "扇形栈道投影服务器",
 					"cmdName": "$关机",
 					"simName": "$关机",

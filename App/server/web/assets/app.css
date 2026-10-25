@@ -195,6 +195,11 @@ h2 { margin-bottom: 0; font-size: 20px; letter-spacing: -.015em; }
 .library-search input { width: 100%; min-width: 0; padding: 0; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; font-size: 12px; line-height: 1; }
 .library-search:focus-within { border-color: var(--green); box-shadow: 0 0 0 2px rgba(66, 230, 164, .1); }
 .library-search input::placeholder { color: var(--muted); }
+.library-quick-search { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); flex-shrink: 0; gap: 8px; margin-bottom: 14px; }
+.library-quick-search button { min-width: 0; min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); background: var(--surface); font-size: 12px; cursor: pointer; }
+.library-quick-search button:hover { border-color: #3b495a; color: var(--text); }
+.library-quick-search button[aria-pressed="true"] { border-color: var(--green); color: var(--green); background: rgba(66, 230, 164, .08); }
+.library-quick-search button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .device-heading-actions { gap: 8px; }
 .text-button { padding: 7px 10px; border-radius: 7px; color: var(--green); background: rgba(66, 230, 164, .08); font-size: 12px; font-weight: 700; }
 .count-badge { display: grid; min-width: 27px; height: 27px; padding: 0 8px; place-items: center; border: 1px solid var(--border); border-radius: 9px; color: var(--muted); font-size: 11px; }

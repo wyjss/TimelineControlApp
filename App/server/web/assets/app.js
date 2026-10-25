@@ -2,7 +2,7 @@ const elements = Object.fromEntries([
     "plan-name", "clock", "connection",
     "now-title", "now-summary", "master-time", "active-timelines", "hero-progress", "timeline-seek", "elapsed-time",
     "remaining-time", "stop-button", "primary-button", "primary-icon", "primary-label",
-    "refresh-button", "selection-count", "timeline-search", "timeline-list",
+    "refresh-button", "selection-count", "timeline-search", "timeline-quick-search", "timeline-list",
     "empty-timelines", "queue-panel", "queue-count", "queue-list", "queue-status",
     "queue-play-button", "queue-stop-button", "clear-queue-button", "device-count",
     "device-list", "empty-devices", "device-selection", "reset-devices-button", "command-program", "command-count", "command-list",
@@ -538,9 +538,19 @@ elements["confirm-form"].addEventListener("submit", event => {
 elements["confirm-cancel"].addEventListener("click", () => elements["confirm-dialog"].close("cancel"));
 
 elements["timeline-search"].addEventListener("input", () => {
+    const query = elements["timeline-search"].value.trim();
+    for (const button of elements["timeline-quick-search"].children)
+        button.setAttribute("aria-pressed", String(button.dataset.query === query));
     if (state.data) renderTimelineList(state.data);
     elements["timeline-list"].scrollTop = 0;
 });
+
+for (const button of elements["timeline-quick-search"].children) {
+    button.addEventListener("click", () => {
+        elements["timeline-search"].value = button.getAttribute("aria-pressed") === "true" ? "" : button.dataset.query;
+        elements["timeline-search"].dispatchEvent(new Event("input"));
+    });
+}
 
 elements["timeline-seek"].addEventListener("input", () => {
     if (state.busy || state.data?.playbackState !== "stopped") return;

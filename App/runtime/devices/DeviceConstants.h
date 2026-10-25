@@ -135,6 +135,7 @@ namespace DeviceKey {
 
 	//////////////////////////////////////////////////////////////////////////
 	// PC-视频控制指令
+	inline const QString CommandOpenPlayer = "openPlayer";
 	inline const QString CommandOpenVideo = "openVideo";
 	inline const QString CommandPlayVideo = "playVideo";
 	inline const QString CommandPauseVideo = "pauseVideo";

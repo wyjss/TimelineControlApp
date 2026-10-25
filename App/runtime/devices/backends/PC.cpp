@@ -78,7 +78,9 @@ public:
 						   DeviceKey::CommandOpenVideo,
 						   parent)
 	{
-		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoFile));
+		auto vf = DeviceParamSpec::createForKey(DeviceKey::VideoFile);
+		vf->setRequired(false);
+		addExecutionInputField(vf);
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoTimeSec));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::AVLoop));
 		addExecutionInputField(DeviceParamSpec::createForKey(DeviceKey::VideoWindowX));
@@ -191,6 +193,21 @@ public:
 							   parent)
 	{
 	}
+};
+
+class OpenPlayerCommand : public DeviceCommand_PC
+{
+public:
+	explicit OpenPlayerCommand(QObject* parent)
+		: DeviceCommand_PC("打开播放器",
+						   DeviceKey::CommandOpenPlayer,
+						   parent)
+	{
+		getField(DeviceKey::ApiPath)->setValue("/video/openPlayer?mode=virtual");
+	}
+
+private:
+	QString m_api;
 };
 
 class ClosePlayerCommand : public DeviceCommand_PC
@@ -422,6 +439,7 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 	device->appendCommand(new PauseVideoCommand(device));
 	device->appendCommand(new SeekVideoCommand(device));
 	device->appendCommand(new StopVideoCommand(device));
+	device->appendCommand(new OpenPlayerCommand(device));
 	device->appendCommand(new ClosePlayerCommand(device));
 	device->appendCommand(new PlayAudioCommand(device));
 	device->appendCommand(new PauseAudioCommand(device));
@@ -456,6 +474,8 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 DeviceCommand *PcDeviceTemplate::createCommand(const QString &commandType,
 											   QObject *parent) const
 {
+	if (commandType == DeviceKey::CommandOpenPlayer)
+		return new OpenPlayerCommand(parent);
 	if (commandType == DeviceKey::CommandOpenVideo)
 		return new OpenVideoCommand(parent);
 	if (commandType == DeviceKey::CommandPlayVideo)
