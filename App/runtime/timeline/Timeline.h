@@ -61,6 +61,8 @@ public:
                                     QObject *parent = nullptr);
 
 signals:
+    //! 播放时按当前位置同步游客船在 00:00 的音频和播单。
+    void syncShip();
     void stateChanged(State state);
     void currentTimeMsChanged(qint64 timeMs);
     //! 拖动播放指针时通知预览位置，不改变当前时间和执行队列。

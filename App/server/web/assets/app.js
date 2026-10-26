@@ -80,11 +80,12 @@ function confirmAction(message, action = "", title = "操作确认") {
     const requiresPassword = action !== "";
     dialog.classList.toggle("warning", requiresPassword);
     dialog.classList.toggle("pause", action === "pause");
-    dialog.classList.toggle("trigger", action === "trigger");
+    dialog.classList.toggle("trigger", action === "trigger" || action === "sync-ship-audio");
     elements["confirm-title"].textContent = title;
     elements["confirm-message"].textContent = message;
     elements["confirm-accept"].textContent = action === "pause" ? "确认暂停"
-        : action === "stop" ? "确认停止" : action === "trigger" ? "确认触发" : "确认";
+        : action === "stop" ? "确认停止" : action === "trigger" ? "确认触发"
+        : action === "sync-ship-audio" ? "确认同步" : "确认";
     elements["confirm-password-field"].hidden = !requiresPassword;
     elements["confirm-password"].value = "";
     elements["confirm-password"].disabled = !requiresPassword;
@@ -229,6 +230,22 @@ function renderTimelineList(data) {
             });
             entry.append(triggerButton);
         } else {
+            const actions = createElement("div", "timeline-actions");
+            const syncButton = createElement("button", "manual-trigger", "同步船上音频");
+            syncButton.type = "button";
+            syncButton.disabled = state.busy || data.playbackState !== "running";
+            syncButton.title = `将船上音频同步到 ${timeline.name} 的当前播放位置`;
+            syncButton.addEventListener("click", async () => {
+                if (!await confirmAction(
+                    "将向船上设备下发音频同步指令，使其与该时间线的当前播放位置一致。",
+                    "sync-ship-audio", `同步「${timeline.name}」的船上音频？`
+                )) return;
+                post(
+                    "/api/v1/control",
+                    { action: "sync-ship-audio", timelineId: timeline.id },
+                    `已发送 ${timeline.name} 的船上音频同步指令`
+                );
+            });
             const stopButton = createElement("button", "manual-trigger timeline-stop", "■ 停止");
             stopButton.type = "button";
             stopButton.disabled = state.busy;
@@ -245,7 +262,8 @@ function renderTimelineList(data) {
                     `已停止时间线 ${timeline.name}`
                 );
             });
-            entry.append(stopButton);
+            actions.append(syncButton, stopButton);
+            entry.append(actions);
         }
         elements["timeline-list"].append(entry);
     }
