@@ -26,6 +26,7 @@ ApplicationWindow {
     property bool timelineEditing: false
     property bool locatorMonitorOpen: false
     property bool closeConfirmed: false
+    property alias timelineActionConfirmDialog: actionConfirmDialog
     readonly property bool locatorManagementActive: shell.activeNavigationKey === "locator"
     readonly property var settingsNavigationItem: ({
         "key": "system-settings",
@@ -90,7 +91,10 @@ ApplicationWindow {
         if (!close.accepted && !exitConfirmDialog.visible)
             exitConfirmDialog.open()
     }
-    onTimelineStoppedChanged: exitConfirmDialog.close()
+    onTimelineStoppedChanged: {
+        exitConfirmDialog.close()
+        actionConfirmDialog.close()
+    }
     Component.onCompleted: {
         var screens = Qt.application.screens
         for (var index = 0; index < screens.length; ++index) {
@@ -147,6 +151,28 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    Base.AppDialog {
+        id: actionConfirmDialog
+        objectName: "timelineActionConfirmDialog"
+
+        property var pendingAction: null
+
+        parent: window.contentItem
+        width: Math.min(420, parent.width - resolvedTheme.density.pageMargin * 2)
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        title: pendingAction ? pendingAction.text : ""
+        message: pendingAction ? pendingAction.confirmationMessage : ""
+        rejectText: qsTr("取消")
+        acceptText: title
+        acceptEnabled: pendingAction && pendingAction.enabled
+        onAccepted: {
+            if (acceptEnabled)
+                pendingAction.confirmed()
+        }
+        onClosed: pendingAction = null
     }
 
     Timeline.TimelineStopConfirmDialog {
@@ -339,7 +365,13 @@ ApplicationWindow {
                     }
 
                     Base.AppButton {
+                        id: currentTimelinePlayButton
                         objectName: "currentTimelinePlayButton"
+                        property string confirmationMessage: qsTr("确定播放当前节目“%1”？")
+                            .arg(window.timelineManager && window.timelineManager.currentTimeline
+                                 ? window.timelineManager.currentTimeline.name : "")
+                        signal confirmed()
+
                         size: UiStyle.ButtonSize.Medium
                         variant: UiStyle.ButtonVariant.Primary
                         minWidth: 144
@@ -350,11 +382,21 @@ ApplicationWindow {
                             && !window.timelineCompleted
                             && (!window.queuePlayback || window.timelineStopped)
                         onClicked: {
-                            if (window.shellController)
-                                window.shellController.handleUiAction(
-                                    window.timelineRunning ? "timeline.pause" : "timeline.start",
-                                    { startTimeMs: window.timelineStartTimeMs }
-                                )
+                            if (window.timelineRunning || window.timelinePaused) {
+                                if (window.shellController)
+                                    window.shellController.handleUiAction(
+                                        window.timelineRunning ? "timeline.pause" : "timeline.start",
+                                        { startTimeMs: window.timelineStartTimeMs }
+                                    )
+                            } else {
+                                actionConfirmDialog.pendingAction = currentTimelinePlayButton
+                                actionConfirmDialog.open()
+                            }
+                        }
+                        onConfirmed: {
+                            if (enabled && window.timelineStopped && window.shellController)
+                                window.shellController.handleUiAction("timeline.start",
+                                    { startTimeMs: window.timelineStartTimeMs })
                         }
                     }
 

@@ -1278,7 +1278,7 @@
 			"cmds": []
 		},
 		{
-			"name": "九歌单线-停止",
+			"name": "九歌号-停止音乐",
 			"refOnly": false,
 			"refs": [
 			],
@@ -1318,7 +1318,7 @@
 			"cmds": []
 		},
 		{
-			"name": "安康单线-停止",
+			"name": "安康号-停止音乐",
 			"refOnly": false,
 			"refs": [
 			],
@@ -1358,7 +1358,7 @@
 			"cmds": []
 		},
 		{
-			"name": "天汉单线-停止",
+			"name": "天汉号-停止音乐",
 			"refOnly": false,
 			"refs": [
 			],
@@ -1398,7 +1398,7 @@
 			"cmds": []
 		},
 		{
-			"name": "秦巴单线-停止",
+			"name": "秦巴号-停止音乐",
 			"refOnly": false,
 			"refs": [
 			],

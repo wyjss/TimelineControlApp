@@ -100,6 +100,8 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     connect(m_timelineManager->timelineModel(), &TimelineModel::timelinesChanged,
             this, [this]() {
         for (Timeline *timeline : m_timelineManager->timelineModel()->items()) {
+            connect(timeline, &Timeline::syncShip,
+                    this, &TimelineRuntime::syncShip, Qt::UniqueConnection);
             connect(timeline, &Timeline::seekPreviewRequested,
                     this, &TimelineRuntime::seekPcVideoPreview, Qt::UniqueConnection);
         }
@@ -139,6 +141,52 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
         loadPlanFromFile(defaultPlanFilePath);
     if (m_timelineManager->timelineModel()->rowCount() == 0)
         m_timelineManager->createTimeline(tr("主时间轴"));
+}
+
+void TimelineRuntime::syncShip()
+{
+    Timeline *timeline = qobject_cast<Timeline *>(sender());
+    if (!timeline || timeline->state() != Timeline::Running
+        || m_timelineManager->playbackState() != TimelineManager::Running)
+        return;
+
+    LOG_INFO("开始同步船上音频" << timeline->name());
+
+    const double timeSec = timeline->currentTimeMs() / 1000.0;
+    for (TimelineCommand *command : timeline->commandModel()->commands()) {
+        if (command->startTimeMs() != 0)
+            continue;
+        Device *device = m_deviceModel->deviceById(command->targetDeviceId());
+        DeviceCommand *target = command->targetCommand();
+        if (!device || !target || !device->groupNames().contains(QStringLiteral("游客船")))
+            continue;
+
+        QVariantMap input = command->executionInputValues();
+        if (target->protocol() == DeviceProtocol::Pc
+            && target->commandType() == DeviceKey::CommandPlayAudio) {
+            input.insert(DeviceKey::VideoTimeSec, timeSec);
+            m_deviceExecutorManager->execute(
+                QUuid::createUuid().toString(QUuid::WithoutBraces), target, input);
+        } else if (device->templateName() == QStringLiteral("分布式融合器")
+                   && command->commandName() == QStringLiteral("播放第几个播单")) {
+            DeviceCommand *seek = device->commandByName(QStringLiteral("视频定位"));
+            if (!seek)
+                continue;
+            m_deviceExecutorManager->execute(
+                QUuid::createUuid().toString(QUuid::WithoutBraces), target, input);
+
+            // 延迟seek，不确定融合器是否能连续接收指令
+            int delayTimeMS = 800;
+            QTimer::singleShot(delayTimeMS, this, [delayTimeMS, seek, timeSec, this]() {
+				m_deviceExecutorManager->execute(
+					QUuid::createUuid().toString(QUuid::WithoutBraces), seek,
+                    // 考虑到系统延迟等因素，提前100ms
+					{{QStringLiteral("sec"), timeSec + (delayTimeMS - 100) / 1000.0}});
+                               });
+        }
+    }
+
+    LOG_INFO("完成同步船上音频" << timeline->name());
 }
 
 void TimelineRuntime::seekPcVideoPreview(qint64 timeMs)

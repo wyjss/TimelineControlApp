@@ -204,6 +204,14 @@
 			"cmds": [
 				{
 					"time": "00:00:00.000",
+					"deviceName": "激光控台",
+					"cmdName": "开始测试",
+					"simName": "开始测试",
+					"params": {
+					}
+				},
+				{
+					"time": "00:00:00.000",
 					"deviceName": "九歌号提词器",
 					"cmdName": "播放第几个播单",
 					"simName": "九歌号题词",
@@ -452,6 +460,14 @@
 				"测试-停止所有伴游船"
 			],
 			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "激光控台",
+					"cmdName": "停止测试",
+					"simName": "停止测试",
+					"params": {
+					}
+				},
 				{
 					"time": "00:00:00.000",
 					"deviceName": "九歌号提词器",

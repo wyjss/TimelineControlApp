@@ -10,6 +10,7 @@ Item {
 
     property var timeline: null
     property int displayIndex: 0
+    readonly property var actionConfirmDialog: root.ApplicationWindow.window.timelineActionConfirmDialog
 
     signal openRequested()
     signal cloneRequested()
@@ -372,21 +373,57 @@ Item {
                         }
 
                         MenuItem {
+                            id: triggerMenuItem
+                            property string confirmationMessage: qsTr("确定立即触发时间线“%1”？")
+                                .arg(root.timeline ? root.timeline.name : "")
+                            signal confirmed()
+
                             //为了支持重复触发，非running都可以点击
                             //visible: root.waiting
                             visible: !root.running
                             height: visible ? implicitHeight : 0
                             text: qsTr("立即触发")
-                            onTriggered: root.timelineManager.triggerTimeline(root.timelineId)
+                            enabled: root.timeline && !root.running && root.timelineManager
+                            onTriggered: {
+                                actionConfirmDialog.pendingAction = triggerMenuItem
+                                actionConfirmDialog.open()
+                            }
+                            onConfirmed: root.timelineManager.triggerTimeline(root.timelineId)
                         }
 
                         MenuItem {
+                            id: syncShipMenuItem
+                            objectName: "syncShipMenuItem"
+                            property string confirmationMessage: qsTr("确定将船上音频同步到时间线“%1”的当前播放位置？")
+                                .arg(root.timeline ? root.timeline.name : "")
+                            signal confirmed()
+
+                            text: qsTr("同步船上音频")
+                            enabled: root.running && root.timelineManager
+                                && root.timelineManager.playbackState === 1
+                            onTriggered: {
+                                actionConfirmDialog.pendingAction = syncShipMenuItem
+                                actionConfirmDialog.open()
+                            }
+                            onConfirmed: root.timeline.syncShip()
+                        }
+
+                        MenuItem {
+                            id: stopTimelineMenuItem
                             objectName: "stopTimelineMenuItem"
+                            property string confirmationMessage: qsTr("确定停止时间线“%1”？")
+                                .arg(root.timeline ? root.timeline.name : "")
+                            signal confirmed()
+
                             visible: root.running
                             height: visible ? implicitHeight : 0
                             enabled: root.running && root.timelineManager
                             text: qsTr("停止此时间线")
-                            onTriggered: root.timelineManager.stopTimeline(root.timelineId)
+                            onTriggered: {
+                                actionConfirmDialog.pendingAction = stopTimelineMenuItem
+                                actionConfirmDialog.open()
+                            }
+                            onConfirmed: root.timelineManager.stopTimeline(root.timelineId)
                         }
 
                         MenuSeparator {

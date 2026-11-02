@@ -92,7 +92,8 @@ void HttpCommandExecutor::executeImpl(const QString &executionId,
         }
         
         if (connectFailed) {
-            LOG_ERROR("http连接错误，禁用2000ms" << reply->url());
+            //LOG_ERROR("http连接错误，禁用2000ms" << reply->url());
+            LOG_ERROR("http连接错误" << reply->url());
             markFailed(message);
         }
         emit executionFinished(executionId, command, success, message);

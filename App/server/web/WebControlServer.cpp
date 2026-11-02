@@ -539,6 +539,13 @@ int WebControlServer::control(const QJsonObject &request,
         } else if (action == QStringLiteral("stop-timeline")) {
             accepted = manager->stopTimeline(
                 request.value(QStringLiteral("timelineId")).toString());
+        } else if (action == QStringLiteral("sync-ship-audio")) {
+            Timeline *timeline = manager->timelineById(
+                request.value(QStringLiteral("timelineId")).toString());
+            accepted = timeline && timeline->state() == Timeline::Running
+                && manager->playbackState() == TimelineManager::Running;
+            if (accepted)
+                timeline->syncShip();
         } else if (action == QStringLiteral("trigger")) {
             accepted = manager->triggerTimeline(
                 request.value(QStringLiteral("timelineId")).toString());

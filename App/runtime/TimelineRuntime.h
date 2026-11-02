@@ -73,6 +73,7 @@ signals:
     void currentPlanFilePathChanged();
 
 private:
+    void syncShip();
     void seekPcVideoPreview(qint64 timeMs);
     void flushPcVideoPreview();
     void executeTimelineCommand(TimelineCommand *timelineCommand,
