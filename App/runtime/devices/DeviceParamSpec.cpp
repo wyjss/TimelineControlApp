@@ -526,7 +526,7 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                          1920,
                                          IntType,
                                          AutoEditor);
-        spec->setMinimum(1);
+        spec->setMinimum(0);
         spec->setMaximum(9999);
         return spec;
     }
@@ -536,7 +536,7 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                          1080,
                                          IntType,
                                          AutoEditor);
-        spec->setMinimum(1);
+        spec->setMinimum(0);
         spec->setMaximum(9999);
         return spec;
     }

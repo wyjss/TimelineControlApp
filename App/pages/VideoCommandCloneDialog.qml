@@ -65,8 +65,8 @@ Base.AppDialog {
         : !cloneTime.acceptableInput || app.parseTimeMs(cloneTime.text) < 0 ? qsTr("请输入有效的触发时间，格式为 时:分:秒.毫秒") : ""
     readonly property bool rectangleOutside: !!sourceCommand && !!targetPc
         && (Number(sourceParameters.videoWindowX || 0) < 0 || Number(sourceParameters.videoWindowY || 0) < 0
-            || Number(sourceParameters.videoWindowX || 0) + Number(sourceParameters.videoWindowW || 1920) > targetPc.width
-            || Number(sourceParameters.videoWindowY || 0) + Number(sourceParameters.videoWindowH || 1080) > targetPc.height)
+            || Number(sourceParameters.videoWindowX || 0) + (sourceParameters.videoWindowW === undefined ? 1920 : Number(sourceParameters.videoWindowW) || targetPc.width) > targetPc.width
+            || Number(sourceParameters.videoWindowY || 0) + (sourceParameters.videoWindowH === undefined ? 1080 : Number(sourceParameters.videoWindowH) || targetPc.height) > targetPc.height)
 
     signal commandCloned(var command)
 

@@ -119,16 +119,16 @@ Item {
     readonly property int canvasWidth: selectedPc ? selectedPc.width : 1920
     readonly property int canvasHeight: selectedPc ? selectedPc.height : 1080
     readonly property var sourceRect: ({
-        "x": selectedCommand ? selectedCommand.videoSrcX || 0 : 0,
-        "y": selectedCommand ? selectedCommand.videoSrcY || 0 : 0,
-        "w": selectedCommand ? selectedCommand.videoSrcW || videoWidth : videoWidth,
-        "h": selectedCommand ? selectedCommand.videoSrcH || videoHeight : videoHeight
+        "x": selectedCommand ? Number(selectedCommand.videoSrcX || 0) : 0,
+        "y": selectedCommand ? Number(selectedCommand.videoSrcY || 0) : 0,
+        "w": selectedCommand ? Number(selectedCommand.videoSrcW) || videoWidth : videoWidth,
+        "h": selectedCommand ? Number(selectedCommand.videoSrcH) || videoHeight : videoHeight
     })
     readonly property var outputRect: ({
         "x": selectedCommand ? Number(selectedCommand.videoWindowX || 0) : 0,
         "y": selectedCommand ? Number(selectedCommand.videoWindowY || 0) : 0,
-        "w": selectedCommand ? Number(selectedCommand.videoWindowW || 1920) : 1920,
-        "h": selectedCommand ? Number(selectedCommand.videoWindowH || 1080) : 1080
+        "w": selectedCommand ? (selectedCommand.videoWindowW === undefined ? 1920 : Number(selectedCommand.videoWindowW) || canvasWidth) : 1920,
+        "h": selectedCommand ? (selectedCommand.videoWindowH === undefined ? 1080 : Number(selectedCommand.videoWindowH) || canvasHeight) : 1080
     })
 
     onSelectedTimelineIdChanged: {
@@ -221,16 +221,19 @@ Item {
         var rect = Object.assign({}, source ? sourceRect : outputRect, values)
         var boundW = source ? videoWidth : canvasWidth
         var boundH = source ? videoHeight : canvasHeight
-        rect.w = Math.max(1, Math.min(boundW, Math.round(rect.w)))
-        rect.h = Math.max(1, Math.min(boundH, Math.round(rect.h)))
+        var prefix = source ? "videoSrc" : "videoWindow"
+        // 0 是随分辨率变化的全尺寸标记，仅预览和边界计算使用实际像素。
+        var fullWidth = Number(values.w !== undefined ? values.w : selectedCommand[prefix + "W"]) === 0
+        var fullHeight = Number(values.h !== undefined ? values.h : selectedCommand[prefix + "H"]) === 0
+        rect.w = fullWidth ? boundW : Math.max(1, Math.min(boundW, Math.round(rect.w)))
+        rect.h = fullHeight ? boundH : Math.max(1, Math.min(boundH, Math.round(rect.h)))
         rect.x = Math.max(0, Math.min(boundW - rect.w, Math.round(rect.x)))
         rect.y = Math.max(0, Math.min(boundH - rect.h, Math.round(rect.y)))
-        var prefix = source ? "videoSrc" : "videoWindow"
         var updated = {}
         updated[prefix + "X"] = rect.x
         updated[prefix + "Y"] = rect.y
-        updated[prefix + "W"] = rect.w
-        updated[prefix + "H"] = rect.h
+        updated[prefix + "W"] = fullWidth ? 0 : rect.w
+        updated[prefix + "H"] = fullHeight ? 0 : rect.h
         updateCommand(updated)
     }
 
@@ -924,8 +927,8 @@ Item {
                                                     objectName: "videoOutputReference_" + modelData.id
                                                     x: Math.round(Number(modelData.videoWindowX || 0) / panel.pixelWidth * parent.width)
                                                     y: Math.round(Number(modelData.videoWindowY || 0) / panel.pixelHeight * parent.height)
-                                                    width: Math.max(1, Math.round(Number(modelData.videoWindowW || 1920) / panel.pixelWidth * parent.width))
-                                                    height: Math.max(1, Math.round(Number(modelData.videoWindowH || 1080) / panel.pixelHeight * parent.height))
+                                                    width: Math.max(1, Math.round((modelData.videoWindowW === undefined ? 1920 : Number(modelData.videoWindowW) || panel.pixelWidth) / panel.pixelWidth * parent.width))
+                                                    height: Math.max(1, Math.round((modelData.videoWindowH === undefined ? 1080 : Number(modelData.videoWindowH) || panel.pixelHeight) / panel.pixelHeight * parent.height))
                                                     color: "transparent"
                                                     border.color: "#e9b44c"
                                                     border.width: 2
@@ -945,10 +948,15 @@ Item {
                                                 fillOpacity: panel.isSource ? 0 : 0.06
                                                 handleFill: root.pageTheme.colors.backgroundCanvas
                                                 onSelectionRequested: root.forceActiveFocus()
-                                                onGeometryCommitted: root.setRectangle(panel.isSource, {
-                                                    "x": committedX * panel.pixelWidth, "y": committedY * panel.pixelHeight,
-                                                    "w": committedW * panel.pixelWidth, "h": committedH * panel.pixelHeight
-                                                })
+                                                onGeometryCommitted: {
+                                                    var values = { "x": committedX * panel.pixelWidth, "y": committedY * panel.pixelHeight }
+                                                    // 拖动或单方向缩放时，保留另一方向原有的全尺寸标记。
+                                                    if (Math.round(committedW * panel.pixelWidth) !== panel.geometry.w)
+                                                        values.w = committedW * panel.pixelWidth
+                                                    if (Math.round(committedH * panel.pixelHeight) !== panel.geometry.h)
+                                                        values.h = committedH * panel.pixelHeight
+                                                    root.setRectangle(panel.isSource, values)
+                                                }
                                                 Component.onCompleted: {
                                                     if (panel.isSource)
                                                         root.sourceEditor = editableRect
@@ -1015,13 +1023,19 @@ Item {
                                                     objectName: (panel.isSource ? "source_" : "output_") + coordinateRow.coordinate
                                                     Layout.fillWidth: true
                                                     Layout.minimumWidth: 64
-                                                    value: panel.geometry[coordinateRow.coordinate]
+                                                    value: {
+                                                        var key = (panel.isSource ? "videoSrc" : "videoWindow") + coordinateRow.coordinate.toUpperCase()
+                                                        return root.selectedCommand && root.selectedCommand[key] !== undefined
+                                                            ? Number(root.selectedCommand[key]) : panel.geometry[coordinateRow.coordinate]
+                                                    }
                                                     integerMode: true
-                                                    minimum: coordinateRow.coordinate === "w" || coordinateRow.coordinate === "h" ? 1 : 0
+                                                    minimum: 0
                                                     maximum: coordinateRow.coordinate === "x" ? panel.pixelWidth - panel.geometry.w
                                                         : coordinateRow.coordinate === "y" ? panel.pixelHeight - panel.geometry.h
                                                         : coordinateRow.coordinate === "w" ? panel.pixelWidth : panel.pixelHeight
                                                     suffix: "px"
+                                                    ToolTip.visible: hovered && (coordinateRow.coordinate === "w" || coordinateRow.coordinate === "h")
+                                                    ToolTip.text: qsTr("0 表示全宽／全高，随分辨率变化；保存时保留 0")
                                                     onValueEdited: {
                                                         var values = {}
                                                         values[coordinateRow.coordinate] = nextValue
