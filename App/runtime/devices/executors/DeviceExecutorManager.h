@@ -5,6 +5,7 @@
 #include <QString>
 #include <QStringList>
 #include <QThread>
+#include <QThreadPool>
 #include <QTimer>
 #include <QVariantMap>
 
@@ -12,7 +13,6 @@
 class Device;
 class DeviceCommand;
 class DeviceCommandExecutor;
-class NetworkPing;
 
 //! 实例由 TimelineRuntime 创建并管理。
 class DeviceExecutorManager final : public QObject
@@ -51,12 +51,11 @@ private:
                                        QString *executorKey = nullptr);
 
     QThread m_thread;
-    QThread m_onlineCheckThread;
+    QThreadPool m_onlineCheckPool;
     QTimer m_onlineCheckTimer;
-    NetworkPing *m_networkPing = nullptr;
     QHash<QString, DeviceCommandExecutor *> m_executors;
     QHash<QString, OnlineCheck> m_onlineChecks;
     QHash<QString, QStringList> m_deviceIdsByExecutorKey;
     bool m_onlineCheckRequested = false;
-    bool m_onlineCheckRunning = false;
+    int m_pendingOnlineChecks = 0;
 };

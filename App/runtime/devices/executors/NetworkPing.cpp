@@ -7,6 +7,7 @@
 #include <QHostInfo>
 #include <QNetworkProxy>
 #include <QTcpSocket>
+#include <utility>
 
 #ifdef Q_OS_WIN
 
@@ -23,37 +24,27 @@
 #pragma comment(lib, "ws2_32.lib")
 
 
-NetworkPing::NetworkPing(QObject *parent)
-    : QObject(parent)
+NetworkPing::NetworkPing(const QString &ip, quint16 tcpPort, std::function<void(bool)> finished)
+    : m_ip(ip)
+    , m_tcpPort(tcpPort)
+    , m_finished(std::move(finished))
 {
 }
 
-void NetworkPing::checkOnline(const QStringList &deviceIds,
-                              const QString &ip,
-                              quint16 tcpPort)
+void NetworkPing::run()
 {
-    if (m_quit) {
-        return;
-    }
     bool online = false;
-    if (tcpPort) {
+    if (m_tcpPort) {
         QTcpSocket socket;
         socket.setProxy(QNetworkProxy::NoProxy);
-        socket.connectToHost(ip, tcpPort);
+        socket.connectToHost(m_ip, m_tcpPort);
         online = socket.waitForConnected(1000);
         socket.abort();
     } else {
-        online = ping(ip, 1000);
+        online = ping(m_ip, 1000);
     }
 
-    for (const QString &deviceId : deviceIds) {
-        emit onlineChecked(deviceId, online);
-    }
-}
-
-void NetworkPing::quit()
-{
-    m_quit = true;
+    m_finished(online);
 }
 
 QString NetworkPing::resolveIPv4(const QString &host)

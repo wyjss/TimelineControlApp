@@ -1,28 +1,21 @@
 #pragma once
 
-#include <QObject>
+#include <QRunnable>
 #include <QString>
-#include <QStringList>
 #include <QtGlobal>
+#include <functional>
 
-class NetworkPing final : public QObject
+class NetworkPing final : public QRunnable
 {
-    Q_OBJECT
 public:
-    explicit NetworkPing(QObject *parent = nullptr);
-
-public slots:
-    void checkOnline(const QStringList &deviceIds,
-                     const QString &ip,
-                     quint16 tcpPort = 0);
-public:
-    void quit();
-signals:
-    void onlineChecked(const QString &deviceId, bool online);
+    NetworkPing(const QString &ip, quint16 tcpPort, std::function<void(bool)> finished);
+    void run() override;
 
 private:
-    bool m_quit = false;
-private:
+    QString m_ip;
+    quint16 m_tcpPort = 0;
+    std::function<void(bool)> m_finished;
+
     // 探测 IPv4 地址或主机名，timeoutMs 单位为毫秒
     static bool ping(const QString &host, quint32 timeoutMs = 1000);
 

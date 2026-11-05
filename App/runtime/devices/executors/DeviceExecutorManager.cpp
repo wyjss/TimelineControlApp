@@ -23,26 +23,20 @@ constexpr quint16 kPcOnlinePort = 11357;
 
 DeviceExecutorManager::DeviceExecutorManager(QObject *parent)
     : QObject(parent)
-    , m_networkPing(new NetworkPing)
 {
-    m_networkPing->moveToThread(&m_onlineCheckThread);
-    connect(m_networkPing, &NetworkPing::onlineChecked,
-            this, &DeviceExecutorManager::onlineChecked);
-    connect(&m_onlineCheckThread, &QThread::finished,
-            m_networkPing, &QObject::deleteLater);
+    m_onlineCheckPool.setMaxThreadCount(8);
     m_onlineCheckTimer.setInterval(15000);
     connect(&m_onlineCheckTimer, &QTimer::timeout, this, &DeviceExecutorManager::requestOnlineCheck);
     m_onlineCheckTimer.start();
-    m_onlineCheckThread.start();
     m_thread.start();
 }
 
 DeviceExecutorManager::~DeviceExecutorManager()
 {
-    m_networkPing->quit();
-    m_onlineCheckThread.quit();
-    // 不wait，卡太久了
-    m_onlineCheckThread.wait();
+    m_onlineCheckTimer.stop();
+    m_onlineCheckPool.clear();
+    // 等待正在执行的任务，保证回投结果时管理器仍然有效。
+    m_onlineCheckPool.waitForDone();
     m_thread.quit();
     m_thread.wait();
 }
@@ -153,24 +147,31 @@ void DeviceExecutorManager::checkOnline()
     if (requestIdsByTarget.isEmpty())
         return;
 
-    m_onlineCheckRunning = true;
+    m_pendingOnlineChecks = requestIdsByTarget.size();
     for (auto it = requestIdsByTarget.cbegin(); it != requestIdsByTarget.cend(); ++it) {
-        NetworkPing *networkPing = m_networkPing;
         const QStringList deviceIds = it.value();
         const OnlineCheck check = checksByTarget.value(it.key());
-        QMetaObject::invokeMethod(networkPing, [networkPing, deviceIds, check]() {
-            networkPing->checkOnline(deviceIds, check.ip, check.tcpPort);
-        }, Qt::QueuedConnection);
-    }
+        m_onlineCheckPool.start(new NetworkPing(check.ip, check.tcpPort,
+            [this, deviceIds, check](bool online) {
+                QMetaObject::invokeMethod(this, [this, deviceIds, check, online]() {
+                    for (const QString &deviceId : deviceIds) {
+                        const auto current = m_onlineChecks.constFind(deviceId);
+                        // 解绑或改址后的设备不接收旧任务的探测结果。
+                        if (current != m_onlineChecks.cend()
+                            && current->ip == check.ip && current->tcpPort == check.tcpPort)
+                            emit onlineChecked(deviceId, online);
+                    }
 
-    // 本轮全部探测完成后才允许启动下一轮。
-    QMetaObject::invokeMethod(m_networkPing, [this]() {
-        QMetaObject::invokeMethod(this, [this]() {
-            m_onlineCheckRunning = false;
-            if (m_onlineCheckRequested)
-                checkOnline();
-        }, Qt::QueuedConnection);
-    }, Qt::QueuedConnection);
+                    // 全部结果回到管理器线程后，才允许启动下一轮。
+                    if (--m_pendingOnlineChecks == 0) {
+                        if (m_onlineCheckRequested)
+                            checkOnline();
+                        LOG_DEBUG("ping out");
+                    }
+                }, Qt::QueuedConnection);
+            }));
+    }
+    LOG_DEBUG("ping in");
 }
 
 void DeviceExecutorManager::unbindDeviceId(const QString &deviceId)
@@ -198,7 +199,7 @@ void DeviceExecutorManager::requestOnlineCheck()
         return;
 
     m_onlineCheckRequested = true;
-    if (!m_onlineCheckRunning)
+    if (m_pendingOnlineChecks == 0)
         QTimer::singleShot(0, this, &DeviceExecutorManager::checkOnline);
 }
 
