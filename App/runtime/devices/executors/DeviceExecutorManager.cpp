@@ -166,12 +166,12 @@ void DeviceExecutorManager::checkOnline()
                     if (--m_pendingOnlineChecks == 0) {
                         if (m_onlineCheckRequested)
                             checkOnline();
-                        LOG_DEBUG("ping out");
+                        //LOG_DEBUG("ping out");
                     }
                 }, Qt::QueuedConnection);
             }));
     }
-    LOG_DEBUG("ping in");
+    //LOG_DEBUG("ping in");
 }
 
 void DeviceExecutorManager::unbindDeviceId(const QString &deviceId)
