@@ -19,6 +19,9 @@ public:
     //! 按声明类型检查值，避免把字符串等隐式转换成数值。
     static bool acceptsValue(const QString &valueTypeId, const QVariant &value);
 
+    //! 同时检查参数的值类型和候选值约束。
+    static bool acceptsParameterValue(const ParameterDefinition &parameter, const QVariant &value);
+
 private:
     QHash<QString, NodeTypeDefinition> m_types;
 };

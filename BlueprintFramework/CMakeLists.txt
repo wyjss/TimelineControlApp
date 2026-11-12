@@ -7,8 +7,11 @@ find_package(Qt5 5.14 REQUIRED COMPONENTS Core)
 add_library(BlueprintFramework STATIC
     include/Blueprint/GraphData.h
     include/Blueprint/GraphDocument.h
+    include/Blueprint/GraphRuntime.h
     include/Blueprint/NodeRegistry.h
     src/GraphDocument.cpp
+    src/GraphFile.cpp
+    src/GraphRuntime.cpp
     src/NodeRegistry.cpp
     docs/data-model.md
     README.md
@@ -23,4 +26,6 @@ target_link_libraries(BlueprintFramework PUBLIC Qt5::Core)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     add_executable(BlueprintExample examples/core_example.cpp)
     target_link_libraries(BlueprintExample PRIVATE BlueprintCore)
+    add_subdirectory(quick)
+    add_subdirectory(demo)
 endif()

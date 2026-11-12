@@ -2,11 +2,15 @@
 
 #include <QPointF>
 #include <QString>
+#include <QStringList>
 #include <QUuid>
 #include <QVariant>
 #include <QVector>
 
 namespace Blueprint {
+
+//! 执行端口只传递触发信号，不承载值。
+inline const QString executionPortType = QStringLiteral("exec");
 
 enum class PortDirection
 {
@@ -14,7 +18,7 @@ enum class PortDirection
     Output
 };
 
-//! 节点类型上声明的数据端口。
+//! 节点类型上声明的端口。
 struct PortDefinition
 {
     //! 类型内稳定的端口键，供连线引用。
@@ -22,6 +26,8 @@ struct PortDefinition
     PortDirection direction = PortDirection::Input;
     //! 用于校验连线兼容性和值的类型标识。
     QString valueTypeId;
+    //! 可选。由此字符串参数决定数据端口类型，空值时端口未配置。
+    QString typeParameterKey;
 };
 
 //! 节点自身的可编辑参数，与数据输入端口分开声明。
@@ -31,6 +37,15 @@ struct ParameterDefinition
     QString key;
     QString valueTypeId;
     QVariant defaultValue;
+    //! 字符串参数的封闭候选值，留空时允许任意字符串。
+    QStringList allowedValues;
+};
+
+enum class InstancePolicy
+{
+    Multiple,
+    SinglePerDocument,
+    UniqueByParameter
 };
 
 //! 可由多个节点实例共享的类型定义。
@@ -41,6 +56,12 @@ struct NodeTypeDefinition
     QString displayName;
     QVector<PortDefinition> ports;
     QVector<ParameterDefinition> parameters;
+    //! 宿主定义的节点库分组标识，可留空。
+    QString categoryId;
+    //! 约束此类型在一张图内的实例数量。
+    InstancePolicy instancePolicy = InstancePolicy::Multiple;
+    //! UniqueByParameter 使用的字符串参数，实例的有效值必须非空。
+    QString instanceKeyParameter = {};
 };
 
 //! 一张图中的节点实例。

@@ -31,7 +31,8 @@ QString NodeRegistry::add(const NodeTypeDefinition &definition)
     for (const PortDefinition &port : definition.ports) {
         if (port.key.trimmed().isEmpty() || portKeys.contains(port.key))
             return QStringLiteral("Empty or duplicate port key '%1'.").arg(port.key);
-        if (valueType(port.valueTypeId) == QMetaType::UnknownType)
+        if (port.typeParameterKey.isEmpty() && port.valueTypeId != executionPortType
+            && valueType(port.valueTypeId) == QMetaType::UnknownType)
             return QStringLiteral("Unknown value type '%1' for port '%2'.")
                 .arg(port.valueTypeId, port.key);
         portKeys.insert(port.key);
@@ -44,11 +45,49 @@ QString NodeRegistry::add(const NodeTypeDefinition &definition)
         if (valueType(parameter.valueTypeId) == QMetaType::UnknownType)
             return QStringLiteral("Unknown value type '%1' for parameter '%2'.")
                 .arg(parameter.valueTypeId, parameter.key);
+        if (!parameter.allowedValues.isEmpty() && valueType(parameter.valueTypeId) != QMetaType::QString)
+            return QStringLiteral("Allowed values require a string parameter '%1'.").arg(parameter.key);
         if (parameter.defaultValue.isValid()
-            && !acceptsValue(parameter.valueTypeId, parameter.defaultValue)) {
+            && !acceptsParameterValue(parameter, parameter.defaultValue)) {
             return QStringLiteral("Invalid default value for parameter '%1'.").arg(parameter.key);
         }
         parameterKeys.insert(parameter.key);
+    }
+
+    if (definition.instancePolicy == InstancePolicy::UniqueByParameter) {
+        bool hasStringKey = false;
+        for (const auto &parameter : definition.parameters) {
+            if (parameter.key == definition.instanceKeyParameter) {
+                hasStringKey = parameter.valueTypeId == QStringLiteral("string");
+                break;
+            }
+        }
+        if (!hasStringKey)
+            return QStringLiteral("The instance key must name a string parameter.");
+    } else if (definition.instancePolicy != InstancePolicy::Multiple
+               && definition.instancePolicy != InstancePolicy::SinglePerDocument) {
+        return QStringLiteral("Unknown instance policy.");
+    } else if (!definition.instanceKeyParameter.isEmpty()) {
+        return QStringLiteral("An instance key requires the UniqueByParameter policy.");
+    }
+
+    for (const PortDefinition &port : definition.ports) {
+        if (port.typeParameterKey.isEmpty())
+            continue;
+        const ParameterDefinition *typeParameter = nullptr;
+        for (const auto &parameter : definition.parameters) {
+            if (parameter.key == port.typeParameterKey) {
+                typeParameter = &parameter;
+                break;
+            }
+        }
+        if (!port.valueTypeId.isEmpty() || !typeParameter || typeParameter->valueTypeId != QStringLiteral("string")
+            || typeParameter->allowedValues.isEmpty())
+            return QStringLiteral("Invalid type parameter for port '%1'.").arg(port.key);
+        for (const auto &type : typeParameter->allowedValues) {
+            if (!type.isEmpty() && valueType(type) == QMetaType::UnknownType)
+                return QStringLiteral("Unknown data type '%1' for port '%2'.").arg(type, port.key);
+        }
     }
 
     m_types.insert(definition.typeId, definition);
@@ -75,6 +114,13 @@ bool NodeRegistry::acceptsValue(const QString &valueTypeId, const QVariant &valu
     }
 
     return actual == expected;
+}
+
+bool NodeRegistry::acceptsParameterValue(const ParameterDefinition &parameter, const QVariant &value)
+{
+    return acceptsValue(parameter.valueTypeId, value)
+        && (parameter.allowedValues.isEmpty()
+            || (value.userType() == QMetaType::QString && parameter.allowedValues.contains(value.toString())));
 }
 
 } // namespace Blueprint

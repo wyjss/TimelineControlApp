@@ -35,5 +35,7 @@ set(RAGIS_OUTPUT_DIR "${RAGIS_ROOT}/build/output")
 
 add_subdirectory(UICore_new)
 add_subdirectory(BlueprintFramework)
+add_subdirectory(BlueprintFramework/quick)
+add_subdirectory(BlueprintFramework/demo)
 add_subdirectory(LocatorViewer)
 add_subdirectory(App)
