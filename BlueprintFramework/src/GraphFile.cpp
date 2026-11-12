@@ -10,7 +10,7 @@
 
 namespace Blueprint {
 
-QString GraphDocument::saveFile(const QString &path) const
+Diagnostic GraphDocument::saveFile(const QString &path) const
 {
     QJsonArray nodes;
     for (const NodeData &node : m_data.nodes) {
@@ -46,31 +46,31 @@ QString GraphDocument::saveFile(const QString &path) const
     });
     QSaveFile file(path);
     if (!file.open(QIODevice::WriteOnly))
-        return file.errorString();
+        return {QStringLiteral("file.io"), file.errorString()};
     const QByteArray encoded = json.toJson();
     if (file.write(encoded) != encoded.size() || !file.commit())
-        return file.errorString();
+        return {QStringLiteral("file.io"), file.errorString()};
     return {};
 }
 
-QString GraphDocument::loadFile(const QString &path)
+Diagnostic GraphDocument::loadFile(const QString &path)
 {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
-        return file.errorString();
+        return {QStringLiteral("file.io"), file.errorString()};
 
     QJsonParseError parseError;
     const QJsonDocument json = QJsonDocument::fromJson(file.readAll(), &parseError);
     if (parseError.error != QJsonParseError::NoError)
-        return parseError.errorString();
+        return {QStringLiteral("file.syntax"), parseError.errorString()};
     const QJsonObject root = json.object();
     if (root.value(QStringLiteral("version")).toInt() != 1)
-        return QStringLiteral("Unsupported blueprint file version.");
+        return {QStringLiteral("file.version"), QStringLiteral("Unsupported blueprint file version.")};
 
     const QJsonValue nodes = root.value(QStringLiteral("nodes"));
     const QJsonValue connections = root.value(QStringLiteral("connections"));
     if (!nodes.isArray() || !connections.isArray())
-        return QStringLiteral("The blueprint file must contain node and connection arrays.");
+        return {QStringLiteral("file.structure"), QStringLiteral("The blueprint file must contain node and connection arrays.")};
 
     GraphData data{QUuid(root.value(QStringLiteral("id")).toString()), {}, {}};
     for (const QJsonValue &entry : nodes.toArray()) {
@@ -79,7 +79,7 @@ QString GraphDocument::loadFile(const QString &path)
         const QJsonValue y = node.value(QStringLiteral("y"));
         const QJsonValue parameters = node.value(QStringLiteral("parameters"));
         if (!x.isDouble() || !y.isDouble() || !parameters.isObject())
-            return QStringLiteral("Invalid node position or parameters.");
+            return {QStringLiteral("file.structure"), QStringLiteral("Invalid node position or parameters.")};
         QVariantMap overrides;
         const QJsonObject fields = parameters.toObject();
         for (auto it = fields.constBegin(); it != fields.constEnd(); ++it) {

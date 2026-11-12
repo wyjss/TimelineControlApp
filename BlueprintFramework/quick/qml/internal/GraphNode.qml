@@ -10,7 +10,6 @@ Rectangle {
     property Component contentComponent
     property var inputs: []
     property var outputs: []
-    property var executionKeys: []
     property point graphPosition
     property point dragOffset: Qt.point(0, 0)
     property Item viewport
@@ -20,6 +19,7 @@ Rectangle {
     property string activeOutput
     property bool connecting: false
     property string targetInput
+    property string targetOutput
     property string connectionError
     readonly property var nodeInfo: ({id: nodeKey, typeId: kind, title: caption, parameters: parameters})
     readonly property bool dragging: headerDrag.pressed && !headerDrag.canceled
@@ -30,17 +30,16 @@ Rectangle {
 
     signal activated()
     signal moveRequested(point position)
-    signal outputPressed(string key, point position)
+    signal portPressed(string key, bool isOutput, bool contextRequested, point position)
     signal connectionPointerMoved(point position)
-    signal outputReleased(point position)
-    signal outputCanceled()
-    signal inputPressed(string key, bool contextRequested, point position)
+    signal portReleased(point position)
+    signal connectionCanceled()
     signal anchorsChanged()
 
     function portAnchor(key, isOutput) {
         var keys = isOutput ? outputs : inputs
         for (var row = 0; row < keys.length; ++row) {
-            if (keys[row] === key)
+            if (keys[row].key === key)
                 return Qt.point(isOutput ? width : 0, portTop + (row + 0.5) * portHeight)
         }
         return null
@@ -166,9 +165,9 @@ Rectangle {
     Repeater {
         model: card.inputs
         delegate: Item {
-            readonly property bool execution: card.executionKeys.indexOf(modelData) !== -1
+            readonly property bool execution: modelData.execution
             readonly property color portColor: execution ? card.colors.successText : card.colors.highlightText
-            readonly property bool candidate: card.targetInput === modelData
+            readonly property bool candidate: card.targetInput === modelData.key
             readonly property color feedbackColor: candidate && card.connectionError !== "" ? card.colors.dangerText : portColor
             x: 0
             y: card.portTop + index * card.portHeight
@@ -188,30 +187,59 @@ Rectangle {
             Text {
                 x: 13
                 anchors.verticalCenter: parent.verticalCenter
-                text: execution ? qsTr("执行") : modelData === "value" ? qsTr("输入") : modelData
+                text: modelData.title
                 color: card.colors.subtleText
                 font.pixelSize: 12
             }
             MouseArea {
                 id: inputHit
-                objectName: "input-" + modelData
+                objectName: "input-" + modelData.key
                 x: -10
                 width: parent.width + 10
                 height: parent.height
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
+                property point origin
+                property bool dragged: false
+                property bool canceled: true
+
+                Connections {
+                    target: card.viewport.interactionHost
+                    function onInteractionCanceled() {
+                        inputHit.canceled = true
+                        inputHit.dragged = false
+                    }
+                }
+                onPressed: {
+                    dragged = false
+                    origin = card.viewport.mapFromItem(inputHit, mouse.x, mouse.y)
+                    card.portPressed(modelData.key, false, mouse.button === Qt.RightButton, origin)
+                    canceled = false
+                }
                 // Qt 5 在悬停进入时更新坐标，但不发送 positionChanged。
                 onEntered: {
                     if (card.connecting)
                         card.connectionPointerMoved(card.viewport.mapFromItem(inputHit, mouseX, mouseY))
                 }
                 onPositionChanged: {
-                    if (card.connecting)
-                        card.connectionPointerMoved(card.viewport.mapFromItem(inputHit, mouse.x, mouse.y))
+                    var p = card.viewport.mapFromItem(inputHit, mouse.x, mouse.y)
+                    if (pressed && !canceled
+                        && Math.abs(p.x - origin.x) + Math.abs(p.y - origin.y) > Qt.styleHints.startDragDistance)
+                        dragged = true
+                    if ((pressed && !canceled) || card.connecting)
+                        card.connectionPointerMoved(p)
                 }
-                onClicked: card.inputPressed(modelData, mouse.button === Qt.RightButton,
-                                            card.viewport.mapFromItem(inputHit, mouse.x, mouse.y))
+                onReleased: {
+                    var p = card.viewport.mapFromItem(inputHit, mouse.x, mouse.y)
+                    if (!canceled && mouse.button === Qt.LeftButton
+                        && (dragged || Math.abs(p.x - origin.x) + Math.abs(p.y - origin.y) > Qt.styleHints.startDragDistance))
+                        card.portReleased(p)
+                }
+                onCanceled: {
+                    canceled = true
+                    card.connectionCanceled()
+                }
             }
         }
     }
@@ -219,8 +247,10 @@ Rectangle {
     Repeater {
         model: card.outputs
         delegate: Item {
-            readonly property bool execution: card.executionKeys.indexOf(modelData) !== -1
+            readonly property bool execution: modelData.execution
             readonly property color portColor: execution ? card.colors.successText : card.colors.highlightText
+            readonly property bool candidate: card.targetOutput === modelData.key
+            readonly property color feedbackColor: candidate && card.connectionError !== "" ? card.colors.dangerText : portColor
             x: card.width - 70
             y: card.portTop + index * card.portHeight
             width: 70
@@ -232,45 +262,64 @@ Rectangle {
                 radius: execution ? 2 : width / 2
                 x: parent.width - width / 2
                 anchors.verticalCenter: parent.verticalCenter
-                color: outputHit.containsMouse || card.activeOutput === modelData
-                       ? portColor : card.colors.backgroundCanvas
-                border.color: portColor
+                color: candidate || outputHit.containsMouse || card.activeOutput === modelData.key
+                       ? feedbackColor : card.colors.backgroundCanvas
+                border.color: feedbackColor
                 border.width: 2
             }
             Text {
                 anchors.right: parent.right
                 anchors.rightMargin: 13
                 anchors.verticalCenter: parent.verticalCenter
-                text: execution ? qsTr("继续") : modelData === "value" ? qsTr("输出") : modelData
+                text: modelData.title
                 color: card.colors.subtleText
                 font.pixelSize: 12
             }
             MouseArea {
                 id: outputHit
-                objectName: "output-" + modelData
+                objectName: "output-" + modelData.key
                 width: parent.width + 10
                 height: parent.height
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 property point origin
+                property bool dragged: false
+                property bool canceled: true
+
+                Connections {
+                    target: card.viewport.interactionHost
+                    function onInteractionCanceled() {
+                        outputHit.canceled = true
+                        outputHit.dragged = false
+                    }
+                }
                 onPressed: {
+                    dragged = false
                     origin = card.viewport.mapFromItem(outputHit, mouse.x, mouse.y)
-                    card.outputPressed(modelData, origin)
+                    card.portPressed(modelData.key, true, false, origin)
+                    canceled = false
                 }
                 onEntered: {
                     if (card.connecting)
                         card.connectionPointerMoved(card.viewport.mapFromItem(outputHit, mouseX, mouseY))
                 }
                 onPositionChanged: {
-                    if (pressed || card.connecting)
-                        card.connectionPointerMoved(card.viewport.mapFromItem(outputHit, mouse.x, mouse.y))
+                    var p = card.viewport.mapFromItem(outputHit, mouse.x, mouse.y)
+                    if (pressed && !canceled
+                        && Math.abs(p.x - origin.x) + Math.abs(p.y - origin.y) > Qt.styleHints.startDragDistance)
+                        dragged = true
+                    if ((pressed && !canceled) || card.connecting)
+                        card.connectionPointerMoved(p)
                 }
                 onReleased: {
                     var p = card.viewport.mapFromItem(outputHit, mouse.x, mouse.y)
-                    if (Math.abs(p.x - origin.x) + Math.abs(p.y - origin.y) > 5)
-                        card.outputReleased(p)
+                    if (!canceled && (dragged || Math.abs(p.x - origin.x) + Math.abs(p.y - origin.y) > Qt.styleHints.startDragDistance))
+                        card.portReleased(p)
                 }
-                onCanceled: card.outputCanceled()
+                onCanceled: {
+                    canceled = true
+                    card.connectionCanceled()
+                }
             }
         }
     }

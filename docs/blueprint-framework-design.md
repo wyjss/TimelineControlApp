@@ -1,6 +1,8 @@
 # 通用节点图与蓝图框架设计
 
-本设计面向独立的 C++17 / Qt Quick 工程。框架支持静态对象的展示与编辑，也支持由事件驱动的蓝图执行。`TimelineControlApp` 是接入方，负责注册设备相关节点并提供设备服务。当前接入基线为 Qt 5.14 和 `UICore_new`。
+BlueprintFramework 是面向多个宿主项目的 C++17 / Qt 5 图形化编程框架。Core 提供图数据、编辑与运行契约，Quick 提供可嵌入的画布。TimelineControlApp 和独立 Demo 作为宿主注册自己的对象及节点，不将业务领域写入 Core。
+
+本文说明工程边界和扩展接入方式；精确字段、所有权、变更和运行规则以[数据结构与变更通知](../BlueprintFramework/docs/data-model.md)及公共头文件为准。当前基线直接统一实现，不维护旧接口、旧节点别名或旧文件迁移。
 
 ## 开源实现与产品参考
 
@@ -11,129 +13,123 @@
 | QtNodes | `AbstractGraphModel` 可脱离 `QGraphicsScene` 和视图使用。其数据流模型另外实现输入变化和新连线引发的数据传播。 | 借鉴模型与视图的分工。编辑操作更新图文档，动作执行由明确的入口触发。[项目源码与说明](https://github.com/paceholder/nodeeditor#introduction) |
 | Godot GraphEdit | 提供平移缩放、节点拖动与连线交互，并发出连接、断开及删除请求。 | 画布发出操作意图，文档决定是否接受并通知视图。拖线预览和正式连线分开处理。[GraphEdit API](https://docs.godotengine.org/en/stable/classes/class_graphedit.html#signals) |
 | Node-RED | MQTT 输入、输出节点可共享一个配置节点。配置有自己的引用与生命周期。 | 让多个节点引用同一宿主资源。设备实例、连接和参数的所有权留在宿主。[配置节点文档](https://nodered.org/docs/creating-nodes/config-nodes) |
-| Rete.js | 混合引擎示例在控制流到达节点时从数据流获取输入，然后推进执行。 | 同一图可包含两类端口。先做按需求值与执行结果隔离，按实测决定缓存粒度。[混合处理指南](https://retejs.org/docs/guides/processing/hybrid/) |
+| Rete.js | 混合引擎示例在控制流到达节点时从数据流获取输入，然后推进执行。 | 同一图可包含两类端口。按需求值与动作结果分别管理。[混合处理指南](https://retejs.org/docs/guides/processing/hybrid/) |
 
-以上是设计参考。模块边界和接口为本工程的提案，需用独立示例验证。
+这些参考用于明确职责，不要求复现其完整引擎或插件系统。
 
 ## 工程边界与共用能力
 
 ```mermaid
 flowchart LR
-    Demo[独立示例] --> Editor[Qt Quick 编辑器]
-    Host[宿主应用] --> Editor
-    Host --> Ext[宿主注册的节点和服务]
-    Editor --> Core[图核心 · Qt Core]
-    Editor --> UI[UICore 主题和控件]
-    Host --> Runtime[蓝图运行时]
-    Runtime --> Core
-    Ext --> Core
-    Ext --> Runtime
+    Host[宿主应用] --> Quick[Blueprint::Quick]
+    Demo[示例宿主] --> Quick
+    Demo --> UI[UICore 主题和控件]
+    Quick --> Core[Blueprint::Core]
+    Host --> Core
+    Host --> Services[宿主对象和业务服务]
+    Demo --> Services
+    Core --> Callbacks[宿主注入的节点回调]
+    Callbacks --> Services
 ```
 
-工程提供独立的 CMake 入口。先交付图核心、编辑器和示例，第二阶段加入可单独链接的运行时。UICore 由宿主或独立示例提供，编辑器复用其主题、控件和表单能力。核心及运行时可脱离 QML 引擎构建和验证。
-
-| 职责 | 共用能力 | 使用方提供的内容 |
+| 层次 | 当前共用能力 | 宿主提供的内容 |
 | --- | --- | --- |
-| 图核心 | 节点类型注册、文档、稳定标识、基础校验、保存与加载 | 节点类型及参数、端口声明 |
-| 编辑器 | 节点与连线显示、选择、拖动、平移缩放、编辑操作、撤销重做、通用属性面板 | 按需提供节点外观、字段控件、对象选择器及数据绑定 |
-| 运行时 | 构建运行快照、事件调度、求值、变量、等待与取消、诊断 | 事件来源、业务动作与业务服务 |
-| 宿主 | 管理项目、资源、保存时机和业务对象生命周期 | 设备、素材、时间线或其他领域对象 |
+| Core 注册与声明 | 项目作用域内追加注册；参数、端口、属性和接口描述；值与约束校验。 | 类型 ID、具体声明及由节点配置派生的端口。 |
+| Core 文档 | 图身份、节点与连线、原子编辑、提交后通知、JSON 和逻辑快照。 | 保存时机及对象引用的含义。 |
+| Quick 编辑器 | 模型投影、节点和连线交互、共享撤销历史、默认节点库及参数面板。 | 主题、特殊节点内容、对象或成员选择器。 |
+| Core 运行时 | 按端口需求值、顺序执行、异步结果校验、停止取消和实例隔离。 | 纯计算、业务动作、取消请求及实际外部服务。 |
+| 宿主对象 | 不由框架复制或持有。 | 身份、配置、实时状态、生命周期和并发资源规则。 |
 
-静态对象图和可执行蓝图共用一套图文档与编辑器。静态节点可以零端口，可以持有图内参数，也可以引用宿主对象。需要执行时，由运行时独立检查图的入口、数据依赖和行为注册。同一可执行图也可以包含作为数据来源的对象引用节点。首版用这些约束覆盖两种场景，等实际出现不同的连线规则或求值模型时再引入图类型策略。
+`Blueprint::Core` 只依赖 Qt Core。`Blueprint::Quick` 增加 Qt Quick 和 QuickControls2，仍不依赖 UICore。Demo 才使用 UICore；Core 和 Quick 可以独立导出安装，通过 `find_package(BlueprintFramework REQUIRED)` 链接。构建开关、源码接入和测试命令见 [README](../BlueprintFramework/README.md)。
+
+静态对象图和可执行蓝图共用文档与编辑器。静态卡片可以零端口；是否运行以及从哪个执行输出触发由宿主决定。当前没有抽象图策略、通用消息总线或二进制扩展加载层。
 
 ## 数据模型与所有权
 
-| 数据 | 最小内容 | 生命周期 |
-| --- | --- | --- |
-| `NodeTypeDefinition` | 稳定类型 ID、名称、参数定义、固定端口定义 | 由宿主或内置节点包注册，供文档查询 |
-| `PortDefinition` | 稳定键、方向、类别、数据类型、连接数量规则、可选默认值 | 随节点类型定义 |
-| `NodeData` | 节点 ID、类型 ID、参数覆盖值、可选输入默认值、画布位置 | 图文档持有 |
-| `ConnectionData` | 连线 ID、源和目标的 `{nodeId, portKey}` | 图文档持有，端口邻接表由连线派生 |
-| `GraphDocument` | 格式版本、图 ID、节点与连线。需要变量和事件时再加入相应声明 | 用户编辑和保存 |
-| 编辑器状态 | 选择、悬停、拖动预览与视口 | 每个打开的视图持有，同一文档的编辑视图共享撤销历史 |
-| 运行实例和执行上下文 | 实例变量、事件队列。本次事件参数、输出、执行位置、异步等待 | 运行时持有，独立于文档 |
+图文件只保存图 ID、节点 ID、类型、位置、参数覆盖和连线端点。声明、派生端口、宿主对象及运行状态各自有单一来源。
 
-节点 ID、类型 ID 和宿主对象 ID 各自有独立的含义。端口连接使用稳定键，如 `lhs` 或 `completed`。输入默认值只在无连接时使用，参数用于配置节点自身，执行结果属于单次执行。默认值和参数由定义约束，实例只保存覆盖值。第一阶段支持固定端口，实例级动态端口有实际用例时再加入自己的稳定标识。
+- 节点引用共享注册表中的不可变定义。打开文档后追加新类型可以立即用于该文档，不复制或手动刷新注册表。
+- 参数定义描述持久化配置；属性定义描述宿主或运行对象的值；接口定义描述单次调用的输入和输出。三者复用基础值与约束声明。
+- 执行类别与数据类型分开表达，执行端口不伪装成某种值类型。普通数据连线连接相同类型，转换由显式节点实现；`anyValueType` 仅用于静态数据输入，接受现有具体值类型并由节点实现判定实际类型语义。
+- 读取成员保存目标和成员引用，端口类型从稳定成员声明推导；不再保存成员类型的镜像。
+- `resolvePorts(const NodeData &)` 只依赖本节点配置和稳定声明。类型与端口变更在同一次文档提交中校验，已有连线不兼容时拒绝修改。
+- 图实例只保存覆盖值，清除覆盖恢复定义默认值或未设置状态。输入默认值从端口声明解析，未连线时使用。
+- 宿主对象通过模块约定的稳定引用定位。现阶段用声明过的字符串参数承载引用，不把设备指针、QML 对象或未实现的对象值类型写入图。
 
-数据端口从布尔、整数、数值、字符串开始。定义声明类型，值可通过 `QVariant` 承载，校验和文件编码按声明类型处理。首版只连接同类型端口，转换通过显式转换节点表达。需要跨端口传递业务对象时，用包含对象类型与稳定 ID 的引用值，由宿主解析。需要持久化 64 位整数时显式定义无损 JSON 编码。
+当前数据类型限定布尔、有限数值和字符串，参数另可限制候选值、数值范围和整数条件。自定义值类型与精确大整数尚未进入实现。
 
-文档是图拓扑的唯一来源。QML 只通过列表模型和角色读数据，通过统一入口提交编辑。节点的屏幕坐标、拖动中的临时位移和高亮由编辑器计算。运行时读取启动时的逻辑快照，同一次运行的拓扑和参数保持一致。
+文档、会话和注册表在编辑器线程使用；注册表先于文档创建并晚于其销毁，文档晚于会话销毁。运行时读取文档线程创建的值快照。宿主服务的线程归属和存活期由注入方负责。
 
-## 接口草案
-
-下列是边界签名，类型名可在实现时根据代码收敛。`EditResult` 包含成功状态、受影响的 ID，以及失败时的诊断。应用与 QML 共享校验结果，诊断可定位到节点或端口。
+## 当前公共入口
 
 ```cpp
-// 图核心。注册时拒绝重复类型 ID 和同类型中的重复端口键。
-RegistrationResult NodeRegistry::add(NodeTypeDefinition definition);
+Diagnostic NodeRegistry::add(const NodeTypeDefinition &definition);
 const NodeTypeDefinition *NodeRegistry::find(const QString &typeId) const;
+QVector<NodeTypeDefinition> NodeRegistry::definitions() const;
 
-// 图文档。查询连线用于拖线预览，提交时再次校验。
-ConnectionCheck GraphDocument::canConnect(const Endpoint &from,
-                                          const Endpoint &to) const;
-EditResult GraphDocument::addNode(const QString &typeId, QPointF position);
-EditResult GraphDocument::moveNode(const NodeId &node, QPointF position);
-EditResult GraphDocument::setParameter(const NodeId &node, const QString &key,
-                                       const QVariant &value);
-EditResult GraphDocument::connectPorts(const Endpoint &from, const Endpoint &to);
-EditResult GraphDocument::removeConnection(const ConnectionId &connection);
-EditResult GraphDocument::removeNode(const NodeId &node);
-IoResult GraphDocument::loadFile(const QString &path);
-IoResult GraphDocument::saveFile(const QString &path) const;
+Diagnostic GraphDocument::canConnect(const Endpoint &source, const Endpoint &target) const;
+EditResult GraphDocument::addNode(const QString &typeId, QPointF position,
+                                  QVariantMap parameters = {});
+EditResult GraphDocument::setParameters(QUuid nodeId, const QVariantMap &values);
+GraphSnapshot GraphDocument::snapshot() const;
 
-// 编辑器扩展。默认按参数定义生成控件，按类型注册的 QML 组件可覆盖展示。
-void EditorRegistry::setNodeDelegate(const QString &typeId, const QUrl &component);
-void EditorRegistry::setPropertyEditor(const QString &typeId, const QUrl &component);
-
-// 运行阶段加入。可按节点类型分别注册纯计算或动作实现。
-void RuntimeRegistry::registerEvaluator(const QString &typeId, Evaluator evaluate);
-void RuntimeRegistry::registerAction(const QString &typeId, Action execute);
-StartResult GraphRuntime::start(const GraphDocument &document);
-EnqueueResult GraphRuntime::postEvent(const QString &eventId, const QVariantMap &payload);
+Diagnostic GraphRuntime::start(const GraphSnapshot &snapshot,
+                               const RuntimeImplementations &implementations);
+ValueResult GraphRuntime::evaluate(const Endpoint &endpoint);
+ExecutionResult GraphRuntime::execute(const Endpoint &executionOutput);
 void GraphRuntime::stop();
 ```
 
-文档校验包括端点存在、方向、端口类别、类型、重复连线和连接数量。默认每个数据输入只接一个来源，输出可连接多个输入。遇到占用的输入，首版返回错误，替换连线可以后续作为一个可撤销操作接入。运行时另外检查入口签名、所需输入、节点实现以及执行和数据依赖。首版可执行子图使用无环约束，循环节点有单独的语义需求时再加入。
+`Diagnostic` 包含稳定代码、展示消息、节点 ID 和成员或端口键，空代码表示成功。编辑结果还包含受影响 ID 和冲突实例 ID。Quick 同时投影展示错误和结构化诊断，调用方不解析错误消息。
 
-编辑器可用节点、连线两个 `QAbstractListModel` 投影文档，按行和角色通知变化。节点角色提供 ID、类型、位置和需要展示的数据，连线角色提供两端 ID 与端口键。QML 节点组件通过端口键提供锚点，画布将其转换到同一坐标系。每次拖动在释放时提交一次位置修改，节点删除与删除关联连线合成一次操作。撤销历史按文档管理，同一文档的多个视图共享。自定义属性面板提交设备属性时调用宿主的修改入口，由宿主管理设备配置保存和撤销。详见[数据与图的对应关系](../BlueprintFramework/docs/data-model.md#数据与图的对应关系)。
+文档校验端点存在、方向、类别、类型、重复连线和连接数量。每个输入最多一个来源，数据输出可连接多个输入，执行输出最多连接一个输入；占用端口返回错误。运行时另校验快照和执行约束，实际求值时检查所需输入与实现。
 
-JSON 记录稳定 ID、参数、端点和布局。先将文件读入临时文档并校验，再替换当前文档。保存采用原子写入。首版遇到未知类型或不支持的格式版本时返回可定位的错误并保留当前文档。出现可选扩展后，再实现保留未知节点数据与关联线的占位显示。升级文件版本与迁移节点参数分别处理，等出现首个实际格式或节点升级再实现迁移逻辑。
+编辑操作先校验再提交，提交后只通知一次，失败和无变化不递增 revision。删除节点及关联连线合成一次操作。批量参数更新、清除覆盖、派生端口变更都通过同一入口执行。撤销历史按文档共享，拖动只在释放时提交。节点模型与只读连线列表各自投影文档，几何和视口状态留在画布。
 
-## 扩展接入与设备用例
+JSON 采用现行 `version: 1` 格式，加载临时数据并完整校验后替换，保存使用原子写入。未知类型、无效参数和不支持的版本返回诊断，并保留当前图。
 
-先采用编译期链接、宿主启动时显式注册。一个扩展按需提供节点类型定义、展示组件、属性编辑器和执行行为。各注册表以同一个稳定 `typeId` 关联，例如 `timeline.device.config`。已注册的类型定义在文档和运行实例使用期间保持稳定。核心只使用节点定义，编辑器和运行时各取自己所需的注册项。自定义组件接收节点信息和编辑入口。设备服务由宿主注入对应的编辑器组件或执行行为，作用域跟随项目或运行实例。
+## 扩展接入与外部对象
 
-设备扩展可以注册三种相互独立的用法：
+当前采用源码或静态库链接、宿主显式注册。一个扩展按需提供类型定义、QML 内容与运行回调，以同一稳定 `typeId` 关联。类型追加不修改已有定义；动态类型追加和动态加载 DLL 是两件事，后者尚未实现。
 
-| 节点类型示例 | 图里保存什么 | 如何工作 |
+默认节点库和参数面板从正式声明生成，特殊展示才提供自定义组件。宿主服务注入运行回调，不放入图配置。接口声明描述能力，框架不自动反射或开放任意 `QObject` 成员。
+
+设备用例可分为以下三个实际职责：
+
+| 节点用法 | 图里保存什么 | 数据和执行来源 |
 | --- | --- | --- |
-| `timeline.device.config` | 设备引用和卡片布局，可选的展示字段键 | 静态配置节点，通过设备 ID 找到对象。卡片和属性面板编辑同一份参数。 |
-| `timeline.device.reference` | 设备引用 | 蓝图中的数据节点，提供有类型的设备引用供其他节点使用。 |
-| `timeline.device.command` | 动作选项和输入端口的配置 | 执行到达后使用输入设备引用调用宿主，按完成或失败选择执行出口。 |
+| 对象卡片 | 稳定对象引用、图位置及展示配置。 | 宿主对象查询及属性通知。 |
+| 读取成员 | 目标和属性引用。 | 属性声明确定类型，求值回调读取宿主当前值。 |
+| 设置或调用 | 目标、成员或接口引用及节点配置。 | 执行到达时按声明校验输入，由宿主完成操作并报告结果。 |
 
-上表是职责示例。若实际产品需要同一个设备节点既能展示配置又能提供对象输出，可注册一个类型并为它补上输出端口和求值行为。
+Demo 的模拟音箱实现这一边界。卡片和多个操作节点可引用同一个音箱；删除卡片不删除音箱。播放与时长状态由宿主持有，属性改变刷新预览；播放请求完成通过动作完成回调推进。
 
-当前项目可从 `DeviceModel::deviceById` 解析设备。`DeviceParamSpec` 已继承 `UICore::BaseField`，属性面板可通过 `AppField.sourceField` 读取同一个字段。提交时由宿主按 `DeviceParamSpec::invalidReason` 等现有规则校验，再调用 `Device::setParamValue`。设备删除时，卡片显示引用失效，用户可重新绑定或移除。图节点被删除时只删除该图中的表示，设备生命周期由宿主控制。[设备查找](../App/runtime/devices/DeviceModel.cpp) · [设备参数](../App/runtime/devices/DeviceParamSpec.h) · [字段代理](../UICore_new/COMPONENT_GUIDE.md)
+Timeline 的真实设备接入仍属于宿主扩展工作。现有 `DeviceModel::deviceById` 可用于解析对象，`DeviceParamSpec::invalidReason` 与 `Device::setParamValue` 可作为宿主的校验和更新入口。接入时应复用这些实际约束并将其投影为框架成员声明，避免第二份设备配置。[设备查找](../App/runtime/devices/DeviceModel.cpp) · [设备参数](../App/runtime/devices/DeviceParamSpec.h) · [字段代理](../UICore_new/COMPONENT_GUIDE.md)
 
 ## 执行语义
 
-求值接口接收只读节点参数和已解析的数据输入，返回按输出端口键组织的数据或诊断。动作接口另外接收触发的执行入口和本次调用上下文，完成时报告所选执行出口、输出值或失败原因。宿主动作可把完成回调与异步设备请求关联，运行时负责检查声明的端口和结果类型，再提交结果与推进执行。
+启动时固定图身份、文档 revision、节点参数和已解析端口。编辑在下次启动时生效，宿主实时状态继续从宿主读取。数据依赖和执行流分别要求无环，不为循环加入隐式次数或递归深度限制。
 
-1. **启动和事件**。每个图运行实例持有一份已校验的逻辑快照和自己的变量表。事件声明包含稳定 ID 与参数类型。外部事件进入实例队列，同一实例按顺序处理。不同实例的异步操作可以交错进行，设备资源的互斥由宿主保证。
-2. **数据读取**。纯计算按需读取输入。一轮求值内可复用结果，下一步重新读取依赖可变状态的值。变量写入后，下一次读取可看到新值。需要观察实际设备状态的 I/O 作为显式动作，结果写入本次执行上下文。
-3. **动作结果**。同步动作直接返回结果，异步动作通过完成回调报告出口、数据和错误。框架校验结果后再推进。某个动作的结果只有在该动作于本次执行完成后才可读取。失败可走声明的失败出口，否则结束本次执行并记录诊断。
-4. **取消**。等待与运行实例、执行 ID 和节点调用绑定。停止实例时清理队列并请求取消等待，迟到结果通过调用标识过滤。回调投递回运行实例所属线程。已发出的外部命令由宿主按能力处理。
-5. **调试**。运行时发布按图实例和节点 ID 定位的开始、等待、完成、失败事件。编辑器订阅可见图并显示节点或连线状态。运行可脱离画布继续进行。
+纯求值接收参数和按输入端口键组织的值，返回完整输出端口表。需求值内复用上游结果，下一次求值重新读取实时状态；多输出始终以 `{nodeId, portKey}` 区分。
 
-## 开发顺序与验收
+动作接收包含运行、执行和调用 ID 的 `ExecutionContext`。同步和异步动作使用同一个完成回调，完成可以来自任意线程。结果统一排队回运行线程，检查身份、执行出口和输出类型后才推进。数据依赖不自动执行动作，动作输出只有在本次执行完成该动作后可读，下次执行前清空。
 
-| 阶段 | 交付 | 验收 |
-| --- | --- | --- |
-| 1. 图编辑 | 独立 C++ 核心、QML 画布、注册、属性编辑、类型连线、撤销、JSON | 在示例中创建 `常量 → 加法 → 结果`，移动、编辑、撤销、保存重开。错类型和占用端口能给出原因。另注册一个零端口的示例资源节点，验证静态对象显示与编辑。 |
-| 2. 最小执行 | 事件入口、布尔和数值求值、条件分支、变量、延时、停止、状态通知 | 无 QML 运行 `事件 → 比较 → 分支 → 延时 → 设变量`。验证两实例互不影响、同实例事件有序，以及停止后旧回调无法推进。 |
-| 3. 宿主接入 | TimelineControlApp 设备配置与命令扩展 | 同一设备在原页面、画布卡片和属性面板显示一致。流程通过设备引用执行动作。验证设备删除、重新绑定及保存后恢复。 |
-| 4. 按实际使用完善 | 复制粘贴、搜索、分组、注释、动态端口、子图及调试工具按需求增加 | 每项以实际使用场景验收。子图优先定义外部端口和调用语义。动态加载只在存在独立发布扩展的需求时进入设计。 |
+一个运行实例同时受理一次执行，忙时显式拒绝；不同实例分别持有输出、执行位置和调用身份。每个执行端口最多一条连线，动作选择出口后沿该出口继续，每次只发起一个动作。非空诊断结束整次执行，成功动作可选择声明的出口或结束当前分支。
 
-第一阶段先写最小的 C++ 定义、文档和连线检查，再立即接一版 QML 画布验证。编辑闭环优先验证两种类型的节点共用编辑入口，以及布局和连线在保存恢复后仍可定位。
+停止先清除运行和调用身份，再请求宿主取消当前请求。重复、停止后迟到、前一实例及对象销毁后的回调都不能推进执行。框架只保证停止后的执行隔离，外部请求是否实际撤回由宿主能力决定。
 
-性能验收使用固定图和目标机器上的 Release 构建。第一轮可用 100 与 500 个节点作为测量样本，记录可见项、编辑控件数、加载时间、内存和拖动时帧时间。默认用轻量节点摘要，选中或编辑时再加载复杂字段。拖动只改变预览和相连线的几何，模型只发局部通知。画布范围外的节点按规模考虑按需实例化。连线先使用简单绘制层，出现瓶颈后通过分析结果决定是否改用 C++ 场景图批量绘制。[Qt Quick 性能建议](https://doc.qt.io/qt-5/qtquick-performance.html)
+`executionFinished` 表达本次执行完成、失败或取消；实时属性变化独立走宿主通知。当前没有通用事件入队、变量表或逐节点调试事件。预览与正式执行使用不同实例，运行可脱离画布进行。
+
+## 验证与后续范围
+
+| 验证层次 | 当前检查 |
+| --- | --- |
+| 文档和 Quick 投影 | 动态注册、不可变声明、参数约束、原子批量修改、清除覆盖、派生端口、撤销及保存加载。 |
+| 无界面运行 | 多输出、共享依赖、输入默认值、启动快照和宿主实时读取、结果类型、无环约束、忙状态。 |
+| 异步生命周期 | 失败、跨线程完成、重复完成、停止取消、重启后迟到结果、实例隔离及销毁后回调。 |
+| 示例宿主 | 常量和加法编辑、对象卡片、成员读写、异步模拟播放、文件和共享编辑状态。 |
+| 第三方构建 | Core 独立构建、Core/Quick 安装导出和包引用；Demo 单独保留 UICore 依赖。 |
+
+后续仅按实际用例引入自定义值类型、循环、并行动作、事件队列、变量、子图、执行调试和二进制插件生命周期。当前公共接口不为这些能力加入空实现、兼容层或预留配置。
+
+性能验证使用固定图和目标机器上的 Release 构建，记录节点数、可见项、控件数、加载时间、内存和拖动帧时间。可以用 100 与 500 节点作为测量样本；按分析结果决定是否进行画布外节点按需实例化或 C++ 场景图批量绘制。当前交付不包含这些优化及性能承诺。[Qt Quick 性能建议](https://doc.qt.io/qt-5/qtquick-performance.html)

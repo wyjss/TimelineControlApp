@@ -1,24 +1,42 @@
 #pragma once
 
 #include <QPointF>
+#include <QMetaType>
 #include <QString>
 #include <QStringList>
 #include <QUuid>
 #include <QVariant>
 #include <QVector>
 
+#include <functional>
+
 namespace Blueprint {
 
-//! 执行端口只传递触发信号，不承载值。
-inline const QString executionPortType = QStringLiteral("exec");
+struct GraphData;
+struct NodeData;
 
-//! 数据输入端口可接收任意受支持的数据类型，不接受执行信号。
+//! 数据输入可接受任一受支持的值类型；输出、参数和属性仍需声明具体类型。
 inline const QString anyValueType = QStringLiteral("any");
+
+//! 公共操作的诊断结果。code 为空时表示成功。
+struct Diagnostic
+{
+    QString code;
+    QString message;
+    QUuid nodeId;
+    QString key;
+};
 
 enum class PortDirection
 {
     Input,
     Output
+};
+
+enum class PortKind
+{
+    Data,
+    Execution
 };
 
 //! 节点类型上声明的端口。
@@ -27,10 +45,12 @@ struct PortDefinition
     //! 类型内稳定的端口键，供连线引用。
     QString key;
     PortDirection direction = PortDirection::Input;
-    //! 用于校验连线兼容性和值的类型标识。
+    //! 数据端口的值类型；执行端口不承载值，必须为空。
     QString valueTypeId;
-    //! 可选。由此字符串参数决定数据端口类型，空值时端口未配置。
-    QString typeParameterKey;
+    QString displayName;
+    PortKind kind = PortKind::Data;
+    //! 数据输入端口的可选默认值；未连接且没有默认值时由运行时报错。
+    QVariant defaultValue;
 };
 
 //! 节点自身的可编辑参数，与数据输入端口分开声明。
@@ -42,6 +62,29 @@ struct ParameterDefinition
     QVariant defaultValue;
     //! 字符串参数的封闭候选值，留空时允许任意字符串。
     QStringList allowedValues;
+    QString displayName;
+    QString description;
+    //! 数值参数的闭区间边界；无效 QVariant 表示没有该边界。
+    QVariant minimum;
+    QVariant maximum;
+    bool integer = false;
+};
+
+//! 由宿主对象或节点运行实例持有的属性，变更不写入图配置。
+struct PropertyDefinition
+{
+    ParameterDefinition value;
+    //! 默认为只读；仅显式可写属性允许生成设置操作，宿主写入也须检查此标记。
+    bool writable = false;
+};
+
+//! 一次接口调用的输入和输出声明。
+struct MethodDefinition
+{
+    QString key;
+    QString displayName;
+    QVector<ParameterDefinition> inputs;
+    QVector<ParameterDefinition> outputs;
 };
 
 enum class InstancePolicy
@@ -65,6 +108,13 @@ struct NodeTypeDefinition
     InstancePolicy instancePolicy = InstancePolicy::Multiple;
     //! UniqueByParameter 使用的字符串参数，实例的有效值必须非空。
     QString instanceKeyParameter = {};
+    QString description;
+    QString symbol;
+    QVector<PropertyDefinition> properties;
+    QVector<MethodDefinition> methods;
+    //! 可选。仅根据本节点配置与稳定成员声明解析端口，不读取其他节点可变值。
+    //! 未配置的数据端口可使用空 valueTypeId，此时不能连接。
+    std::function<QVector<PortDefinition>(const NodeData &)> resolvePorts;
 };
 
 //! 一张图中的节点实例。
@@ -103,4 +153,24 @@ struct GraphData
     QVector<ConnectionData> connections;
 };
 
+//! 启动时已解析默认参数和派生端口的节点，不包含画布状态。
+struct SnapshotNode
+{
+    QUuid id;
+    QString typeId;
+    QVariantMap parameters;
+    QVector<PortDefinition> ports;
+};
+
+//! 在文档所属线程创建，运行期间保持不变的逻辑快照。
+struct GraphSnapshot
+{
+    QUuid graphId;
+    quint64 revision = 0;
+    QVector<SnapshotNode> nodes;
+    QVector<ConnectionData> connections;
+};
+
 } // namespace Blueprint
+
+Q_DECLARE_METATYPE(Blueprint::Diagnostic)

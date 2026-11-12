@@ -271,10 +271,12 @@ ApplicationWindow {
             property var node: null
             property var liveState: ({})
             readonly property bool existing: node && node.typeId === "demo.speakerReference"
-            readonly property string targetId: node ? (existing ? node.parameters.objectId : node.id) : ""
+            readonly property string targetId: node ? (existing ? node.parameters.objectId : "node:" + node.typeId + ":" + node.id) : ""
             readonly property bool available: liveState.playing !== undefined
             readonly property bool playing: liveState.playing === true
             property point durationDrop
+            property string writableMember
+            property string writableLabel
             objectName: "speakerBody"
             implicitHeight: speakerControls.implicitHeight + 16
             radius: 5
@@ -315,7 +317,7 @@ ApplicationWindow {
                         if (!speaker.targetId)
                             return ""
                         if (!speaker.existing)
-                            return qsTr("音箱 · %1").arg(speaker.targetId.slice(0, 8))
+                            return qsTr("音箱 · %1").arg(speaker.node.id.slice(0, 8))
                         var option = demoGraph.existingSpeakerOptions.find(
                             function(item) { return item.value === speaker.targetId })
                         return option ? option.label : qsTr("对象已失效")
@@ -325,18 +327,13 @@ ApplicationWindow {
                 }
 
                 Repeater {
-                    model: [
-                        { key: "playing", type: "demo.readProperty" },
-                        { key: "testDurationMs", type: "demo.readProperty" },
-                        { key: "playTest", label: qsTr("测试播放"), type: "demo.call" },
-                        { key: "stop", label: qsTr("停止"), type: "demo.call" }
-                    ]
+                    model: demoGraph.objectMembers(speaker.targetId)
 
                     delegate: Text {
                         Layout.fillWidth: true
                         text: (modelData.key === "playing" ? (!speaker.available ? "—" : speaker.playing ? qsTr("播放中") : qsTr("空闲"))
                                : modelData.key === "testDurationMs" ? qsTr("时长 %1 ms").arg(speaker.liveState.testDurationMs || "—")
-                               : modelData.label) + "  ↗"
+                               : modelData.label) + (modelData.type === "demo.readProperty" && !modelData.writable ? qsTr("（只读）") : "") + "  ↗"
                         color: memberDrag.pressed || memberDrag.containsMouse ? window.appTheme.colors.highlightText
                                : modelData.key === "playing" && speaker.playing ? window.appTheme.colors.successText
                                : window.appTheme.colors.subtleText
@@ -348,15 +345,17 @@ ApplicationWindow {
                             anchors.fill: parent
                             enabled: speaker.available
                             graphEditor: editor
-                            title: modelData.key === "testDurationMs" ? qsTr("选择属性操作")
+                            title: modelData.writable ? qsTr("选择属性操作")
                                    : modelData.type === "demo.call" ? qsTr("调用接口") : qsTr("读取属性")
-                            dropText: modelData.key === "testDurationMs" ? qsTr("释放选择操作") : qsTr("释放创建节点")
+                            dropText: modelData.writable ? qsTr("释放选择操作") : qsTr("释放创建节点")
                             ToolTip.visible: containsMouse && !pressed
                             ToolTip.delay: 350
                             ToolTip.text: qsTr("拖到画布空白处创建节点")
                             onDropped: {
-                                if (modelData.key === "testDurationMs") {
+                                if (modelData.writable) {
                                     speaker.durationDrop = position
+                                    speaker.writableMember = modelData.key
+                                    speaker.writableLabel = modelData.label
                                     var release = mapToItem(editor, mouseX, mouseY)
                                     durationMenu.popup(release.x, release.y)
                                 } else {
@@ -395,13 +394,13 @@ ApplicationWindow {
                 parent: editor
 
                 MenuItem {
-                    text: qsTr("读取测试时长")
-                    onTriggered: speaker.createOperation("demo.readProperty", "testDurationMs", speaker.durationDrop)
+                    text: qsTr("读取%1").arg(speaker.writableLabel)
+                    onTriggered: speaker.createOperation("demo.readProperty", speaker.writableMember, speaker.durationDrop)
                 }
                 MenuItem {
                     objectName: "create-duration-setter"
-                    text: qsTr("设置测试时长")
-                    onTriggered: speaker.createOperation("demo.setProperty", "testDurationMs", speaker.durationDrop)
+                    text: qsTr("设置%1").arg(speaker.writableLabel)
+                    onTriggered: speaker.createOperation("demo.setProperty", speaker.writableMember, speaker.durationDrop)
                 }
             }
         }
@@ -426,12 +425,12 @@ ApplicationWindow {
         ColumnLayout {
             id: operation
             property var node: null
-            readonly property bool reading: !!node && node.parameters.memberType !== undefined
+            readonly property bool reading: !!node && node.typeId === "demo.readProperty"
             readonly property string targetId: node ? node.parameters.target : ""
             readonly property var targets: reading ? demoGraph.readTargetOptions : demoGraph.speakerOptions
             readonly property var target: targets.find(function(item) { return item.value === operation.targetId })
             readonly property var members: reading ? (target ? demoGraph.readMembers(targetId) : [])
-                                                  : node ? demoGraph.operationMembers(node.typeId) : []
+                                                  : node ? demoGraph.operationMembers(node.typeId, targetId) : []
             readonly property var member: node ? members.find(
                 function(item) { return item.value === operation.node.parameters.member }) : undefined
             spacing: 3
@@ -547,8 +546,6 @@ ApplicationWindow {
                 "demo.speakerReference": speakerBody,
                 "demo.trigger": triggerBody,
                 "demo.readProperty": operationBody,
-                "demo.readBool": operationBody,
-                "demo.readNumber": operationBody,
                 "demo.setProperty": operationBody,
                 "demo.call": operationBody
             })
@@ -678,13 +675,15 @@ ApplicationWindow {
                 Rectangle {
                     id: inspector
                     readonly property string selectedType: editor.selectedNode ? editor.selectedNode.typeId : ""
-                    readonly property bool reading: !!editor.selectedNode && editor.selectedNode.parameters.memberType !== undefined
+                    readonly property bool reading: !!editor.selectedNode && editor.selectedNode.typeId === "demo.readProperty"
                     readonly property var targets: reading ? demoGraph.readTargetOptions : demoGraph.speakerOptions
                     readonly property string targetId: editor.selectedNode ? editor.selectedNode.parameters.target || "" : ""
+                    readonly property bool targetAvailable: targets.some(function(item) { return item.value === inspector.targetId })
                     readonly property var members: reading
-                        ? (targets.some(function(item) { return item.value === inspector.targetId })
-                            ? demoGraph.readMembers(targetId) : [])
-                        : demoGraph.operationMembers(selectedType)
+                        ? (targetAvailable ? demoGraph.readMembers(targetId) : [])
+                        : demoGraph.operationMembers(selectedType, targetId)
+                    readonly property bool propertyWritable: selectedType === "demo.setProperty" && targetAvailable
+                        && members.some(function(item) { return editor.selectedNode && item.value === editor.selectedNode.parameters.member })
                     implicitWidth: 226
                     color: window.appTheme.colors.backgroundSurface
                     border.color: window.appTheme.colors.border
@@ -796,7 +795,7 @@ ApplicationWindow {
                         }
 
                         ColumnLayout {
-                            visible: inspector.reading || inspector.members.length > 0
+                            visible: inspector.reading || inspector.selectedType === "demo.setProperty" || inspector.selectedType === "demo.call"
                             Layout.fillWidth: true
                             spacing: 7
 
@@ -824,7 +823,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 placeholderText: qsTr("选择属性或接口")
                                 options: inspector.members
-                                enabled: !inspector.reading || inspector.members.length > 0
+                                enabled: inspector.targetAvailable && inspector.members.length > 0
                                 value: editor.selectedNode ? editor.selectedNode.parameters.member : undefined
                                 onValueSelected: {
                                     if (!editor.selectedNode)
@@ -837,7 +836,7 @@ ApplicationWindow {
                             }
                             Text {
                                 visible: inspector.selectedType === "demo.setProperty"
-                                text: qsTr("未连线时使用此值（毫秒）")
+                                text: inspector.propertyWritable ? qsTr("未连线时使用此值（毫秒）") : qsTr("请选择可写属性后设置")
                                 color: window.appTheme.colors.subtleText
                                 font.pixelSize: 12
                             }
@@ -845,6 +844,7 @@ ApplicationWindow {
                                 id: durationField
                                 objectName: "operationDuration"
                                 visible: inspector.selectedType === "demo.setProperty"
+                                enabled: inspector.propertyWritable
                                 Layout.fillWidth: true
                                 text: visible && editor.selectedNode ? String(editor.selectedNode.parameters.value) : ""
                                 onAccepted: if (editor.selectedNodeId)
@@ -852,6 +852,7 @@ ApplicationWindow {
                             }
                             Base.AppButton {
                                 visible: inspector.selectedType === "demo.setProperty"
+                                enabled: inspector.propertyWritable
                                 Layout.fillWidth: true
                                 text: qsTr("应用输入值")
                                 onClicked: if (editor.selectedNodeId)

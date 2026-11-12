@@ -16,6 +16,8 @@ FocusScope {
     property point pan: Qt.point(0, 0)
     property string pendingNode: ""
     property string pendingPort: ""
+    property bool pendingOutput: true
+    property string reconnectId: ""
     property point pointer: Qt.point(0, 0)
     property var connectionTarget: null
     property var nodeItems: ({})
@@ -58,9 +60,18 @@ FocusScope {
     onLinksChanged: {
         if (selectedConnectionId && !links.some(function(link) { return link.id === selectedConnectionId }))
             selectedConnectionId = ""
+        if (reconnectId && !links.some(function(link) { return link.id === reconnectId }))
+            interactionHost.interactionCanceled()
         Qt.callLater(resolveWires)
     }
-    onPendingNodeChanged: Qt.callLater(resolveWires)
+    onPendingNodeChanged: {
+        if (!pendingNode) {
+            reconnectId = ""
+            connectionTarget = null
+        }
+        Qt.callLater(resolveWires)
+    }
+    onReconnectIdChanged: Qt.callLater(resolveWires)
     onPointerChanged: if (pendingNode) Qt.callLater(resolveWires)
     Keys.priority: Keys.AfterItem
     Keys.onPressed: {
@@ -176,31 +187,55 @@ FocusScope {
         return anchor ? item.mapToItem(canvas, anchor.x, anchor.y) : null
     }
 
+    // 吸附预检与提交共用端点和替换连线，避免预览允许而提交失败。
+    function connectionProposal(nodeId, key) {
+        var source = pendingOutput ? pendingNode : nodeId
+        var sourcePort = pendingOutput ? pendingPort : key
+        var target = pendingOutput ? nodeId : pendingNode
+        var targetPort = pendingOutput ? key : pendingPort
+        var id = reconnectId
+        if (!id) {
+            for (var i = 0; i < links.length; ++i) {
+                var link = links[i]
+                if (link.target === target && link.targetPort === targetPort) {
+                    id = link.id
+                    break
+                }
+            }
+        }
+        return {source: source, sourcePort: sourcePort, target: target, targetPort: targetPort, id: id}
+    }
+
     function resolveWires() {
         var segments = []
         for (var i = 0; i < links.length; ++i) {
             var link = links[i]
+            if (link.id === reconnectId)
+                continue
             var from = viewportAnchor(link.source, link.sourcePort, true)
             var to = viewportAnchor(link.target, link.targetPort, false)
             if (from && to)
                 segments.push({id: link.id, from: from, to: to,
-                               execution: nodeItems[link.source].executionKeys.indexOf(link.sourcePort) !== -1})
+                               execution: link.execution})
         }
         var target = null, invalidTarget = null
         var distance = 16 * 16, invalidDistance = distance
         if (pendingNode && session) {
             for (var id in nodeItems) {
                 var item = nodeItems[id]
-                for (var p = 0; p < item.inputs.length; ++p) {
-                    var key = item.inputs[p]
-                    var anchor = viewportAnchor(id, key, false)
+                var ports = pendingOutput ? item.inputs : item.outputs
+                for (var p = 0; p < ports.length; ++p) {
+                    var key = ports[p].key
+                    var anchor = viewportAnchor(id, key, !pendingOutput)
                     if (!anchor)
                         continue
                     var dx = pointer.x - anchor.x, dy = pointer.y - anchor.y
                     var candidate = dx * dx + dy * dy
                     if (candidate > 16 * 16)
                         continue
-                    var error = session.canConnect(pendingNode, pendingPort, id, key)
+                    var proposal = connectionProposal(id, key)
+                    var error = session.canConnect(proposal.source, proposal.sourcePort,
+                                                   proposal.target, proposal.targetPort, proposal.id)
                     if (!error && candidate <= distance) {
                         target = {nodeId: id, portKey: key, position: anchor, error: ""}
                         distance = candidate
@@ -213,11 +248,16 @@ FocusScope {
         }
         connectionTarget = target || invalidTarget
         wireLayer.segments = segments
-        wireLayer.draftStart = pendingNode ? viewportAnchor(pendingNode, pendingPort, true) : null
+        wireLayer.draftStart = pendingNode ? viewportAnchor(pendingNode, pendingPort, pendingOutput) : null
     }
 
-    function connectInput(nodeId, key) {
-        if (pendingNode && session.connectPorts(pendingNode, pendingPort, nodeId, key))
+    function completeConnection(nodeId, key) {
+        var proposal = connectionProposal(nodeId, key)
+        var connected = proposal.id
+            ? session.reconnectConnection(proposal.id, proposal.source, proposal.sourcePort,
+                                          proposal.target, proposal.targetPort)
+            : session.connectPorts(proposal.source, proposal.sourcePort, proposal.target, proposal.targetPort)
+        if (connected)
             pendingNode = ""
     }
 
@@ -259,9 +299,11 @@ FocusScope {
         objectName: "connectionLayer"
         anchors.fill: parent
         property var draftStart: null
+        property point draftEnd: canvas.connectionTarget && !canvas.connectionTarget.error
+                                 ? canvas.connectionTarget.position : canvas.pointer
         preview: canvas.pendingNode && draftStart
-                 ? ({from: draftStart, to: canvas.connectionTarget && !canvas.connectionTarget.error
-                                          ? canvas.connectionTarget.position : canvas.pointer}) : null
+                 ? (canvas.pendingOutput ? {from: draftStart, to: draftEnd}
+                                         : {from: draftEnd, to: draftStart}) : null
         zoom: canvas.zoom
         lineColor: canvas.colors ? canvas.colors.highlightText : "transparent"
         executionColor: canvas.colors ? canvas.colors.successText : "transparent"
@@ -306,8 +348,7 @@ FocusScope {
         property bool panning: false
         property bool canceled: true
         onPressed: {
-            if (mouse.button !== Qt.LeftButton || !canvas.pendingNode)
-                canvas.interactionHost.interactionCanceled()
+            canvas.interactionHost.interactionCanceled()
             backgroundArea.forceActiveFocus()
             canceled = false
             origin = Qt.point(mouse.x, mouse.y)
@@ -317,7 +358,7 @@ FocusScope {
         onEntered: canvas.pointer = Qt.point(mouseX, mouseY)
         onPositionChanged: {
             canvas.pointer = Qt.point(mouse.x, mouse.y)
-            if (pressed && !canceled && (mouse.buttons & Qt.MiddleButton)) {
+            if (pressed && !canceled && (mouse.buttons & (Qt.LeftButton | Qt.MiddleButton))) {
                 var dx = mouse.x - origin.x, dy = mouse.y - origin.y
                 if (panning || Math.abs(dx) + Math.abs(dy) >= Qt.styleHints.startDragDistance) {
                     panning = true
@@ -325,7 +366,11 @@ FocusScope {
                 }
             }
         }
-        onReleased: panning = false
+        onReleased: {
+            // 平移后不再按单击处理，包括拖回按下位置的情况。
+            canceled = canceled || panning
+            panning = false
+        }
         onCanceled: canvas.interactionHost.interactionCanceled()
         onClicked: {
             if (canceled || Math.abs(mouse.x - origin.x) + Math.abs(mouse.y - origin.y) >= Qt.styleHints.startDragDistance)
@@ -387,16 +432,17 @@ FocusScope {
                 contentComponent: canvas.nodeContents ? canvas.nodeContents[nodeType] || null : null
                 inputs: inputPorts
                 outputs: outputPorts
-                executionKeys: executionPorts
                 graphPosition: nodePosition
                 colors: canvas.colors
                 viewport: canvas
                 viewScale: canvas.zoom
                 selected: canvas.selectedNodeId === card.nodeKey
-                activeOutput: canvas.pendingNode === card.nodeKey ? canvas.pendingPort : ""
+                activeOutput: canvas.pendingOutput && canvas.pendingNode === card.nodeKey ? canvas.pendingPort : ""
                 connecting: canvas.pendingNode !== ""
-                targetInput: canvas.connectionTarget && canvas.connectionTarget.nodeId === card.nodeKey
-                             ? canvas.connectionTarget.portKey : ""
+                targetInput: canvas.pendingOutput && canvas.connectionTarget
+                             && canvas.connectionTarget.nodeId === card.nodeKey ? canvas.connectionTarget.portKey : ""
+                targetOutput: !canvas.pendingOutput && canvas.connectionTarget
+                              && canvas.connectionTarget.nodeId === card.nodeKey ? canvas.connectionTarget.portKey : ""
                 connectionError: canvas.connectionTarget ? canvas.connectionTarget.error : ""
                 onAnchorsChanged: Qt.callLater(canvas.resolveWires)
                 onActivated: {
@@ -405,27 +451,7 @@ FocusScope {
                     canvas.selectedNodeId = card.nodeKey
                 }
                 onMoveRequested: canvas.session.moveNode(card.nodeKey, position)
-                onOutputPressed: {
-                    canvas.interactionHost.interactionCanceled()
-                    backgroundArea.forceActiveFocus()
-                    canvas.selectedNodeId = card.nodeKey
-                    canvas.pendingPort = key
-                    canvas.pendingNode = card.nodeKey
-                    canvas.pointer = position
-                    Qt.callLater(canvas.resolveWires)
-                }
-                onConnectionPointerMoved: canvas.pointer = position
-                onOutputCanceled: canvas.pendingNode = ""
-                onOutputReleased: {
-                    if (!canvas.pendingNode)
-                        return
-                    canvas.pointer = position
-                    canvas.resolveWires()
-                    if (canvas.connectionTarget)
-                        canvas.connectInput(canvas.connectionTarget.nodeId, canvas.connectionTarget.portKey)
-                    canvas.pendingNode = ""
-                }
-                onInputPressed: {
+                onPortPressed: {
                     backgroundArea.forceActiveFocus()
                     if (contextRequested) {
                         canvas.interactionHost.interactionCanceled()
@@ -437,10 +463,44 @@ FocusScope {
                                 return
                             }
                         }
+                        canvas.selectedNodeId = card.nodeKey
+                        return
                     }
                     canvas.selectedNodeId = card.nodeKey
-                    if (!contextRequested)
-                        canvas.connectInput(card.nodeKey, key)
+                    var existing = null
+                    for (var j = 0; j < canvas.links.length; ++j) {
+                        var link = canvas.links[j]
+                        if ((!isOutput && link.target === card.nodeKey && link.targetPort === key)
+                            || (isOutput && link.execution && link.source === card.nodeKey
+                                && link.sourcePort === key)) {
+                            existing = link
+                            break
+                        }
+                    }
+                    // 再次按下正在重接的端口时继续拖线，不提前完成原连接。
+                    if (canvas.pendingNode && canvas.pendingOutput !== isOutput
+                        && (!existing || existing.id !== canvas.reconnectId)) {
+                        canvas.completeConnection(card.nodeKey, key)
+                        return
+                    }
+                    canvas.interactionHost.interactionCanceled()
+                    canvas.reconnectId = existing ? existing.id : ""
+                    canvas.pendingOutput = isOutput || !!existing
+                    canvas.pendingPort = !isOutput && existing ? existing.sourcePort : key
+                    canvas.pendingNode = !isOutput && existing ? existing.source : card.nodeKey
+                    canvas.pointer = position
+                    Qt.callLater(canvas.resolveWires)
+                }
+                onConnectionPointerMoved: canvas.pointer = position
+                onConnectionCanceled: canvas.interactionHost.interactionCanceled()
+                onPortReleased: {
+                    if (!canvas.pendingNode)
+                        return
+                    canvas.pointer = position
+                    canvas.resolveWires()
+                    if (canvas.connectionTarget)
+                        canvas.completeConnection(canvas.connectionTarget.nodeId, canvas.connectionTarget.portKey)
+                    canvas.pendingNode = ""
                 }
             }
         }

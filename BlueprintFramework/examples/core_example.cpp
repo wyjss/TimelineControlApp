@@ -30,9 +30,9 @@ int main(int argc, char *argv[])
 
     NodeRegistry registry;
     for (const auto &definition : {constantType, displayType}) {
-        const QString error = registry.add(definition);
-        if (!error.isEmpty()) {
-            errors << error << '\n';
+        const Diagnostic error = registry.add(definition);
+        if (!error.code.isEmpty()) {
+            errors << error.message << '\n';
             return 1;
         }
     }
@@ -47,14 +47,14 @@ int main(int argc, char *argv[])
 
     const EditResult constant = graph.addNode(constantType.typeId, QPointF(40, 80));
     const EditResult display = graph.addNode(displayType.typeId, QPointF(300, 80));
-    if (!constant.error.isEmpty() || !display.error.isEmpty()
+    if (!constant.error.code.isEmpty() || !display.error.code.isEmpty()
         || graph.parameterValue(constant.id, valueKey) != QVariant(0.0)) {
         errors << "Node creation or default value check failed.\n";
         return 1;
     }
 
     const EditResult parameterEdit = graph.setParameter(constant.id, valueKey, 42.0);
-    if (!parameterEdit.error.isEmpty() || graph.parameterValue(constant.id, valueKey) != QVariant(42.0)
+    if (!parameterEdit.error.code.isEmpty() || graph.parameterValue(constant.id, valueKey) != QVariant(42.0)
         || lastChange.changedNodes.size() != 1
         || lastChange.changedNodes.first().parameterKeys != QStringList{valueKey}) {
         errors << "Parameter edit or notification check failed.\n";
@@ -67,16 +67,16 @@ int main(int argc, char *argv[])
     const quint64 beforeRejectedEdit = graph.revision();
     const int beforeRejectedNotification = notificationCount;
     const EditResult rejected = graph.connectPorts(source, incompatibleTarget);
-    if (rejected.error.isEmpty() || graph.canConnect(source, incompatibleTarget) != rejected.error
+    if (rejected.error.code.isEmpty() || graph.canConnect(source, incompatibleTarget).code != rejected.error.code
         || graph.revision() != beforeRejectedEdit || notificationCount != beforeRejectedNotification
         || !graph.data().connections.isEmpty()) {
         errors << "An invalid connection changed the graph.\n";
         return 1;
     }
-    output << "Rejected connection: " << rejected.error << '\n';
+    output << "Rejected connection: " << rejected.error.message << '\n';
 
     const EditResult connection = graph.connectPorts(source, target);
-    if (!connection.error.isEmpty() || lastChange.addedConnectionIds != QVector<QUuid>{connection.id}) {
+    if (!connection.error.code.isEmpty() || lastChange.addedConnectionIds != QVector<QUuid>{connection.id}) {
         errors << "Connection or notification check failed.\n";
         return 1;
     }
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 
     const int beforeRemoval = notificationCount;
     const EditResult removed = graph.removeNode(constant.id);
-    if (!removed.error.isEmpty() || notificationCount != beforeRemoval + 1
+    if (!removed.error.code.isEmpty() || notificationCount != beforeRemoval + 1
         || lastChange.removedNodeIds != QVector<QUuid>{constant.id}
         || lastChange.removedConnectionIds != QVector<QUuid>{connection.id}
         || lastChange.revision != graph.revision()

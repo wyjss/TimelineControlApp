@@ -17,6 +17,7 @@ GraphEditSession::GraphEditSession(GraphDocument &document, QObject *parent)
     static const bool initialized = (initializeBlueprintQuickResources(), true);
     Q_UNUSED(initialized);
     connect(&m_document, &GraphDocument::changed, this, &GraphEditSession::applyChange);
+    connect(&m_document, &GraphDocument::typesChanged, this, &GraphEditSession::typesChanged);
 }
 
 int GraphEditSession::rowCount(const QModelIndex &parent) const
@@ -34,21 +35,16 @@ QVariant GraphEditSession::data(const QModelIndex &index, int role) const
     case TypeRole: return node.typeId;
     case TitleRole: return m_document.findNodeType(node.typeId)->displayName;
     case PositionRole: return node.position;
-    case ExecutionPortsRole: {
-        QStringList ports;
-        for (const PortDefinition &port : m_document.findNodeType(node.typeId)->ports) {
-            if (port.valueTypeId == executionPortType)
-                ports.append(port.key);
-        }
-        return ports;
-    }
     case InputsRole:
     case OutputsRole: {
-        QStringList ports;
+        QVariantList ports;
         const auto direction = role == InputsRole ? PortDirection::Input : PortDirection::Output;
-        for (const PortDefinition &port : m_document.findNodeType(node.typeId)->ports) {
+        for (const PortDefinition &port : m_document.nodePorts(node.id)) {
             if (port.direction == direction)
-                ports.append(port.key);
+                ports.append(QVariantMap{{QStringLiteral("key"), port.key},
+                    {QStringLiteral("title"), port.displayName.isEmpty() ? port.key : port.displayName},
+                    {QStringLiteral("valueTypeId"), port.valueTypeId},
+                    {QStringLiteral("execution"), port.kind == PortKind::Execution}});
         }
         return ports;
     }
@@ -66,7 +62,7 @@ QHash<int, QByteArray> GraphEditSession::roleNames() const
 {
     return {{IdRole, "nodeId"}, {TypeRole, "nodeType"}, {TitleRole, "nodeTitle"},
             {PositionRole, "nodePosition"}, {InputsRole, "inputPorts"}, {OutputsRole, "outputPorts"},
-            {ParametersRole, "nodeParameters"}, {ExecutionPortsRole, "executionPorts"}};
+            {ParametersRole, "nodeParameters"}};
 }
 
 QString GraphEditSession::graphId() const { return m_graphId.toString(QUuid::WithoutBraces); }
@@ -76,8 +72,16 @@ QVariantList GraphEditSession::connections() const
     QVariantList links;
     links.reserve(m_document.data().connections.size());
     for (const ConnectionData &link : m_document.data().connections) {
+        bool execution = false;
+        for (const PortDefinition &port : m_document.nodePorts(link.source.nodeId)) {
+            if (port.key == link.source.portKey) {
+                execution = port.kind == PortKind::Execution;
+                break;
+            }
+        }
         links.append(QVariantMap{
             {QStringLiteral("id"), link.id.toString(QUuid::WithoutBraces)},
+            {QStringLiteral("execution"), execution},
             {QStringLiteral("source"), link.source.nodeId.toString(QUuid::WithoutBraces)},
             {QStringLiteral("sourcePort"), link.source.portKey},
             {QStringLiteral("target"), link.target.nodeId.toString(QUuid::WithoutBraces)},
@@ -87,7 +91,44 @@ QVariantList GraphEditSession::connections() const
     return links;
 }
 
-QString GraphEditSession::error() const { return m_error; }
+QString GraphEditSession::error() const { return m_error.message; }
+
+QVariantMap GraphEditSession::diagnostic() const
+{
+    return {{QStringLiteral("code"), m_error.code}, {QStringLiteral("message"), m_error.message},
+            {QStringLiteral("nodeId"), m_error.nodeId.toString(QUuid::WithoutBraces)},
+            {QStringLiteral("key"), m_error.key}};
+}
+
+QVariantList GraphEditSession::nodeTypes() const
+{
+    QVariantList result;
+    for (const NodeTypeDefinition &type : m_document.registry().definitions()) {
+        QVariantList parameters;
+        for (const ParameterDefinition &parameter : type.parameters) {
+            parameters.append(QVariantMap{{QStringLiteral("key"), parameter.key},
+                {QStringLiteral("title"), parameter.displayName.isEmpty() ? parameter.key : parameter.displayName},
+                {QStringLiteral("valueTypeId"), parameter.valueTypeId},
+                {QStringLiteral("defaultValue"), parameter.defaultValue},
+                {QStringLiteral("allowedValues"), parameter.allowedValues},
+                {QStringLiteral("description"), parameter.description},
+                {QStringLiteral("minimum"), parameter.minimum}, {QStringLiteral("maximum"), parameter.maximum},
+                {QStringLiteral("integer"), parameter.integer}});
+        }
+        QVariantList properties;
+        for (const PropertyDefinition &property : type.properties) {
+            properties.append(QVariantMap{{QStringLiteral("key"), property.value.key},
+                {QStringLiteral("title"), property.value.displayName.isEmpty() ? property.value.key : property.value.displayName},
+                {QStringLiteral("valueTypeId"), property.value.valueTypeId},
+                {QStringLiteral("writable"), property.writable}});
+        }
+        result.append(QVariantMap{{QStringLiteral("typeId"), type.typeId},
+            {QStringLiteral("title"), type.displayName}, {QStringLiteral("categoryId"), type.categoryId},
+            {QStringLiteral("description"), type.description}, {QStringLiteral("symbol"), type.symbol},
+            {QStringLiteral("parameters"), parameters}, {QStringLiteral("properties"), properties}});
+    }
+    return result;
+}
 bool GraphEditSession::canUndo() const { return m_historyIndex > 0; }
 bool GraphEditSession::canRedo() const { return m_historyIndex + 1 < m_history.size(); }
 bool GraphEditSession::modified() const { return m_savedIndex != m_historyIndex; }
@@ -136,16 +177,36 @@ bool GraphEditSession::setParameter(const QString &nodeId, const QString &key, c
     return report(m_document.setParameter(QUuid(nodeId), key, value).error);
 }
 
-QString GraphEditSession::canConnect(const QString &sourceId, const QString &sourcePort,
-                                     const QString &targetId, const QString &targetPort) const
+bool GraphEditSession::setParameters(const QString &nodeId, const QVariantMap &values)
 {
-    return m_document.canConnect({QUuid(sourceId), sourcePort}, {QUuid(targetId), targetPort});
+    return report(m_document.setParameters(QUuid(nodeId), values).error);
+}
+
+bool GraphEditSession::resetParameter(const QString &nodeId, const QString &key)
+{
+    return report(m_document.setParameter(QUuid(nodeId), key, {}).error);
+}
+
+QString GraphEditSession::canConnect(const QString &sourceId, const QString &sourcePort,
+                                     const QString &targetId, const QString &targetPort,
+                                     const QString &connectionToIgnore) const
+{
+    return m_document.canConnect({QUuid(sourceId), sourcePort}, {QUuid(targetId), targetPort},
+                                 QUuid(connectionToIgnore)).message;
 }
 
 bool GraphEditSession::connectPorts(const QString &sourceId, const QString &sourcePort,
                                      const QString &targetId, const QString &targetPort)
 {
     return report(m_document.connectPorts({QUuid(sourceId), sourcePort}, {QUuid(targetId), targetPort}).error);
+}
+
+bool GraphEditSession::reconnectConnection(const QString &connectionId,
+                                             const QString &sourceId, const QString &sourcePort,
+                                             const QString &targetId, const QString &targetPort)
+{
+    return report(m_document.reconnectConnection(QUuid(connectionId),
+        {QUuid(sourceId), sourcePort}, {QUuid(targetId), targetPort}).error);
 }
 
 void GraphEditSession::removeConnection(const QString &connectionId)
@@ -207,6 +268,8 @@ void GraphEditSession::applyChange(const GraphChangeSet &change)
                     roles.append(PositionRole);
                 if (!node.parameterKeys.isEmpty())
                     roles.append(ParametersRole);
+                if (node.portsChanged)
+                    roles << InputsRole << OutputsRole;
                 emit dataChanged(index(row), index(row), roles);
                 break;
             }
@@ -225,25 +288,26 @@ void GraphEditSession::applyChange(const GraphChangeSet &change)
     emit graphChanged();
 }
 
-bool GraphEditSession::report(const QString &error)
+bool GraphEditSession::report(const Diagnostic &error)
 {
-    if (m_error != error) {
+    if (m_error.code != error.code || m_error.message != error.message
+        || m_error.nodeId != error.nodeId || m_error.key != error.key) {
         m_error = error;
         emit errorChanged();
     }
-    return error.isEmpty();
+    return error.code.isEmpty();
 }
 
 void GraphEditSession::restoreHistory(int index)
 {
     if (index < 0 || index >= m_history.size())
         return;
-    QString error;
+    Diagnostic error;
     {
         QScopedValueRollback<bool> restoring(m_restoring, true);
         error = m_document.replaceData(m_history.at(index));
     }
-    if (error.isEmpty()) {
+    if (error.code.isEmpty()) {
         m_historyIndex = index;
         emit historyChanged();
     }

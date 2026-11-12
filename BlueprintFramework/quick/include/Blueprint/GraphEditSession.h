@@ -13,6 +13,8 @@ class GraphEditSession final : public QAbstractListModel
     Q_PROPERTY(QString graphId READ graphId NOTIFY graphIdChanged)
     Q_PROPERTY(QVariantList connections READ connections NOTIFY connectionsChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
+    Q_PROPERTY(QVariantMap diagnostic READ diagnostic NOTIFY errorChanged)
+    Q_PROPERTY(QVariantList nodeTypes READ nodeTypes NOTIFY typesChanged)
     Q_PROPERTY(bool canUndo READ canUndo NOTIFY historyChanged)
     Q_PROPERTY(bool canRedo READ canRedo NOTIFY historyChanged)
     Q_PROPERTY(bool modified READ modified NOTIFY historyChanged)
@@ -27,6 +29,8 @@ public:
     QString graphId() const;
     QVariantList connections() const;
     QString error() const;
+    QVariantMap diagnostic() const;
+    QVariantList nodeTypes() const;
     bool canUndo() const;
     bool canRedo() const;
     bool modified() const;
@@ -39,11 +43,17 @@ public:
     Q_INVOKABLE void moveNode(const QString &nodeId, QPointF position);
     Q_INVOKABLE void removeNode(const QString &nodeId);
     Q_INVOKABLE bool setParameter(const QString &nodeId, const QString &key, const QVariant &value);
-    //! 预检返回空字符串表示允许，不改变文档或会话错误。
+    Q_INVOKABLE bool setParameters(const QString &nodeId, const QVariantMap &values);
+    Q_INVOKABLE bool resetParameter(const QString &nodeId, const QString &key);
+    //! 预检返回空字符串表示允许，不改变文档或会话错误。重接时排除原连线。
     Q_INVOKABLE QString canConnect(const QString &sourceId, const QString &sourcePort,
-                                   const QString &targetId, const QString &targetPort) const;
+                                   const QString &targetId, const QString &targetPort,
+                                   const QString &connectionToIgnore = {}) const;
     Q_INVOKABLE bool connectPorts(const QString &sourceId, const QString &sourcePort,
                                   const QString &targetId, const QString &targetPort);
+    Q_INVOKABLE bool reconnectConnection(const QString &connectionId,
+                                          const QString &sourceId, const QString &sourcePort,
+                                          const QString &targetId, const QString &targetPort);
     Q_INVOKABLE void removeConnection(const QString &connectionId);
     Q_INVOKABLE void disconnectInput(const QString &nodeId, const QString &portKey);
     Q_INVOKABLE void undo();
@@ -51,6 +61,7 @@ public:
 
 signals:
     void graphIdChanged();
+    void typesChanged();
     void connectionsChanged();
     void errorChanged();
     void historyChanged();
@@ -59,10 +70,10 @@ signals:
 
 private:
     enum Role { IdRole = Qt::UserRole + 1, TypeRole, TitleRole, PositionRole,
-                InputsRole, OutputsRole, ParametersRole, ExecutionPortsRole };
+                InputsRole, OutputsRole, ParametersRole };
 
     void applyChange(const GraphChangeSet &change);
-    bool report(const QString &error);
+    bool report(const Diagnostic &error);
     void restoreHistory(int index);
 
     GraphDocument &m_document;
@@ -72,7 +83,7 @@ private:
     int m_historyIndex = 0;
     int m_savedIndex = 0;
     bool m_restoring = false;
-    QString m_error;
+    Diagnostic m_error;
 };
 
 } // namespace Blueprint
