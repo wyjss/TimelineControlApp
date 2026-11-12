@@ -79,6 +79,7 @@ namespace DeviceKey {
 	inline const QString Dmx512CommandBits = "dmx512CommandBits";
 
 	inline const QString MacAddress = "macAddress";
+	inline const QString PlayerType = "playerType";
 	inline const QString HttpMethod = "httpMethod";
 	//inline const QString HttpQueryParams = "httpQueryParams";
 	inline const QString HttpBody = "httpBody";

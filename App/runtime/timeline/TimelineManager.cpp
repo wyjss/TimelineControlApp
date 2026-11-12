@@ -357,6 +357,7 @@ bool TimelineManager::startTimeline(const QString &id, qint64 startTimeMs)
     if (!timeline)
         return false;
 
+    LOG_INFO("start timeline " << timeline->name())
     if (m_clock->state() != TimelineClock::Running)
         m_clock->start();
     const qint64 clockTimeMs = m_clock->currentTimeMs();

@@ -47,7 +47,10 @@
 
             <div class="transport" aria-label="播控操作">
                 <button id="stop-button" class="button danger" type="button"><span>■</span>停止</button>
-                <button id="primary-button" class="button primary" type="button" disabled><span id="primary-icon">▶</span><span id="primary-label">播放当前节目</span></button>
+                <div class="playback-control">
+                    <button id="primary-button" class="button primary" type="button" aria-describedby="primary-playback-scope" disabled><span id="primary-icon">▶</span><span id="primary-label">播放当前节目</span></button>
+                    <span id="primary-playback-scope" class="playback-scope-badge" hidden></span>
+                </div>
                 <button id="refresh-button" class="button ghost" type="button">↻ 刷新</button>
             </div>
         </section>
@@ -72,6 +75,7 @@
                     <button type="button" data-query="安康" aria-pressed="false">安康</button>
                     <button type="button" data-query="天汉" aria-pressed="false">天汉</button>
                     <button type="button" data-query="秦巴" aria-pressed="false">秦巴</button>
+                    <button type="button" data-query="测试" aria-pressed="false">测试</button>
                 </div>
                 <div id="timeline-list" class="timeline-list"></div>
                 <div id="empty-timelines" class="empty-state" hidden>当前方案中还没有节目</div>
@@ -109,8 +113,13 @@
                             <span id="device-count" class="count-badge">0</span>
                         </div>
                     </div>
+                    <label class="filter-option execution-filter-option">
+                        <input id="execution-filter" type="checkbox" aria-describedby="execution-filter-impact">
+                        <span>仅向范围内设备发送播放指令</span>
+                        <span id="execution-filter-badge" class="playback-scope-badge" aria-hidden="true" hidden>已开启</span>
+                    </label>
+                    <p id="execution-filter-impact" class="execution-filter-impact" hidden></p>
                     <label class="filter-option"><input id="show-filtered-out" type="checkbox">显示范围外设备指令（置灰）</label>
-                    <label class="filter-option"><input id="execution-filter" type="checkbox">仅向范围内设备发送播放指令</label>
                     <div id="device-list" class="device-list"></div>
                     <div id="empty-devices" class="empty-state">当前方案中没有设备</div>
                 </section>
@@ -125,7 +134,10 @@
                         <span id="queue-count" class="count-badge">0</span>
                     </div>
                     <div class="queue-transport" aria-label="队列播控">
-                        <button id="queue-play-button" class="button primary" type="button">播放队列</button>
+                        <div class="playback-control">
+                            <button id="queue-play-button" class="button primary" type="button" aria-describedby="queue-playback-scope">播放队列</button>
+                            <span id="queue-playback-scope" class="playback-scope-badge" hidden></span>
+                        </div>
                         <button id="queue-stop-button" class="button" type="button">停止</button>
                         <button id="clear-queue-button" class="text-button" type="button">清空</button>
                     </div>

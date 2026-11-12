@@ -84,6 +84,13 @@
 				},
 				{
 					"time": "00:00:00.000",
+					"deviceName": "灯光知音船控台",
+					"cmdName": "测试",
+					"simName": "测试",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
 					"deviceName": "灯光龙舟船控台",
 					"cmdName": "测试",
 					"simName": "测试",
@@ -92,6 +99,20 @@
 				{
 					"time": "00:00:00.000",
 					"deviceName": "灯光龙舟2船控台",
+					"cmdName": "测试",
+					"simName": "测试",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光马车船控台",
+					"cmdName": "测试",
+					"simName": "测试",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光卷轴船控台",
 					"cmdName": "测试",
 					"simName": "测试",
 					"params": {}
@@ -182,6 +203,13 @@
 				},
 				{
 					"time": "00:00:00.000",
+					"deviceName": "灯光知音船控台",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
 					"deviceName": "灯光龙舟船控台",
 					"cmdName": "停止",
 					"simName": "停止",
@@ -190,6 +218,20 @@
 				{
 					"time": "00:00:00.000",
 					"deviceName": "灯光龙舟2船控台",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光马车船控台",
+					"cmdName": "停止",
+					"simName": "停止",
+					"params": {}
+				},
+				{
+					"time": "00:00:00.000",
+					"deviceName": "灯光卷轴船控台",
 					"cmdName": "停止",
 					"simName": "停止",
 					"params": {}

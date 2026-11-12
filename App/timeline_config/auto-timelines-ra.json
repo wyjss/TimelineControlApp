@@ -1,0 +1,148 @@
+{
+	"timelines": [
+		{
+			"name": "主时间轴",
+			"cmds": [
+				{
+					"time": "59:59:59.000",
+					"deviceName": "一维水西门投影服务器",
+					"cmdName": "占位",
+					"simName": "占位",
+					"params": {}
+				}
+			]
+		},
+		{
+			"name": "NO.1飞跃环球",
+			"refOnly": false,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "加载视频",
+					"simName": "加载视频",
+					"params": {
+						"videoWindowY": 0,
+						"videoWindowX": 0,
+						"videoWindowW": 0,
+						"videoWindowH": 0,
+						"videoTimeSec": 0.0,
+						"videoSrcY": 0,
+						"videoSrcX": 0,
+						"videoSrcW": 0,
+						"videoSrcH": 0,
+						"videoFile": "$NO.1飞跃环球60FPS.mp4",
+						"play": false,
+						"avLoop": "false"
+					}
+				},
+				{
+					"time": "00:00:01.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "播放视频",
+					"simName": "播放视频",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:04:16.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				}
+			]
+		},
+		{
+			"name": "NO.7迪拜白天",
+			"refOnly": false,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "加载视频",
+					"simName": "加载视频",
+					"params": {
+						"videoWindowY": 0,
+						"videoWindowX": 0,
+						"videoWindowW": 0,
+						"videoWindowH": 0,
+						"videoTimeSec": 0.0,
+						"videoSrcY": 0,
+						"videoSrcX": 0,
+						"videoSrcW": 0,
+						"videoSrcH": 0,
+						"videoFile": "$NO.7迪拜白天.mp4",
+						"play": false,
+						"avLoop": "false"
+					}
+				},
+				{
+					"time": "00:00:01.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "播放视频",
+					"simName": "播放视频",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:01:59.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				}
+			]
+		},
+		{
+			"name": "NO.14商业广场",
+			"refOnly": false,
+			"cmds": [
+				{
+					"time": "00:00:00.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "加载视频",
+					"simName": "加载视频",
+					"params": {
+						"videoWindowY": 0,
+						"videoWindowX": 0,
+						"videoWindowW": 0,
+						"videoWindowH": 0,
+						"videoTimeSec": 0.0,
+						"videoSrcY": 0,
+						"videoSrcX": 0,
+						"videoSrcW": 0,
+						"videoSrcH": 0,
+						"videoFile": "$NO.14商业广场.mp4",
+						"play": false,
+						"avLoop": "false"
+					}
+				},
+				{
+					"time": "00:00:01.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "播放视频",
+					"simName": "播放视频",
+					"params": {
+						"videoFile": ""
+					}
+				},
+				{
+					"time": "00:00:06.000",
+					"deviceName": "球幕服务器",
+					"cmdName": "停止播放",
+					"simName": "停止播放",
+					"params": {
+						"videoFile": ""
+					}
+				}
+			]
+		}
+	]
+}

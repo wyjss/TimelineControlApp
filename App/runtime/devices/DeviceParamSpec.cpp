@@ -202,6 +202,16 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
 		return spec;
 	}
 
+	if (deviceKey == DeviceKey::PlayerType) {
+		auto* spec = new DeviceParamSpec(deviceKey,
+										 QStringLiteral("播放器类型"),
+										 QStringLiteral("virtual"),
+                                         SelectType,
+                                         SelectEditor);
+        spec->setOptions({"virtual", "dome"});
+		return spec;
+	}
+
     if (deviceKey == DeviceKey::Port) {
         auto *spec = new DeviceParamSpec(deviceKey,
                                          QStringLiteral("端口"),

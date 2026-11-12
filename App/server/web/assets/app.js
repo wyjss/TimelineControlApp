@@ -6,7 +6,8 @@ const elements = Object.fromEntries([
     "empty-timelines", "queue-panel", "queue-count", "queue-list", "queue-status",
     "queue-play-button", "queue-stop-button", "clear-queue-button", "device-count",
     "device-list", "empty-devices", "device-selection", "reset-devices-button", "command-program", "command-count", "command-list",
-    "empty-commands", "toast", "show-filtered-out", "execution-filter",
+    "empty-commands", "toast", "show-filtered-out", "execution-filter", "execution-filter-badge",
+    "execution-filter-impact", "primary-playback-scope", "queue-playback-scope",
     "confirm-dialog", "confirm-form", "confirm-title", "confirm-message", "confirm-password-field",
     "confirm-password", "confirm-cancel", "confirm-accept"
 ].map(id => [id, document.getElementById(id)]));
@@ -333,7 +334,9 @@ function renderQueue(data) {
 function renderDevices(data) {
     const selectedIds = data.filterDeviceIds;
     const selectedGroups = data.filterGroupNames.concat(data.filterDeviceTypes.map(type => `${type}（类型分组）`));
-    const locked = data.executionFilterEnabled && data.playbackState !== "stopped";
+    const hasSelection = selectedIds.length > 0 || selectedGroups.length > 0;
+    const executionFilterEnabled = data.executionFilterEnabled;
+    const locked = executionFilterEnabled && data.playbackState !== "stopped";
     const signature = JSON.stringify(data.devices.map(device => [
         device.id,
         device.name,
@@ -341,21 +344,38 @@ function renderDevices(data) {
         device.online,
         selectedIds.includes(device.id),
         device.matchesFilter
-    ]).concat([[data.playbackState, state.busy, selectedIds, selectedGroups, data.executionFilterEnabled, data.showFilteredOut]]));
+    ]).concat([[data.playbackState, state.busy, selectedIds, selectedGroups, executionFilterEnabled, data.showFilteredOut]]));
     if (state.renderSignatures.devices === signature) return;
     state.renderSignatures.devices = signature;
     elements["device-list"].replaceChildren();
     elements["device-count"].textContent = String(data.devices.length);
     elements["empty-devices"].hidden = data.devices.length > 0;
-    elements["reset-devices-button"].disabled = state.busy
-        || locked
-        || (selectedIds.length === 0 && selectedGroups.length === 0);
+    elements["reset-devices-button"].disabled = state.busy || locked || !hasSelection;
     elements["show-filtered-out"].checked = data.showFilteredOut;
     elements["show-filtered-out"].disabled = state.busy;
-    elements["execution-filter"].checked = data.executionFilterEnabled;
+    elements["execution-filter"].checked = executionFilterEnabled;
     elements["execution-filter"].disabled = state.busy || data.playbackState !== "stopped";
+    elements["execution-filter"].parentElement.classList.toggle("enabled", executionFilterEnabled);
+    elements["execution-filter-badge"].hidden = !executionFilterEnabled;
+
+    let scopeText = "";
+    let scopeImpact = "";
+    if (executionFilterEnabled) {
+        scopeText = hasSelection
+            ? `仅范围内 · ${data.devices.filter(device => device.matchesFilter).length} 台`
+            : "已开启 · 范围为全部设备";
+        scopeImpact = hasSelection ? "将跳过范围外设备" : "范围为全部设备";
+        if (locked) scopeImpact += " · 停止后可修改";
+    }
+    elements["execution-filter-impact"].textContent = scopeImpact;
+    elements["execution-filter-impact"].hidden = !executionFilterEnabled;
+    for (const id of ["primary-playback-scope", "queue-playback-scope"]) {
+        elements[id].textContent = scopeText;
+        elements[id].hidden = !executionFilterEnabled;
+    }
+
     const selectedNames = selectedIds.map(id => data.devices.find(device => device.id === id)?.name || id);
-    elements["device-selection"].textContent = selectedIds.length || selectedGroups.length
+    elements["device-selection"].textContent = hasSelection
         ? `设备：${selectedNames.join("、") || "未指定"}；分组：${selectedGroups.join("、") || "未指定"}`
         : "当前：全部设备";
 

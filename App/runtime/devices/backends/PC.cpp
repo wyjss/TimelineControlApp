@@ -123,7 +123,8 @@ public:
 		int w = params[DeviceKey::VirtualScreenWidth].toInt();
 		int h = params[DeviceKey::VirtualScreenHeight].toInt();
 		QUrlQuery query;
-		query.addQueryItem("mode", "virtual");
+		QString smode = params.value("playerType", "virtual").toString();
+		query.addQueryItem("mode", smode);
 		query.addQueryItem("url", url);
 		query.addQueryItem("loop", params[DeviceKey::AVLoop].toString());
 		query.addQueryItem("play", executionInputValues.value("play", true).toString());
@@ -203,7 +204,8 @@ public:
 						   DeviceKey::CommandOpenPlayer,
 						   parent)
 	{
-		getField(DeviceKey::ApiPath)->setValue("/video/openPlayer?mode=virtual");
+		setStringTemplateKey(DeviceKey::ApiPath);
+		getField(DeviceKey::ApiPath)->setValue("/video/openPlayer?mode=${playerType}");
 	}
 
 private:
@@ -411,7 +413,8 @@ PcDeviceTemplate::PcDeviceTemplate(QObject* parent)
 						DeviceParamSpec::createForKey(DeviceKey::ScreenWidth),
 						DeviceParamSpec::createForKey(DeviceKey::ScreenHeight),
 						DeviceParamSpec::createForKey(DeviceKey::ScreenColumns),
-						DeviceParamSpec::createForKey(DeviceKey::ScreenRows)
+						DeviceParamSpec::createForKey(DeviceKey::ScreenRows),
+						DeviceParamSpec::createForKey(DeviceKey::PlayerType)
 					},
 					{},
 					parent
