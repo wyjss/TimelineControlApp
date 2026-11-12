@@ -19,7 +19,10 @@ Rectangle {
     property bool selected: false
     property string activeOutput
     property bool connecting: false
+    property string targetInput
+    property string connectionError
     readonly property var nodeInfo: ({id: nodeKey, typeId: kind, title: caption, parameters: parameters})
+    readonly property bool dragging: headerDrag.pressed && !headerDrag.canceled
     readonly property int headerHeight: 38
     readonly property int portHeight: 28
     readonly property int portRows: Math.max(inputs.length, outputs.length)
@@ -97,23 +100,50 @@ Rectangle {
             anchors.fill: parent
             cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             property point origin
+            property bool canceled: false
+            property bool dragStarted: false
+
+            Connections {
+                target: card.viewport.interactionHost
+                function onInteractionCanceled() {
+                    headerDrag.canceled = true
+                    headerDrag.dragStarted = false
+                    card.dragOffset = Qt.point(0, 0)
+                }
+            }
+
             onPressed: {
-                origin = card.viewport.mapFromItem(headerDrag, mouse.x, mouse.y)
                 card.activated()
+                origin = card.viewport.mapFromItem(headerDrag, mouse.x, mouse.y)
+                canceled = false
+                dragStarted = false
             }
             onPositionChanged: {
-                if (pressed) {
+                if (pressed && !canceled) {
                     var p = card.viewport.mapFromItem(headerDrag, mouse.x, mouse.y)
-                    card.dragOffset = Qt.point((p.x - origin.x) / card.viewScale,
-                                               (p.y - origin.y) / card.viewScale)
+                    var dx = p.x - origin.x, dy = p.y - origin.y
+                    if (!dragStarted) {
+                        if (Math.abs(dx) + Math.abs(dy) <= Qt.styleHints.startDragDistance)
+                            return
+                        dragStarted = true
+                        // 从越过阈值的位置起算，避免起步跳过整段累计位移。
+                        origin = p
+                        return
+                    }
+                    card.dragOffset = Qt.point(dx / card.viewScale, dy / card.viewScale)
                 }
             }
             onReleased: {
-                if (card.dragOffset.x !== 0 || card.dragOffset.y !== 0)
+                if (!canceled && dragStarted && (card.dragOffset.x !== 0 || card.dragOffset.y !== 0))
                     card.moveRequested(Qt.point(card.x, card.y))
                 card.dragOffset = Qt.point(0, 0)
+                dragStarted = false
             }
-            onCanceled: card.dragOffset = Qt.point(0, 0)
+            onCanceled: {
+                canceled = true
+                dragStarted = false
+                card.dragOffset = Qt.point(0, 0)
+            }
         }
     }
 
@@ -138,6 +168,8 @@ Rectangle {
         delegate: Item {
             readonly property bool execution: card.executionKeys.indexOf(modelData) !== -1
             readonly property color portColor: execution ? card.colors.successText : card.colors.highlightText
+            readonly property bool candidate: card.targetInput === modelData
+            readonly property color feedbackColor: candidate && card.connectionError !== "" ? card.colors.dangerText : portColor
             x: 0
             y: card.portTop + index * card.portHeight
             width: 70
@@ -149,8 +181,8 @@ Rectangle {
                 radius: execution ? 2 : width / 2
                 x: -width / 2
                 anchors.verticalCenter: parent.verticalCenter
-                color: inputHit.containsMouse && card.connecting ? portColor : card.colors.backgroundCanvas
-                border.color: portColor
+                color: candidate ? feedbackColor : card.colors.backgroundCanvas
+                border.color: feedbackColor
                 border.width: 2
             }
             Text {

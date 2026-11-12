@@ -32,6 +32,7 @@ QString NodeRegistry::add(const NodeTypeDefinition &definition)
         if (port.key.trimmed().isEmpty() || portKeys.contains(port.key))
             return QStringLiteral("Empty or duplicate port key '%1'.").arg(port.key);
         if (port.typeParameterKey.isEmpty() && port.valueTypeId != executionPortType
+            && !(port.direction == PortDirection::Input && port.valueTypeId == anyValueType)
             && valueType(port.valueTypeId) == QMetaType::UnknownType)
             return QStringLiteral("Unknown value type '%1' for port '%2'.")
                 .arg(port.valueTypeId, port.key);

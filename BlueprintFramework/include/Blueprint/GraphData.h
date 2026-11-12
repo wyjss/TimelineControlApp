@@ -12,6 +12,9 @@ namespace Blueprint {
 //! 执行端口只传递触发信号，不承载值。
 inline const QString executionPortType = QStringLiteral("exec");
 
+//! 数据输入端口可接收任意受支持的数据类型，不接受执行信号。
+inline const QString anyValueType = QStringLiteral("any");
+
 enum class PortDirection
 {
     Input,

@@ -16,6 +16,7 @@ const auto stringConstantType = QStringLiteral("demo.stringConstant");
 const auto optionConstantType = QStringLiteral("demo.optionConstant");
 const auto boolConstantType = QStringLiteral("demo.boolConstant");
 const auto additionType = QStringLiteral("demo.add");
+const auto compareType = QStringLiteral("demo.compare");
 const auto greaterType = QStringLiteral("demo.greater");
 const auto lessType = QStringLiteral("demo.less");
 const auto equalType = QStringLiteral("demo.equal");
@@ -41,6 +42,7 @@ const auto operationCategory = QStringLiteral("objectOperations");
 const auto flowCategory = QStringLiteral("flow");
 const auto resultCategory = QStringLiteral("results");
 const auto valueKey = QStringLiteral("value");
+const auto operatorKey = QStringLiteral("operator");
 const auto inputA = QStringLiteral("A");
 const auto inputB = QStringLiteral("B");
 const auto numberType = QStringLiteral("number");
@@ -178,6 +180,11 @@ NodeRegistry demoRegistry()
     registry.add({boolConstantType, DemoGraph::tr("布尔常量"), {boolOutput},
                   {{valueKey, boolType, false}}, valueCategory});
     registry.add({additionType, DemoGraph::tr("加法"), {numberA, numberB, output}, {}, logicCategory});
+    registry.add({compareType, DemoGraph::tr("比较"),
+                  {{inputA, PortDirection::Input, anyValueType}, {inputB, PortDirection::Input, anyValueType}, boolOutput},
+                  {{operatorKey, stringType, QStringLiteral("eq"),
+                    {QStringLiteral("gt"), QStringLiteral("ge"), QStringLiteral("lt"), QStringLiteral("le"),
+                     QStringLiteral("eq"), QStringLiteral("ne")}}}, logicCategory});
     registry.add({greaterType, DemoGraph::tr("大于"), {numberA, numberB, boolOutput}, {}, logicCategory});
     registry.add({lessType, DemoGraph::tr("小于"), {numberA, numberB, boolOutput}, {}, logicCategory});
     registry.add({equalType, DemoGraph::tr("等于"), {numberA, numberB, boolOutput}, {}, logicCategory});
@@ -268,6 +275,7 @@ DemoGraph::DemoGraph(QObject *parent)
     connect(&m_runtime, &GraphRuntime::reset, this, &DemoGraph::speakerNodesChanged);
     connect(&m_document, &GraphDocument::changed, this, [this](const GraphChangeSet &change) {
         report({});
+        emit placedObjectsChanged();
         if (change.reset)
             m_runtime.stop();
         if (change.reset || !change.addedNodeIds.isEmpty() || !change.removedNodeIds.isEmpty()) {
@@ -299,9 +307,7 @@ QVariantList DemoGraph::palette() const
         {optionConstantType, tr("输出所选选项的值"), QStringLiteral("▾")},
         {boolConstantType, tr("输出真或假"), QStringLiteral("✓")},
         {additionType, tr("相加两个数值输入"), QStringLiteral("+")},
-        {greaterType, tr("判断 A 是否大于 B"), QStringLiteral(">")},
-        {lessType, tr("判断 A 是否小于 B"), QStringLiteral("<")},
-        {equalType, tr("判断 A 是否等于 B"), QStringLiteral("=")},
+        {compareType, tr("选择运算符比较两个输入"), QStringLiteral("≷")},
         {andType, tr("两个输入都为真"), QStringLiteral("∧")},
         {orType, tr("至少一个输入为真"), QStringLiteral("∨")},
         {notType, tr("对输入取反"), QStringLiteral("¬")},
@@ -356,6 +362,16 @@ QVariantList DemoGraph::palette() const
         }
     }
     return groups;
+}
+
+QStringList DemoGraph::placedObjectIds() const
+{
+    QStringList ids;
+    for (const NodeData &node : m_document.data().nodes) {
+        if (node.typeId == speakerReferenceType)
+            ids.append(m_document.parameterValue(node.id, objectIdKey).toString());
+    }
+    return ids;
 }
 
 QVariantList DemoGraph::constantOptions() const
@@ -616,8 +632,8 @@ void DemoGraph::updateValues()
             const auto a = values.value(inputs.value(id).value(inputA));
             if (a.isValid())
                 values.insert(id, !a.toBool());
-        } else if (typeId == additionType || typeId == greaterType || typeId == lessType || typeId == equalType
-                   || typeId == andType || typeId == orType) {
+        } else if (typeId == additionType || typeId == compareType || typeId == greaterType || typeId == lessType
+                   || typeId == equalType || typeId == andType || typeId == orType) {
             const auto links = inputs.value(id);
             const auto a = values.value(links.value(inputA));
             const auto b = values.value(links.value(inputB));
@@ -626,6 +642,33 @@ void DemoGraph::updateValues()
                     const double sum = a.toDouble() + b.toDouble();
                     if (qIsFinite(sum))
                         values.insert(id, sum);
+                } else if (typeId == compareType) {
+                    const auto operation = m_document.parameterValue(id, operatorKey).toString();
+                    bool result = false;
+                    if (NodeRegistry::acceptsValue(numberType, a) && NodeRegistry::acceptsValue(numberType, b)) {
+                        const double left = a.toDouble();
+                        const double right = b.toDouble();
+                        if (operation == QStringLiteral("gt"))
+                            result = left > right;
+                        else if (operation == QStringLiteral("ge"))
+                            result = left >= right;
+                        else if (operation == QStringLiteral("lt"))
+                            result = left < right;
+                        else if (operation == QStringLiteral("le"))
+                            result = left <= right;
+                        else if (operation == QStringLiteral("eq"))
+                            result = left == right;
+                        else if (operation == QStringLiteral("ne"))
+                            result = left != right;
+                    } else if (a.userType() == b.userType()
+                               && (a.userType() == QMetaType::QString || a.userType() == QMetaType::Bool)) {
+                        if (operation == QStringLiteral("eq"))
+                            result = a == b;
+                        else if (operation == QStringLiteral("ne"))
+                            result = a != b;
+                    }
+                    // 异类值及尚未支持的同类运算保留 false，不做隐式转换。
+                    values.insert(id, result);
                 } else if (typeId == greaterType) {
                     values.insert(id, a.toDouble() > b.toDouble());
                 } else if (typeId == lessType) {

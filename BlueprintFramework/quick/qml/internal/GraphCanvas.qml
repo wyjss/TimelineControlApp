@@ -1,10 +1,12 @@
 import QtQuick 2.14
+import QtQuick.Window 2.14
 import QtQuick.Controls 2.14
 
 // 焦点作用域保留内部焦点。点击画布或节点时，将焦点显式移到 backgroundArea。
 FocusScope {
     id: canvas
 
+    property Item interactionHost
     property var session
     property QtObject colors
     property var nodeContents
@@ -15,6 +17,7 @@ FocusScope {
     property string pendingNode: ""
     property string pendingPort: ""
     property point pointer: Qt.point(0, 0)
+    property var connectionTarget: null
     property var nodeItems: ({})
     property Item selectedItem: null
     readonly property int nodeCount: cards.count
@@ -35,12 +38,14 @@ FocusScope {
     onSessionChanged: {
         selectedNodeId = ""
         selectedConnectionId = ""
-        pendingNode = ""
+        if (interactionHost)
+            interactionHost.interactionCanceled()
     }
     onGraphIdChanged: {
         selectedNodeId = ""
         selectedConnectionId = ""
-        pendingNode = ""
+        if (interactionHost)
+            interactionHost.interactionCanceled()
     }
     onPanChanged: {
         grid.requestPaint()
@@ -56,34 +61,65 @@ FocusScope {
         Qt.callLater(resolveWires)
     }
     onPendingNodeChanged: Qt.callLater(resolveWires)
-    Keys.onEscapePressed: {
-        if (pendingNode)
-            pendingNode = ""
-        else
+    onPointerChanged: if (pendingNode) Qt.callLater(resolveWires)
+    Keys.priority: Keys.AfterItem
+    Keys.onPressed: {
+        if (!backgroundArea.activeFocus) {
+            event.accepted = false
+            return
+        }
+        event.accepted = true
+        if (event.key === Qt.Key_Escape) {
+            interactionHost.interactionCanceled()
             selectedConnectionId = ""
+        } else if (event.key === Qt.Key_Delete) {
+            if (pendingNode)
+                interactionHost.interactionCanceled()
+            else if (session && selectedConnectionId)
+                session.removeConnection(selectedConnectionId)
+            else if (session && selectedNodeId)
+                session.removeNode(selectedNodeId)
+        } else if (session && event.matches(StandardKey.Undo)) {
+            interactionHost.interactionCanceled()
+            session.undo()
+        } else if (session && event.matches(StandardKey.Redo)) {
+            interactionHost.interactionCanceled()
+            session.redo()
+        } else {
+            event.accepted = false
+        }
     }
-    Keys.onDeletePressed: {
-        if (pendingNode)
-            pendingNode = ""
-        else if (session && selectedConnectionId)
-            session.removeConnection(selectedConnectionId)
-        else if (session && selectedNodeId)
-            session.removeNode(selectedNodeId)
+
+    Connections {
+        target: canvas.interactionHost
+        function onInteractionCanceled() {
+            canvas.pendingNode = ""
+            canvas.connectionTarget = null
+            if (backgroundArea.panning)
+                canvas.pan = backgroundArea.originalPan
+            backgroundArea.panning = false
+            backgroundArea.canceled = true
+            if (canvas.Window.window && canvas.Window.window.active)
+                backgroundArea.forceActiveFocus()
+        }
     }
 
     Connections {
         target: canvas.session
+        function onModelReset() { canvas.interactionHost.interactionCanceled() }
         function onGraphChanged() {
             if (canvas.selectedNodeId && !canvas.session.containsNode(canvas.selectedNodeId))
                 canvas.selectedNodeId = ""
             if (canvas.pendingNode && !canvas.session.containsNode(canvas.pendingNode))
-                canvas.pendingNode = ""
+                canvas.interactionHost.interactionCanceled()
+            Qt.callLater(canvas.resolveWires)
         }
     }
 
     function addNode(typeId, parameters, position) {
         if (!session)
             return
+        interactionHost.interactionCanceled()
         if (!position) {
             var start = world.mapFromItem(canvas, width / 2, height / 2)
             var offset = (cards.count % 7) * 18
@@ -150,6 +186,32 @@ FocusScope {
                 segments.push({id: link.id, from: from, to: to,
                                execution: nodeItems[link.source].executionKeys.indexOf(link.sourcePort) !== -1})
         }
+        var target = null, invalidTarget = null
+        var distance = 16 * 16, invalidDistance = distance
+        if (pendingNode && session) {
+            for (var id in nodeItems) {
+                var item = nodeItems[id]
+                for (var p = 0; p < item.inputs.length; ++p) {
+                    var key = item.inputs[p]
+                    var anchor = viewportAnchor(id, key, false)
+                    if (!anchor)
+                        continue
+                    var dx = pointer.x - anchor.x, dy = pointer.y - anchor.y
+                    var candidate = dx * dx + dy * dy
+                    if (candidate > 16 * 16)
+                        continue
+                    var error = session.canConnect(pendingNode, pendingPort, id, key)
+                    if (!error && candidate <= distance) {
+                        target = {nodeId: id, portKey: key, position: anchor, error: ""}
+                        distance = candidate
+                    } else if (error && candidate <= invalidDistance) {
+                        invalidTarget = {nodeId: id, portKey: key, position: anchor, error: error}
+                        invalidDistance = candidate
+                    }
+                }
+            }
+        }
+        connectionTarget = target || invalidTarget
         wireLayer.segments = segments
         wireLayer.draftStart = pendingNode ? viewportAnchor(pendingNode, pendingPort, true) : null
     }
@@ -197,14 +259,25 @@ FocusScope {
         objectName: "connectionLayer"
         anchors.fill: parent
         property var draftStart: null
-        preview: canvas.pendingNode && draftStart ? ({from: draftStart, to: canvas.pointer}) : null
+        preview: canvas.pendingNode && draftStart
+                 ? ({from: draftStart, to: canvas.connectionTarget && !canvas.connectionTarget.error
+                                          ? canvas.connectionTarget.position : canvas.pointer}) : null
         zoom: canvas.zoom
         lineColor: canvas.colors ? canvas.colors.highlightText : "transparent"
         executionColor: canvas.colors ? canvas.colors.successText : "transparent"
-        previewColor: canvas.colors ? canvas.colors.infoText : "transparent"
+        previewColor: canvas.colors ? (canvas.connectionTarget && canvas.connectionTarget.error
+                                      ? canvas.colors.dangerText : canvas.colors.infoText) : "transparent"
         selectedColor: canvas.colors ? canvas.colors.text : "transparent"
         selectedId: canvas.selectedConnectionId
         hoveredId: canvas.hoveredConnectionId
+    }
+
+    ToolTip {
+        parent: canvas
+        visible: !!canvas.pendingNode && !!canvas.connectionTarget && !!canvas.connectionTarget.error
+        text: canvas.connectionTarget ? canvas.connectionTarget.error : ""
+        x: Math.min(canvas.pointer.x + 12, canvas.width - width)
+        y: Math.min(canvas.pointer.y + 12, canvas.height - height)
     }
 
     Menu {
@@ -231,8 +304,12 @@ FocusScope {
         property point origin
         property point originalPan
         property bool panning: false
+        property bool canceled: true
         onPressed: {
+            if (mouse.button !== Qt.LeftButton || !canvas.pendingNode)
+                canvas.interactionHost.interactionCanceled()
             backgroundArea.forceActiveFocus()
+            canceled = false
             origin = Qt.point(mouse.x, mouse.y)
             originalPan = canvas.pan
             panning = false
@@ -240,16 +317,18 @@ FocusScope {
         onEntered: canvas.pointer = Qt.point(mouseX, mouseY)
         onPositionChanged: {
             canvas.pointer = Qt.point(mouse.x, mouse.y)
-            if (pressed && (mouse.buttons & (Qt.LeftButton | Qt.MiddleButton))) {
+            if (pressed && !canceled && (mouse.buttons & Qt.MiddleButton)) {
                 var dx = mouse.x - origin.x, dy = mouse.y - origin.y
-                if (panning || Math.abs(dx) + Math.abs(dy) >= 5) {
+                if (panning || Math.abs(dx) + Math.abs(dy) >= Qt.styleHints.startDragDistance) {
                     panning = true
                     canvas.pan = Qt.point(originalPan.x + dx, originalPan.y + dy)
                 }
             }
         }
+        onReleased: panning = false
+        onCanceled: canvas.interactionHost.interactionCanceled()
         onClicked: {
-            if (panning || Math.abs(mouse.x - origin.x) + Math.abs(mouse.y - origin.y) >= 5)
+            if (canceled || Math.abs(mouse.x - origin.x) + Math.abs(mouse.y - origin.y) >= Qt.styleHints.startDragDistance)
                 return
             var id = canvas.pendingNode ? "" : wireLayer.connectionAt(Qt.point(mouse.x, mouse.y))
             if (mouse.button === Qt.RightButton) {
@@ -316,13 +395,18 @@ FocusScope {
                 selected: canvas.selectedNodeId === card.nodeKey
                 activeOutput: canvas.pendingNode === card.nodeKey ? canvas.pendingPort : ""
                 connecting: canvas.pendingNode !== ""
+                targetInput: canvas.connectionTarget && canvas.connectionTarget.nodeId === card.nodeKey
+                             ? canvas.connectionTarget.portKey : ""
+                connectionError: canvas.connectionTarget ? canvas.connectionTarget.error : ""
                 onAnchorsChanged: Qt.callLater(canvas.resolveWires)
                 onActivated: {
+                    canvas.interactionHost.interactionCanceled()
                     backgroundArea.forceActiveFocus()
                     canvas.selectedNodeId = card.nodeKey
                 }
                 onMoveRequested: canvas.session.moveNode(card.nodeKey, position)
                 onOutputPressed: {
+                    canvas.interactionHost.interactionCanceled()
                     backgroundArea.forceActiveFocus()
                     canvas.selectedNodeId = card.nodeKey
                     canvas.pendingPort = key
@@ -333,32 +417,18 @@ FocusScope {
                 onConnectionPointerMoved: canvas.pointer = position
                 onOutputCanceled: canvas.pendingNode = ""
                 onOutputReleased: {
-                    var closestNode = "", closestPort = "", distance = 16 * 16
-                    for (var id in canvas.nodeItems) {
-                        var other = canvas.nodeItems[id]
-                        for (var p = 0; p < other.inputs.length; ++p) {
-                            var key = other.inputs[p]
-                            var anchor = canvas.viewportAnchor(id, key, false)
-                            if (!anchor)
-                                continue
-                            var dx = position.x - anchor.x, dy = position.y - anchor.y
-                            var candidate = dx * dx + dy * dy
-                            if (candidate <= distance) {
-                                closestNode = id
-                                closestPort = key
-                                distance = candidate
-                            }
-                        }
-                    }
-                    if (closestNode)
-                        canvas.connectInput(closestNode, closestPort)
-                    else
-                        canvas.pendingNode = ""
+                    if (!canvas.pendingNode)
+                        return
+                    canvas.pointer = position
+                    canvas.resolveWires()
+                    if (canvas.connectionTarget)
+                        canvas.connectInput(canvas.connectionTarget.nodeId, canvas.connectionTarget.portKey)
+                    canvas.pendingNode = ""
                 }
                 onInputPressed: {
                     backgroundArea.forceActiveFocus()
                     if (contextRequested) {
-                        canvas.pendingNode = ""
+                        canvas.interactionHost.interactionCanceled()
                         for (var i = 0; i < canvas.links.length; ++i) {
                             var link = canvas.links[i]
                             if (link.target === card.nodeKey && link.targetPort === key) {
@@ -382,6 +452,15 @@ FocusScope {
         color: canvas.colors ? canvas.colors.subtleText : "transparent"
         font.pixelSize: 15
         text: qsTr("从节点库添加节点")
+    }
+
+    // Qt 5 按移动前的几何选择光标，拖动期间用视口区域保持光标稳定。
+    MouseArea {
+        anchors.fill: parent
+        z: 1
+        visible: !!canvas.selectedItem && canvas.selectedItem.dragging
+        acceptedButtons: Qt.NoButton
+        cursorShape: Qt.ClosedHandCursor
     }
 
     Component.onCompleted: Qt.callLater(fit)

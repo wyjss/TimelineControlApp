@@ -1,4 +1,5 @@
 import QtQuick 2.14
+import QtQuick.Window 2.14
 import QtQuick.Layouts 1.14
 import "internal" as Internal
 
@@ -18,6 +19,17 @@ Item {
     readonly property int connectionCount: canvas.links.length
     readonly property real zoom: canvas.zoom
     readonly property bool connecting: canvas.pendingNode !== ""
+
+    // 取消当前手势，预览和拖动源在释放后不再提交。
+    signal interactionCanceled()
+
+    Connections {
+        target: editor.Window.window
+        function onActiveChanged() {
+            if (!editor.Window.window.active)
+                editor.interactionCanceled()
+        }
+    }
 
     // 参数和画布坐标可选，支持直接放置已绑定对象。
     function addNode(typeId, parameters, position) { canvas.addNode(typeId, parameters, position) }
@@ -41,6 +53,7 @@ Item {
             objectName: "graphCanvas"
             Layout.fillWidth: true
             Layout.fillHeight: true
+            interactionHost: editor
             session: editor.session
             colors: editor.colors
             nodeContents: editor.nodeContents

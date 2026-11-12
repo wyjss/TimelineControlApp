@@ -5,6 +5,7 @@ add_library(BlueprintQuick STATIC
     src/GraphEditSession.cpp
     BlueprintQuick.qrc
     qml/GraphEditor.qml
+    qml/NodeDragSource.qml
     qml/internal/GraphCanvas.qml
     qml/internal/GraphNode.qml
     qml/internal/ConnectionLayer.qml

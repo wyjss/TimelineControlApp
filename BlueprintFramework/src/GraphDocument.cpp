@@ -80,7 +80,7 @@ QString GraphDocument::canConnect(const Endpoint &source, const Endpoint &target
         ? targetPort->valueTypeId : parameterValue(target.nodeId, targetPort->typeParameterKey).toString();
     if (sourceType.isEmpty() || targetType.isEmpty())
         return QStringLiteral("Configure the data port before connecting it.");
-    if (sourceType != targetType) {
+    if (sourceType != targetType && (targetType != anyValueType || sourceType == executionPortType)) {
         return QStringLiteral("Cannot connect value type '%1' to '%2'.")
             .arg(sourceType, targetType);
     }

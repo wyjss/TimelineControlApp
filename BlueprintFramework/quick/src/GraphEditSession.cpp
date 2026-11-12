@@ -136,6 +136,12 @@ bool GraphEditSession::setParameter(const QString &nodeId, const QString &key, c
     return report(m_document.setParameter(QUuid(nodeId), key, value).error);
 }
 
+QString GraphEditSession::canConnect(const QString &sourceId, const QString &sourcePort,
+                                     const QString &targetId, const QString &targetPort) const
+{
+    return m_document.canConnect({QUuid(sourceId), sourcePort}, {QUuid(targetId), targetPort});
+}
+
 bool GraphEditSession::connectPorts(const QString &sourceId, const QString &sourcePort,
                                      const QString &targetId, const QString &targetPort)
 {

@@ -1,6 +1,7 @@
 <RCC>
     <qresource prefix="/BlueprintQuick">
         <file alias="GraphEditor.qml">qml/GraphEditor.qml</file>
+        <file alias="NodeDragSource.qml">qml/NodeDragSource.qml</file>
         <file alias="internal/GraphCanvas.qml">qml/internal/GraphCanvas.qml</file>
         <file alias="internal/GraphNode.qml">qml/internal/GraphNode.qml</file>
         <file alias="internal/ConnectionLayer.qml">qml/internal/ConnectionLayer.qml</file>

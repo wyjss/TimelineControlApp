@@ -3,6 +3,10 @@ import QtQuick 2.14
 Canvas {
     id: layer
 
+    // 直接在渲染线程绘制，避免拖动时反复上传整张连线画布。
+    renderTarget: Canvas.FramebufferObject
+    renderStrategy: Canvas.Cooperative
+
     property var segments: []
     property var preview: null
     property real zoom: 1

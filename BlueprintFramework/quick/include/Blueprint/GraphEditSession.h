@@ -39,6 +39,9 @@ public:
     Q_INVOKABLE void moveNode(const QString &nodeId, QPointF position);
     Q_INVOKABLE void removeNode(const QString &nodeId);
     Q_INVOKABLE bool setParameter(const QString &nodeId, const QString &key, const QVariant &value);
+    //! 预检返回空字符串表示允许，不改变文档或会话错误。
+    Q_INVOKABLE QString canConnect(const QString &sourceId, const QString &sourcePort,
+                                   const QString &targetId, const QString &targetPort) const;
     Q_INVOKABLE bool connectPorts(const QString &sourceId, const QString &sourcePort,
                                   const QString &targetId, const QString &targetPort);
     Q_INVOKABLE void removeConnection(const QString &connectionId);

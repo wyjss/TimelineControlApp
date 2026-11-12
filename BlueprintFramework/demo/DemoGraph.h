@@ -11,6 +11,7 @@ class DemoGraph final : public QObject
     Q_OBJECT
     Q_PROPERTY(QObject *session READ session CONSTANT)
     Q_PROPERTY(QVariantList palette READ palette CONSTANT)
+    Q_PROPERTY(QStringList placedObjectIds READ placedObjectIds NOTIFY placedObjectsChanged)
     Q_PROPERTY(QVariantList constantOptions READ constantOptions CONSTANT)
     Q_PROPERTY(QVariantList existingSpeakerOptions READ existingSpeakerOptions CONSTANT)
     Q_PROPERTY(QVariantList speakerOptions READ speakerOptions NOTIFY speakerNodesChanged)
@@ -24,6 +25,7 @@ public:
 
     QObject *session();
     QVariantList palette() const;
+    QStringList placedObjectIds() const;
     QVariantList constantOptions() const;
     QVariantList existingSpeakerOptions() const;
     QVariantList speakerOptions() const;
@@ -46,6 +48,7 @@ public:
     Q_INVOKABLE bool save(const QUrl &url);
 
 signals:
+    void placedObjectsChanged();
     void previewValuesChanged();
     void errorChanged();
     void fileNameChanged();

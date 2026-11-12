@@ -18,25 +18,15 @@ ApplicationWindow {
     title: qsTr("蓝图编辑器") + " — BlueprintFramework-demo"
     color: appTheme.colors.backgroundWindow
     property QtObject appTheme: Theme.AppTheme {}
-    property bool closingConfirmed: false
     property string notice
     readonly property string graphError: demoGraph.error || demoGraph.session.error
     readonly property var boolOptions: [{label: qsTr("真"), value: true}, {label: qsTr("假"), value: false}]
 
     function requestOpen() {
         if (demoGraph.session.modified) {
-            discardDialog.closingWindow = false
             discardDialog.open()
         } else {
             openDialog.open()
-        }
-    }
-
-    onClosing: {
-        if (demoGraph.session.modified && !closingConfirmed) {
-            close.accepted = false
-            discardDialog.closingWindow = true
-            discardDialog.open()
         }
     }
 
@@ -50,7 +40,6 @@ ApplicationWindow {
 
     Dialog {
         id: discardDialog
-        property bool closingWindow: false
         modal: true
         anchors.centerIn: parent
         implicitWidth: 340
@@ -58,12 +47,7 @@ ApplicationWindow {
         standardButtons: Dialog.Discard | Dialog.Cancel
         onDiscarded: {
             close()
-            if (closingWindow) {
-                window.closingConfirmed = true
-                window.close()
-            } else {
-                openDialog.open()
-            }
+            openDialog.open()
         }
         contentItem: Item {
             implicitWidth: 298
@@ -230,6 +214,55 @@ ApplicationWindow {
         }
     }
     Component {
+        id: comparisonBody
+
+        Rectangle {
+            id: comparison
+            property var node: null
+            implicitHeight: comparisonOperator.implicitHeight + 38
+            radius: 5
+            color: window.appTheme.colors.backgroundWindow
+
+            Base.AppSelect {
+                id: comparisonOperator
+                objectName: "comparisonOperator"
+                width: parent.width
+                options: [
+                    {label: ">", value: "gt"},
+                    {label: "≥", value: "ge"},
+                    {label: "<", value: "lt"},
+                    {label: "≤", value: "le"},
+                    {label: "==", value: "eq"},
+                    {label: "!=", value: "ne"}
+                ]
+                value: comparison.node ? comparison.node.parameters.operator : undefined
+                onValueSelected: if (comparison.node)
+                    demoGraph.session.setParameter(comparison.node.id, "operator", nextValue)
+            }
+            Text {
+                x: 9
+                anchors.top: comparisonOperator.bottom
+                anchors.topMargin: 7
+                text: qsTr("值")
+                color: window.appTheme.colors.subtleText
+                font.pixelSize: 12
+            }
+            Text {
+                anchors.right: parent.right
+                anchors.rightMargin: 9
+                anchors.top: comparisonOperator.bottom
+                anchors.topMargin: 6
+                width: parent.width - 65
+                horizontalAlignment: Text.AlignRight
+                elide: Text.ElideRight
+                text: comparison.node ? demoGraph.previewValues[comparison.node.id] || "—" : "—"
+                color: window.appTheme.colors.highlightText
+                font.pixelSize: 14
+                font.bold: true
+            }
+        }
+    }
+    Component {
         id: speakerBody
 
         Rectangle {
@@ -309,28 +342,22 @@ ApplicationWindow {
                                : window.appTheme.colors.subtleText
                         font.pixelSize: 12
 
-                        MouseArea {
+                        Quick.NodeDragSource {
                             id: memberDrag
                             objectName: "drag-" + modelData.key
                             anchors.fill: parent
                             enabled: speaker.available
-                            hoverEnabled: true
-                            preventStealing: true
-                            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                            property point origin
+                            graphEditor: editor
+                            title: modelData.key === "testDurationMs" ? qsTr("选择属性操作")
+                                   : modelData.type === "demo.call" ? qsTr("调用接口") : qsTr("读取属性")
+                            dropText: modelData.key === "testDurationMs" ? qsTr("释放选择操作") : qsTr("释放创建节点")
                             ToolTip.visible: containsMouse && !pressed
                             ToolTip.delay: 350
                             ToolTip.text: qsTr("拖到画布空白处创建节点")
-                            onPressed: origin = mapToItem(editor, mouse.x, mouse.y)
-                            onReleased: {
-                                var release = mapToItem(editor, mouse.x, mouse.y)
-                                if (Math.abs(release.x - origin.x) + Math.abs(release.y - origin.y) < 8)
-                                    return
-                                var position = editor.emptyDropPosition(memberDrag, mouse.x, mouse.y)
-                                if (position === null)
-                                    return
+                            onDropped: {
                                 if (modelData.key === "testDurationMs") {
                                     speaker.durationDrop = position
+                                    var release = mapToItem(editor, mouseX, mouseY)
                                     durationMenu.popup(release.x, release.y)
                                 } else {
                                     speaker.createOperation(modelData.type, modelData.key, position)
@@ -509,6 +536,7 @@ ApplicationWindow {
                 "demo.greater": calculationBody,
                 "demo.less": calculationBody,
                 "demo.equal": calculationBody,
+                "demo.compare": comparisonBody,
                 "demo.and": calculationBody,
                 "demo.or": calculationBody,
                 "demo.not": calculationBody,
@@ -559,6 +587,7 @@ ApplicationWindow {
                             delegate: ColumnLayout {
                                 id: categoryGroup
                                 readonly property var category: modelData
+                                property bool expanded: true
                                 Layout.fillWidth: true
                                 spacing: 6
                                 objectName: "category-" + category.id
@@ -566,19 +595,33 @@ ApplicationWindow {
                                 Text {
                                     Layout.fillWidth: true
                                     Layout.topMargin: index === 0 ? 0 : 8
-                                    text: categoryGroup.category.title
+                                    text: (categoryGroup.expanded ? "▾ " : "▸ ") + categoryGroup.category.title
+                                    topPadding: 4
+                                    bottomPadding: 4
                                     font.pixelSize: 12
                                     font.bold: true
                                     color: window.appTheme.colors.subtleText
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: categoryGroup.expanded = !categoryGroup.expanded
+                                    }
                                 }
 
                                 Repeater {
                                     model: categoryGroup.category.nodes
                                     delegate: Rectangle {
+                                        id: paletteEntry
+                                        readonly property bool placed: !!modelData.parameters
+                                                                       && demoGraph.placedObjectIds.indexOf(modelData.parameters.objectId) !== -1
+                                        visible: categoryGroup.expanded
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 52
-                                        color: addArea.containsMouse ? window.appTheme.colors.highlightSoft : window.appTheme.colors.backgroundSection
-                                        border.color: addArea.containsMouse ? window.appTheme.colors.highlightText : window.appTheme.colors.border
+                                        color: addArea.containsMouse ? window.appTheme.colors.highlightSoft
+                                               : placed ? window.appTheme.colors.successSoft : window.appTheme.colors.backgroundSection
+                                        border.color: addArea.containsMouse ? window.appTheme.colors.highlightText
+                                                      : placed ? window.appTheme.colors.successText : window.appTheme.colors.border
                                         radius: 7
 
                                         RowLayout {
@@ -587,8 +630,8 @@ ApplicationWindow {
                                             spacing: 8
                                             Text {
                                                 Layout.preferredWidth: 17
-                                                text: modelData.symbol
-                                                color: window.appTheme.colors.highlightText
+                                                text: paletteEntry.placed ? "✓" : modelData.symbol
+                                                color: paletteEntry.placed ? window.appTheme.colors.successText : window.appTheme.colors.highlightText
                                                 font.pixelSize: 17
                                                 font.bold: true
                                             }
@@ -603,28 +646,25 @@ ApplicationWindow {
                                                 }
                                                 Text {
                                                     Layout.fillWidth: true
-                                                    text: modelData.description
+                                                    text: paletteEntry.placed ? qsTr("已放置 · 拖拽定位") : modelData.description
                                                     elide: Text.ElideRight
-                                                    color: window.appTheme.colors.subtleText
+                                                    color: paletteEntry.placed ? window.appTheme.colors.successText : window.appTheme.colors.subtleText
                                                     font.pixelSize: 11
                                                 }
                                             }
                                         }
-                                        MouseArea {
+                                        Quick.NodeDragSource {
                                             id: addArea
                                             objectName: "add-" + (modelData.parameters ? modelData.parameters.objectId : modelData.type)
                                             anchors.fill: parent
-                                            hoverEnabled: true
-                                            preventStealing: !!modelData.parameters
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: editor.addNode(modelData.type, modelData.parameters)
-                                            onReleased: {
-                                                if (!modelData.parameters)
-                                                    return
-                                                var position = editor.emptyDropPosition(addArea, mouse.x, mouse.y)
-                                                if (position !== null)
-                                                    editor.addNode(modelData.type, modelData.parameters, position)
-                                            }
+                                            graphEditor: editor
+                                            title: modelData.title
+                                            dropText: paletteEntry.placed ? qsTr("释放定位已有节点") : qsTr("释放创建节点")
+                                            ToolTip.visible: containsMouse && !pressed
+                                            ToolTip.delay: 350
+                                            ToolTip.text: paletteEntry.placed ? qsTr("已放置，拖到画布空白处定位已有节点")
+                                                                             : qsTr("拖到画布空白处创建节点")
+                                            onDropped: editor.addNode(modelData.type, modelData.parameters, position)
                                         }
                                     }
                                 }
