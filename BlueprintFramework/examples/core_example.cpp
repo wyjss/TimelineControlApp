@@ -11,19 +11,19 @@ int main(int argc, char *argv[])
     QTextStream output(stdout);
     QTextStream errors(stderr);
 
-    const QString valueKey = QStringLiteral("value");
+    const QString valueKey = "value";
     const NodeTypeDefinition constantType{
-        QStringLiteral("example.constant"),
-        QStringLiteral("Constant"),
-        {{valueKey, PortDirection::Output, QStringLiteral("number")}},
-        {{valueKey, QStringLiteral("number"), 0.0}}
+        "example.constant",
+        "Constant",
+        {{valueKey, PortDirection::Output, "number"}},
+        {{valueKey, "number", 0.0}}
     };
     const NodeTypeDefinition displayType{
-        QStringLiteral("example.display"),
-        QStringLiteral("Display"),
+        "example.display",
+        "Display",
         {
-            {QStringLiteral("input"), PortDirection::Input, QStringLiteral("number")},
-            {QStringLiteral("visible"), PortDirection::Input, QStringLiteral("bool")}
+            {"input", PortDirection::Input, "number"},
+            {"visible", PortDirection::Input, "bool"}
         },
         {}
     };
@@ -62,8 +62,8 @@ int main(int argc, char *argv[])
     }
 
     const Endpoint source{constant.id, valueKey};
-    const Endpoint target{display.id, QStringLiteral("input")};
-    const Endpoint incompatibleTarget{display.id, QStringLiteral("visible")};
+    const Endpoint target{display.id, "input"};
+    const Endpoint incompatibleTarget{display.id, "visible"};
     const quint64 beforeRejectedEdit = graph.revision();
     const int beforeRejectedNotification = notificationCount;
     const EditResult rejected = graph.connectPorts(source, incompatibleTarget);

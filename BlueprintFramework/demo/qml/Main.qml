@@ -330,13 +330,15 @@ ApplicationWindow {
                     model: demoGraph.objectMembers(speaker.targetId)
 
                     delegate: Text {
+                        readonly property color memberColor: editor.nodeColors[modelData.type].accent
                         Layout.fillWidth: true
                         text: (modelData.key === "playing" ? (!speaker.available ? "—" : speaker.playing ? qsTr("播放中") : qsTr("空闲"))
                                : modelData.key === "testDurationMs" ? qsTr("时长 %1 ms").arg(speaker.liveState.testDurationMs || "—")
                                : modelData.label) + (modelData.type === "demo.readProperty" && !modelData.writable ? qsTr("（只读）") : "") + "  ↗"
-                        color: memberDrag.pressed || memberDrag.containsMouse ? window.appTheme.colors.highlightText
+                        color: !speaker.available ? window.appTheme.colors.subtleText
                                : modelData.key === "playing" && speaker.playing ? window.appTheme.colors.successText
-                               : window.appTheme.colors.subtleText
+                               : memberDrag.pressed || memberDrag.containsMouse ? Qt.lighter(memberColor, 1.15)
+                               : memberColor
                         font.pixelSize: 12
 
                         Quick.NodeDragSource {
@@ -426,7 +428,9 @@ ApplicationWindow {
             id: operation
             property var node: null
             readonly property bool reading: !!node && node.typeId === "demo.readProperty"
-            readonly property string targetId: node ? node.parameters.target : ""
+            readonly property bool calling: !!node && node.typeId === "demo.call"
+            readonly property bool watching: !!node && node.typeId === "demo.propertyChanged"
+            readonly property string targetId: node ? node.parameters.target || "" : ""
             readonly property var targets: reading ? demoGraph.readTargetOptions : demoGraph.speakerOptions
             readonly property var target: targets.find(function(item) { return item.value === operation.targetId })
             readonly property var members: reading ? (target ? demoGraph.readMembers(targetId) : [])
@@ -447,12 +451,26 @@ ApplicationWindow {
                 text: {
                     if (!operation.node)
                         return ""
-                    if (!operation.member)
-                        return operation.target && operation.reading ? qsTr("选择属性") : ""
+                    if (!operation.member) {
+                        if (operation.calling)
+                            return qsTr("请选择接口")
+                        return operation.target && (operation.reading || operation.watching) ? qsTr("选择属性") : ""
+                    }
+                    if (operation.watching)
+                        return operation.member.label
                     var value = demoGraph.previewValues[operation.node.id]
                     return value === undefined ? operation.member.label : qsTr("%1 · %2").arg(operation.member.label).arg(value)
                 }
                 color: window.appTheme.colors.text
+                font.pixelSize: 12
+                elide: Text.ElideRight
+            }
+            Text {
+                Layout.fillWidth: true
+                text: (operation.calling || operation.watching) && demoGraph.errorNodeId === operation.node.id
+                      ? demoGraph.error : ""
+                visible: text.length > 0
+                color: window.appTheme.colors.dangerText
                 font.pixelSize: 12
                 elide: Text.ElideRight
             }
@@ -505,9 +523,34 @@ ApplicationWindow {
                     }
                 }
 
-                Base.AppButton { text: qsTr("撤销"); enabled: demoGraph.session.canUndo; onClicked: demoGraph.session.undo() }
-                Base.AppButton { text: qsTr("重做"); enabled: demoGraph.session.canRedo; onClicked: demoGraph.session.redo() }
+                Base.AppButton {
+                    text: qsTr("撤销")
+                    enabled: demoGraph.session.canUndo
+                    onClicked: {
+                        editor.interactionCanceled()
+                        demoGraph.session.undo()
+                    }
+                }
+                Base.AppButton {
+                    text: qsTr("重做")
+                    enabled: demoGraph.session.canRedo
+                    onClicked: {
+                        editor.interactionCanceled()
+                        demoGraph.session.redo()
+                    }
+                }
                 Base.AppButton { text: qsTr("适合画布"); onClicked: editor.fit() }
+                Base.AppButton {
+                    objectName: "trigger-graph"
+                    text: qsTr("触发蓝图")
+                    onClicked: demoGraph.trigger()
+                }
+                Base.AppButton {
+                    objectName: "stop-flow"
+                    text: qsTr("停止执行")
+                    enabled: demoGraph.running
+                    onClicked: demoGraph.stop()
+                }
                 Base.AppButton { text: qsTr("打开"); onClicked: window.requestOpen() }
                 Base.AppButton {
                     text: qsTr("保存")
@@ -526,6 +569,42 @@ ApplicationWindow {
             Layout.fillHeight: true
             session: demoGraph.session
             colors: window.appTheme.colors
+            nodeColors: {
+                var object = {background: "#252742", accent: "#abb1ff"}
+                var value = {background: "#1d3048", accent: "#82b9ff"}
+                var logic = {background: "#34263f", accent: "#d5aaff"}
+                var result = {background: "#2b333e", accent: "#c1cedc"}
+                var flow = {background: "#402837", accent: "#f5a0c0"}
+                return {
+                    "demo.speaker": object,
+                    "demo.speakerReference": object,
+                    "demo.constant": value,
+                    "demo.stringConstant": value,
+                    "demo.optionConstant": value,
+                    "demo.boolConstant": value,
+                    "demo.add": logic,
+                    "demo.greater": logic,
+                    "demo.less": logic,
+                    "demo.equal": logic,
+                    "demo.compare": logic,
+                    "demo.and": logic,
+                    "demo.or": logic,
+                    "demo.not": logic,
+                    "demo.result": result,
+                    "demo.textResult": result,
+                    "demo.boolResult": result,
+                    "demo.start": flow,
+                    "demo.trigger": flow,
+                    "demo.propertyChanged": flow,
+                    "demo.wait": flow,
+                    "demo.waitUntil": flow,
+                    "demo.branch": flow,
+                    "demo.fork": flow,
+                    "demo.readProperty": {background: "#183831", accent: "#76e0c3"},
+                    "demo.setProperty": {background: "#19363d", accent: "#8cdbe8"},
+                    "demo.call": {background: "#412d1c", accent: "#f4bd74"}
+                }
+            }
             nodeContents: ({
                 "demo.constant": calculationBody,
                 "demo.stringConstant": calculationBody,
@@ -545,6 +624,7 @@ ApplicationWindow {
                 "demo.speaker": speakerBody,
                 "demo.speakerReference": speakerBody,
                 "demo.trigger": triggerBody,
+                "demo.propertyChanged": operationBody,
                 "demo.readProperty": operationBody,
                 "demo.setProperty": operationBody,
                 "demo.call": operationBody
@@ -610,14 +690,18 @@ ApplicationWindow {
                                     model: categoryGroup.category.nodes
                                     delegate: Rectangle {
                                         id: paletteEntry
+                                        readonly property var typeColors: editor.nodeColors[modelData.type]
+                                        readonly property color accent: typeColors ? typeColors.accent : window.appTheme.colors.highlightText
                                         readonly property bool placed: !!modelData.parameters
                                                                        && demoGraph.placedObjectIds.indexOf(modelData.parameters.objectId) !== -1
                                         visible: categoryGroup.expanded
                                         Layout.fillWidth: true
                                         Layout.preferredHeight: 52
-                                        color: addArea.containsMouse ? window.appTheme.colors.highlightSoft
+                                        color: typeColors
+                                               ? (addArea.containsMouse ? Qt.lighter(typeColors.background, 1.15) : typeColors.background)
+                                               : addArea.containsMouse ? window.appTheme.colors.highlightSoft
                                                : placed ? window.appTheme.colors.successSoft : window.appTheme.colors.backgroundSection
-                                        border.color: addArea.containsMouse ? window.appTheme.colors.highlightText
+                                        border.color: addArea.containsMouse ? paletteEntry.accent
                                                       : placed ? window.appTheme.colors.successText : window.appTheme.colors.border
                                         radius: 7
 
@@ -628,7 +712,7 @@ ApplicationWindow {
                                             Text {
                                                 Layout.preferredWidth: 17
                                                 text: paletteEntry.placed ? "✓" : modelData.symbol
-                                                color: paletteEntry.placed ? window.appTheme.colors.successText : window.appTheme.colors.highlightText
+                                                color: paletteEntry.placed ? window.appTheme.colors.successText : paletteEntry.accent
                                                 font.pixelSize: 17
                                                 font.bold: true
                                             }
@@ -675,7 +759,9 @@ ApplicationWindow {
                 Rectangle {
                     id: inspector
                     readonly property string selectedType: editor.selectedNode ? editor.selectedNode.typeId : ""
-                    readonly property bool reading: !!editor.selectedNode && editor.selectedNode.typeId === "demo.readProperty"
+                    readonly property bool reading: selectedType === "demo.readProperty"
+                    readonly property bool calling: selectedType === "demo.call"
+                    readonly property bool watching: selectedType === "demo.propertyChanged"
                     readonly property var targets: reading ? demoGraph.readTargetOptions : demoGraph.speakerOptions
                     readonly property string targetId: editor.selectedNode ? editor.selectedNode.parameters.target || "" : ""
                     readonly property bool targetAvailable: targets.some(function(item) { return item.value === inspector.targetId })
@@ -795,7 +881,8 @@ ApplicationWindow {
                         }
 
                         ColumnLayout {
-                            visible: inspector.reading || inspector.selectedType === "demo.setProperty" || inspector.selectedType === "demo.call"
+                            visible: inspector.reading || inspector.watching || inspector.calling
+                                     || inspector.selectedType === "demo.setProperty"
                             Layout.fillWidth: true
                             spacing: 7
 
@@ -813,6 +900,14 @@ ApplicationWindow {
                                         var sameMember = demoGraph.readMembers(nextValue).some(
                                             function(item) { return item.value === current })
                                         demoGraph.bindRead(editor.selectedNodeId, nextValue, sameMember ? current : "")
+                                    } else if (inspector.calling || inspector.watching) {
+                                        var previous = editor.selectedNode.parameters.member
+                                        var keepMember = inspector.targetId && demoGraph.operationMembers(inspector.selectedType, nextValue).some(
+                                            function(item) { return item.value === previous })
+                                        if (inspector.watching)
+                                            demoGraph.bindPropertyEvent(editor.selectedNodeId, nextValue, keepMember ? previous : "")
+                                        else
+                                            demoGraph.bindCall(editor.selectedNodeId, nextValue, keepMember ? previous : "")
                                     } else {
                                         demoGraph.session.setParameter(editor.selectedNodeId, "target", nextValue)
                                     }
@@ -821,17 +916,73 @@ ApplicationWindow {
                             Base.AppSelect {
                                 objectName: "operationMember"
                                 Layout.fillWidth: true
-                                placeholderText: qsTr("选择属性或接口")
+                                placeholderText: inspector.calling ? qsTr("请选择接口") : qsTr("选择属性")
                                 options: inspector.members
                                 enabled: inspector.targetAvailable && inspector.members.length > 0
-                                value: editor.selectedNode ? editor.selectedNode.parameters.member : undefined
+                                value: inspector.targetAvailable && editor.selectedNode ? editor.selectedNode.parameters.member : undefined
                                 onValueSelected: {
                                     if (!editor.selectedNode)
                                         return
                                     if (inspector.reading)
                                         demoGraph.bindRead(editor.selectedNodeId, inspector.targetId, nextValue)
+                                    else if (inspector.watching)
+                                        demoGraph.bindPropertyEvent(editor.selectedNodeId, inspector.targetId, nextValue)
+                                    else if (inspector.calling)
+                                        demoGraph.bindCall(editor.selectedNodeId, inspector.targetId, nextValue)
                                     else
                                         demoGraph.session.setParameter(editor.selectedNodeId, "member", nextValue)
+                                }
+                            }
+                            Repeater {
+                                model: inspector.calling && editor.selectedNode && inspector.targetId
+                                    ? demoGraph.callInputs(editor.selectedNode.id) : []
+                                delegate: ColumnLayout {
+                                    id: callArgument
+                                    Layout.fillWidth: true
+                                    spacing: 3
+                                    readonly property var argument: modelData
+                                    readonly property bool connected: demoGraph.session.connections.some(function(link) {
+                                        return link.target === editor.selectedNodeId && link.targetPort === argument.key
+                                    })
+                                    readonly property bool hasValue: argument.value !== undefined && argument.value !== null
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: callArgument.connected ? callArgument.argument.label
+                                            : !callArgument.hasValue ? qsTr("%1（必填）").arg(callArgument.argument.label)
+                                            : callArgument.argument.edited ? callArgument.argument.label
+                                            : qsTr("%1（默认）").arg(callArgument.argument.label)
+                                        color: window.appTheme.colors.subtleText
+                                        font.pixelSize: 12
+                                        wrapMode: Text.Wrap
+                                    }
+                                    Base.AppTextField {
+                                        id: callField
+                                        objectName: "callInput-" + callArgument.argument.key
+                                        Layout.fillWidth: true
+                                        enabled: !callArgument.connected && inspector.targetAvailable
+                                        readonly property string committedText: !callArgument.connected && callArgument.hasValue
+                                            ? String(callArgument.argument.value) : ""
+                                        property string editedNodeId
+                                        property string editedPortKey
+                                        text: committedText
+                                        placeholderText: callArgument.connected ? qsTr("来自连线") : qsTr("输入参数值")
+                                        onTextEdited: {
+                                            editedNodeId = editor.selectedNodeId
+                                            editedPortKey = callArgument.argument.key
+                                        }
+                                        onEditingFinished: {
+                                            if (!editedNodeId)
+                                                return
+                                            var nodeId = editedNodeId
+                                            var portKey = editedPortKey
+                                            var input = text
+                                            editedNodeId = ""
+                                            text = Qt.binding(function() { return callField.committedText })
+                                            if (enabled && nodeId === editor.selectedNodeId && portKey === callArgument.argument.key)
+                                                demoGraph.setCallInput(nodeId, portKey, input)
+                                        }
+                                    }
                                 }
                             }
                             Text {
@@ -857,6 +1008,45 @@ ApplicationWindow {
                                 text: qsTr("应用输入值")
                                 onClicked: if (editor.selectedNodeId)
                                     demoGraph.setDurationInput(editor.selectedNodeId, durationField.text)
+                            }
+                        }
+
+                        ColumnLayout {
+                            id: waitOptions
+                            readonly property bool globalTime: inspector.selectedType === "demo.waitUntil"
+                            visible: globalTime || inspector.selectedType === "demo.wait"
+                            Layout.fillWidth: true
+                            spacing: 7
+                            readonly property bool connected: visible && demoGraph.session.connections.some(function(link) {
+                                return link.target === editor.selectedNodeId && link.targetPort === "durationMs"
+                            })
+
+                            Text {
+                                text: waitOptions.globalTime ? qsTr("目标时间（毫秒）") : qsTr("时长（毫秒）")
+                                color: window.appTheme.colors.subtleText
+                                font.pixelSize: 12
+                            }
+                            Base.AppTextField {
+                                id: waitField
+                                objectName: "waitDuration"
+                                Layout.fillWidth: true
+                                enabled: !waitOptions.connected
+                                readonly property string committedText: waitOptions.visible && !waitOptions.connected && editor.selectedNode
+                                    ? String(editor.selectedNode.parameters.durationMs) : ""
+                                property string editedNodeId
+                                text: committedText
+                                placeholderText: waitOptions.connected ? qsTr("来自连线") : ""
+                                onTextEdited: editedNodeId = editor.selectedNodeId
+                                onEditingFinished: {
+                                    if (!editedNodeId)
+                                        return
+                                    var nodeId = editedNodeId
+                                    var input = text
+                                    editedNodeId = ""
+                                    text = Qt.binding(function() { return waitField.committedText })
+                                    if (enabled && waitOptions.visible && nodeId === editor.selectedNodeId)
+                                        demoGraph.setWaitDuration(nodeId, input)
+                                }
                             }
                         }
 
@@ -894,9 +1084,9 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                     text: window.graphError || window.notice || (editor.connecting
-                          ? qsTr("选择输入端口连接，按 Esc 取消")
+                          ? qsTr("选择另一端口连接，按 Esc 取消")
                           : editor.selectedConnectionId ? qsTr("已选中连线，按 Delete 删除")
-                          : qsTr("双击常量值编辑 · 拖动标题移动节点 · 滚轮缩放 · 右键连线或已连接的输入端口可删除"))
+                          : qsTr("双击常量值编辑 · 拖动标题移动节点 · 滚轮缩放 · 右键连线可删除"))
                     color: window.graphError ? window.appTheme.colors.dangerText : window.appTheme.colors.subtleText
                     font.pixelSize: 12
                 }

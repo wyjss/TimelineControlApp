@@ -13,6 +13,7 @@ Item {
     property var nodeContents: ({})
     property Component palettePanel: defaultPalette
     property Component inspectorPanel: defaultInspector
+    property alias nodeColors: canvas.nodeColors
     property alias selectedNodeId: canvas.selectedNodeId
     readonly property string selectedConnectionId: canvas.selectedConnectionId
     readonly property var selectedNode: canvas.selectedNode
@@ -49,11 +50,25 @@ Item {
                 clip: true
                 model: editor.session ? editor.session.nodeTypes : []
                 delegate: Button {
+                    id: paletteButton
+                    readonly property var typeColors: editor.nodeColors ? editor.nodeColors[modelData.typeId] : null
                     width: ListView.view.width
+                    leftPadding: typeColors ? 20 : padding
                     text: modelData.title
                     onClicked: editor.addNode(modelData.typeId)
                     ToolTip.visible: hovered && modelData.description !== ""
                     ToolTip.text: modelData.description
+
+                    Rectangle {
+                        x: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 8
+                        height: 14
+                        radius: 2
+                        visible: !!paletteButton.typeColors
+                        color: paletteButton.typeColors ? paletteButton.typeColors.background : "transparent"
+                        border.color: paletteButton.typeColors ? paletteButton.typeColors.accent : "transparent"
+                    }
                 }
             }
         }
@@ -66,6 +81,11 @@ Item {
             implicitWidth: 230
             color: editor.colors ? editor.colors.backgroundSurface : "transparent"
             readonly property var node: editor.selectedNode
+            readonly property string nodeId: node ? node.id : ""
+            readonly property string error: editor.session ? editor.session.error : ""
+            property string errorKey: ""
+            onNodeIdChanged: errorKey = ""
+            onErrorChanged: errorKey = ""
             readonly property var definition: {
                 var types = editor.session ? editor.session.nodeTypes : []
                 for (var i = 0; i < types.length; ++i) {
@@ -97,6 +117,13 @@ Item {
                             property var parameter: modelData
                             readonly property var value: inspector.node
                                 ? inspector.node.parameters[parameter.key] : undefined
+                            function submitValue(value) {
+                                if (editor.session.setParameter(inspector.nodeId, parameter.key, value))
+                                    return true
+                                inspector.errorKey = parameter.key
+                                return false
+                            }
+
                             Label {
                                 text: field.parameter.title
                                 color: editor.colors ? editor.colors.subtleText : "black"
@@ -109,23 +136,30 @@ Item {
                                     id: booleanField
                                     CheckBox {
                                         checked: !!field.value
-                                        onClicked: editor.session.setParameter(inspector.node.id,
-                                            field.parameter.key, checked)
+                                        onClicked: {
+                                            if (!field.submitValue(checked))
+                                                checked = Qt.binding(function() { return !!field.value })
+                                        }
                                     }
                                 }
                                 Component {
                                     id: optionField
                                     ComboBox {
+                                        id: option
                                         model: field.parameter.allowedValues
                                         currentIndex: model.indexOf(field.value)
-                                        onActivated: editor.session.setParameter(inspector.node.id,
-                                            field.parameter.key, model[index])
+                                        onActivated: {
+                                            if (!field.submitValue(model[index]))
+                                                currentIndex = Qt.binding(function() { return option.model.indexOf(field.value) })
+                                        }
                                     }
                                 }
                                 Component {
                                     id: textField
                                     TextField {
-                                        text: field.value === undefined || field.value === null ? "" : String(field.value)
+                                        readonly property string committedText: field.value === undefined || field.value === null
+                                            ? "" : String(field.value)
+                                        text: committedText
                                         selectByMouse: true
                                         property bool edited: false
                                         property string editedNodeId
@@ -143,21 +177,32 @@ Item {
                                                 return
                                             var value = field.parameter.valueTypeId === "number"
                                                 ? (text.trim() === "" ? NaN : Number(text)) : text
-                                            editor.session.setParameter(editedNodeId, editedKey, value)
+                                            if (!field.submitValue(value))
+                                                text = Qt.binding(function() { return committedText })
                                         }
                                     }
                                 }
                             }
+                            Label {
+                                Layout.fillWidth: true
+                                text: field.parameter.key === inspector.errorKey ? inspector.error : ""
+                                visible: text !== ""
+                                wrapMode: Text.Wrap
+                                color: editor.colors ? editor.colors.dangerText : palette.text
+                            }
                             Button {
                                 text: qsTr("恢复默认")
-                                onClicked: editor.session.resetParameter(inspector.node.id, field.parameter.key)
+                                onClicked: {
+                                    if (!editor.session.resetParameter(inspector.nodeId, field.parameter.key))
+                                        inspector.errorKey = field.parameter.key
+                                }
                             }
                         }
                     }
                     Label {
                         Layout.fillWidth: true
-                        text: editor.session ? editor.session.error : ""
-                        visible: text !== ""
+                        text: inspector.error
+                        visible: text !== "" && !inspector.errorKey
                         wrapMode: Text.Wrap
                         color: editor.colors ? editor.colors.text : "black"
                     }

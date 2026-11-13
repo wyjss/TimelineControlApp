@@ -12,7 +12,7 @@ namespace Blueprint {
 
 GraphEditSession::GraphEditSession(GraphDocument &document, QObject *parent)
     : QAbstractListModel(parent), m_document(document), m_nodes(document.data().nodes),
-      m_history{document.data()}, m_graphId(document.data().id)
+      m_history{{document.data(), {}}}, m_graphId(document.data().id)
 {
     static const bool initialized = (initializeBlueprintQuickResources(), true);
     Q_UNUSED(initialized);
@@ -217,12 +217,16 @@ void GraphEditSession::removeConnection(const QString &connectionId)
 void GraphEditSession::disconnectInput(const QString &nodeId, const QString &portKey)
 {
     const QUuid id(nodeId);
+    QUuid connectionId;
     for (const ConnectionData &link : m_document.data().connections) {
-        if (link.target.nodeId == id && link.target.portKey == portKey) {
-            report(m_document.removeConnection(link.id).error);
+        if (link.target.nodeId != id || link.target.portKey != portKey)
+            continue;
+        if (!connectionId.isNull())
             return;
-        }
+        connectionId = link.id;
     }
+    if (!connectionId.isNull())
+        report(m_document.removeConnection(connectionId).error);
 }
 
 void GraphEditSession::undo() { restoreHistory(m_historyIndex - 1); }
@@ -234,12 +238,10 @@ void GraphEditSession::applyChange(const GraphChangeSet &change)
         beginResetModel();
         m_nodes = m_document.data().nodes;
         endResetModel();
-        if (!m_restoring) {
-            m_history = {m_document.data()};
-            m_historyIndex = 0;
-            m_savedIndex = 0;
-            report({});
-        }
+        m_history = {{m_document.data(), {}}};
+        m_historyIndex = 0;
+        m_savedIndex = 0;
+        report({});
         if (m_graphId != m_document.data().id) {
             m_graphId = m_document.data().id;
             emit graphIdChanged();
@@ -252,11 +254,15 @@ void GraphEditSession::applyChange(const GraphChangeSet &change)
                 endRemoveRows();
             }
         }
-        for (const QUuid &id : change.addedNodeIds) {
-            const int row = m_nodes.size();
-            beginInsertRows({}, row, row);
-            m_nodes.append(*m_document.findNode(id));
-            endInsertRows();
+        if (!change.addedNodeIds.isEmpty()) {
+            const auto &nodes = m_document.data().nodes;
+            for (int row = 0; row < nodes.size(); ++row) {
+                if (!change.addedNodeIds.contains(nodes.at(row).id))
+                    continue;
+                beginInsertRows({}, row, row);
+                m_nodes.insert(row, nodes.at(row));
+                endInsertRows();
+            }
         }
         for (const NodeChange &node : change.changedNodes) {
             for (int row = 0; row < m_nodes.size(); ++row) {
@@ -274,11 +280,20 @@ void GraphEditSession::applyChange(const GraphChangeSet &change)
                 break;
             }
         }
-        if (m_savedIndex > m_historyIndex)
-            m_savedIndex = -1;
-        m_history.resize(m_historyIndex + 1);
-        m_history.append(m_document.data());
-        ++m_historyIndex;
+        if (!m_restoring) {
+            if (m_savedIndex > m_historyIndex)
+                m_savedIndex = -1;
+            m_history.resize(m_historyIndex + 1);
+            m_history.append({m_document.data(), change});
+            ++m_historyIndex;
+            constexpr int maxUndoSteps = 100;
+            if (m_historyIndex > maxUndoSteps) {
+                m_history.removeFirst();
+                --m_historyIndex;
+                if (m_savedIndex >= 0)
+                    --m_savedIndex;
+            }
+        }
     }
 
     if (change.reset || !change.addedConnectionIds.isEmpty() || !change.removedConnectionIds.isEmpty())
@@ -302,10 +317,15 @@ void GraphEditSession::restoreHistory(int index)
 {
     if (index < 0 || index >= m_history.size())
         return;
+    GraphChangeSet change = m_history.at(qMax(index, m_historyIndex)).change;
+    if (index < m_historyIndex) {
+        change.addedNodeIds.swap(change.removedNodeIds);
+        change.addedConnectionIds.swap(change.removedConnectionIds);
+    }
     Diagnostic error;
     {
         QScopedValueRollback<bool> restoring(m_restoring, true);
-        error = m_document.replaceData(m_history.at(index));
+        error = m_document.applyData(m_history.at(index).data, change);
     }
     if (error.code.isEmpty()) {
         m_historyIndex = index;

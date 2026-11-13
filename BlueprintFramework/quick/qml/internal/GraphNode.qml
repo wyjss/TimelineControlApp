@@ -15,6 +15,7 @@ Rectangle {
     property Item viewport
     property real viewScale: 1
     property QtObject colors
+    property var headerColors: null
     property bool selected: false
     property string activeOutput
     property bool connecting: false
@@ -25,6 +26,7 @@ Rectangle {
     readonly property bool dragging: headerDrag.pressed && !headerDrag.canceled
     readonly property int headerHeight: 38
     readonly property int portHeight: 28
+    readonly property int portHitHalfSize: 9
     readonly property int portRows: Math.max(inputs.length, outputs.length)
     readonly property real portTop: headerHeight + (body.item ? body.height + 8 : 0)
 
@@ -52,7 +54,7 @@ Rectangle {
     radius: 9
     color: colors.backgroundSurface
     border.width: selected ? 2 : 1
-    border.color: selected ? colors.highlightText : colors.border
+    border.color: selected ? (headerColors ? colors.text : colors.highlightText) : colors.border
     z: selected ? 1 : 0
     onXChanged: anchorsChanged()
     onYChanged: anchorsChanged()
@@ -72,14 +74,14 @@ Rectangle {
         width: parent.width - 6
         height: card.headerHeight - 4
         radius: 6
-        color: card.colors.highlightSoft
+        color: card.headerColors ? card.headerColors.background : card.colors.highlightSoft
 
         Text {
             anchors.left: parent.left
             anchors.leftMargin: 10
             anchors.verticalCenter: parent.verticalCenter
             text: "◇"
-            color: card.colors.highlightText
+            color: card.headerColors ? card.headerColors.accent : card.colors.highlightText
             font.pixelSize: 17
             font.bold: true
         }
@@ -194,9 +196,10 @@ Rectangle {
             MouseArea {
                 id: inputHit
                 objectName: "input-" + modelData.key
-                x: -10
-                width: parent.width + 10
-                height: parent.height
+                x: -card.portHitHalfSize
+                width: card.portHitHalfSize * 2
+                height: width
+                anchors.verticalCenter: parent.verticalCenter
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -278,8 +281,10 @@ Rectangle {
             MouseArea {
                 id: outputHit
                 objectName: "output-" + modelData.key
-                width: parent.width + 10
-                height: parent.height
+                x: parent.width - card.portHitHalfSize
+                width: card.portHitHalfSize * 2
+                height: width
+                anchors.verticalCenter: parent.verticalCenter
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 property point origin

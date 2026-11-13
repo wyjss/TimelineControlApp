@@ -66,7 +66,7 @@ public:
     //! 返回启动行为所需的参数快照，省略未设置的参数。
     QVariantMap parameterValues(const QUuid &nodeId) const;
 
-    //! 检查连线，重接时可排除原连线。允许时返回空 code 的诊断。
+    //! 数据输入只接受一个来源，执行输入可接受多个不同来源。重接时可排除原连线。
     Diagnostic canConnect(const Endpoint &source, const Endpoint &target, QUuid connectionToIgnore = {}) const;
 
     //! 初始参数和新节点一次提交，供创建已绑定的节点使用。
@@ -93,6 +93,9 @@ signals:
     void typesChanged();
 
 private:
+    friend class GraphEditSession;
+    //! 恢复已记录的编辑时沿用整图校验，只发布该次编辑的变更。
+    Diagnostic applyData(GraphData data, GraphChangeSet change);
     int nodeIndex(const QUuid &nodeId) const;
     std::optional<PortDefinition> port(const Endpoint &endpoint) const;
     const ParameterDefinition *parameter(const NodeData &node, const QString &key) const;

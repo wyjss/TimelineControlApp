@@ -92,34 +92,32 @@ Diagnostic GraphDocument::canConnect(const Endpoint &source, const Endpoint &tar
 {
     const auto sourcePort = port(source);
     if (!sourcePort)
-        return {QStringLiteral("graph.missing_port"), QStringLiteral("The source node or port does not exist."), source.nodeId, source.portKey};
+        return {"graph.missing_port", "The source node or port does not exist.", source.nodeId, source.portKey};
     const auto targetPort = port(target);
     if (!targetPort)
-        return {QStringLiteral("graph.missing_port"), QStringLiteral("The target node or port does not exist."), target.nodeId, target.portKey};
+        return {"graph.missing_port", "The target node or port does not exist.", target.nodeId, target.portKey};
     if (sourcePort->direction != PortDirection::Output || targetPort->direction != PortDirection::Input)
-        return {QStringLiteral("graph.port_direction"), QStringLiteral("A connection must go from an output to an input."), target.nodeId, target.portKey};
+        return {"graph.port_direction", "A connection must go from an output to an input.", target.nodeId, target.portKey};
     if (sourcePort->kind != targetPort->kind)
-        return {QStringLiteral("graph.port_kind"), QStringLiteral("Execution and data ports cannot be connected."), target.nodeId, target.portKey};
+        return {"graph.port_kind", "Execution and data ports cannot be connected.", target.nodeId, target.portKey};
     if (sourcePort->kind == PortKind::Data) {
         if (sourcePort->valueTypeId.isEmpty() || targetPort->valueTypeId.isEmpty())
-            return {QStringLiteral("graph.unconfigured_port"), QStringLiteral("Configure the data port before connecting it."), target.nodeId, target.portKey};
+            return {"graph.unconfigured_port", "Configure the data port before connecting it.", target.nodeId, target.portKey};
         if (sourcePort->valueTypeId != targetPort->valueTypeId
             && targetPort->valueTypeId != anyValueType)
-            return {QStringLiteral("graph.port_type"), QStringLiteral("Cannot connect value type '%1' to '%2'.")
+            return {"graph.port_type", QStringLiteral("Cannot connect value type '%1' to '%2'.")
                 .arg(sourcePort->valueTypeId, targetPort->valueTypeId), target.nodeId, target.portKey};
     }
 
     for (const ConnectionData &connection : m_data.connections) {
         if (connection.id == connectionToIgnore)
             continue;
-        if (sourcePort->kind == PortKind::Execution && connection.source.nodeId == source.nodeId
-            && connection.source.portKey == source.portKey)
-            return {QStringLiteral("graph.output_occupied"), QStringLiteral("The execution output already has a connection."), source.nodeId, source.portKey};
         if (connection.target.nodeId != target.nodeId || connection.target.portKey != target.portKey)
             continue;
         if (connection.source.nodeId == source.nodeId && connection.source.portKey == source.portKey)
-            return {QStringLiteral("graph.duplicate_connection"), QStringLiteral("This connection already exists."), target.nodeId, target.portKey};
-        return {QStringLiteral("graph.input_occupied"), QStringLiteral("The target input already has a connection."), target.nodeId, target.portKey};
+            return {"graph.duplicate_connection", "This connection already exists.", target.nodeId, target.portKey};
+        if (targetPort->kind == PortKind::Data)
+            return {"graph.input_occupied", "The target input already has a connection.", target.nodeId, target.portKey};
     }
     return {};
 }
@@ -127,12 +125,12 @@ Diagnostic GraphDocument::canConnect(const Endpoint &source, const Endpoint &tar
 EditResult GraphDocument::addNode(const QString &typeId, QPointF position, QVariantMap parameters)
 {
     if (m_notifying)
-        return {{}, {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")}};
+        return {{}, {"graph.reentrant_edit", "Cannot edit during a change notification."}};
     const auto *type = m_registry.find(typeId);
     if (!type)
-        return {{}, {QStringLiteral("graph.unknown_type"), QStringLiteral("Node type '%1' is not registered.").arg(typeId)}};
+        return {{}, {"graph.unknown_type", QStringLiteral("Node type '%1' is not registered.").arg(typeId)}};
     if (!qIsFinite(position.x()) || !qIsFinite(position.y()))
-        return {{}, {QStringLiteral("graph.invalid_position"), QStringLiteral("The node position must be finite.")}};
+        return {{}, {"graph.invalid_position", "The node position must be finite."}};
 
     NodeData node{QUuid::createUuid(), typeId, position, std::move(parameters)};
     auto error = NodeRegistry::validateValues(type->parameters, node.parameterOverrides);
@@ -161,12 +159,12 @@ EditResult GraphDocument::addNode(const QString &typeId, QPointF position, QVari
 EditResult GraphDocument::moveNode(QUuid nodeId, QPointF position)
 {
     if (m_notifying)
-        return {{}, {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")}};
+        return {{}, {"graph.reentrant_edit", "Cannot edit during a change notification."}};
     const int index = nodeIndex(nodeId);
     if (index < 0)
-        return {{}, {QStringLiteral("graph.missing_node"), QStringLiteral("The node does not exist."), nodeId}};
+        return {{}, {"graph.missing_node", "The node does not exist.", nodeId}};
     if (!qIsFinite(position.x()) || !qIsFinite(position.y()))
-        return {{}, {QStringLiteral("graph.invalid_position"), QStringLiteral("The node position must be finite.")}};
+        return {{}, {"graph.invalid_position", "The node position must be finite."}};
     const QPointF previous = m_data.nodes.at(index).position;
     if (previous.x() == position.x() && previous.y() == position.y())
         return {nodeId, {}};
@@ -187,10 +185,10 @@ EditResult GraphDocument::setParameter(QUuid nodeId, QString key, QVariant value
 EditResult GraphDocument::setParameters(QUuid nodeId, const QVariantMap &values)
 {
     if (m_notifying)
-        return {{}, {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")}};
+        return {{}, {"graph.reentrant_edit", "Cannot edit during a change notification."}};
     const int index = nodeIndex(nodeId);
     if (index < 0)
-        return {{}, {QStringLiteral("graph.missing_node"), QStringLiteral("The node does not exist."), nodeId}};
+        return {{}, {"graph.missing_node", "The node does not exist.", nodeId}};
 
     const NodeData &node = m_data.nodes.at(index);
     auto overrides = node.parameterOverrides;
@@ -198,9 +196,9 @@ EditResult GraphDocument::setParameters(QUuid nodeId, const QVariantMap &values)
     for (auto it = values.cbegin(); it != values.cend(); ++it) {
         const ParameterDefinition *definition = parameter(node, it.key());
         if (!definition)
-            return {{}, {QStringLiteral("graph.unknown_parameter"), QStringLiteral("Unknown parameter '%1'.").arg(it.key()), nodeId, it.key()}};
+            return {{}, {"graph.unknown_parameter", QStringLiteral("Unknown parameter '%1'.").arg(it.key()), nodeId, it.key()}};
         if (it.value().isValid() && !NodeRegistry::acceptsParameterValue(*definition, it.value()))
-            return {{}, {QStringLiteral("graph.invalid_parameter"), QStringLiteral("Invalid value for parameter '%1'.").arg(it.key()), nodeId, it.key()}};
+            return {{}, {"graph.invalid_parameter", QStringLiteral("Invalid value for parameter '%1'.").arg(it.key()), nodeId, it.key()}};
 
         const QVariant previous = node.parameterOverrides.value(it.key(), definition->defaultValue);
         const QVariant next = it.value().isValid() ? it.value() : definition->defaultValue;
@@ -250,7 +248,7 @@ EditResult GraphDocument::setParameters(QUuid nodeId, const QVariantMap &values)
                     }
                 }
                 if (!compatible)
-                    return {{}, {QStringLiteral("graph.connected_port_change"),
+                    return {{}, {"graph.connected_port_change",
                         tr("请先断开端口「%1」的连线，再切换属性类型。").arg(endpoint.portKey), nodeId, endpoint.portKey}};
             }
         }
@@ -266,7 +264,7 @@ EditResult GraphDocument::setParameters(QUuid nodeId, const QVariantMap &values)
 EditResult GraphDocument::connectPorts(const Endpoint &source, const Endpoint &target)
 {
     if (m_notifying)
-        return {{}, {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")}};
+        return {{}, {"graph.reentrant_edit", "Cannot edit during a change notification."}};
     const Diagnostic error = canConnect(source, target);
     if (!error.code.isEmpty())
         return {{}, error};
@@ -283,14 +281,14 @@ EditResult GraphDocument::connectPorts(const Endpoint &source, const Endpoint &t
 EditResult GraphDocument::reconnectConnection(QUuid connectionId, const Endpoint &source, const Endpoint &target)
 {
     if (m_notifying)
-        return {{}, {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")}};
+        return {{}, {"graph.reentrant_edit", "Cannot edit during a change notification."}};
     const auto first = m_data.connections.begin();
     const auto last = m_data.connections.end();
     const auto it = std::find_if(first, last, [&connectionId](const ConnectionData &connection) {
         return connection.id == connectionId;
     });
     if (it == last)
-        return {{}, {QStringLiteral("graph.missing_connection"), QStringLiteral("The connection does not exist."), {}, connectionId.toString()}};
+        return {{}, {"graph.missing_connection", "The connection does not exist.", {}, connectionId.toString()}};
     if (it->source.nodeId == source.nodeId && it->source.portKey == source.portKey
         && it->target.nodeId == target.nodeId && it->target.portKey == target.portKey)
         return {connectionId, {}};
@@ -311,14 +309,14 @@ EditResult GraphDocument::reconnectConnection(QUuid connectionId, const Endpoint
 EditResult GraphDocument::removeConnection(QUuid connectionId)
 {
     if (m_notifying)
-        return {{}, {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")}};
+        return {{}, {"graph.reentrant_edit", "Cannot edit during a change notification."}};
     const auto first = m_data.connections.cbegin();
     const auto last = m_data.connections.cend();
     const auto it = std::find_if(first, last, [&connectionId](const ConnectionData &connection) {
         return connection.id == connectionId;
     });
     if (it == last)
-        return {{}, {QStringLiteral("graph.missing_connection"), QStringLiteral("The connection does not exist."), {}, connectionId.toString()}};
+        return {{}, {"graph.missing_connection", "The connection does not exist.", {}, connectionId.toString()}};
 
     m_data.connections.removeAt(static_cast<int>(it - first));
 
@@ -331,10 +329,10 @@ EditResult GraphDocument::removeConnection(QUuid connectionId)
 EditResult GraphDocument::removeNode(QUuid nodeId)
 {
     if (m_notifying)
-        return {{}, {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")}};
+        return {{}, {"graph.reentrant_edit", "Cannot edit during a change notification."}};
     const int index = nodeIndex(nodeId);
     if (index < 0)
-        return {{}, {QStringLiteral("graph.missing_node"), QStringLiteral("The node does not exist."), nodeId}};
+        return {{}, {"graph.missing_node", "The node does not exist.", nodeId}};
 
     GraphChangeSet change;
     change.removedNodeIds.append(nodeId);
@@ -355,21 +353,28 @@ EditResult GraphDocument::removeNode(QUuid nodeId)
 
 Diagnostic GraphDocument::replaceData(GraphData data)
 {
+    GraphChangeSet change;
+    change.reset = true;
+    return applyData(std::move(data), change);
+}
+
+Diagnostic GraphDocument::applyData(GraphData data, GraphChangeSet change)
+{
     if (m_notifying)
-        return {QStringLiteral("graph.reentrant_edit"), QStringLiteral("Cannot edit during a change notification.")};
+        return {"graph.reentrant_edit", "Cannot edit during a change notification."};
     if (data.id.isNull())
-        return {QStringLiteral("graph.invalid_id"), QStringLiteral("The graph ID is invalid.")};
+        return {"graph.invalid_id", "The graph ID is invalid."};
 
     QSet<QUuid> nodeIds;
     QHash<QPair<QString, QString>, QUuid> instances;
     for (const NodeData &node : qAsConst(data.nodes)) {
         if (node.id.isNull() || nodeIds.contains(node.id))
-            return {QStringLiteral("graph.invalid_node_id"), QStringLiteral("Invalid or duplicate node ID."), node.id};
+            return {"graph.invalid_node_id", "Invalid or duplicate node ID.", node.id};
         const auto *type = m_registry.find(node.typeId);
         if (!type)
-            return {QStringLiteral("graph.unknown_type"), QStringLiteral("Node type '%1' is not registered.").arg(node.typeId), node.id};
+            return {"graph.unknown_type", QStringLiteral("Node type '%1' is not registered.").arg(node.typeId), node.id};
         if (!qIsFinite(node.position.x()) || !qIsFinite(node.position.y()))
-            return {QStringLiteral("graph.invalid_position"), QStringLiteral("The node position must be finite."), node.id};
+            return {"graph.invalid_position", "The node position must be finite.", node.id};
 
         auto error = NodeRegistry::validateValues(type->parameters, node.parameterOverrides);
         if (error.code.isEmpty())
@@ -384,11 +389,11 @@ Diagnostic GraphDocument::replaceData(GraphData data)
         if (type->instancePolicy != InstancePolicy::Multiple) {
             const auto key = instanceKey(node, *type);
             if (key.isNull())
-                return {QStringLiteral("graph.instance_key"), tr("节点类型「%1」需要有效的实例标识。").arg(node.typeId), node.id};
+                return {"graph.instance_key", tr("节点类型「%1」需要有效的实例标识。").arg(node.typeId), node.id};
             const auto identity = qMakePair(node.typeId, key);
             const auto previous = instances.constFind(identity);
             if (previous != instances.cend())
-                return {QStringLiteral("graph.instance_conflict"), tr("节点类型「%1」有重复实例（%2 和 %3）。")
+                return {"graph.instance_conflict", tr("节点类型「%1」有重复实例（%2 和 %3）。")
                     .arg(node.typeId, previous.value().toString(), node.id.toString()), node.id};
             instances.insert(identity, node.id);
         }
@@ -402,7 +407,7 @@ Diagnostic GraphDocument::replaceData(GraphData data)
     QSet<QUuid> connectionIds;
     for (const ConnectionData &connection : qAsConst(data.connections)) {
         if (connection.id.isNull() || connectionIds.contains(connection.id))
-            return {QStringLiteral("graph.invalid_connection_id"), QStringLiteral("Invalid or duplicate connection ID."), {}, connection.id.toString()};
+            return {"graph.invalid_connection_id", "Invalid or duplicate connection ID.", {}, connection.id.toString()};
         const Diagnostic error = validated.canConnect(connection.source, connection.target);
         if (!error.code.isEmpty())
             return error;
@@ -411,9 +416,7 @@ Diagnostic GraphDocument::replaceData(GraphData data)
     }
 
     m_data = std::move(validated.m_data);
-    GraphChangeSet change;
-    change.reset = true;
-    publishChange(change);
+    publishChange(std::move(change));
     return {};
 }
 
@@ -460,10 +463,10 @@ EditResult GraphDocument::checkInstance(const NodeData &node, const NodeTypeDefi
         return {};
     const auto key = instanceKey(node, type);
     if (key.isNull())
-        return {{}, {QStringLiteral("graph.instance_key"), tr("节点类型「%1」需要有效的实例标识。").arg(node.typeId), node.id}};
+        return {{}, {"graph.instance_key", tr("节点类型「%1」需要有效的实例标识。").arg(node.typeId), node.id}};
     for (const NodeData &other : m_data.nodes) {
         if (other.typeId == node.typeId && other.id != node.id && instanceKey(other, type) == key)
-            return {{}, {QStringLiteral("graph.instance_conflict"), tr("节点类型「%1」已有匹配的实例。").arg(node.typeId), node.id}, other.id};
+            return {{}, {"graph.instance_conflict", tr("节点类型「%1」已有匹配的实例。").arg(node.typeId), node.id}, other.id};
     }
     return {};
 }

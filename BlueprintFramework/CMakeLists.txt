@@ -13,17 +13,28 @@ option(BLUEPRINT_BUILD_TESTS "Build framework contract tests" OFF)
 find_package(Qt5 5.14 REQUIRED COMPONENTS Core)
 
 add_library(BlueprintFramework STATIC
+    include/Blueprint/BasicNodes.h
     include/Blueprint/GraphData.h
     include/Blueprint/GraphDocument.h
     include/Blueprint/GraphRuntime.h
     include/Blueprint/NodeRegistry.h
+    include/Blueprint/ObjectNodes.h
+    include/Blueprint/WaitNodes.h
     src/GraphDocument.cpp
     src/GraphFile.cpp
     src/GraphRuntime.cpp
     src/NodeRegistry.cpp
+    src/nodes/BasicNodes.cpp
+    src/nodes/BranchNode.cpp
+    src/nodes/BranchNode.h
+    src/nodes/CompareNode.cpp
+    src/nodes/CompareNode.h
+    src/nodes/ObjectNodes.cpp
+    src/nodes/WaitNodes.cpp
     docs/data-model.md
     README.md
 )
+source_group(nodes REGULAR_EXPRESSION "/src/nodes/")
 add_library(BlueprintCore ALIAS BlueprintFramework)
 add_library(Blueprint::Core ALIAS BlueprintFramework)
 set_target_properties(BlueprintFramework PROPERTIES AUTOMOC ON EXPORT_NAME Core)
@@ -38,6 +49,9 @@ target_link_libraries(BlueprintFramework PUBLIC Qt5::Core)
 if(BLUEPRINT_BUILD_EXAMPLE AND CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     add_executable(BlueprintExample examples/core_example.cpp)
     target_link_libraries(BlueprintExample PRIVATE BlueprintCore)
+
+    add_executable(BlueprintAsyncExample examples/async_nodes_example.cpp)
+    target_link_libraries(BlueprintAsyncExample PRIVATE BlueprintCore)
 endif()
 if(BLUEPRINT_BUILD_QUICK)
     add_subdirectory(quick)
@@ -52,42 +66,31 @@ endif()
 if(BLUEPRINT_BUILD_TESTS)
     enable_testing()
     find_package(Qt5 5.14 REQUIRED COMPONENTS Test)
-    if(NOT TARGET BlueprintQuick)
-        message(FATAL_ERROR "Document projection tests require BlueprintQuick")
+
+    if(TARGET BlueprintExample)
+        add_test(NAME BlueprintExample COMMAND BlueprintExample)
+        add_test(NAME BlueprintAsyncExample COMMAND BlueprintAsyncExample)
     endif()
-    add_executable(BlueprintDocumentTest tests/document_test.cpp)
-    set_target_properties(BlueprintDocumentTest PROPERTIES AUTOMOC ON)
-    target_link_libraries(BlueprintDocumentTest PRIVATE BlueprintQuick Qt5::Test)
-    add_test(NAME BlueprintDocumentTest COMMAND BlueprintDocumentTest)
-    add_executable(BlueprintRuntimeTest tests/runtime_test.cpp)
-    target_link_libraries(BlueprintRuntimeTest PRIVATE BlueprintCore)
+
+    add_executable(BlueprintRuntimeTest verification/runtime_test.cpp)
+    set_target_properties(BlueprintRuntimeTest PROPERTIES AUTOMOC ON)
+    target_link_libraries(BlueprintRuntimeTest PRIVATE BlueprintCore Qt5::Test)
     add_test(NAME BlueprintRuntimeTest COMMAND BlueprintRuntimeTest)
-    add_executable(BlueprintEditorTest tests/editor_test.cpp)
-    target_link_libraries(BlueprintEditorTest PRIVATE BlueprintQuick)
-    add_test(NAME BlueprintEditorTest COMMAND BlueprintEditorTest)
-    set_tests_properties(BlueprintEditorTest PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    add_executable(BlueprintReconnectTest tests/reconnect_test.cpp)
-    set_target_properties(BlueprintReconnectTest PROPERTIES AUTOMOC ON)
-    target_link_libraries(BlueprintReconnectTest PRIVATE BlueprintQuick Qt5::Test)
-    add_test(NAME BlueprintReconnectTest COMMAND BlueprintReconnectTest)
-    set_tests_properties(BlueprintReconnectTest PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
-    add_executable(BlueprintDemoTest tests/demo_test.cpp demo/DemoGraph.cpp demo/DemoGraph.h)
-    set_target_properties(BlueprintDemoTest PROPERTIES AUTOMOC ON)
-    target_include_directories(BlueprintDemoTest PRIVATE demo)
-    target_link_libraries(BlueprintDemoTest PRIVATE BlueprintQuick Qt5::Test)
-    add_test(NAME BlueprintDemoTest COMMAND BlueprintDemoTest)
-    add_executable(BlueprintCompareTest tests/compare_test.cpp demo/DemoGraph.cpp demo/DemoGraph.h)
-    set_target_properties(BlueprintCompareTest PROPERTIES AUTOMOC ON)
-    target_include_directories(BlueprintCompareTest PRIVATE demo)
-    target_link_libraries(BlueprintCompareTest PRIVATE BlueprintQuick Qt5::Test)
-    add_test(NAME BlueprintCompareTest COMMAND BlueprintCompareTest)
-    add_executable(BlueprintInteractionTest tests/interaction_test.cpp)
-    set_target_properties(BlueprintInteractionTest PROPERTIES AUTOMOC ON)
-    target_link_libraries(BlueprintInteractionTest PRIVATE BlueprintQuick Qt5::Test)
-    add_test(NAME BlueprintInteractionTest COMMAND BlueprintInteractionTest)
-    set_tests_properties(BlueprintInteractionTest PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+
+    if(TARGET BlueprintQuick)
+        add_executable(BlueprintHistoryTest verification/history_test.cpp demo/DemoGraph.cpp demo/DemoGraph.h)
+        set_target_properties(BlueprintHistoryTest PROPERTIES AUTOMOC ON)
+        target_include_directories(BlueprintHistoryTest PRIVATE demo)
+        target_link_libraries(BlueprintHistoryTest PRIVATE BlueprintQuick Qt5::Test)
+        add_test(NAME BlueprintHistoryTest COMMAND BlueprintHistoryTest)
+
+        add_executable(BlueprintEditorTest verification/editor_test.cpp)
+        set_target_properties(BlueprintEditorTest PROPERTIES AUTOMOC ON)
+        target_link_libraries(BlueprintEditorTest PRIVATE BlueprintQuick Qt5::Test)
+        add_test(NAME BlueprintEditorTest COMMAND BlueprintEditorTest)
+        set_tests_properties(BlueprintEditorTest PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+    endif()
 endif()
 
 install(TARGETS BlueprintFramework EXPORT BlueprintTargets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

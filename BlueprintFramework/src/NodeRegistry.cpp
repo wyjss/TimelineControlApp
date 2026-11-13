@@ -25,36 +25,36 @@ Diagnostic validateParameterDefinitions(const QVector<ParameterDefinition> &defi
     QSet<QString> keys;
     for (const ParameterDefinition &parameter : definitions) {
         if (parameter.key.trimmed().isEmpty() || keys.contains(parameter.key))
-            return {QStringLiteral("definition.parameterKey"),
+            return {"definition.parameterKey",
                     QStringLiteral("Empty or duplicate parameter key '%1'.").arg(parameter.key), {}, parameter.key};
         const auto type = valueType(parameter.valueTypeId);
         if (type == QMetaType::UnknownType)
-            return {QStringLiteral("definition.valueType"),
+            return {"definition.valueType",
                     QStringLiteral("Unknown value type '%1' for parameter '%2'.")
                         .arg(parameter.valueTypeId, parameter.key), {}, parameter.key};
         if (!parameter.allowedValues.isEmpty() && type != QMetaType::QString)
-            return {QStringLiteral("definition.allowedValues"),
+            return {"definition.allowedValues",
                     QStringLiteral("Allowed values require a string parameter '%1'.").arg(parameter.key), {}, parameter.key};
         QSet<QString> allowedValues;
         for (const QString &value : parameter.allowedValues) {
             if (allowedValues.contains(value))
-                return {QStringLiteral("definition.allowedValues"),
+                return {"definition.allowedValues",
                         QStringLiteral("Duplicate allowed value for parameter '%1'.").arg(parameter.key), {}, parameter.key};
             allowedValues.insert(value);
         }
         if ((parameter.minimum.isValid() || parameter.maximum.isValid() || parameter.integer)
             && type != QMetaType::Double)
-            return {QStringLiteral("definition.numericConstraint"),
+            return {"definition.numericConstraint",
                     QStringLiteral("Numeric constraints require a number parameter '%1'.").arg(parameter.key), {}, parameter.key};
         if ((parameter.minimum.isValid() && !NodeRegistry::acceptsValue(QStringLiteral("number"), parameter.minimum))
             || (parameter.maximum.isValid() && !NodeRegistry::acceptsValue(QStringLiteral("number"), parameter.maximum))
             || (parameter.minimum.isValid() && parameter.maximum.isValid()
                 && parameter.minimum.toDouble() > parameter.maximum.toDouble()))
-            return {QStringLiteral("definition.numericConstraint"),
+            return {"definition.numericConstraint",
                     QStringLiteral("Invalid numeric bounds for parameter '%1'.").arg(parameter.key), {}, parameter.key};
         if (parameter.defaultValue.isValid()
             && !NodeRegistry::acceptsParameterValue(parameter, parameter.defaultValue))
-            return {QStringLiteral("definition.defaultValue"),
+            return {"definition.defaultValue",
                     QStringLiteral("Invalid default value for parameter '%1'.").arg(parameter.key), {}, parameter.key};
         keys.insert(parameter.key);
     }
@@ -71,9 +71,9 @@ NodeRegistry::NodeRegistry(QObject *parent)
 Diagnostic NodeRegistry::add(const NodeTypeDefinition &definition)
 {
     if (definition.typeId.trimmed().isEmpty())
-        return {QStringLiteral("definition.typeId"), QStringLiteral("The node type ID is empty.")};
+        return {"definition.typeId", "The node type ID is empty."};
     if (m_types.contains(definition.typeId))
-        return {QStringLiteral("registry.duplicateType"),
+        return {"registry.duplicateType",
                 QStringLiteral("Node type '%1' is already registered.").arg(definition.typeId)};
 
     const Diagnostic portError = validatePorts(definition.ports);
@@ -94,7 +94,7 @@ Diagnostic NodeRegistry::add(const NodeTypeDefinition &definition)
     QSet<QString> methodKeys;
     for (const MethodDefinition &method : definition.methods) {
         if (method.key.trimmed().isEmpty() || methodKeys.contains(method.key))
-            return {QStringLiteral("definition.methodKey"),
+            return {"definition.methodKey",
                     QStringLiteral("Empty or duplicate method key '%1'.").arg(method.key), {}, method.key};
         const Diagnostic inputError = validateParameterDefinitions(method.inputs);
         if (!inputError.code.isEmpty())
@@ -114,14 +114,14 @@ Diagnostic NodeRegistry::add(const NodeTypeDefinition &definition)
             }
         }
         if (!hasStringKey)
-            return {QStringLiteral("definition.instanceKey"),
-                    QStringLiteral("The instance key must name a string parameter."), {}, definition.instanceKeyParameter};
+            return {"definition.instanceKey",
+                    "The instance key must name a string parameter.", {}, definition.instanceKeyParameter};
     } else if (definition.instancePolicy != InstancePolicy::Multiple
                && definition.instancePolicy != InstancePolicy::SinglePerDocument) {
-        return {QStringLiteral("definition.instancePolicy"), QStringLiteral("Unknown instance policy.")};
+        return {"definition.instancePolicy", "Unknown instance policy."};
     } else if (!definition.instanceKeyParameter.isEmpty()) {
-        return {QStringLiteral("definition.instanceKey"),
-                QStringLiteral("An instance key requires the UniqueByParameter policy."), {}, definition.instanceKeyParameter};
+        return {"definition.instanceKey",
+                "An instance key requires the UniqueByParameter policy.", {}, definition.instanceKeyParameter};
     }
 
     m_types.insert(definition.typeId, std::make_shared<const NodeTypeDefinition>(definition));
@@ -191,16 +191,16 @@ Diagnostic NodeRegistry::validateValues(const QVector<ParameterDefinition> &defi
             }
         }
         if (!declared)
-            return {QStringLiteral("value.unknownKey"),
+            return {"value.unknownKey",
                     QStringLiteral("Unknown value key '%1'.").arg(it.key()), {}, it.key()};
         if (!it.value().isValid())
-            return {QStringLiteral("value.invalid"),
+            return {"value.invalid",
                     QStringLiteral("The value for '%1' is unset.").arg(it.key()), {}, it.key()};
     }
     for (const ParameterDefinition &parameter : definitions) {
         const QVariant value = values.value(parameter.key, parameter.defaultValue);
         if (value.isValid() && !acceptsParameterValue(parameter, value))
-            return {QStringLiteral("value.constraint"),
+            return {"value.constraint",
                     QStringLiteral("Invalid value for '%1'.").arg(parameter.key), {}, parameter.key};
     }
     return {};
@@ -211,29 +211,29 @@ Diagnostic NodeRegistry::validatePorts(const QVector<PortDefinition> &ports, boo
     QSet<QString> keys;
     for (const PortDefinition &port : ports) {
         if (port.key.trimmed().isEmpty() || keys.contains(port.key))
-            return {QStringLiteral("definition.portKey"),
+            return {"definition.portKey",
                     QStringLiteral("Empty or duplicate port key '%1'.").arg(port.key), {}, port.key};
         if (port.direction != PortDirection::Input && port.direction != PortDirection::Output)
-            return {QStringLiteral("definition.portDirection"),
+            return {"definition.portDirection",
                     QStringLiteral("Unknown direction for port '%1'.").arg(port.key), {}, port.key};
         if (port.kind != PortKind::Data && port.kind != PortKind::Execution)
-            return {QStringLiteral("definition.portKind"),
+            return {"definition.portKind",
                     QStringLiteral("Unknown kind for port '%1'.").arg(port.key), {}, port.key};
         if (port.kind == PortKind::Execution) {
             if (!port.valueTypeId.isEmpty())
-                return {QStringLiteral("definition.portType"),
+                return {"definition.portType",
                         QStringLiteral("Execution port '%1' cannot declare a value type.").arg(port.key), {}, port.key};
         } else if (!(allowUnconfigured && port.valueTypeId.isEmpty())
                    && !(port.direction == PortDirection::Input && port.valueTypeId == anyValueType)
                    && valueType(port.valueTypeId) == QMetaType::UnknownType) {
-            return {QStringLiteral("definition.portType"),
+            return {"definition.portType",
                     QStringLiteral("Unknown value type '%1' for port '%2'.")
                         .arg(port.valueTypeId, port.key), {}, port.key};
         }
         if (port.defaultValue.isValid()
             && (port.kind != PortKind::Data || port.direction != PortDirection::Input
                 || !acceptsValue(port.valueTypeId, port.defaultValue)))
-            return {QStringLiteral("definition.portDefault"),
+            return {"definition.portDefault",
                     QStringLiteral("Invalid default value for port '%1'.").arg(port.key), {}, port.key};
         keys.insert(port.key);
     }

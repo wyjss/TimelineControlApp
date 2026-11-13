@@ -55,6 +55,7 @@ public:
                                           const QString &sourceId, const QString &sourcePort,
                                           const QString &targetId, const QString &targetPort);
     Q_INVOKABLE void removeConnection(const QString &connectionId);
+    //! 仅断开唯一的输入连线；多条连线时用 removeConnection 指定 ID。
     Q_INVOKABLE void disconnectInput(const QString &nodeId, const QString &portKey);
     Q_INVOKABLE void undo();
     Q_INVOKABLE void redo();
@@ -72,13 +73,19 @@ private:
     enum Role { IdRole = Qt::UserRole + 1, TypeRole, TitleRole, PositionRole,
                 InputsRole, OutputsRole, ParametersRole };
 
+    struct HistoryEntry
+    {
+        GraphData data;
+        GraphChangeSet change;
+    };
+
     void applyChange(const GraphChangeSet &change);
     bool report(const Diagnostic &error);
     void restoreHistory(int index);
 
     GraphDocument &m_document;
     QVector<NodeData> m_nodes;
-    QVector<GraphData> m_history;
+    QVector<HistoryEntry> m_history;
     QUuid m_graphId;
     int m_historyIndex = 0;
     int m_savedIndex = 0;

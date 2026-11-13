@@ -10,9 +10,11 @@ FocusScope {
     property var session
     property QtObject colors
     property var nodeContents
+    property var nodeColors: ({})
     property string selectedNodeId: ""
     property string selectedConnectionId: ""
     property real zoom: 1
+    property bool initialFitPending: true
     property point pan: Qt.point(0, 0)
     property string pendingNode: ""
     property string pendingPort: ""
@@ -49,6 +51,9 @@ FocusScope {
         if (interactionHost)
             interactionHost.interactionCanceled()
     }
+    onWidthChanged: if (initialFitPending) Qt.callLater(fitInitially)
+    onHeightChanged: if (initialFitPending) Qt.callLater(fitInitially)
+    onVisibleChanged: if (visible && initialFitPending) Qt.callLater(fitInitially)
     onPanChanged: {
         grid.requestPaint()
         Qt.callLater(resolveWires)
@@ -138,6 +143,7 @@ FocusScope {
         }
         var id = session.placeNode(typeId, position, parameters || {})
         if (id) {
+            initialFitPending = false
             backgroundArea.forceActiveFocus()
             selectedNodeId = id
             var card = nodeItems[id]
@@ -149,7 +155,17 @@ FocusScope {
         }
     }
 
+    // 嵌入布局和节点委托可能分批就绪，只在用户操作视口前自动适配。
+    function fitInitially() {
+        if (initialFitPending && visible && width > 68 && height > 68 && cards.count > 0
+            && Object.keys(nodeItems).length === cards.count)
+            fit()
+    }
+
     function fit() {
+        if (width <= 0 || height <= 0)
+            return
+        initialFitPending = false
         var left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity
         for (var id in nodeItems) {
             var item = nodeItems[id]
@@ -193,17 +209,11 @@ FocusScope {
         var sourcePort = pendingOutput ? pendingPort : key
         var target = pendingOutput ? nodeId : pendingNode
         var targetPort = pendingOutput ? key : pendingPort
-        var id = reconnectId
-        if (!id) {
-            for (var i = 0; i < links.length; ++i) {
-                var link = links[i]
-                if (link.target === target && link.targetPort === targetPort) {
-                    id = link.id
-                    break
-                }
-            }
-        }
-        return {source: source, sourcePort: sourcePort, target: target, targetPort: targetPort, id: id}
+        var replaced = reconnectId ? null : links.find(function(link) {
+            return !link.execution && link.target === target && link.targetPort === targetPort
+        })
+        return {source: source, sourcePort: sourcePort, target: target, targetPort: targetPort,
+                id: reconnectId || (replaced ? replaced.id : "")}
     }
 
     function resolveWires() {
@@ -219,19 +229,27 @@ FocusScope {
                                execution: link.execution})
         }
         var target = null, invalidTarget = null
-        var distance = 16 * 16, invalidDistance = distance
-        if (pendingNode && session) {
+        var distance = Infinity, invalidDistance = Infinity
+        if (pendingNode && session && contains(pointer)) {
             for (var id in nodeItems) {
                 var item = nodeItems[id]
+                if (!item.visible || !item.enabled)
+                    continue
                 var ports = pendingOutput ? item.inputs : item.outputs
+                var hitHalfSize = item.portHitHalfSize * zoom
                 for (var p = 0; p < ports.length; ++p) {
                     var key = ports[p].key
                     var anchor = viewportAnchor(id, key, !pendingOutput)
-                    if (!anchor)
+                    if (!anchor || !contains(anchor))
                         continue
                     var dx = pointer.x - anchor.x, dy = pointer.y - anchor.y
+                    if (Math.abs(dx) > hitHalfSize || Math.abs(dy) > hitHalfSize)
+                        continue
                     var candidate = dx * dx + dy * dy
-                    if (candidate > 16 * 16)
+                    // 取端口朝卡片内侧的一点，避免浮点误差把它判到卡片外。
+                    var hitX = anchor.x + (pendingOutput ? 1 : -1) * zoom
+                    var hit = world.mapFromItem(canvas, hitX, anchor.y)
+                    if (world.childAt(hit.x, hit.y) !== item)
                         continue
                     var proposal = connectionProposal(id, key)
                     var error = session.canConnect(proposal.source, proposal.sourcePort,
@@ -362,6 +380,7 @@ FocusScope {
                 var dx = mouse.x - origin.x, dy = mouse.y - origin.y
                 if (panning || Math.abs(dx) + Math.abs(dy) >= Qt.styleHints.startDragDistance) {
                     panning = true
+                    canvas.initialFitPending = false
                     canvas.pan = Qt.point(originalPan.x + dx, originalPan.y + dy)
                 }
             }
@@ -392,6 +411,8 @@ FocusScope {
                 return
             var scale = Math.max(0.12, Math.min(2.4, canvas.zoom * Math.pow(1.15, wheel.angleDelta.y / 120)))
             var ratio = scale / canvas.zoom
+            if (scale !== canvas.zoom)
+                canvas.initialFitPending = false
             canvas.pan = Qt.point(wheel.x - (wheel.x - canvas.pan.x) * ratio,
                                   wheel.y - (wheel.y - canvas.pan.y) * ratio)
             canvas.zoom = scale
@@ -413,6 +434,8 @@ FocusScope {
                 canvas.nodeItems[item.nodeKey] = item
                 if (canvas.selectedNodeId === item.nodeKey)
                     canvas.selectedItem = item
+                if (canvas.initialFitPending)
+                    Qt.callLater(canvas.fitInitially)
                 Qt.callLater(canvas.resolveWires)
             }
             onItemRemoved: {
@@ -434,6 +457,7 @@ FocusScope {
                 outputs: outputPorts
                 graphPosition: nodePosition
                 colors: canvas.colors
+                headerColors: canvas.nodeColors ? canvas.nodeColors[nodeType] || null : null
                 viewport: canvas
                 viewScale: canvas.zoom
                 selected: canvas.selectedNodeId === card.nodeKey
@@ -453,30 +477,24 @@ FocusScope {
                 onMoveRequested: canvas.session.moveNode(card.nodeKey, position)
                 onPortPressed: {
                     backgroundArea.forceActiveFocus()
+                    var incoming = isOutput ? [] : canvas.links.filter(function(link) {
+                        return link.target === card.nodeKey && link.targetPort === key
+                    })
+                    // 多条线共用输入时，只重接或删除明确选中的线。
+                    var existing = incoming.length === 1 ? incoming[0] : incoming.find(function(link) {
+                        return link.id === canvas.selectedConnectionId
+                    })
                     if (contextRequested) {
                         canvas.interactionHost.interactionCanceled()
-                        for (var i = 0; i < canvas.links.length; ++i) {
-                            var link = canvas.links[i]
-                            if (link.target === card.nodeKey && link.targetPort === key) {
-                                canvas.selectedConnectionId = link.id
-                                connectionMenu.popup(position.x, position.y)
-                                return
-                            }
+                        if (existing) {
+                            canvas.selectedConnectionId = existing.id
+                            connectionMenu.popup(position.x, position.y)
+                        } else {
+                            canvas.selectedNodeId = card.nodeKey
                         }
-                        canvas.selectedNodeId = card.nodeKey
                         return
                     }
                     canvas.selectedNodeId = card.nodeKey
-                    var existing = null
-                    for (var j = 0; j < canvas.links.length; ++j) {
-                        var link = canvas.links[j]
-                        if ((!isOutput && link.target === card.nodeKey && link.targetPort === key)
-                            || (isOutput && link.execution && link.source === card.nodeKey
-                                && link.sourcePort === key)) {
-                            existing = link
-                            break
-                        }
-                    }
                     // 再次按下正在重接的端口时继续拖线，不提前完成原连接。
                     if (canvas.pendingNode && canvas.pendingOutput !== isOutput
                         && (!existing || existing.id !== canvas.reconnectId)) {
@@ -496,10 +514,12 @@ FocusScope {
                 onPortReleased: {
                     if (!canvas.pendingNode)
                         return
-                    canvas.pointer = position
-                    canvas.resolveWires()
-                    if (canvas.connectionTarget)
-                        canvas.completeConnection(canvas.connectionTarget.nodeId, canvas.connectionTarget.portKey)
+                    if (canvas.contains(position)) {
+                        canvas.pointer = position
+                        canvas.resolveWires()
+                        if (canvas.connectionTarget)
+                            canvas.completeConnection(canvas.connectionTarget.nodeId, canvas.connectionTarget.portKey)
+                    }
                     canvas.pendingNode = ""
                 }
             }
@@ -522,6 +542,4 @@ FocusScope {
         acceptedButtons: Qt.NoButton
         cursorShape: Qt.ClosedHandCursor
     }
-
-    Component.onCompleted: Qt.callLater(fit)
 }

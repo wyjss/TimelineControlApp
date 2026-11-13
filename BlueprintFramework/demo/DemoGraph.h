@@ -3,6 +3,8 @@
 #include <Blueprint/GraphEditSession.h>
 #include <Blueprint/GraphRuntime.h>
 
+#include <QElapsedTimer>
+#include <QSet>
 #include <QTimer>
 #include <QUrl>
 
@@ -15,8 +17,8 @@ public:
     DemoSpeaker(const Blueprint::NodeTypeDefinition &definition, int durationMs, QObject *parent);
     QVariantMap state() const;
     Blueprint::Diagnostic writeState(const QString &key, const QVariant &value);
-    Blueprint::Diagnostic invoke(const QString &key, const QUuid &callId,
-                                 std::function<void(Blueprint::Diagnostic)> complete);
+    Blueprint::Diagnostic invoke(const QString &key, const QUuid &callId, const QVariantMap &inputs,
+                                 std::function<void(QVariantMap, Blueprint::Diagnostic)> complete);
     void cancel(const QUuid &callId);
 
 signals:
@@ -43,7 +45,9 @@ class DemoGraph final : public QObject
     Q_PROPERTY(QVariantList readTargetOptions READ readTargetOptions NOTIFY readTargetsChanged)
     Q_PROPERTY(QVariantMap previewValues READ previewValues NOTIFY previewValuesChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
+    Q_PROPERTY(QString errorNodeId READ errorNodeId NOTIFY errorChanged)
     Q_PROPERTY(QString fileName READ fileName NOTIFY fileNameChanged)
+    Q_PROPERTY(bool running READ running NOTIFY runningChanged)
 
 public:
     explicit DemoGraph(QObject *parent = nullptr);
@@ -58,7 +62,9 @@ public:
     QVariantList readTargetOptions() const;
     QVariantMap previewValues() const;
     QString error() const;
+    QString errorNodeId() const;
     QString fileName() const;
+    bool running() const;
 
     Q_INVOKABLE bool setConstantInput(const QString &nodeId, const QString &text);
     Q_INVOKABLE QVariantMap speakerState(const QString &targetId) const;
@@ -70,7 +76,14 @@ public:
     Q_INVOKABLE QString addOperation(const QString &typeId, const QString &targetId,
                                      const QString &member, QPointF position);
     Q_INVOKABLE bool setDurationInput(const QString &nodeId, const QString &text);
+    Q_INVOKABLE bool bindCall(const QString &nodeId, const QString &targetId, const QString &member);
+    Q_INVOKABLE QVariantList callInputs(const QString &nodeId) const;
+    Q_INVOKABLE bool setCallInput(const QString &nodeId, const QString &portKey, const QString &text);
+    Q_INVOKABLE bool bindPropertyEvent(const QString &nodeId, const QString &targetId, const QString &member);
+    Q_INVOKABLE bool setWaitDuration(const QString &nodeId, const QString &text);
+    Q_INVOKABLE bool trigger();
     Q_INVOKABLE bool run(const QString &triggerId);
+    Q_INVOKABLE void stop();
     Q_INVOKABLE bool open(const QUrl &url);
     Q_INVOKABLE bool save(const QUrl &url);
 
@@ -80,24 +93,36 @@ signals:
     void previewValuesChanged();
     void errorChanged();
     void fileNameChanged();
+    void runningChanged();
     void speakerStateChanged(const QString &targetId);
     void speakerNodesChanged();
     void readTargetsChanged();
 
 private:
-    QString targetType(const QString &targetId) const;
+    static QString targetType(const QString &targetId);
+    //! 使用稳定的对象类型声明解析签名，设备失效时仍保留端口。
+    const Blueprint::MethodDefinition *callMethod(const QString &targetId, const QString &member) const;
     Blueprint::RuntimeImplementations runtimeImplementations(const Blueprint::GraphSnapshot &snapshot);
+    bool startExecution(Blueprint::GraphRuntime &runtime, const Blueprint::GraphSnapshot &snapshot,
+                        QUuid entry, const QVariantMap &entryOutputs = {});
+    void executionFinished(Blueprint::GraphRuntime *runtime, const Blueprint::Diagnostic &error);
+    void speakerChanged(const QString &targetId, const QStringList &keys);
     void updateValues();
     void syncSpeakers(const Blueprint::GraphChangeSet &change = {});
-    bool report(const QString &error);
+    bool report(const QString &error, const QUuid &nodeId = {});
 
     Blueprint::NodeRegistry m_registry;
     Blueprint::GraphDocument m_document;
     Blueprint::GraphEditSession m_session;
+    Blueprint::RuntimeImplementations m_basicImplementations;
     Blueprint::GraphRuntime m_runtime;
+    Blueprint::GraphRuntime m_automaticRuntime;
     Blueprint::GraphRuntime m_previewRuntime;
     QHash<QString, DemoSpeaker *> m_speakers;
+    QSet<Blueprint::GraphRuntime *> m_executions;
+    bool m_suppressPropertyEvents = false;
     QVariantMap m_values;
     QString m_error;
+    QUuid m_errorNodeId;
     QString m_fileName;
 };
