@@ -2,7 +2,7 @@
 
 BlueprintFramework 为宿主项目提供通用图编辑与图形化编程能力。TimelineControlApp 是接入方之一。Core 提供共享类型注册、受校验的图文档、JSON 读写、启动快照、按端口求值和异步执行；Quick 提供可嵌入的 QML 编辑器。Core 与 Quick 不依赖 Timeline 或 UICore，Demo 使用仓库内的 UICore 主题和控件。
 
-详细契约见[数据结构与变更通知](docs/data-model.md)和[总体设计](../docs/blueprint-framework-design.md)。当前不提供旧接口适配或文件迁移，图文件只接受现行的 `version: 1` 格式。
+详细契约见[数据结构与变更通知](docs/data-model.md)和[总体设计](../docs/blueprint-framework-design.md)。三轮评估与本次验证见[迭代记录](docs/assessment-2026-11-15.md)。当前不提供旧接口适配或文件迁移，图文件只接受现行的 `version: 1` 格式。
 
 ## 构建和验证
 
@@ -29,7 +29,7 @@ ctest --test-dir build/blueprint -C Release --output-on-failure
 | `BLUEPRINT_BUILD_QUICK` | `ON` | 构建 Quick 编辑器，需要 Qt Quick 和 QuickControls2。 |
 | `BLUEPRINT_BUILD_DEMO` | `OFF` | 构建示例宿主，需要 Quick、Qt Widgets 和相邻的 `UICore_new`。 |
 | `BLUEPRINT_BUILD_EXAMPLE` | `ON` | 构建无界面的 Core 命令行示例。 |
-| `BLUEPRINT_BUILD_TESTS` | `OFF` | 构建运行契约测试，需要 Qt Test。启用 Quick 时同时构建编辑器和撤销测试。 |
+| `BLUEPRINT_BUILD_TESTS` | `OFF` | 构建运行契约测试，需要 Qt Test。启用 Quick 时同时构建编辑器和撤销测试，启用 Demo 时增加真实 Demo 界面测试。 |
 
 仅使用 Core 时设置 `-DBLUEPRINT_BUILD_QUICK=OFF`。仓库主工程已经加入 Core、Quick 和 Demo。Core 保留实际构建目标 `BlueprintFramework`，源码链接可使用 `BlueprintCore` 或 `Blueprint::Core`；可直接将 `BlueprintFramework-demo` 设为 Visual Studio 启动项目。
 
@@ -114,6 +114,6 @@ Blueprint.GraphEditor {
 
 节点标题与节点库中的名称一致，沿用普通节点的单行标题高度；已有音箱使用对应节点库条目的「音箱 A／B」。对象及成员操作节点在正文顶部显示设备图标（若有）和设备名称，短标识放在下一行。设备信息块按完整对象引用固定生成标识色，选中边框独立表示当前节点。读取、设置、调用和监听的具体成员显示在设备信息下方。点击加法节点内的数值区域可展开说明，端口布局变化时连线同步。自定义内容的接入约定见[从文档通知到 QML](docs/data-model.md#从文档通知到-qml)。
 
-复合输出口可分别连接数据输入与执行输入，线型由目标输入决定；读取数据或刷新预览不会触发执行。属性变化和单返回值接口已使用复合出口，原有「继续」连线需重新连接，不提供旧图迁移。执行中的动作和等待节点显示对应状态，错误节点显示失败提示；这些提示及实时状态均不保存到图文件。
+复合输出口可分别连接数据输入与执行输入，线型由目标输入决定；读取数据或刷新预览不会触发执行。属性变化和单返回值接口已使用复合出口，原有「继续」连线需重新连接，不提供旧图迁移。执行中的动作和等待节点显示对应状态，错误节点显示失败提示；这些提示及实时状态均不保存到图文件。右侧属性面板支持纵向滚动，切换节点时回到顶部。默认节点标题、端口名及被省略的诊断可悬停查看全文；标题和端口分别悬停其标题区域与端口标记。切换编辑会话或不同图 ID 后自动适配，空图恢复正常缩放；同图撤销不改变用户视口。
 
 Demo 保留调试阶段直接关闭窗口的行为；打开另一张图时仍确认丢弃未保存修改。合并记录和原有渲染测量见[工作记录](docs/work-log.md)。

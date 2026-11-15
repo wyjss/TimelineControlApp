@@ -91,6 +91,18 @@ if(BLUEPRINT_BUILD_TESTS)
         set_tests_properties(BlueprintEditorTest PROPERTIES
             ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
     endif()
+
+    if(BLUEPRINT_BUILD_DEMO)
+        find_package(Qt5 5.14 REQUIRED COMPONENTS Widgets)
+        add_executable(BlueprintDemoUiTest verification/demo_ui_test.cpp
+            demo/DemoGraph.cpp demo/DemoGraph.h demo/demo.qrc)
+        set_target_properties(BlueprintDemoUiTest PROPERTIES AUTOMOC ON AUTORCC ON)
+        target_include_directories(BlueprintDemoUiTest PRIVATE demo)
+        target_link_libraries(BlueprintDemoUiTest PRIVATE BlueprintQuick UICore Qt5::Widgets Qt5::Test)
+        add_test(NAME BlueprintDemoUiTest COMMAND BlueprintDemoUiTest)
+        set_tests_properties(BlueprintDemoUiTest PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+    endif()
 endif()
 
 install(TARGETS BlueprintFramework EXPORT BlueprintTargets ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})

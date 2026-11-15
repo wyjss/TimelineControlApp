@@ -54,15 +54,20 @@ FocusScope {
         selectedConnectionId = ""
         if (interactionHost)
             interactionHost.interactionCanceled()
+        initialFitPending = true
+        Qt.callLater(fitInitially)
     }
     onGraphIdChanged: {
         selectedNodeId = ""
         selectedConnectionId = ""
         if (interactionHost)
             interactionHost.interactionCanceled()
+        initialFitPending = true
+        Qt.callLater(fitInitially)
     }
     onWidthChanged: if (initialFitPending) Qt.callLater(fitInitially)
     onHeightChanged: if (initialFitPending) Qt.callLater(fitInitially)
+    onColorsChanged: if (initialFitPending) Qt.callLater(fitInitially)
     onVisibleChanged: if (visible && initialFitPending) Qt.callLater(fitInitially)
     onPanChanged: {
         grid.requestPaint()
@@ -167,7 +172,7 @@ FocusScope {
 
     // 嵌入布局和节点委托可能分批就绪，只在用户操作视口前自动适配。
     function fitInitially() {
-        if (initialFitPending && visible && width > 68 && height > 68 && cards.count > 0
+        if (initialFitPending && colors && visible && width > 68 && height > 68
             && Object.keys(nodeItems).length === cards.count)
             fit()
     }

@@ -109,11 +109,15 @@ Rectangle {
         }
 
         Text {
+            id: titleLabel
             visible: !header.item
             anchors.left: parent.left
             anchors.leftMargin: 33
+            anchors.right: parent.right
+            anchors.rightMargin: 10
             anchors.verticalCenter: parent.verticalCenter
             text: card.caption
+            elide: Text.ElideRight
             color: card.colors.text
             font.pixelSize: 14
             font.bold: true
@@ -122,6 +126,9 @@ Rectangle {
         MouseArea {
             id: headerDrag
             anchors.fill: parent
+            hoverEnabled: !card.connecting
+            ToolTip.visible: !header.item && titleLabel.truncated && containsMouse && !pressed && !card.connecting
+            ToolTip.text: card.caption
             cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
             property point origin
             property bool canceled: false
@@ -222,14 +229,19 @@ Rectangle {
                 border.width: 2
             }
             Text {
+                id: inputLabel
                 x: 13
+                width: card.outputs.length > index ? card.width / 2 - 17 : card.width - 26
                 anchors.verticalCenter: parent.verticalCenter
                 text: modelData.title
+                elide: Text.ElideRight
                 color: card.colors.subtleText
                 font.pixelSize: 12
             }
             MouseArea {
                 id: inputHit
+                ToolTip.visible: inputLabel.truncated && containsMouse && !pressed && !card.connecting
+                ToolTip.text: modelData.title
                 objectName: "input-" + modelData.key
                 x: -card.portHitHalfSize
                 width: card.portHitHalfSize * 2
@@ -319,17 +331,22 @@ Rectangle {
                 }
             }
             Text {
+                id: outputLabel
                 anchors.right: parent.right
                 anchors.rightMargin: 13
                 anchors.verticalCenter: parent.verticalCenter
+                width: card.inputs.length > index ? card.width / 2 - 17 : card.width - 26
                 text: modelData.title
+                elide: Text.ElideRight
+                horizontalAlignment: Text.AlignRight
                 color: card.colors.subtleText
                 font.pixelSize: 12
             }
             MouseArea {
                 id: outputHit
-                ToolTip.visible: compound && containsMouse
-                ToolTip.text: qsTr("数据 + 执行")
+                ToolTip.visible: (outputLabel.truncated || compound) && containsMouse && !pressed && !card.connecting
+                ToolTip.text: outputLabel.truncated ? modelData.title + (compound ? "\n" + qsTr("数据 + 执行") : "")
+                                                   : qsTr("数据 + 执行")
                 objectName: "output-" + modelData.key
                 x: parent.width - card.portHitHalfSize
                 width: card.portHitHalfSize * 2

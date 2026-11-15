@@ -609,6 +609,16 @@ ApplicationWindow {
                 color: window.appTheme.colors.dangerText
                 font.pixelSize: 12
                 elide: Text.ElideRight
+                ToolTip.visible: operationErrorHover.containsMouse && truncated
+                ToolTip.delay: 350
+                ToolTip.text: text
+
+                MouseArea {
+                    id: operationErrorHover
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    hoverEnabled: true
+                }
             }
         }
     }
@@ -914,7 +924,7 @@ ApplicationWindow {
             }
 
             inspectorPanel: Component {
-                Rectangle {
+                ScrollView {
                     id: inspector
                     readonly property string selectedType: editor.selectedNode ? editor.selectedNode.typeId : ""
                     readonly property bool reading: selectedType === "demo.readProperty"
@@ -929,12 +939,25 @@ ApplicationWindow {
                     readonly property bool propertyWritable: selectedType === "demo.setProperty" && targetAvailable
                         && members.some(function(item) { return editor.selectedNode && item.value === editor.selectedNode.parameters.member })
                     implicitWidth: 226
-                    color: window.appTheme.colors.backgroundSurface
-                    border.color: window.appTheme.colors.border
+                    clip: true
+                    contentWidth: availableWidth
+                    contentHeight: inspectorColumn.implicitHeight + 30
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    background: Rectangle {
+                        color: window.appTheme.colors.backgroundSurface
+                        border.color: window.appTheme.colors.border
+                    }
+
+                    Connections {
+                        target: editor
+                        function onSelectedNodeIdChanged() { inspector.contentItem.contentY = 0 }
+                    }
 
                     ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 15
+                        id: inspectorColumn
+                        x: 15
+                        y: 15
+                        width: inspector.availableWidth - 30
                         spacing: 11
 
                         Text {
@@ -1241,7 +1264,6 @@ ApplicationWindow {
                             variant: UiStyle.ButtonVariant.Danger
                             onClicked: if (editor.selectedNodeId) demoGraph.session.removeNode(editor.selectedNodeId)
                         }
-                        Item { Layout.fillHeight: true }
                     }
                 }
             }
@@ -1273,6 +1295,16 @@ ApplicationWindow {
                           : qsTr("双击常量值编辑 · 拖动标题移动节点 · 滚轮缩放 · 右键连线可删除"))
                     color: window.graphError ? window.appTheme.colors.dangerText : window.appTheme.colors.subtleText
                     font.pixelSize: 12
+                    ToolTip.visible: statusHover.containsMouse && truncated
+                    ToolTip.delay: 350
+                    ToolTip.text: text
+
+                    MouseArea {
+                        id: statusHover
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        hoverEnabled: true
+                    }
                 }
                 Text {
                     text: Math.round(editor.zoom * 100) + "%"

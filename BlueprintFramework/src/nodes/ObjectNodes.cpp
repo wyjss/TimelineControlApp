@@ -179,7 +179,10 @@ private:
 QString objectCallPortKey(PortDirection direction, const QString &type, const QString &method, const QString &key)
 {
     const auto prefix = direction == PortDirection::Input ? QStringLiteral("in") : QStringLiteral("out");
-    return QStringLiteral("%1/%2/%3/%4").arg(prefix, type, method, key);
+    return QStringLiteral("%1/%2/%3/%4").arg(prefix,
+        QString(type).replace("%", "%25").replace("/", "%2F"),
+        QString(method).replace("%", "%25").replace("/", "%2F"),
+        QString(key).replace("%", "%25").replace("/", "%2F"));
 }
 
 Diagnostic registerObjectNodes(NodeRegistry &registry, const ObjectNodeBindings::TargetType &targetType,

@@ -1,8 +1,10 @@
 #include <Blueprint/GraphEditSession.h>
 
 #include <QJSValue>
+#include <QLineF>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQmlExpression>
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QtTest>
@@ -31,6 +33,8 @@ class EditorTest : public QObject
 private slots:
     void sharedEditorInteractions();
     void compoundPortsAndDisplay();
+    void longLabelsStayInsideCards();
+    void graphChangesRefitViewport();
 };
 
 void EditorTest::sharedEditorInteractions()
@@ -559,6 +563,273 @@ void EditorTest::compoundPortsAndDisplay()
     session.removeConnection(document.data().connections.first().id.toString(QUuid::WithoutBraces));
     QCOMPARE(document.data().connections.size(), 1);
     QVERIFY(session.connections().first().toMap().value(QStringLiteral("execution")).toBool());
+}
+
+void EditorTest::longLabelsStayInsideCards()
+{
+    NodeRegistry registry;
+    NodeTypeDefinition type;
+    type.typeId = QStringLiteral("long-labels");
+    type.displayName = QStringLiteral("这是需要完整查看的很长节点标题 Long blueprint node title");
+    type.ports = {{QStringLiteral("in"), PortDirection::Input, QStringLiteral("number"),
+                   QStringLiteral("这是需要完整查看的很长输入端口名称")},
+                  {QStringLiteral("out"), PortDirection::Output, QStringLiteral("number"),
+                   QStringLiteral("A very long English output port name")},
+                  {QStringLiteral("extra"), PortDirection::Input, QStringLiteral("number"),
+                   QStringLiteral("An unpaired input can use the full node width")}};
+    QVERIFY(registry.add(type).code.isEmpty());
+    NodeTypeDefinition source;
+    source.typeId = QStringLiteral("long-source");
+    source.displayName = QStringLiteral("A very long English node title for the source");
+    source.ports = {{QStringLiteral("out"), PortDirection::Output, QStringLiteral("number"),
+                     QStringLiteral("这是没有同排输入端口的很长输出名称")}};
+    QVERIFY(registry.add(source).code.isEmpty());
+    GraphDocument document(registry);
+    const auto targetId = document.addNode(type.typeId, {320, 60}).id;
+    const auto sourceId = document.addNode(source.typeId, {40, 60}).id;
+    GraphEditSession session(document);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("testSession"), &session);
+    engine.loadData(R"QML(
+        import QtQuick 2.14
+        import QtQuick.Window 2.14
+        import "qrc:/BlueprintQuick" as Blueprint
+        Window {
+            width: 700
+            height: 350
+            visible: true
+            QtObject {
+                id: theme
+                property color backgroundCanvas: "#141516"
+                property color backgroundSurface: "#303234"
+                property color borderPane: "#353638"
+                property color border: "#a9b4bd"
+                property color text: "#e1e2e3"
+                property color subtleText: "#a9b4bd"
+                property color highlightSoft: "#334455"
+                property color highlightText: "#7aaddf"
+                property color successText: "#75a76f"
+                property color infoText: "#608ac5"
+                property color dangerText: "#f17575"
+            }
+            Blueprint.GraphEditor {
+                anchors.fill: parent
+                session: testSession
+                palettePanel: null
+                inspectorPanel: null
+                colors: theme
+            }
+        }
+    )QML", QUrl(QStringLiteral("qrc:/BlueprintLongLabelsTest.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    auto *canvas = findItem(window->contentItem(), "graphCanvas");
+    QVERIFY(canvas);
+    QTRY_VERIFY(!canvas->property("initialFitPending").toBool());
+    auto *targetCard = findItem(window->contentItem(), "node-long-labels");
+    auto *sourceCard = findItem(window->contentItem(), "node-long-source");
+    QVERIFY(targetCard && sourceCard);
+    QQuickItem *title = nullptr;
+    QQuickItem *sourceTitle = nullptr;
+    QList<QQuickItem *> pending{window->contentItem()};
+    while (!pending.isEmpty()) {
+        auto *item = pending.takeLast();
+        pending.append(item->childItems());
+        if (item->inherits("QQuickText") && item->property("text").toString() == type.displayName)
+            title = item;
+        if (item->inherits("QQuickText") && item->property("text").toString() == source.displayName)
+            sourceTitle = item;
+    }
+    auto *input = findItem(targetCard, "input-in");
+    auto *output = findItem(targetCard, "output-out");
+    auto *extra = findItem(targetCard, "input-extra");
+    auto *sourceOutput = findItem(sourceCard, "output-out");
+    QVERIFY(title && sourceTitle && input && output && extra && sourceOutput);
+    auto *inputText = findItem(input->parentItem(), "QQuickText", true);
+    auto *outputText = findItem(output->parentItem(), "QQuickText", true);
+    auto *extraText = findItem(extra->parentItem(), "QQuickText", true);
+    auto *sourceText = findItem(sourceOutput->parentItem(), "QQuickText", true);
+    QVERIFY(inputText && outputText && extraText && sourceText);
+    for (const auto *text : {title, sourceTitle, inputText, outputText, extraText, sourceText})
+        QTRY_VERIFY(text->property("truncated").toBool());
+    for (const auto *text : {title, inputText, outputText, extraText}) {
+        QVERIFY(text->mapToItem(targetCard, {0, 0}).x() > 0);
+        QVERIFY(text->mapToItem(targetCard, {text->width(), 0}).x() < targetCard->width());
+    }
+    for (const auto *text : {sourceTitle, sourceText}) {
+        QVERIFY(text->mapToItem(sourceCard, {0, 0}).x() > 0);
+        QVERIFY(text->mapToItem(sourceCard, {text->width(), 0}).x() < sourceCard->width());
+    }
+    QVERIFY(inputText->mapToItem(targetCard, {inputText->width(), 0}).x()
+            < outputText->mapToItem(targetCard, {0, 0}).x());
+    QVERIFY(extraText->width() > inputText->width());
+    QCOMPARE(sourceText->width(), extraText->width());
+
+    const QPoint inputPoint = input->mapToScene({input->width() / 2, input->height() / 2}).toPoint();
+    QTest::mouseMove(window, inputPoint);
+    QQmlExpression tooltipVisible(qmlContext(input), input, QStringLiteral("ToolTip.visible"));
+    QTRY_VERIFY(tooltipVisible.evaluate().toBool());
+    QQmlExpression tooltipText(qmlContext(input), input, QStringLiteral("ToolTip.text"));
+    QCOMPARE(tooltipText.evaluate().toString(), type.ports.first().displayName);
+    QVERIFY(!tooltipVisible.hasError() && !tooltipText.hasError());
+
+    const QPoint sourcePoint = sourceOutput->mapToScene({sourceOutput->width() / 2,
+                                                        sourceOutput->height() / 2}).toPoint();
+    const QPoint header = title->mapToScene({title->width() / 2, title->height() / 2}).toPoint();
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, sourcePoint);
+    QTest::mouseMove(window, header);
+    QTRY_COMPARE(canvas->property("pointer").toPointF(), canvas->mapFromScene(header));
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, inputPoint);
+    QTRY_COMPARE(document.data().connections.size(), 1);
+    QCOMPARE(document.data().connections.first().source.nodeId, sourceId);
+    QCOMPARE(document.data().connections.first().target.nodeId, targetId);
+    const auto originalPosition = document.findNode(targetId)->position;
+    QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, header);
+    QTest::mouseMove(window, header + QPoint(30, 0));
+    QTest::mouseMove(window, header + QPoint(60, 12));
+    QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, header + QPoint(60, 12));
+    QTRY_COMPARE(document.findNode(targetId)->position, originalPosition + QPointF(30, 12));
+}
+
+void EditorTest::graphChangesRefitViewport()
+{
+    NodeRegistry registry;
+    NodeTypeDefinition type;
+    type.typeId = QStringLiteral("viewport-node");
+    type.displayName = QStringLiteral("Viewport node");
+    QVERIFY(registry.add(type).code.isEmpty());
+    GraphDocument document(registry);
+    const auto nodeId = document.addNode(type.typeId, {40, 60}).id;
+    GraphEditSession session(document);
+    GraphDocument farDocument(registry);
+    QVERIFY(farDocument.addNode(type.typeId, {10000, 10000}).error.code.isEmpty());
+    auto farData = farDocument.data();
+    farData.id = document.data().id;
+    QVERIFY(farDocument.replaceData(farData).code.isEmpty());
+    GraphEditSession farSession(farDocument);
+    GraphDocument emptyDocument(registry);
+    GraphEditSession emptySession(emptyDocument);
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("testSession"), &session);
+    engine.loadData(R"QML(
+        import QtQuick 2.14
+        import QtQuick.Window 2.14
+        import "qrc:/BlueprintQuick" as Blueprint
+        Window {
+            id: viewportWindow
+            property bool colorsReady: false
+            width: 700
+            height: 350
+            visible: true
+            QtObject {
+                id: theme
+                property color backgroundCanvas: "#141516"
+                property color backgroundSurface: "#303234"
+                property color borderPane: "#353638"
+                property color border: "#a9b4bd"
+                property color text: "#e1e2e3"
+                property color subtleText: "#a9b4bd"
+                property color highlightSoft: "#334455"
+                property color highlightText: "#7aaddf"
+                property color successText: "#75a76f"
+                property color infoText: "#608ac5"
+                property color dangerText: "#f17575"
+            }
+            Blueprint.GraphEditor {
+                objectName: "editor"
+                anchors.fill: parent
+                session: testSession
+                palettePanel: null
+                inspectorPanel: null
+                colors: viewportWindow.colorsReady ? theme : null
+            }
+        }
+    )QML", QUrl(QStringLiteral("qrc:/BlueprintViewportTest.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    auto *editor = findItem(window->contentItem(), "editor");
+    QVERIFY(editor);
+    auto *canvas = findItem(editor, "graphCanvas");
+    QVERIFY(canvas);
+    QCOMPARE(canvas->property("nodeCount").toInt(), 0);
+    QVERIFY(canvas->property("initialFitPending").toBool());
+    window->setProperty("colorsReady", true);
+    QTRY_COMPARE(canvas->property("nodeCount").toInt(), 1);
+    QTRY_VERIFY(!canvas->property("initialFitPending").toBool());
+    auto *initialCard = findItem(editor, "node-viewport-node");
+    QVERIFY(initialCard);
+    QTRY_VERIFY(QLineF(initialCard->mapToItem(canvas, {initialCard->width() / 2, initialCard->height() / 2}),
+                      QPointF(canvas->width() / 2, canvas->height() / 2)).length() < 1);
+    const QPointF userPan(120, 90);
+    const qreal userZoom = 0.8;
+    canvas->setProperty("pan", userPan);
+    canvas->setProperty("zoom", userZoom);
+    session.moveNode(nodeId.toString(QUuid::WithoutBraces), {90, 70});
+    session.undo();
+    QCoreApplication::processEvents();
+    QCOMPARE(document.findNode(nodeId)->position, QPointF(40, 60));
+    QCOMPARE(canvas->property("pan").toPointF(), userPan);
+    QCOMPARE(canvas->property("zoom").toReal(), userZoom);
+    auto sameGraph = document.data();
+    sameGraph.nodes.first().position = {100, 80};
+    QVERIFY(document.replaceData(sameGraph).code.isEmpty());
+    QCoreApplication::processEvents();
+    QCOMPARE(canvas->property("pan").toPointF(), userPan);
+    QCOMPARE(canvas->property("zoom").toReal(), userZoom);
+
+    editor->setProperty("session", QVariant::fromValue(static_cast<QObject *>(&farSession)));
+    QTRY_VERIFY(!canvas->property("initialFitPending").toBool());
+    auto *farCard = findItem(editor, "node-viewport-node");
+    QVERIFY(farCard);
+    QTRY_VERIFY(QLineF(farCard->mapToItem(canvas, {farCard->width() / 2, farCard->height() / 2}),
+                      QPointF(canvas->width() / 2, canvas->height() / 2)).length() < 1);
+    QVERIFY(canvas->contains(farCard->mapToItem(canvas, {0, 0})));
+    QVERIFY(canvas->contains(farCard->mapToItem(canvas, {farCard->width(), farCard->height()})));
+    farData = farDocument.data();
+    farData.id = QUuid::createUuid();
+    farData.nodes.first().position = {-12000, -9000};
+    QVERIFY(farDocument.replaceData(farData).code.isEmpty());
+    QTRY_VERIFY(!canvas->property("initialFitPending").toBool());
+    farCard = findItem(editor, "node-viewport-node");
+    QVERIFY(farCard);
+    QTRY_VERIFY(QLineF(farCard->mapToItem(canvas, {farCard->width() / 2, farCard->height() / 2}),
+                      QPointF(canvas->width() / 2, canvas->height() / 2)).length() < 1);
+    QVERIFY(canvas->contains(farCard->mapToItem(canvas, {0, 0})));
+    QVERIFY(canvas->contains(farCard->mapToItem(canvas, {farCard->width(), farCard->height()})));
+    canvas->setProperty("pan", userPan);
+    canvas->setProperty("zoom", 0.12);
+    farData = farDocument.data();
+    farData.id = QUuid::createUuid();
+    farData.nodes.clear();
+    QVERIFY(farDocument.replaceData(farData).code.isEmpty());
+    QTRY_VERIFY(!canvas->property("initialFitPending").toBool());
+    QCOMPARE(canvas->property("nodeCount").toInt(), 0);
+    QCOMPARE(canvas->property("zoom").toReal(), 1.0);
+    QCOMPARE(canvas->property("pan").toPointF(), QPointF());
+
+    window->setProperty("colorsReady", false);
+    canvas->setProperty("pan", userPan);
+    canvas->setProperty("zoom", 0.12);
+    editor->setProperty("session", QVariant::fromValue(static_cast<QObject *>(&emptySession)));
+    QCoreApplication::processEvents();
+    QVERIFY(canvas->property("initialFitPending").toBool());
+    window->setProperty("colorsReady", true);
+    QTRY_VERIFY(!canvas->property("initialFitPending").toBool());
+    QCOMPARE(canvas->property("zoom").toReal(), 1.0);
+    QCOMPARE(canvas->property("pan").toPointF(), QPointF());
+    QQmlExpression addFirstNode(qmlContext(editor), editor, QStringLiteral("addNode('viewport-node')"));
+    addFirstNode.evaluate();
+    QVERIFY(!addFirstNode.hasError());
+    QTRY_COMPARE(emptyDocument.data().nodes.size(), 1);
+    auto *firstCard = findItem(editor, "node-viewport-node");
+    QVERIFY(firstCard);
+    QCOMPARE(canvas->property("zoom").toReal(), 1.0);
+    QVERIFY(canvas->contains(firstCard->mapToItem(canvas, {0, 0})));
+    QVERIFY(canvas->contains(firstCard->mapToItem(canvas, {firstCard->width(), firstCard->height()})));
 }
 
 } // namespace

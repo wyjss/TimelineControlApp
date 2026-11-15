@@ -44,6 +44,7 @@ private slots:
     void rejectsDeferredDataExecutor();
     void cancelsWaitExecutorAndRestarts();
     void runsObjectNodesWithHostAdapter();
+    void objectCallKeysRemainDistinct();
     void connectsCombinedOutputByTargetKind();
     void evaluatesCombinedOutputWithoutExecution();
     void publishesCombinedActionOutput();
@@ -1250,6 +1251,83 @@ void BlueprintRuntimeTest::runsObjectNodesWithHostAdapter()
     QCOMPARE(finished.size(), 3);
     QCOMPARE(writes, 3);
     QCOMPARE(state.value(nameKey).toString(), QStringLiteral("new name"));
+}
+
+void BlueprintRuntimeTest::objectCallKeysRemainDistinct()
+{
+    QCOMPARE(objectCallPortKey(PortDirection::Input, "device", "play", "duration"),
+             QStringLiteral("in/device/play/duration"));
+    const auto resultKey = QStringLiteral("result/%");
+    const ParameterDefinition result{resultKey, numberType};
+    NodeTypeDefinition first;
+    first.typeId = QStringLiteral("a/b");
+    first.methods = {{QStringLiteral("c"), {}, {{QStringLiteral("d"), numberType}}, {result}}};
+    NodeTypeDefinition second;
+    second.typeId = QStringLiteral("a");
+    second.methods = {{QStringLiteral("b/c"), {}, {{QStringLiteral("d"), numberType}}, {result}},
+                      {QStringLiteral("b"), {}, {{QStringLiteral("c/d"), numberType}}, {result}}};
+    auto percent = first;
+    percent.typeId = QStringLiteral("a%2Fb");
+    NodeRegistry registry;
+    for (const auto &definition : {first, second, percent})
+        QCOMPARE(registry.add(definition).code, QString());
+    QCOMPARE(registry.add({triggerType, triggerType, {executionOutput}}).code, QString());
+
+    QHash<QString, QVariantMap> received;
+    ObjectNodeBindings bindings;
+    bindings.targetType = [](const QString &id) { return id; };
+    bindings.invoke = [&](const QString &id, const QString &member, const QUuid &, const QVariantMap &inputs,
+                          ObjectNodeBindings::MethodCompletion complete) -> Diagnostic {
+        received.insert(id + ":" + member, inputs);
+        complete({{resultKey, inputs.first()}}, {});
+        return {};
+    };
+    QCOMPARE(registerObjectNodes(registry, bindings.targetType).code, QString());
+    QCOMPARE(objectCallPortKey(PortDirection::Output, "a%2Fb", "c%2Fd", "e%2Ff"),
+             QStringLiteral("out/a%252Fb/c%252Fd/e%252Ff"));
+    RuntimeImplementations implementations;
+    addObjectImplementations(implementations, registry, bindings);
+
+    const QVector<QStringList> signatures{{"a/b", "c", "d"}, {"a", "b/c", "d"},
+                                          {"a", "b", "c/d"}, {"a%2Fb", "c", "d"}};
+    GraphDocument document(registry);
+    const auto entry = document.addNode(triggerType, {}).id;
+    QVERIFY(!entry.isNull());
+    QVector<QUuid> calls;
+    QSet<QString> inputKeys;
+    for (int i = 0; i < signatures.size(); ++i) {
+        const auto &signature = signatures.at(i);
+        const auto input = objectCallPortKey(PortDirection::Input, signature.at(0), signature.at(1), signature.at(2));
+        inputKeys.insert(input);
+        const auto call = document.addNode(QStringLiteral("demo.call"), {},
+            {{QStringLiteral("target"), signature.at(0)}, {QStringLiteral("member"), signature.at(1)},
+             {input, double(i + 1)}});
+        QCOMPARE(call.error.code, QString());
+        calls.append(call.id);
+        QCOMPARE(document.connectPorts({entry, nextKey}, {call.id, QStringLiteral("execIn")}).error.code, QString());
+    }
+    QCOMPARE(inputKeys.size(), signatures.size());
+    QTemporaryDir files;
+    QVERIFY(files.isValid());
+    const auto file = files.filePath(QStringLiteral("escaped-keys.json"));
+    QCOMPARE(document.saveFile(file).code, QString());
+    GraphDocument loaded(registry);
+    QCOMPARE(loaded.loadFile(file).code, QString());
+    GraphRuntime runtime;
+    QSignalSpy finished(&runtime, &GraphRuntime::executionFinished);
+    QCOMPARE(runtime.start(loaded.snapshot(), implementations).code, QString());
+    QCOMPARE(runtime.execute({entry, nextKey}).error.code, QString());
+    QTRY_COMPARE(finished.size(), 1);
+    QCOMPARE(finished.first().at(1).value<Diagnostic>().code, QString());
+    QCOMPARE(received.size(), signatures.size());
+    for (int i = 0; i < signatures.size(); ++i) {
+        const auto &signature = signatures.at(i);
+        QCOMPARE(received.value(signature.at(0) + ":" + signature.at(1)).value(signature.at(2)).toDouble(), double(i + 1));
+        const auto output = objectCallPortKey(PortDirection::Output, signature.at(0), signature.at(1), resultKey);
+        const auto value = runtime.evaluate({calls.at(i), output});
+        QCOMPARE(value.error.code, QString());
+        QCOMPARE(value.value.toDouble(), double(i + 1));
+    }
 }
 
 QTEST_GUILESS_MAIN(BlueprintRuntimeTest)
