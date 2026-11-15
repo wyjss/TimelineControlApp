@@ -1,4 +1,5 @@
 import QtQuick 2.14
+import QtQuick.Controls 2.14
 
 Rectangle {
     id: card
@@ -8,8 +9,10 @@ Rectangle {
     property string caption
     property var parameters: ({})
     property Component contentComponent
+    property Component headerComponent
     property var inputs: []
     property var outputs: []
+    property string executionState
     property point graphPosition
     property point dragOffset: Qt.point(0, 0)
     property Item viewport
@@ -21,12 +24,17 @@ Rectangle {
     property bool connecting: false
     property string targetInput
     property string targetOutput
+    property bool connectionExecution: false
     property string connectionError
     readonly property var nodeInfo: ({id: nodeKey, typeId: kind, title: caption, parameters: parameters})
     readonly property bool dragging: headerDrag.pressed && !headerDrag.canceled
-    readonly property int headerHeight: 38
+    readonly property real headerHeight: header.item ? header.item.implicitHeight + 6 : 38
     readonly property int portHeight: 28
     readonly property int portHitHalfSize: 9
+    readonly property string statusText: executionState === "running" ? qsTr("执行中")
+                                         : executionState === "waiting" ? qsTr("等待中")
+                                         : executionState === "failed" ? qsTr("执行失败") : ""
+    readonly property int statusHeight: statusText ? 17 : 0
     readonly property int portRows: Math.max(inputs.length, outputs.length)
     readonly property real portTop: headerHeight + (body.item ? body.height + 8 : 0)
 
@@ -50,7 +58,7 @@ Rectangle {
     x: graphPosition.x + dragOffset.x
     y: graphPosition.y + dragOffset.y
     width: 188
-    height: portTop + portRows * portHeight + 10
+    height: portTop + portRows * portHeight + statusHeight + 10
     radius: 9
     color: colors.backgroundSurface
     border.width: selected ? 2 : 1
@@ -74,9 +82,23 @@ Rectangle {
         width: parent.width - 6
         height: card.headerHeight - 4
         radius: 6
-        color: card.headerColors ? card.headerColors.background : card.colors.highlightSoft
+        color: header.item ? "transparent" : card.headerColors ? card.headerColors.background : card.colors.highlightSoft
+
+        Loader {
+            id: header
+            anchors.fill: parent
+            sourceComponent: card.headerComponent
+        }
+
+        Binding {
+            target: header.item
+            property: "node"
+            value: card.nodeInfo
+            when: !!header.item
+        }
 
         Text {
+            visible: !header.item
             anchors.left: parent.left
             anchors.leftMargin: 10
             anchors.verticalCenter: parent.verticalCenter
@@ -87,6 +109,7 @@ Rectangle {
         }
 
         Text {
+            visible: !header.item
             anchors.left: parent.left
             anchors.leftMargin: 33
             anchors.verticalCenter: parent.verticalCenter
@@ -146,6 +169,18 @@ Rectangle {
                 card.dragOffset = Qt.point(0, 0)
             }
         }
+    }
+
+    Text {
+        objectName: "nodeExecutionState"
+        x: 10
+        y: card.portTop + card.portRows * card.portHeight
+        width: card.width - 20
+        visible: card.statusText !== ""
+        text: card.statusText
+        font.pixelSize: 11
+        color: card.executionState === "failed" ? card.colors.dangerText
+             : card.executionState === "waiting" ? card.colors.infoText : card.colors.successText
     }
 
     Loader {
@@ -251,24 +286,37 @@ Rectangle {
         model: card.outputs
         delegate: Item {
             readonly property bool execution: modelData.execution
+            readonly property bool compound: modelData.data && modelData.executionCapable
             readonly property color portColor: execution ? card.colors.successText : card.colors.highlightText
             readonly property bool candidate: card.targetOutput === modelData.key
-            readonly property color feedbackColor: candidate && card.connectionError !== "" ? card.colors.dangerText : portColor
+            readonly property color feedbackColor: candidate && card.connectionError !== "" ? card.colors.dangerText
+                : (candidate || card.activeOutput === modelData.key) && card.connectionExecution ? card.colors.successText : portColor
             x: card.width - 70
             y: card.portTop + index * card.portHeight
             width: 70
             height: card.portHeight
 
             Rectangle {
+                objectName: "outputGraphic-" + modelData.key
                 width: 10
                 height: width
-                radius: execution ? 2 : width / 2
+                radius: execution || compound ? 2 : width / 2
+                rotation: compound ? 45 : 0
                 x: parent.width - width / 2
                 anchors.verticalCenter: parent.verticalCenter
                 color: candidate || outputHit.containsMouse || card.activeOutput === modelData.key
                        ? feedbackColor : card.colors.backgroundCanvas
                 border.color: feedbackColor
                 border.width: 2
+
+                Rectangle {
+                    anchors.centerIn: parent
+                    width: 4
+                    height: width
+                    radius: width / 2
+                    visible: compound
+                    color: card.colors.successText
+                }
             }
             Text {
                 anchors.right: parent.right
@@ -280,6 +328,8 @@ Rectangle {
             }
             MouseArea {
                 id: outputHit
+                ToolTip.visible: compound && containsMouse
+                ToolTip.text: qsTr("数据 + 执行")
                 objectName: "output-" + modelData.key
                 x: parent.width - card.portHitHalfSize
                 width: card.portHitHalfSize * 2

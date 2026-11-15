@@ -26,6 +26,7 @@ private slots:
     void waitsFromArrivalAndStops();
     void waitsFromAutomaticEntry();
     void propertyEventsRunAlongsideManualWait();
+    void tracksOverlappingPropertyEventStates();
 };
 
 void BlueprintHistoryTest::undoUpdatesOnlyChangedRoles()
@@ -171,20 +172,46 @@ void BlueprintHistoryTest::undoAndOpenDuringPlayback()
     const auto roles = session->roleNames();
     QString speaker;
     QString trigger;
+    QStringList speakerNames;
     QPointF speakerPosition;
     for (int row = 0; row < session->rowCount(); ++row) {
         const auto index = session->index(row);
         const auto type = index.data(roles.key("nodeType")).toString();
-        if (speaker.isEmpty() && type == QStringLiteral("demo.speaker")) {
-            speaker = index.data(roles.key("nodeId")).toString();
-            speakerPosition = index.data(roles.key("nodePosition")).toPointF();
+        if (type == QStringLiteral("demo.speaker")) {
+            speakerNames.append(index.data(roles.key("nodeParameters")).toMap().value(QStringLiteral("name")).toString());
+            if (speaker.isEmpty()) {
+                speaker = index.data(roles.key("nodeId")).toString();
+                speakerPosition = index.data(roles.key("nodePosition")).toPointF();
+            }
         } else if (type == QStringLiteral("demo.trigger")) {
             trigger = index.data(roles.key("nodeId")).toString();
         }
     }
     QVERIFY(!speaker.isEmpty());
     QVERIFY(!trigger.isEmpty());
+    QCOMPARE(speakerNames, (QStringList{QStringLiteral("模拟音箱 1"), QStringLiteral("模拟音箱 2")}));
     const auto speakerTarget = QStringLiteral("node:demo.speaker:") + speaker;
+    const QVariantMap initialSpeaker{{QStringLiteral("value"), speakerTarget},
+                                     {QStringLiteral("label"), QStringLiteral("模拟音箱 1")}};
+    const QVariantMap renamedSpeaker{{QStringLiteral("value"), speakerTarget},
+                                     {QStringLiteral("label"), QStringLiteral("主音箱")}};
+    const QVariantMap initialReadTarget{{QStringLiteral("value"), speakerTarget},
+                                        {QStringLiteral("name"), QStringLiteral("模拟音箱 1")},
+                                        {QStringLiteral("label"), QStringLiteral("模拟音箱 1")}};
+    const QVariantMap renamedReadTarget{{QStringLiteral("value"), speakerTarget},
+                                        {QStringLiteral("name"), QStringLiteral("主音箱")},
+                                        {QStringLiteral("label"), QStringLiteral("主音箱")}};
+    QVERIFY(demo.speakerOptions().contains(initialSpeaker));
+    QVERIFY(demo.readTargetOptions().contains(initialReadTarget));
+    QVERIFY(session->setParameter(speaker, QStringLiteral("name"), QStringLiteral("主音箱")));
+    QVERIFY(demo.speakerOptions().contains(renamedSpeaker));
+    QVERIFY(demo.readTargetOptions().contains(renamedReadTarget));
+    session->undo();
+    QVERIFY(demo.speakerOptions().contains(initialSpeaker));
+    QVERIFY(demo.readTargetOptions().contains(initialReadTarget));
+    session->redo();
+    QVERIFY(demo.speakerOptions().contains(renamedSpeaker));
+    QVERIFY(demo.readTargetOptions().contains(renamedReadTarget));
     const auto playing = QStringLiteral("playing");
     const auto duration = QStringLiteral("testDurationMs");
     QTemporaryDir files;
@@ -206,6 +233,8 @@ void BlueprintHistoryTest::undoAndOpenDuringPlayback()
     QVERIFY(demo.speakerState(speakerTarget).value(playing).toBool());
     QVERIFY(session->canRedo());
     QVERIFY(demo.open(graphFile));
+    QVERIFY(demo.speakerOptions().contains(renamedSpeaker));
+    QVERIFY(demo.readTargetOptions().contains(renamedReadTarget));
     QCoreApplication::processEvents();
     QVERIFY(demo.error().isEmpty());
     QVERIFY(!demo.speakerState(speakerTarget).value(playing).toBool());
@@ -316,7 +345,7 @@ void BlueprintHistoryTest::callUsesDeclaredInputsAndOutputs()
     QVERIFY(session->setParameter(constant, value, 350.0));
     QVERIFY(session->connectPorts(constant, value, call, input));
     QVERIFY(session->connectPorts(trigger, execOut, call, execIn));
-    QVERIFY(session->connectPorts(call, execOut, consumer, execIn));
+    QVERIFY(session->connectPorts(call, output, consumer, execIn));
     QVERIFY(session->connectPorts(call, output, consumer, value));
     const auto links = session->connections();
     QVERIFY(demo.bindCall(call, speakerB, playFor));
@@ -460,7 +489,7 @@ void BlueprintHistoryTest::waitsFromArrivalAndStops()
     QVERIFY(session->setParameter(constant, value, 180.0));
     QVERIFY(demo.setDurationInput(setter, QStringLiteral("444")));
     QVERIFY(session->connectPorts(trigger, execOut, playback, execIn));
-    QVERIFY(session->connectPorts(playback, execOut, wait, execIn));
+    QVERIFY(session->connectPorts(playback, QStringLiteral("out/demo.speaker/playFor/playedDurationMs"), wait, execIn));
     QVERIFY(session->connectPorts(constant, value, wait, duration));
     QVERIFY(session->connectPorts(wait, execOut, setter, execIn));
 
@@ -477,11 +506,14 @@ void BlueprintHistoryTest::waitsFromArrivalAndStops()
     });
     clock.start();
     QVERIFY(demo.run(trigger));
+    QTRY_COMPARE(demo.nodeStates().value(playback).toString(), QStringLiteral("running"));
+    QTRY_COMPARE(demo.nodeStates().value(wait).toString(), QStringLiteral("waiting"));
     QTRY_VERIFY(propertySetAt >= 0);
     QVERIFY(playbackEndedAt >= 0);
     QVERIFY(propertySetAt - playbackEndedAt >= 160);
     QCOMPARE(demo.speakerState(speakerB).value(testDuration).toInt(), 444);
     QTRY_VERIFY(!demo.running());
+    QVERIFY(demo.nodeStates().isEmpty());
 
     QVERIFY(session->setParameter(constant, value, 400.0));
     QVERIFY(demo.setDurationInput(setter, QStringLiteral("888")));
@@ -492,8 +524,10 @@ void BlueprintHistoryTest::waitsFromArrivalAndStops()
     QTRY_VERIFY(playbackEndedAt >= 0);
     QCoreApplication::processEvents();
     QVERIFY(demo.running());
+    QCOMPARE(demo.nodeStates().value(wait).toString(), QStringLiteral("waiting"));
     demo.stop();
     QVERIFY(!demo.running());
+    QVERIFY(demo.nodeStates().isEmpty());
     QTest::qWait(450);
     QCOMPARE(propertySetAt, qint64(-1));
     QCOMPARE(demo.speakerState(speakerB).value(testDuration).toInt(), 444);
@@ -529,7 +563,7 @@ void BlueprintHistoryTest::waitsFromAutomaticEntry()
     QVERIFY(demo.setWaitDuration(wait, QStringLiteral("750")));
     QVERIFY(demo.setDurationInput(setter, QStringLiteral("444")));
     QVERIFY(session->connectPorts(start, execOut, playback, execIn));
-    QVERIFY(session->connectPorts(playback, execOut, wait, execIn));
+    QVERIFY(session->connectPorts(playback, QStringLiteral("out/demo.speaker/playFor/playedDurationMs"), wait, execIn));
     QVERIFY(session->connectPorts(wait, execOut, setter, execIn));
 
     connect(&demo, &DemoGraph::speakerStateChanged, this, [&](const QString &target) {
@@ -541,6 +575,7 @@ void BlueprintHistoryTest::waitsFromAutomaticEntry()
 
     clock.start();
     QVERIFY(demo.trigger());
+    QTRY_COMPARE(demo.nodeStates().value(wait).toString(), QStringLiteral("waiting"));
     QTRY_VERIFY(propertySetAt >= 0);
     QVERIFY(playbackEndedAt >= 0);
     QVERIFY(propertySetAt >= 730);
@@ -606,16 +641,25 @@ void BlueprintHistoryTest::propertyEventsRunAlongsideManualWait()
     const auto first = demo.addOperation(QStringLiteral("demo.setProperty"), speakerB, duration, {});
     const auto second = demo.addOperation(QStringLiteral("demo.setProperty"), speakerB, duration, {});
     QVERIFY(demo.setWaitDuration(wait, QStringLiteral("10000")));
+    QVERIFY(session->connectPorts(event, QStringLiteral("value"), branch, execIn));
+    QVERIFY(!session->connectPorts(event, QStringLiteral("value"), branch, QStringLiteral("condition")));
     QVERIFY(demo.bindPropertyEvent(event, speakerA, playing));
     QVERIFY(demo.setDurationInput(first, QStringLiteral("700")));
     QVERIFY(demo.setDurationInput(second, QStringLiteral("800")));
     QVERIFY(session->connectPorts(trigger, execOut, wait, execIn));
-    QVERIFY(session->connectPorts(event, execOut, branch, execIn));
     QVERIFY(session->connectPorts(event, QStringLiteral("value"), branch, QStringLiteral("condition")));
     QVERIFY(session->connectPorts(event, QStringLiteral("value"), preview, QStringLiteral("value")));
     QVERIFY(!demo.previewValues().contains(preview));
     QVERIFY(session->connectPorts(branch, QStringLiteral("true"), first, execIn));
     QVERIFY(session->connectPorts(branch, QStringLiteral("false"), second, execIn));
+
+    QTemporaryDir files;
+    QVERIFY(files.isValid());
+    const auto links = session->connections();
+    const auto graphFile = QUrl::fromLocalFile(files.filePath(QStringLiteral("property-event.json")));
+    QVERIFY(demo.save(graphFile));
+    QVERIFY(demo.open(graphFile));
+    QCOMPARE(session->connections(), links);
 
     connect(&demo, &DemoGraph::speakerStateChanged, this,
             [&, speakerB, duration](const QString &target) {
@@ -647,6 +691,38 @@ void BlueprintHistoryTest::propertyEventsRunAlongsideManualWait()
     QTest::qWait(50);
     QVERIFY(!demo.running());
     QCOMPARE(observedDurations.size(), 2);
+}
+
+void BlueprintHistoryTest::tracksOverlappingPropertyEventStates()
+{
+    DemoGraph demo;
+    auto *session = qobject_cast<GraphEditSession *>(demo.session());
+    QVERIFY(session);
+
+    const auto speaker = QStringLiteral("host:demo.speaker:speaker-a");
+    const auto event = session->addNode(QStringLiteral("demo.propertyChanged"), {});
+    const auto wait = session->addNode(QStringLiteral("demo.wait"), {});
+    QVERIFY(demo.bindPropertyEvent(event, speaker, QStringLiteral("playing")));
+    QVERIFY(demo.setWaitDuration(wait, QStringLiteral("500")));
+    QVERIFY(session->connectPorts(event, QStringLiteral("value"), wait, QStringLiteral("execIn")));
+
+    QVERIFY(demo.invokeSpeaker(speaker, QStringLiteral("playTest")));
+    QTRY_COMPARE(demo.nodeStates().value(wait).toString(), QStringLiteral("waiting"));
+    QTest::qWait(200);
+    QSignalSpy states(&demo, &DemoGraph::nodeStatesChanged);
+    QVERIFY(demo.invokeSpeaker(speaker, QStringLiteral("stop")));
+    QTRY_COMPARE(states.count(), 1);
+    QTRY_COMPARE(states.count(), 2);
+    QCOMPARE(demo.nodeStates().value(wait).toString(), QStringLiteral("waiting"));
+    QTRY_VERIFY(demo.nodeStates().isEmpty());
+    QTRY_VERIFY(!demo.running());
+    QVERIFY(demo.error().isEmpty());
+
+    QVERIFY(demo.invokeSpeaker(speaker, QStringLiteral("playTest")));
+    QTRY_COMPARE(demo.nodeStates().value(wait).toString(), QStringLiteral("waiting"));
+    demo.stop();
+    QVERIFY(demo.nodeStates().isEmpty());
+    QVERIFY(!demo.running());
 }
 
 QTEST_GUILESS_MAIN(BlueprintHistoryTest)

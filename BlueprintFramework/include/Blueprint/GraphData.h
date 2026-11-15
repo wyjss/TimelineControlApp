@@ -36,7 +36,9 @@ enum class PortDirection
 enum class PortKind
 {
     Data,
-    Execution
+    Execution,
+    //! 仅用于输出；连线类型由目标输入决定。
+    DataAndExecution
 };
 
 //! 节点类型上声明的端口。
@@ -45,7 +47,7 @@ struct PortDefinition
     //! 类型内稳定的端口键，供连线引用。
     QString key;
     PortDirection direction = PortDirection::Input;
-    //! 数据端口的值类型；执行端口不承载值，必须为空。
+    //! 数据及复合输出端口的值类型；执行端口不承载值，必须为空。
     QString valueTypeId;
     QString displayName;
     PortKind kind = PortKind::Data;

@@ -263,6 +263,122 @@ ApplicationWindow {
         }
     }
     Component {
+        id: referenceHeader
+
+        Rectangle {
+            id: reference
+            objectName: "referenceHeader"
+            property var node: null
+            implicitHeight: 32
+            radius: 6
+            color: editor.nodeColors["demo.speakerReference"].background
+
+            Text {
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                text: {
+                    var type = demoGraph.session.nodeTypes.find(function(item) { return item.typeId === "demo.speakerReference" })
+                    return type ? type.symbol : ""
+                }
+                color: editor.nodeColors["demo.speakerReference"].accent
+                font.pixelSize: 17
+                font.bold: true
+            }
+            Text {
+                objectName: "referenceTitle"
+                anchors.left: parent.left
+                anchors.leftMargin: 33
+                anchors.right: parent.right
+                anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                text: {
+                    if (!reference.node)
+                        return ""
+                    var target = demoGraph.existingSpeakerOptions.find(function(item) {
+                        return item.value === reference.node.parameters.objectId
+                    })
+                    return target ? target.name : reference.node.title
+                }
+                color: window.appTheme.colors.text
+                font.pixelSize: 14
+                font.bold: true
+                elide: Text.ElideRight
+            }
+        }
+    }
+    Component {
+        id: objectIdentity
+
+        Rectangle {
+            id: identity
+            objectName: "objectIdentity"
+            property var node: null
+            readonly property string targetId: {
+                if (!node)
+                    return ""
+                if (node.typeId === "demo.speaker")
+                    return "node:" + node.typeId + ":" + node.id
+                return node.typeId === "demo.speakerReference" ? node.parameters.objectId || "" : node.parameters.target || ""
+            }
+            readonly property var target: demoGraph.readTargetOptions.find(function(item) { return item.value === identity.targetId })
+            readonly property var parts: targetId.split(":")
+            readonly property var objectType: demoGraph.session.nodeTypes.find(function(item) { return item.typeId === identity.parts[1] })
+            readonly property string shortId: parts.length === 3 ? (parts[0] === "node" ? parts[2].slice(0, 8) : parts[2]) : targetId
+            readonly property string objectNameText: target ? target.name : objectType ? objectType.title : qsTr("选择目标对象")
+            readonly property color objectAccent: {
+                if (!targetId)
+                    return window.appTheme.colors.subtleText
+                var hash = 2166136261
+                for (var i = 0; i < targetId.length; ++i)
+                    hash = Math.imul(hash ^ targetId.charCodeAt(i), 16777619)
+                return Qt.hsla(((hash >>> 0) % 360) / 360, 0.56, 0.66, 1)
+            }
+            implicitHeight: 44
+            radius: 6
+            color: targetId ? Qt.tint(window.appTheme.colors.backgroundWindow,
+                                     Qt.rgba(objectAccent.r, objectAccent.g, objectAccent.b, 0.28))
+                            : window.appTheme.colors.backgroundWindow
+
+            Text {
+                id: identityIcon
+                objectName: "objectIdentityIcon"
+                anchors.left: parent.left
+                anchors.leftMargin: 8
+                y: 6
+                text: identity.objectType ? identity.objectType.symbol : ""
+                visible: text !== ""
+                color: identity.objectAccent
+                font.pixelSize: 17
+                font.bold: true
+            }
+            Text {
+                id: identityName
+                objectName: "objectIdentityName"
+                anchors.left: parent.left
+                anchors.leftMargin: identityIcon.text ? 30 : 8
+                anchors.right: parent.right
+                anchors.rightMargin: 8
+                y: 6
+                text: identity.targetId && !identity.target ? qsTr("失效 · %1").arg(identity.objectNameText) : identity.objectNameText
+                color: identity.targetId && !identity.target ? window.appTheme.colors.dangerText : window.appTheme.colors.text
+                font.pixelSize: 14
+                font.bold: true
+                elide: Text.ElideRight
+            }
+            Text {
+                anchors.left: identityName.left
+                anchors.right: parent.right
+                anchors.rightMargin: 8
+                y: 27
+                text: identity.shortId
+                color: identity.target ? window.appTheme.colors.subtleText : window.appTheme.colors.dangerText
+                font.pixelSize: 11
+                elide: Text.ElideMiddle
+            }
+        }
+    }
+    Component {
         id: speakerBody
 
         Rectangle {
@@ -311,19 +427,18 @@ ApplicationWindow {
                 anchors.margins: 8
                 spacing: 7
 
-                Text {
+                Loader {
+                    id: speakerIdentity
                     Layout.fillWidth: true
-                    text: {
-                        if (!speaker.targetId)
-                            return ""
-                        if (!speaker.existing)
-                            return qsTr("音箱 · %1").arg(speaker.node.id.slice(0, 8))
-                        var option = demoGraph.existingSpeakerOptions.find(
-                            function(item) { return item.value === speaker.targetId })
-                        return option ? option.label : qsTr("对象已失效")
+                    Layout.preferredHeight: item ? item.implicitHeight : 0
+                    sourceComponent: objectIdentity
+
+                    Binding {
+                        target: speakerIdentity.item
+                        property: "node"
+                        value: speaker.node
+                        when: !!speakerIdentity.item
                     }
-                    color: window.appTheme.colors.subtleText
-                    font.pixelSize: 11
                 }
 
                 Repeater {
@@ -437,33 +552,54 @@ ApplicationWindow {
                                                   : node ? demoGraph.operationMembers(node.typeId, targetId) : []
             readonly property var member: node ? members.find(
                 function(item) { return item.value === operation.node.parameters.member }) : undefined
-            spacing: 3
+            spacing: 7
 
-            Text {
+            Loader {
+                id: operationIdentity
                 Layout.fillWidth: true
-                text: operation.target ? operation.target.label : operation.targetId ? qsTr("目标失效") : qsTr("选择目标对象")
-                color: operation.target ? window.appTheme.colors.subtleText : window.appTheme.colors.dangerText
-                font.pixelSize: 12
-                elide: Text.ElideRight
+                Layout.preferredHeight: item ? item.implicitHeight : 0
+                sourceComponent: objectIdentity
+
+                Binding {
+                    target: operationIdentity.item
+                    property: "node"
+                    value: operation.node
+                    when: !!operationIdentity.item
+                }
             }
+
             Text {
                 Layout.fillWidth: true
                 text: {
                     if (!operation.node)
                         return ""
-                    if (!operation.member) {
-                        if (operation.calling)
-                            return qsTr("请选择接口")
-                        return operation.target && (operation.reading || operation.watching) ? qsTr("选择属性") : ""
-                    }
+                    var label = operation.member ? operation.member.label
+                                : operation.targetId ? operation.node.parameters.member || "" : ""
+                    if (!label)
+                        return operation.calling ? qsTr("选择接口") : qsTr("选择属性")
+                    if (operation.calling)
+                        return qsTr("调用 · %1").arg(label)
                     if (operation.watching)
-                        return operation.member.label
-                    var value = demoGraph.previewValues[operation.node.id]
-                    return value === undefined ? operation.member.label : qsTr("%1 · %2").arg(operation.member.label).arg(value)
+                        return qsTr("监听 · %1").arg(label)
+                    return operation.reading ? qsTr("读取 · %1").arg(label) : qsTr("设置 · %1").arg(label)
                 }
-                color: window.appTheme.colors.text
+                color: operation.node ? editor.nodeColors[operation.node.typeId].accent : window.appTheme.colors.text
+                font.pixelSize: 13
+                font.bold: true
+                wrapMode: Text.Wrap
+            }
+            Text {
+                Layout.fillWidth: true
+                visible: operation.reading
+                text: {
+                    if (!operation.reading || !operation.node)
+                        return ""
+                    var value = demoGraph.previewValues[operation.node.id]
+                    return qsTr("读取值：%1").arg(value === undefined ? "—" : value)
+                }
+                color: window.appTheme.colors.subtleText
                 font.pixelSize: 12
-                elide: Text.ElideRight
+                wrapMode: Text.Wrap
             }
             Text {
                 Layout.fillWidth: true
@@ -569,6 +705,15 @@ ApplicationWindow {
             Layout.fillHeight: true
             session: demoGraph.session
             colors: window.appTheme.colors
+            nodeStates: {
+                var states = {}
+                var active = demoGraph.nodeStates
+                for (var id in active)
+                    states[id] = active[id]
+                if (demoGraph.error && demoGraph.errorNodeId)
+                    states[demoGraph.errorNodeId] = "failed"
+                return states
+            }
             nodeColors: {
                 var object = {background: "#252742", accent: "#abb1ff"}
                 var value = {background: "#1d3048", accent: "#82b9ff"}
@@ -605,6 +750,9 @@ ApplicationWindow {
                     "demo.call": {background: "#412d1c", accent: "#f4bd74"}
                 }
             }
+            nodeHeaders: ({
+                "demo.speakerReference": referenceHeader
+            })
             nodeContents: ({
                 "demo.constant": calculationBody,
                 "demo.stringConstant": calculationBody,
@@ -745,7 +893,17 @@ ApplicationWindow {
                                             ToolTip.delay: 350
                                             ToolTip.text: paletteEntry.placed ? qsTr("已放置，拖到画布空白处定位已有节点")
                                                                              : qsTr("拖到画布空白处创建节点")
-                                            onDropped: editor.addNode(modelData.type, modelData.parameters, position)
+                                            onDropped: {
+                                                var parameters = modelData.parameters
+                                                if (modelData.type === "demo.speaker") {
+                                                    var names = demoGraph.speakerOptions.map(function(item) { return item.label })
+                                                    var number = 1
+                                                    while (names.indexOf(qsTr("模拟音箱 %1").arg(number)) !== -1)
+                                                        ++number
+                                                    parameters = {name: qsTr("模拟音箱 %1").arg(number)}
+                                                }
+                                                editor.addNode(modelData.type, parameters, position)
+                                            }
                                         }
                                     }
                                 }
@@ -866,6 +1024,32 @@ ApplicationWindow {
                                     else
                                         demoGraph.setConstantInput(editor.selectedNode.id, nextValue)
                                 }
+                            }
+                        }
+
+                        ColumnLayout {
+                            visible: inspector.selectedType === "demo.speaker"
+                            Layout.fillWidth: true
+                            spacing: 7
+                            Text {
+                                text: qsTr("对象名称")
+                                color: window.appTheme.colors.subtleText
+                                font.pixelSize: 12
+                            }
+                            Base.AppTextField {
+                                id: speakerNameField
+                                objectName: "speakerName"
+                                Layout.fillWidth: true
+                                placeholderText: qsTr("例如：主音箱")
+                                text: parent.visible && editor.selectedNode ? editor.selectedNode.parameters.name || "" : ""
+                                onAccepted: if (editor.selectedNodeId)
+                                    demoGraph.session.setParameter(editor.selectedNodeId, "name", text.trim())
+                            }
+                            Base.AppButton {
+                                text: qsTr("应用")
+                                Layout.fillWidth: true
+                                onClicked: if (editor.selectedNodeId)
+                                    demoGraph.session.setParameter(editor.selectedNodeId, "name", speakerNameField.text.trim())
                             }
                         }
 

@@ -127,16 +127,16 @@ Diagnostic GraphRuntime::start(const GraphSnapshot &snapshot,
             return {"runtime.invalid_target",
                     "A connection target must be an input port.",
                     targetNode.id, connection.target.portKey};
-        if (sourcePort->kind != targetPort->kind
-            || (sourcePort->kind == PortKind::Data
+        if ((sourcePort->kind != targetPort->kind && sourcePort->kind != PortKind::DataAndExecution)
+            || (targetPort->kind == PortKind::Data
                 && (sourcePort->valueTypeId.isEmpty()
                     || (sourcePort->valueTypeId != targetPort->valueTypeId
                         && targetPort->valueTypeId != anyValueType))))
             return {"runtime.incompatible_ports",
-                    "Connected ports must have the same kind and compatible configured value types.",
+                    "Connected ports must have compatible kinds and configured value types.",
                     targetNode.id, targetPort->key};
 
-        if (sourcePort->kind == PortKind::Data) {
+        if (targetPort->kind == PortKind::Data) {
             auto &sources = dataSources[targetNode.id];
             if (sources.contains(targetPort->key))
                 return {"runtime.input_occupied",
@@ -211,6 +211,7 @@ void GraphRuntime::stop()
         return;
 
     const QUuid executionId = m_executionId;
+    const auto activeCalls = m_activeCalls;
     const auto cancellations = takeCancellations();
     // 取消可能同步触发宿主完成回调，先清除身份和全部执行状态。
     m_runtimeId = {};
@@ -224,6 +225,8 @@ void GraphRuntime::stop()
     m_pendingInputs.clear();
     m_deferredInputs.clear();
     m_readyNodes.clear();
+    for (auto it = activeCalls.cbegin(); it != activeCalls.cend(); ++it)
+        emit nodeExecutionChanged(it.key(), it.value(), false);
     for (auto it = cancellations.cbegin(); it != cancellations.cend(); ++it)
         it.value()(it.key());
     if (!executionId.isNull())
@@ -257,7 +260,7 @@ ValueResult GraphRuntime::evaluateValue(const Endpoint &endpoint,
     if (port == node.ports.cend())
         return {{}, {"runtime.missing_port",
                      "The endpoint refers to a missing port.", node.id, endpoint.portKey}};
-    if (port->kind != PortKind::Data)
+    if (port->kind == PortKind::Execution)
         return {{}, {"runtime.not_data_port",
                      "Only data ports can be evaluated.", node.id, port->key}};
     if (port->direction == PortDirection::Input) {
@@ -390,7 +393,7 @@ Diagnostic GraphRuntime::validateOutputs(const SnapshotNode &node, const QVarian
 {
     QSet<QString> expected;
     for (const PortDefinition &port : node.ports) {
-        if (port.kind != PortKind::Data || port.direction != PortDirection::Output)
+        if (port.kind == PortKind::Execution || port.direction != PortDirection::Output)
             continue;
         expected.insert(port.key);
         if (!outputs.contains(port.key))
@@ -421,11 +424,11 @@ ExecutionResult GraphRuntime::execute(const Endpoint &executionOutput, const QVa
                      "The execution source refers to a missing node.",
                      executionOutput.nodeId, executionOutput.portKey}};
     const SnapshotNode &node = m_snapshot.nodes.at(m_nodeIndexes.value(executionOutput.nodeId));
-    bool executionPort = false;
+    const PortDefinition *executionPort = nullptr;
     for (const PortDefinition &port : node.ports) {
         if (port.key == executionOutput.portKey && port.direction == PortDirection::Output
-            && port.kind == PortKind::Execution)
-            executionPort = true;
+            && port.kind != PortKind::Data)
+            executionPort = &port;
     }
     if (!executionPort)
         return {{}, {"runtime.invalid_execution_source",
@@ -433,7 +436,7 @@ ExecutionResult GraphRuntime::execute(const Endpoint &executionOutput, const QVa
                      node.id, executionOutput.portKey}};
 
     QHash<QUuid, QVariantMap> initialOutputs;
-    if (!entryOutputs.isEmpty()) {
+    if (!entryOutputs.isEmpty() || executionPort->kind == PortKind::DataAndExecution) {
         const auto error = validateOutputs(node, entryOutputs);
         if (!error.code.isEmpty())
             return {{}, error};
@@ -509,7 +512,7 @@ Diagnostic GraphRuntime::validateExecution(const QVector<Endpoint> &inputs,
 
         const PortDefinition *exit = nullptr;
         for (const auto &port : action.ports) {
-            if (port.kind != PortKind::Execution || port.direction != PortDirection::Output)
+            if (port.kind == PortKind::Data || port.direction != PortDirection::Output)
                 continue;
             // 多个出口由动作结果选择，未选中的分支不参与本次预检。
             if (exit) {
@@ -600,6 +603,9 @@ void GraphRuntime::advance()
                 runtime->complete(runtimeId, executionId, nodeId, callId, std::move(result));
             }, Qt::QueuedConnection);
         };
+        emit nodeExecutionChanged(node.id, callId, true);
+        if (m_runtimeId != runtimeId || m_executionId != executionId)
+            return;
         if (executor)
             executor->start(context, std::move(done));
         else
@@ -622,6 +628,9 @@ void GraphRuntime::complete(const QUuid &runtimeId, const QUuid &executionId, co
 
     const SnapshotNode node = m_snapshot.nodes.at(m_nodeIndexes.value(nodeId));
     m_activeCalls.erase(call);
+    emit nodeExecutionChanged(nodeId, callId, false);
+    if (m_runtimeId != runtimeId || m_executionId != executionId)
+        return;
     if (!result.error.code.isEmpty()) {
         if (result.error.nodeId.isNull())
             result.error.nodeId = node.id;
@@ -650,7 +659,7 @@ void GraphRuntime::complete(const QUuid &runtimeId, const QUuid &executionId, co
     if (!exits.isEmpty()) {
         QSet<QString> declared;
         for (const PortDefinition &port : node.ports) {
-            if (port.direction == PortDirection::Output && port.kind == PortKind::Execution)
+            if (port.direction == PortDirection::Output && port.kind != PortKind::Data)
                 declared.insert(port.key);
         }
         needsPreflight = needsPreflight || declared.size() > 1;
@@ -711,11 +720,14 @@ QHash<QUuid, RuntimeImplementations::Cancel> GraphRuntime::takeCancellations()
 void GraphRuntime::finish(const Diagnostic &error)
 {
     const QUuid executionId = m_executionId;
+    const auto activeCalls = m_activeCalls;
     const auto cancellations = takeCancellations();
     m_executionId = {};
     m_pendingInputs.clear();
     m_deferredInputs.clear();
     m_readyNodes.clear();
+    for (auto it = activeCalls.cbegin(); it != activeCalls.cend(); ++it)
+        emit nodeExecutionChanged(it.key(), it.value(), false);
     for (auto it = cancellations.cbegin(); it != cancellations.cend(); ++it)
         it.value()(it.key());
     emit executionFinished(executionId, error);

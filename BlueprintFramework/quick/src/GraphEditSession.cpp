@@ -44,7 +44,9 @@ QVariant GraphEditSession::data(const QModelIndex &index, int role) const
                 ports.append(QVariantMap{{QStringLiteral("key"), port.key},
                     {QStringLiteral("title"), port.displayName.isEmpty() ? port.key : port.displayName},
                     {QStringLiteral("valueTypeId"), port.valueTypeId},
-                    {QStringLiteral("execution"), port.kind == PortKind::Execution}});
+                    {QStringLiteral("execution"), port.kind == PortKind::Execution},
+                    {QStringLiteral("data"), port.kind != PortKind::Execution},
+                    {QStringLiteral("executionCapable"), port.kind != PortKind::Data}});
         }
         return ports;
     }
@@ -73,8 +75,8 @@ QVariantList GraphEditSession::connections() const
     links.reserve(m_document.data().connections.size());
     for (const ConnectionData &link : m_document.data().connections) {
         bool execution = false;
-        for (const PortDefinition &port : m_document.nodePorts(link.source.nodeId)) {
-            if (port.key == link.source.portKey) {
+        for (const PortDefinition &port : m_document.nodePorts(link.target.nodeId)) {
+            if (port.key == link.target.portKey) {
                 execution = port.kind == PortKind::Execution;
                 break;
             }

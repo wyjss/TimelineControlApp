@@ -156,7 +156,9 @@ public:
                 QVariantMap outputs;
                 for (auto it = values.cbegin(); it != values.cend(); ++it)
                     outputs.insert(objectCallPortKey(PortDirection::Output, typeId, member, it.key()), it.value());
-                done({execOut, outputs, {}});
+                const auto exit = outputDefinitions.size() == 1
+                    ? objectCallPortKey(PortDirection::Output, typeId, member, outputDefinitions.first().key) : execOut;
+                done({exit, outputs, {}});
             });
         if (!error.code.isEmpty())
             done({{}, {}, error});
@@ -255,7 +257,9 @@ Diagnostic registerObjectNodes(NodeRegistry &registry, const ObjectNodeBindings:
         const auto type = targetType(node.parameterOverrides.value(targetKey).toString());
         const auto member = node.parameterOverrides.value(memberKey, defaultMethod).toString();
         const auto *method = findMethod(registry.find(type), member);
-        QVector<PortDefinition> ports{execute, next};
+        QVector<PortDefinition> ports{execute};
+        if (!method || method->outputs.size() != 1)
+            ports.append(next);
         if (method) {
             for (const auto &input : method->inputs) {
                 const auto key = objectCallPortKey(PortDirection::Input, type, member, input.key);
@@ -264,7 +268,8 @@ Diagnostic registerObjectNodes(NodeRegistry &registry, const ObjectNodeBindings:
             }
             for (const auto &output : method->outputs) {
                 ports.append({objectCallPortKey(PortDirection::Output, type, member, output.key),
-                              PortDirection::Output, output.valueTypeId, output.displayName});
+                              PortDirection::Output, output.valueTypeId, output.displayName,
+                              method->outputs.size() == 1 ? PortKind::DataAndExecution : PortKind::Data});
             }
         }
         return ports;

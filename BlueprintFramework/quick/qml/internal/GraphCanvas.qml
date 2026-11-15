@@ -10,6 +10,8 @@ FocusScope {
     property var session
     property QtObject colors
     property var nodeContents
+    property var nodeStates: ({})
+    property var nodeHeaders
     property var nodeColors: ({})
     property string selectedNodeId: ""
     property string selectedConnectionId: ""
@@ -27,6 +29,14 @@ FocusScope {
     readonly property int nodeCount: cards.count
     readonly property var links: session ? session.connections : []
     readonly property string graphId: session ? session.graphId : ""
+    readonly property bool previewExecution: {
+        if (pendingOutput && connectionTarget)
+            return connectionTarget.execution
+        var item = nodeItems[pendingNode]
+        var ports = item ? (pendingOutput ? item.outputs : item.inputs) : []
+        var port = ports.find(function(port) { return port.key === pendingPort })
+        return !!port && port.execution
+    }
     readonly property var selectedNode: selectedItem ? selectedItem.nodeInfo : null
     readonly property string hoveredConnectionId: backgroundArea.containsMouse && !backgroundArea.pressed
                                                   && !pendingNode && !connectionMenu.visible
@@ -126,7 +136,7 @@ FocusScope {
         function onGraphChanged() {
             if (canvas.selectedNodeId && !canvas.session.containsNode(canvas.selectedNodeId))
                 canvas.selectedNodeId = ""
-            if (canvas.pendingNode && !canvas.session.containsNode(canvas.pendingNode))
+            if (canvas.pendingNode && !canvas.viewportAnchor(canvas.pendingNode, canvas.pendingPort, canvas.pendingOutput))
                 canvas.interactionHost.interactionCanceled()
             Qt.callLater(canvas.resolveWires)
         }
@@ -255,10 +265,10 @@ FocusScope {
                     var error = session.canConnect(proposal.source, proposal.sourcePort,
                                                    proposal.target, proposal.targetPort, proposal.id)
                     if (!error && candidate <= distance) {
-                        target = {nodeId: id, portKey: key, position: anchor, error: ""}
+                        target = {nodeId: id, portKey: key, position: anchor, error: "", execution: ports[p].execution}
                         distance = candidate
                     } else if (error && candidate <= invalidDistance) {
-                        invalidTarget = {nodeId: id, portKey: key, position: anchor, error: error}
+                        invalidTarget = {nodeId: id, portKey: key, position: anchor, error: error, execution: ports[p].execution}
                         invalidDistance = candidate
                     }
                 }
@@ -326,7 +336,8 @@ FocusScope {
         lineColor: canvas.colors ? canvas.colors.highlightText : "transparent"
         executionColor: canvas.colors ? canvas.colors.successText : "transparent"
         previewColor: canvas.colors ? (canvas.connectionTarget && canvas.connectionTarget.error
-                                      ? canvas.colors.dangerText : canvas.colors.infoText) : "transparent"
+                                      ? canvas.colors.dangerText : canvas.previewExecution
+                                        ? canvas.colors.successText : canvas.colors.infoText) : "transparent"
         selectedColor: canvas.colors ? canvas.colors.text : "transparent"
         selectedId: canvas.selectedConnectionId
         hoveredId: canvas.hoveredConnectionId
@@ -453,9 +464,11 @@ FocusScope {
                 caption: nodeTitle
                 parameters: nodeParameters
                 contentComponent: canvas.nodeContents ? canvas.nodeContents[nodeType] || null : null
+                headerComponent: canvas.nodeHeaders ? canvas.nodeHeaders[nodeType] || null : null
                 inputs: inputPorts
                 outputs: outputPorts
                 graphPosition: nodePosition
+                executionState: canvas.nodeStates[card.nodeKey] || ""
                 colors: canvas.colors
                 headerColors: canvas.nodeColors ? canvas.nodeColors[nodeType] || null : null
                 viewport: canvas
@@ -468,6 +481,7 @@ FocusScope {
                 targetOutput: !canvas.pendingOutput && canvas.connectionTarget
                               && canvas.connectionTarget.nodeId === card.nodeKey ? canvas.connectionTarget.portKey : ""
                 connectionError: canvas.connectionTarget ? canvas.connectionTarget.error : ""
+                connectionExecution: canvas.previewExecution
                 onAnchorsChanged: Qt.callLater(canvas.resolveWires)
                 onActivated: {
                     canvas.interactionHost.interactionCanceled()

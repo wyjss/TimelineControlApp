@@ -98,9 +98,9 @@ Diagnostic GraphDocument::canConnect(const Endpoint &source, const Endpoint &tar
         return {"graph.missing_port", "The target node or port does not exist.", target.nodeId, target.portKey};
     if (sourcePort->direction != PortDirection::Output || targetPort->direction != PortDirection::Input)
         return {"graph.port_direction", "A connection must go from an output to an input.", target.nodeId, target.portKey};
-    if (sourcePort->kind != targetPort->kind)
+    if (sourcePort->kind != targetPort->kind && sourcePort->kind != PortKind::DataAndExecution)
         return {"graph.port_kind", "Execution and data ports cannot be connected.", target.nodeId, target.portKey};
-    if (sourcePort->kind == PortKind::Data) {
+    if (targetPort->kind == PortKind::Data) {
         if (sourcePort->valueTypeId.isEmpty() || targetPort->valueTypeId.isEmpty())
             return {"graph.unconfigured_port", "Configure the data port before connecting it.", target.nodeId, target.portKey};
         if (sourcePort->valueTypeId != targetPort->valueTypeId
@@ -239,10 +239,12 @@ EditResult GraphDocument::setParameters(QUuid nodeId, const QVariantMap &values)
                 if (endpoint.nodeId != nodeId)
                     continue;
                 const auto previous = port(endpoint);
+                const bool execution = port(link.target)->kind == PortKind::Execution;
                 bool compatible = false;
                 for (const auto &next : ports) {
                     if (next.key == endpoint.portKey && next.direction == previous->direction
-                        && next.kind == previous->kind && next.valueTypeId == previous->valueTypeId) {
+                        && next.kind == previous->kind
+                        && (execution || next.valueTypeId == previous->valueTypeId)) {
                         compatible = true;
                         break;
                     }

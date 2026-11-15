@@ -44,6 +44,7 @@ class DemoGraph final : public QObject
     Q_PROPERTY(QVariantList speakerOptions READ speakerOptions NOTIFY speakerNodesChanged)
     Q_PROPERTY(QVariantList readTargetOptions READ readTargetOptions NOTIFY readTargetsChanged)
     Q_PROPERTY(QVariantMap previewValues READ previewValues NOTIFY previewValuesChanged)
+    Q_PROPERTY(QVariantMap nodeStates READ nodeStates NOTIFY nodeStatesChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
     Q_PROPERTY(QString errorNodeId READ errorNodeId NOTIFY errorChanged)
     Q_PROPERTY(QString fileName READ fileName NOTIFY fileNameChanged)
@@ -61,6 +62,7 @@ public:
     QVariantList speakerOptions() const;
     QVariantList readTargetOptions() const;
     QVariantMap previewValues() const;
+    QVariantMap nodeStates() const;
     QString error() const;
     QString errorNodeId() const;
     QString fileName() const;
@@ -91,12 +93,16 @@ signals:
     void paletteChanged();
     void placedObjectsChanged();
     void previewValuesChanged();
+    void nodeStatesChanged();
     void errorChanged();
     void fileNameChanged();
     void runningChanged();
     void speakerStateChanged(const QString &targetId);
     void speakerNodesChanged();
     void readTargetsChanged();
+
+private slots:
+    void nodeExecutionChanged(const QUuid &nodeId, const QUuid &callId, bool running);
 
 private:
     static QString targetType(const QString &targetId);
@@ -120,6 +126,7 @@ private:
     Blueprint::GraphRuntime m_previewRuntime;
     QHash<QString, DemoSpeaker *> m_speakers;
     QSet<Blueprint::GraphRuntime *> m_executions;
+    QHash<QUuid, QUuid> m_activeCalls;
     bool m_suppressPropertyEvents = false;
     QVariantMap m_values;
     QString m_error;

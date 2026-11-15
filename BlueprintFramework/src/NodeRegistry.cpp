@@ -216,9 +216,13 @@ Diagnostic NodeRegistry::validatePorts(const QVector<PortDefinition> &ports, boo
         if (port.direction != PortDirection::Input && port.direction != PortDirection::Output)
             return {"definition.portDirection",
                     QStringLiteral("Unknown direction for port '%1'.").arg(port.key), {}, port.key};
-        if (port.kind != PortKind::Data && port.kind != PortKind::Execution)
+        if (port.kind != PortKind::Data && port.kind != PortKind::Execution
+            && port.kind != PortKind::DataAndExecution)
             return {"definition.portKind",
                     QStringLiteral("Unknown kind for port '%1'.").arg(port.key), {}, port.key};
+        if (port.kind == PortKind::DataAndExecution && port.direction != PortDirection::Output)
+            return {"definition.portKind",
+                    QStringLiteral("Combined port '%1' must be an output.").arg(port.key), {}, port.key};
         if (port.kind == PortKind::Execution) {
             if (!port.valueTypeId.isEmpty())
                 return {"definition.portType",

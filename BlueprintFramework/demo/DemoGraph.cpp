@@ -60,6 +60,7 @@ const auto playedDurationKey = QStringLiteral("playedDurationMs");
 const auto playingKey = QStringLiteral("playing");
 const auto targetKey = QStringLiteral("target");
 const auto objectIdKey = QStringLiteral("objectId");
+const auto nameKey = QStringLiteral("name");
 const auto memberKey = QStringLiteral("member");
 const auto execIn = QStringLiteral("execIn");
 const auto execOut = QStringLiteral("execOut");
@@ -169,6 +170,7 @@ DemoGraph::DemoGraph(QObject *parent)
     const PortDefinition execute{execIn, PortDirection::Input, {}, tr("执行"), PortKind::Execution};
     const PortDefinition next{execOut, PortDirection::Output, {}, tr("继续"), PortKind::Execution};
     const ParameterDefinition target{targetKey, stringType, QStringLiteral("")};
+    const ParameterDefinition name{nameKey, stringType, QStringLiteral(""), {}, tr("对象名称")};
     const ParameterDefinition duration{durationKey, numberType, 2000.0, {}, tr("测试时长"), {},
                                        minDuration, maxDuration, true};
     const ParameterDefinition propertyMember{memberKey, stringType, QStringLiteral("")};
@@ -182,7 +184,7 @@ DemoGraph::DemoGraph(QObject *parent)
          InstancePolicy::Multiple, {}, tr("显示收到的数值"), "="},
         {textResultType, tr("文本结果"), {{valueKey, PortDirection::Input, stringType, tr("输入")}}, {}, resultCategory,
          InstancePolicy::Multiple, {}, tr("显示收到的文本"), "="},
-        {speakerType, tr("模拟音箱"), {}, {duration}, objectCategory,
+        {speakerType, tr("模拟音箱"), {}, {duration, name}, objectCategory,
          InstancePolicy::Multiple, {}, tr("测试和停止播放"), "♪",
          {{{playingKey, boolType, false, {}, tr("播放状态")}, false}, {duration, true}},
          {{playTestMethod, tr("测试播放")}, {QStringLiteral("stop"), tr("停止")},
@@ -194,7 +196,7 @@ DemoGraph::DemoGraph(QObject *parent)
          InstancePolicy::SinglePerDocument, {}, tr("蓝图触发时开始执行"), "▶"},
         {triggerType, tr("开始（手动）"), {next}, {}, entryCategory,
          InstancePolicy::Multiple, {}, tr("点击运行后开始执行"), "▶"},
-        {propertyEventType, tr("属性变化"), {next}, {target, propertyMember}, entryCategory,
+        {propertyEventType, tr("属性变化"), {}, {target, propertyMember}, entryCategory,
          InstancePolicy::Multiple, {}, tr("指定对象的属性变化时触发"), "↗"},
         // 保留旧图中的分支端口，节点库使用普通执行输出直接分流。
         {forkType, tr("同时触发"),
@@ -206,7 +208,7 @@ DemoGraph::DemoGraph(QObject *parent)
     };
     for (auto &definition : definitions) {
         if (definition.typeId == propertyEventType) {
-            definition.resolvePorts = [this, next](const NodeData &node) {
+            definition.resolvePorts = [this](const NodeData &node) {
                 const QString typeId = targetType(node.parameterOverrides.value(targetKey).toString());
                 const QString member = node.parameterOverrides.value(memberKey).toString();
                 QString valueType;
@@ -219,10 +221,8 @@ DemoGraph::DemoGraph(QObject *parent)
                         }
                     }
                 }
-                QVector<PortDefinition> ports{next};
-                if (!valueType.isEmpty())
-                    ports.append({valueKey, PortDirection::Output, valueType, tr("变化后的值")});
-                return ports;
+                return QVector<PortDefinition>{{valueKey, PortDirection::Output, valueType,
+                                                tr("变化后的值"), PortKind::DataAndExecution}};
             };
         }
         const auto error = m_registry.add(definition);
@@ -267,8 +267,8 @@ DemoGraph::DemoGraph(QObject *parent)
         {second, constantType, {42, 294}, {{valueKey, 30.0}}},
         {addition, additionType, {300, 192}, {}},
         {result, resultType, {558, 192}, {}},
-        {speaker, speakerType, {800, 42}, {}},
-        {QUuid::createUuid(), speakerType, {800, 294}, {{durationKey, 4000.0}}},
+        {speaker, speakerType, {800, 42}, {{nameKey, tr("模拟音箱 1")}}},
+        {QUuid::createUuid(), speakerType, {800, 294}, {{durationKey, 4000.0}, {nameKey, tr("模拟音箱 2")}}},
         {trigger, triggerType, {42, 420}, {}},
         {set, setType, {300, 420}, bound},
         {call, callType, {558, 420}, bound},
@@ -288,6 +288,7 @@ DemoGraph::DemoGraph(QObject *parent)
     updateValues();
     connect(&m_registry, &NodeRegistry::typeAdded, this, [this] { emit paletteChanged(); });
     for (auto *runtime : {&m_runtime, &m_automaticRuntime}) {
+        connect(runtime, &GraphRuntime::nodeExecutionChanged, this, &DemoGraph::nodeExecutionChanged);
         connect(runtime, &GraphRuntime::executionFinished, this, [this, runtime](const QUuid &, const Diagnostic &error) {
             executionFinished(runtime, error);
         });
@@ -318,6 +319,17 @@ DemoGraph::~DemoGraph()
 
 QObject *DemoGraph::session() { return &m_session; }
 QVariantMap DemoGraph::previewValues() const { return m_values; }
+QVariantMap DemoGraph::nodeStates() const
+{
+    QVariantMap states;
+    for (const auto &nodeId : m_activeCalls) {
+        const auto *node = m_document.findNode(nodeId);
+        states.insert(nodeId.toString(QUuid::WithoutBraces),
+                      node && (node->typeId == waitType || node->typeId == waitUntilType)
+                          ? QStringLiteral("waiting") : QStringLiteral("running"));
+    }
+    return states;
+}
 QString DemoGraph::error() const { return m_error; }
 QString DemoGraph::errorNodeId() const { return m_errorNodeId.toString(QUuid::WithoutBraces); }
 QString DemoGraph::fileName() const { return m_fileName; }
@@ -405,6 +417,7 @@ QVariantList DemoGraph::existingSpeakerOptions() const
     QVariantList options;
     for (const auto &entry : existingSpeakers) {
         options.append(QVariantMap{{QStringLiteral("value"), entry.id},
+                                   {QStringLiteral("name"), tr(entry.label)},
                                    {QStringLiteral("label"), tr(entry.label)}});
     }
     return options;
@@ -417,8 +430,9 @@ QVariantList DemoGraph::speakerOptions() const
         if (node.typeId != speakerType)
             continue;
         const auto id = node.id.toString(QUuid::WithoutBraces);
+        const auto name = m_document.parameterValue(node.id, nameKey).toString().trimmed();
         options.append(QVariantMap{{QStringLiteral("value"), QStringLiteral("node:%1:%2").arg(node.typeId, id)},
-                                   {QStringLiteral("label"), tr("模拟音箱 · %1").arg(id.left(8))}});
+                                   {QStringLiteral("label"), name.isEmpty() ? tr("模拟音箱 · %1").arg(id.left(8)) : name}});
     }
     return options;
 }
@@ -431,8 +445,12 @@ QVariantList DemoGraph::readTargetOptions() const
         if (definition->properties.isEmpty())
             continue;
         const auto id = node.id.toString(QUuid::WithoutBraces);
+        const auto name = node.typeId == speakerType
+            ? m_document.parameterValue(node.id, nameKey).toString().trimmed() : QString{};
         options.append(QVariantMap{{QStringLiteral("value"), QStringLiteral("node:%1:%2").arg(node.typeId, id)},
-                                   {QStringLiteral("label"), tr("%1 · %2").arg(definition->displayName, id.left(8))}});
+                                   {QStringLiteral("name"), name.isEmpty() ? definition->displayName : name},
+                                   {QStringLiteral("label"), name.isEmpty()
+                                       ? tr("%1 · %2").arg(definition->displayName, id.left(8)) : name}});
     }
     return options;
 }
@@ -767,7 +785,7 @@ bool DemoGraph::startExecution(GraphRuntime &runtime, const GraphSnapshot &snaps
     const auto error = runtime.start(snapshot, implementations);
     if (!error.code.isEmpty())
         return report(error.message, error.nodeId.isNull() ? entry : error.nodeId);
-    const auto result = runtime.execute({entry, execOut}, entryOutputs);
+    const auto result = runtime.execute({entry, entryOutputs.contains(valueKey) ? valueKey : execOut}, entryOutputs);
     if (!result.error.code.isEmpty()) {
         runtime.stop();
         return report(result.error.message, result.error.nodeId.isNull() ? entry : result.error.nodeId);
@@ -777,6 +795,15 @@ bool DemoGraph::startExecution(GraphRuntime &runtime, const GraphSnapshot &snaps
     if (!wasRunning)
         emit runningChanged();
     return true;
+}
+
+void DemoGraph::nodeExecutionChanged(const QUuid &nodeId, const QUuid &callId, bool running)
+{
+    if (running)
+        m_activeCalls.insert(callId, nodeId);
+    else
+        m_activeCalls.remove(callId);
+    emit nodeStatesChanged();
 }
 
 void DemoGraph::executionFinished(GraphRuntime *runtime, const Diagnostic &error)
@@ -879,12 +906,13 @@ void DemoGraph::speakerChanged(const QString &targetId, const QStringList &keys)
                 if (!keys.contains(member) || !state.contains(member))
                     continue;
                 if (std::none_of(connections.cbegin(), connections.cend(), [&](const ConnectionData &connection) {
-                        return connection.source.nodeId == node.id && connection.source.portKey == execOut;
+                        return connection.source.nodeId == node.id && connection.source.portKey == valueKey;
                     }))
                     continue;
                 if (snapshot.graphId.isNull())
                     snapshot = m_document.snapshot();
                 auto *runtime = new GraphRuntime(this);
+                connect(runtime, &GraphRuntime::nodeExecutionChanged, this, &DemoGraph::nodeExecutionChanged);
                 connect(runtime, &GraphRuntime::executionFinished, this, [this, runtime](const QUuid &, const Diagnostic &error) {
                     executionFinished(runtime, error);
                 });

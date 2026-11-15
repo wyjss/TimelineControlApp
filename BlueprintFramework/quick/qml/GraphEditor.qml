@@ -11,6 +11,9 @@ Item {
     property QtObject colors
     // 内容组件根项声明 node 属性并通过 implicitHeight 提供高度。
     property var nodeContents: ({})
+    // 标题组件同样接收 node，拖动由节点外壳处理。
+    property var nodeHeaders: ({})
+    property var nodeStates: ({})
     property Component palettePanel: defaultPalette
     property Component inspectorPanel: defaultInspector
     property alias nodeColors: canvas.nodeColors
@@ -231,6 +234,8 @@ Item {
             session: editor.session
             colors: editor.colors
             nodeContents: editor.nodeContents
+            nodeHeaders: editor.nodeHeaders
+            nodeStates: editor.nodeStates
         }
 
         Loader {

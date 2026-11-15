@@ -5,6 +5,7 @@
 #include <Blueprint/WaitNodes.h>
 
 #include <QEvent>
+#include <QSet>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -43,6 +44,11 @@ private slots:
     void rejectsDeferredDataExecutor();
     void cancelsWaitExecutorAndRestarts();
     void runsObjectNodesWithHostAdapter();
+    void connectsCombinedOutputByTargetKind();
+    void evaluatesCombinedOutputWithoutExecution();
+    void publishesCombinedActionOutput();
+    void reportsNodeExecution_data();
+    void reportsNodeExecution();
     void deepChain();
     void sharesUpstreamWithinOneEvaluation();
     void stopsDuringEvaluation();
@@ -244,6 +250,237 @@ void BlueprintRuntimeTest::cancelsWaitExecutorAndRestarts()
     QTRY_COMPARE(finished.count(), 2);
     QCOMPARE(finished.last().at(1).value<Diagnostic>().code, QString());
     QCOMPARE(calls, 1);
+}
+
+void BlueprintRuntimeTest::connectsCombinedOutputByTargetKind()
+{
+    PortDefinition combined = numberOutput;
+    combined.kind = PortKind::DataAndExecution;
+    QCOMPARE(NodeRegistry::validatePorts({combined}).code, QString());
+    auto invalid = combined;
+    invalid.direction = PortDirection::Input;
+    QCOMPARE(NodeRegistry::validatePorts({invalid}).code, "definition.portKind");
+    invalid = combined;
+    invalid.valueTypeId.clear();
+    QCOMPARE(NodeRegistry::validatePorts({invalid}).code, "definition.portType");
+    QCOMPARE(NodeRegistry::validatePorts({invalid}, true).code, QString());
+    invalid.valueTypeId = anyValueType;
+    QCOMPARE(NodeRegistry::validatePorts({invalid}).code, "definition.portType");
+
+    const auto consumerType = QStringLiteral("consumer");
+    const auto textType = QStringLiteral("text");
+    const auto unconfiguredType = QStringLiteral("unconfigured");
+    const auto typeKey = QStringLiteral("valueType");
+    NodeRegistry registry;
+    QCOMPARE(registry.add({triggerType, triggerType, {combined}}).code, QString());
+    QCOMPARE(registry.add({consumerType, consumerType, {numberInput, executionInput}}).code, QString());
+    QCOMPARE(registry.add({textType, textType, {{inputKey, PortDirection::Input, "string"}}}).code, QString());
+    NodeTypeDefinition unconfigured{unconfiguredType, unconfiguredType};
+    unconfigured.parameters.append({typeKey, "string", QStringLiteral("")});
+    auto unconfiguredOutput = combined;
+    unconfiguredOutput.valueTypeId.clear();
+    unconfigured.resolvePorts = [unconfiguredOutput, typeKey](const NodeData &node) {
+        auto output = unconfiguredOutput;
+        output.valueTypeId = node.parameterOverrides.value(typeKey).toString();
+        return QVector<PortDefinition>{output};
+    };
+    QCOMPARE(registry.add(unconfigured).code, QString());
+    GraphDocument document(registry);
+    const auto first = document.addNode(triggerType, {}).id;
+    const auto second = document.addNode(triggerType, {}).id;
+    const auto consumer = document.addNode(consumerType, {}).id;
+    const auto text = document.addNode(textType, {}).id;
+    const auto pending = document.addNode(unconfiguredType, {}).id;
+    for (const auto &id : {first, second, consumer, text, pending})
+        QVERIFY(!id.isNull());
+    QCOMPARE(document.connectPorts({first, valueKey}, {consumer, inputKey}).error.code, QString());
+    QCOMPARE(document.connectPorts({first, valueKey}, {consumer, enterKey}).error.code, QString());
+    QCOMPARE(document.connectPorts({second, valueKey}, {consumer, inputKey}).error.code, "graph.input_occupied");
+    QCOMPARE(document.connectPorts({second, valueKey}, {consumer, enterKey}).error.code, QString());
+    QCOMPARE(document.connectPorts({first, valueKey}, {consumer, enterKey}).error.code, "graph.duplicate_connection");
+    QCOMPARE(document.connectPorts({first, valueKey}, {text, inputKey}).error.code, "graph.port_type");
+    QCOMPARE(document.connectPorts({pending, valueKey}, {consumer, enterKey}).error.code, QString());
+    QCOMPARE(document.connectPorts({pending, valueKey}, {text, inputKey}).error.code, "graph.unconfigured_port");
+
+    auto incompatible = document.snapshot();
+    for (auto &node : incompatible.nodes) {
+        if (node.id == consumer)
+            node.ports[0].valueTypeId = QStringLiteral("string");
+    }
+    GraphRuntime runtime;
+    QCOMPARE(runtime.start(incompatible, {}).code, "runtime.incompatible_ports");
+    QCOMPARE(runtime.start(document.snapshot(), {}).code, QString());
+    QCOMPARE(runtime.evaluate({pending, valueKey}).error.code, "runtime.unconfigured_port");
+    QCOMPARE(document.setParameter(pending, typeKey, QStringLiteral("bool")).error.code, QString());
+    QCOMPARE(document.nodePorts(pending).first().valueTypeId, QStringLiteral("bool"));
+    QCOMPARE(document.setParameter(pending, typeKey, QStringLiteral("string")).error.code, QString());
+    QCOMPARE(document.connectPorts({pending, valueKey}, {text, inputKey}).error.code, QString());
+    QCOMPARE(document.setParameter(pending, typeKey, QStringLiteral("bool")).error.code, "graph.connected_port_change");
+    QCOMPARE(document.parameterValue(pending, typeKey), QVariant(QStringLiteral("string")));
+    QCOMPARE(document.nodePorts(pending).first().valueTypeId, QStringLiteral("string"));
+}
+
+void BlueprintRuntimeTest::evaluatesCombinedOutputWithoutExecution()
+{
+    const QUuid source = QUuid::createUuid();
+    const QUuid sink = QUuid::createUuid();
+    const PortDefinition output{valueKey, PortDirection::Output, "bool", {}, PortKind::DataAndExecution};
+    const PortDefinition input{inputKey, PortDirection::Input, "bool"};
+    const GraphSnapshot graph{QUuid::createUuid(), 0,
+        {{source, evaluatorType, {}, {output}}, {sink, actionType, {}, {executionInput, input}}},
+        {{QUuid::createUuid(), {source, valueKey}, {sink, inputKey}},
+         {QUuid::createUuid(), {source, valueKey}, {sink, enterKey}}}};
+    int evaluations = 0;
+    int actions = 0;
+    RuntimeImplementations implementations;
+    implementations.evaluators.insert(evaluatorType, [&](const QVariantMap &, const QVariantMap &) {
+        ++evaluations;
+        return EvaluationResult{{{valueKey, false}}, {}};
+    });
+    implementations.actions.insert(actionType, [&](const ExecutionContext &context, RuntimeImplementations::Completion done) {
+        ++actions;
+        QCOMPARE(context.inputs.value(inputKey), QVariant(false));
+        done({});
+    });
+    GraphRuntime runtime;
+    QSignalSpy finished(&runtime, &GraphRuntime::executionFinished);
+    QSignalSpy states(&runtime, &GraphRuntime::nodeExecutionChanged);
+    QCOMPARE(runtime.start(graph, implementations).code, QString());
+    const auto value = runtime.evaluate({sink, inputKey});
+    QCOMPARE(value.error.code, QString());
+    QCOMPARE(value.value, QVariant(false));
+    QCOMPARE(evaluations, 1);
+    QCoreApplication::processEvents();
+    QCOMPARE(actions, 0);
+    QVERIFY(states.isEmpty());
+    QVERIFY(finished.isEmpty());
+
+    QCOMPARE(runtime.execute({source, valueKey}).error.code, "runtime.missing_output");
+    QCOMPARE(runtime.execute({source, valueKey}, {{valueKey, 12}}).error.code, "runtime.invalid_output");
+    QCoreApplication::processEvents();
+    QCOMPARE(actions, 0);
+    QVERIFY(states.isEmpty());
+    QVERIFY(finished.isEmpty());
+    QCOMPARE(runtime.execute({source, valueKey}, {{valueKey, false}}).error.code, QString());
+    QTRY_COMPARE(finished.count(), 1);
+    QCOMPARE(finished.first().at(1).value<Diagnostic>().code, QString());
+    QCOMPARE(actions, 1);
+    QCOMPARE(evaluations, 1);
+    QCOMPARE(states.count(), 2);
+}
+
+void BlueprintRuntimeTest::publishesCombinedActionOutput()
+{
+    const QUuid entry = QUuid::createUuid();
+    const QUuid source = QUuid::createUuid();
+    const QUuid sink = QUuid::createUuid();
+    const PortDefinition output{valueKey, PortDirection::Output, "bool", {}, PortKind::DataAndExecution};
+    const PortDefinition input{inputKey, PortDirection::Input, "bool"};
+    const GraphSnapshot graph{QUuid::createUuid(), 0,
+        {{entry, triggerType, {}, {executionOutput}},
+         {source, actionType, {}, {executionInput, output}},
+         {sink, actionType, {}, {executionInput, input}}},
+        {{QUuid::createUuid(), {entry, nextKey}, {source, enterKey}},
+         {QUuid::createUuid(), {source, valueKey}, {sink, inputKey}},
+         {QUuid::createUuid(), {source, valueKey}, {sink, enterKey}}}};
+    int sources = 0;
+    int sinks = 0;
+    GraphRuntime runtime;
+    RuntimeImplementations implementations;
+    implementations.actions.insert(actionType, [&](const ExecutionContext &context, RuntimeImplementations::Completion done) {
+        if (context.nodeId == source) {
+            ++sources;
+            done({valueKey, {{valueKey, false}}, {}});
+        } else {
+            ++sinks;
+            QCOMPARE(context.inputs.value(inputKey), QVariant(false));
+            const auto value = runtime.evaluate({source, valueKey});
+            QCOMPARE(value.error.code, QString());
+            QCOMPARE(value.value, QVariant(false));
+            done({});
+        }
+    });
+    QSignalSpy finished(&runtime, &GraphRuntime::executionFinished);
+    QSignalSpy states(&runtime, &GraphRuntime::nodeExecutionChanged);
+    QCOMPARE(runtime.start(graph, implementations).code, QString());
+    QCOMPARE(runtime.evaluate({source, valueKey}).error.code, "runtime.output_unavailable");
+    QCOMPARE(sources, 0);
+    QVERIFY(states.isEmpty());
+    QCOMPARE(runtime.execute({entry, nextKey}).error.code, QString());
+    QTRY_COMPARE(finished.count(), 1);
+    QCOMPARE(finished.first().at(1).value<Diagnostic>().code, QString());
+    QCOMPARE(sources, 1);
+    QCOMPARE(sinks, 1);
+    QCOMPARE(states.count(), 4);
+    QCOMPARE(states.at(0).at(0).toUuid(), source);
+    QCOMPARE(states.at(1).at(0).toUuid(), source);
+    QCOMPARE(states.at(2).at(0).toUuid(), sink);
+    QCOMPARE(states.at(3).at(0).toUuid(), sink);
+}
+
+void BlueprintRuntimeTest::reportsNodeExecution_data()
+{
+    QTest::addColumn<QString>("ending");
+    QTest::newRow("completion") << QStringLiteral("complete");
+    QTest::newRow("failure") << QStringLiteral("failure");
+    QTest::newRow("stop") << QStringLiteral("stop");
+    QTest::newRow("stop during start signal") << QStringLiteral("start-stop");
+    QTest::newRow("stop during end signal") << QStringLiteral("end-stop");
+}
+
+void BlueprintRuntimeTest::reportsNodeExecution()
+{
+    QFETCH(QString, ending);
+    const QUuid entry = QUuid::createUuid();
+    const QUuid action = QUuid::createUuid();
+    const GraphSnapshot graph{QUuid::createUuid(), 0,
+        {{entry, triggerType, {}, {executionOutput}}, {action, actionType, {}, {executionInput}}},
+        {{QUuid::createUuid(), {entry, nextKey}, {action, enterKey}}}};
+    bool started = false;
+    QUuid cancelled;
+    RuntimeImplementations::Completion complete;
+    RuntimeImplementations implementations;
+    implementations.actions.insert(actionType, [&](const ExecutionContext &, RuntimeImplementations::Completion done) {
+        started = true;
+        complete = std::move(done);
+    });
+    implementations.cancellations.insert(actionType, [&](const QUuid &callId) { cancelled = callId; });
+    GraphRuntime runtime;
+    QSignalSpy finished(&runtime, &GraphRuntime::executionFinished);
+    QSignalSpy states(&runtime, &GraphRuntime::nodeExecutionChanged);
+    connect(&runtime, &GraphRuntime::nodeExecutionChanged, &runtime, [&](const QUuid &, const QUuid &, bool running) {
+        if ((running && ending == QStringLiteral("start-stop"))
+            || (!running && ending == QStringLiteral("end-stop")))
+            runtime.stop();
+    });
+    QCOMPARE(runtime.start(graph, implementations).code, QString());
+    QCOMPARE(runtime.execute({entry, nextKey}).error.code, QString());
+    QTRY_COMPARE(states.count(), ending == QStringLiteral("start-stop") ? 2 : 1);
+    QCOMPARE(started, ending != QStringLiteral("start-stop"));
+    if (ending == QStringLiteral("stop")) {
+        runtime.stop();
+    } else if (started) {
+        complete({{}, {}, ending == QStringLiteral("failure") ? Diagnostic{"test.failure"} : Diagnostic{}});
+    }
+    QTRY_COMPARE(finished.count(), 1);
+    QCOMPARE(states.count(), 2);
+    QCOMPARE(states.first().at(0).toUuid(), action);
+    QCOMPARE(states.last().at(0).toUuid(), action);
+    const auto callId = states.first().at(1).toUuid();
+    QVERIFY(!callId.isNull());
+    QCOMPARE(states.last().at(1).toUuid(), callId);
+    QCOMPARE(states.first().at(2).toBool(), true);
+    QCOMPARE(states.last().at(2).toBool(), false);
+    const auto expectedError = ending.endsWith(QStringLiteral("stop")) ? QStringLiteral("runtime.cancelled")
+        : ending == QStringLiteral("failure") ? QStringLiteral("test.failure") : QString();
+    QCOMPARE(finished.first().at(1).value<Diagnostic>().code, expectedError);
+    QCOMPARE(cancelled, ending == QStringLiteral("stop") || ending == QStringLiteral("start-stop") ? callId : QUuid{});
+    if (complete) {
+        complete({});
+        QCoreApplication::sendPostedEvents(&runtime, QEvent::MetaCall);
+        QCOMPARE(states.count(), 2);
+        QCOMPARE(finished.count(), 1);
+    }
 }
 
 void BlueprintRuntimeTest::deepChain()
@@ -535,6 +772,7 @@ void BlueprintRuntimeTest::dispatchesBranches()
 
     GraphRuntime runtime;
     QSignalSpy finished(&runtime, &GraphRuntime::executionFinished);
+    QSignalSpy states(&runtime, &GraphRuntime::nodeExecutionChanged);
     QCOMPARE(runtime.start(graph, implementations).code, QString());
     const auto run = runtime.execute({trigger, nextKey});
     QCOMPARE(run.error.code, QString());
@@ -570,6 +808,18 @@ void BlueprintRuntimeTest::dispatchesBranches()
     QCOMPARE(finished.first().at(0).toUuid(), run.executionId);
     QCOMPARE(finished.first().at(1).value<Diagnostic>().code,
              stop ? QStringLiteral("runtime.cancelled") : branchError);
+    QCOMPARE(states.count(), 6);
+    QSet<QUuid> active;
+    for (const auto &state : states) {
+        const auto callId = state.at(1).toUuid();
+        if (state.at(2).toBool()) {
+            QVERIFY(!active.contains(callId));
+            active.insert(callId);
+        } else {
+            QVERIFY(active.remove(callId));
+        }
+    }
+    QVERIFY(active.isEmpty());
 
     if (stop || !branchError.isEmpty()) {
         completions.at(0)({});
@@ -936,13 +1186,18 @@ void BlueprintRuntimeTest::runsObjectNodesWithHostAdapter()
     const auto callEnabled = objectCallPortKey(PortDirection::Input, objectType, rename, enabledKey);
     const auto callName = objectCallPortKey(PortDirection::Input, objectType, rename, nameKey);
     const auto callOutput = objectCallPortKey(PortDirection::Output, objectType, rename, resultKey);
+    const auto callPorts = document.nodePorts(call);
+    QCOMPARE(callPorts.last().key, callOutput);
+    QCOMPARE(callPorts.last().kind, PortKind::DataAndExecution);
+    for (const auto &port : callPorts)
+        QVERIFY(port.key != execOut);
     QCOMPARE(document.setParameter(call, callName, QStringLiteral("local default")).error.code, QString());
     QCOMPARE(document.connectPorts({entry, nextKey}, {setEnabled, execIn}).error.code, QString());
     QCOMPARE(document.connectPorts({entry, valueKey}, {setEnabled, valueKey}).error.code, QString());
     QCOMPARE(document.connectPorts({setEnabled, execOut}, {call, execIn}).error.code, QString());
     QCOMPARE(document.connectPorts({readEnabled, valueKey}, {call, callEnabled}).error.code, QString());
     QCOMPARE(document.connectPorts({readName, valueKey}, {call, callName}).error.code, QString());
-    QCOMPARE(document.connectPorts({call, execOut}, {setName, execIn}).error.code, QString());
+    QCOMPARE(document.connectPorts({call, callOutput}, {setName, execIn}).error.code, QString());
     QCOMPARE(document.connectPorts({call, callOutput}, {setName, valueKey}).error.code, QString());
 
     GraphRuntime runtime;

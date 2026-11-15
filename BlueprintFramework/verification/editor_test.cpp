@@ -1,5 +1,6 @@
 #include <Blueprint/GraphEditSession.h>
 
+#include <QJSValue>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickItem>
@@ -29,6 +30,7 @@ class EditorTest : public QObject
 
 private slots:
     void sharedEditorInteractions();
+    void compoundPortsAndDisplay();
 };
 
 void EditorTest::sharedEditorInteractions()
@@ -45,7 +47,18 @@ void EditorTest::sharedEditorInteractions()
     value.defaultValue = 2.0;
     value.minimum = 0.0;
     value.maximum = 10.0;
-    source.parameters = {value};
+    source.parameters = {value,
+        {QStringLiteral("portMode"), QStringLiteral("string"), QStringLiteral("output"),
+         {QStringLiteral("output"), QStringLiteral("input"), QStringLiteral("hidden")}}};
+    source.resolvePorts = [ports = source.ports](const NodeData &node) {
+        auto resolved = ports;
+        const auto mode = node.parameterOverrides.value(QStringLiteral("portMode"), QStringLiteral("output")).toString();
+        if (mode == QStringLiteral("hidden"))
+            resolved.removeFirst();
+        else if (mode == QStringLiteral("input"))
+            resolved.first().direction = PortDirection::Input;
+        return resolved;
+    };
     auto otherSourceType = source;
     otherSourceType.typeId = QStringLiteral("other-source");
     NodeTypeDefinition target;
@@ -79,6 +92,22 @@ void EditorTest::sharedEditorInteractions()
         import QtQuick.Window 2.14
         import "qrc:/BlueprintQuick" as Blueprint
         Window {
+            id: testWindow
+            property bool customHeaders: false
+            Component {
+                id: customHeader
+                Item {
+                    objectName: "customNodeHeader"
+                    property var node
+                    readonly property string boundNodeId: node ? node.id : ""
+                    readonly property real boundValue: node ? node.parameters.value : 0
+                    implicitHeight: 40 + boundValue * 4
+                    Text {
+                        anchors.centerIn: parent
+                        text: parent.boundNodeId
+                    }
+                }
+            }
             width: 1100
             height: 700
             visible: true
@@ -99,6 +128,7 @@ void EditorTest::sharedEditorInteractions()
             Blueprint.GraphEditor {
                 objectName: "firstEditor"
                 session: testSession
+                nodeHeaders: testWindow.customHeaders ? ({"other-source": customHeader}) : ({})
                 colors: theme
                 width: parent.width
                 height: parent.height / 2
@@ -330,6 +360,205 @@ void EditorTest::sharedEditorInteractions()
     QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, zoomedInput);
     QTRY_COMPARE(document.data().connections.size(), 4);
     QCOMPARE(document.data().connections.last().target.nodeId, spareId);
+
+    auto *wireLayer = findItem(first, "connectionLayer");
+    QVERIFY(wireLayer);
+    const auto otherSourceKey = otherSourceId.toString(QUuid::WithoutBraces);
+    const auto connectionCount = document.data().connections.size();
+    for (const bool output : {true, false}) {
+        for (const bool remove : {true, false}) {
+            QVERIFY(session.setParameter(otherSourceKey, QStringLiteral("portMode"),
+                                         output ? QStringLiteral("output") : QStringLiteral("input")));
+            QQuickItem *port = nullptr;
+            QTRY_VERIFY((port = findItem(otherSourceCard, output ? "output-out" : "input-out")));
+            QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, centerInScene(port));
+            QCOMPARE(canvas->property("pendingNode").toString(), otherSourceKey);
+            QVERIFY(first->property("connecting").toBool());
+            QVERIFY(session.setParameter(otherSourceKey, value.key, output ? 4.0 : 5.0));
+            QVERIFY(first->property("connecting").toBool());
+
+            QVERIFY(session.setParameter(otherSourceKey, QStringLiteral("portMode"),
+                remove ? QStringLiteral("hidden") : (output ? QStringLiteral("input") : QStringLiteral("output"))));
+            QVERIFY(!first->property("connecting").toBool());
+            QVERIFY(canvas->property("pendingNode").toString().isEmpty());
+            QTRY_VERIFY(wireLayer->property("draftStart").isNull());
+            QVERIFY(session.error().isEmpty());
+            QCOMPARE(document.data().connections.size(), connectionCount);
+        }
+    }
+    QQuickItem *retainedOutput = nullptr;
+    QTRY_VERIFY((retainedOutput = findItem(otherSourceCard, "output-next")));
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, centerInScene(retainedOutput));
+    QVERIFY(session.setParameter(otherSourceKey, QStringLiteral("portMode"), QStringLiteral("hidden")));
+    QVERIFY(first->property("connecting").toBool());
+    QCOMPARE(canvas->property("pendingPort").toString(), QStringLiteral("next"));
+    QTest::keyClick(window, Qt::Key_Escape);
+    QVERIFY(!first->property("connecting").toBool());
+
+    QVERIFY(session.setParameter(otherSourceKey, QStringLiteral("portMode"), QStringLiteral("output")));
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, centerInScene(inputHit));
+    QCOMPARE(canvas->property("pendingNode").toString(), targetId.toString(QUuid::WithoutBraces));
+    QVERIFY(first->property("connecting").toBool());
+    QQuickItem *restoredOutput = nullptr;
+    QTRY_VERIFY((restoredOutput = findItem(otherSourceCard, "output-out")));
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, centerInScene(restoredOutput));
+    QTRY_COMPARE(document.data().connections.size(), connectionCount + 1);
+    QCOMPARE(document.data().connections.last().source.nodeId, otherSourceId);
+    QCOMPARE(document.data().connections.last().target.nodeId, targetId);
+    QVERIFY(session.error().isEmpty());
+    QVERIFY(!first->property("connecting").toBool());
+
+    canvas->setProperty("zoom", 1.0);
+    QVERIFY(session.setParameter(otherSourceKey, value.key, 4.0));
+    QCOMPARE(otherSourceCard->property("headerHeight").toInt(), 38);
+    window->setProperty("customHeaders", true);
+    QQuickItem *customHeader = nullptr;
+    QTRY_VERIFY((customHeader = findItem(otherSourceCard, "customNodeHeader")));
+    QTRY_COMPARE(customHeader->property("boundNodeId").toString(), otherSourceKey);
+    QCOMPARE(customHeader->property("boundValue").toDouble(), 4.0);
+    const auto originalHeight = otherSourceCard->height();
+    const auto originalPortY = restoredOutput->mapToItem(otherSourceCard, {0, 0}).y();
+    QVERIFY(session.setParameter(otherSourceKey, value.key, 7.0));
+    QTRY_COMPARE(customHeader->property("boundValue").toDouble(), 7.0);
+    QTRY_COMPARE(otherSourceCard->height(), originalHeight + 12.0);
+    QCOMPARE(restoredOutput->mapToItem(otherSourceCard, {0, 0}).y(), originalPortY + 12.0);
+    QCOMPARE(sourceCard->property("headerHeight").toInt(), 38);
+
+    first->setProperty("selectedNodeId", sourceId.toString(QUuid::WithoutBraces));
+    const QPoint headerCenter = centerInScene(customHeader);
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, headerCenter);
+    QCOMPARE(first->property("selectedNodeId").toString(), otherSourceKey);
+    const auto originalPosition = otherSourceCard->property("graphPosition").toPointF();
+    QTest::mousePress(window, Qt::LeftButton, Qt::NoModifier, headerCenter);
+    QTest::mouseMove(window, headerCenter + QPoint(20, 0));
+    QTest::mouseMove(window, headerCenter + QPoint(60, 12));
+    QTest::mouseRelease(window, Qt::LeftButton, Qt::NoModifier, headerCenter + QPoint(60, 12));
+    QTRY_COMPARE(otherSourceCard->property("graphPosition").toPointF(), originalPosition + QPointF(40, 12));
+
+    window->setProperty("customHeaders", false);
+    QTRY_VERIFY(!findItem(otherSourceCard, "customNodeHeader"));
+    QCOMPARE(otherSourceCard->property("headerHeight").toInt(), 38);
+}
+
+void EditorTest::compoundPortsAndDisplay()
+{
+    NodeRegistry registry;
+    NodeTypeDefinition source;
+    source.typeId = QStringLiteral("compound");
+    source.displayName = QStringLiteral("Combined source");
+    source.ports = {{QStringLiteral("value"), PortDirection::Output, QStringLiteral("number"),
+                     QStringLiteral("Result"), PortKind::DataAndExecution}};
+    QVERIFY(registry.add(source).code.isEmpty());
+    NodeTypeDefinition target;
+    target.typeId = QStringLiteral("consumer");
+    target.displayName = QStringLiteral("Consumer");
+    target.ports = {{QStringLiteral("local"), PortDirection::Input, QStringLiteral("number"), QStringLiteral("Local")},
+                    {QStringLiteral("run"), PortDirection::Input, {}, QStringLiteral("Run"), PortKind::Execution}};
+    QVERIFY(registry.add(target).code.isEmpty());
+    GraphDocument document(registry);
+    GraphEditSession session(document);
+    const auto sourceId = document.addNode(source.typeId, {40, 40}).id;
+    const auto targetId = document.addNode(target.typeId, {360, 40}).id;
+    const auto sourceKey = sourceId.toString(QUuid::WithoutBraces);
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("testSession"), &session);
+    engine.loadData(R"QML(
+        import QtQuick 2.14
+        import QtQuick.Window 2.14
+        import "qrc:/BlueprintQuick" as Blueprint
+        Window {
+            width: 800
+            height: 450
+            visible: true
+            QtObject {
+                id: theme
+                property color backgroundCanvas: "#141516"
+                property color backgroundSurface: "#303234"
+                property color borderPane: "#353638"
+                property color border: "#a9b4bd"
+                property color text: "#e1e2e3"
+                property color subtleText: "#a9b4bd"
+                property color highlightSoft: "#334455"
+                property color highlightText: "#7aaddf"
+                property color successText: "#75a76f"
+                property color infoText: "#608ac5"
+                property color dangerText: "#f17575"
+            }
+            Blueprint.GraphEditor {
+                objectName: "editor"
+                anchors.fill: parent
+                session: testSession
+                colors: theme
+                palettePanel: null
+                inspectorPanel: null
+            }
+        }
+    )QML", QUrl(QStringLiteral("qrc:/BlueprintCompoundEditorTest.qml")));
+    QCOMPARE(engine.rootObjects().size(), 1);
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    auto *editor = findItem(window->contentItem(), "editor");
+    QVERIFY(editor);
+    auto *sourceCard = findItem(editor, "node-compound");
+    auto *targetCard = findItem(editor, "node-consumer");
+    auto *canvas = findItem(editor, "graphCanvas");
+    auto *wireLayer = findItem(editor, "connectionLayer");
+    QVERIFY(editor && sourceCard && targetCard && canvas && wireLayer);
+    auto *output = findItem(sourceCard, "output-value");
+    auto *dataInput = findItem(targetCard, "input-local");
+    auto *executionInput = findItem(targetCard, "input-run");
+    auto *graphic = findItem(sourceCard, "outputGraphic-value");
+    QVERIFY(output && dataInput && executionInput && graphic);
+    QVERIFY(output->parentItem()->property("compound").toBool());
+    QCOMPARE(graphic->rotation(), 45.0);
+    const auto projectedOutput = session.data(session.index(0, 0), session.roleNames().key("outputPorts")).toList().first().toMap();
+    QVERIFY(projectedOutput.value(QStringLiteral("data")).toBool());
+    QVERIFY(projectedOutput.value(QStringLiteral("executionCapable")).toBool());
+    QVERIFY(!projectedOutput.value(QStringLiteral("execution")).toBool());
+
+    const auto originalHeight = sourceCard->height();
+    const auto originalPortPosition = output->mapToItem(sourceCard, {output->width() / 2, output->height() / 2});
+    editor->setProperty("nodeStates", QVariantMap{{sourceKey, QStringLiteral("running")}});
+    QTRY_COMPARE(sourceCard->property("statusText").toString(), QStringLiteral("执行中"));
+    QCOMPARE(sourceCard->height(), originalHeight + 17.0);
+    QCOMPARE(output->mapToItem(sourceCard, {output->width() / 2, output->height() / 2}), originalPortPosition);
+    editor->setProperty("nodeStates", QVariantMap{{sourceKey, QStringLiteral("waiting")}});
+    QTRY_COMPARE(sourceCard->property("statusText").toString(), QStringLiteral("等待中"));
+    QCOMPARE(output->mapToItem(sourceCard, {output->width() / 2, output->height() / 2}), originalPortPosition);
+    editor->setProperty("nodeStates", QVariantMap{{sourceKey, QStringLiteral("failed")}});
+    QTRY_COMPARE(sourceCard->property("statusText").toString(), QStringLiteral("执行失败"));
+    QCOMPARE(output->mapToItem(sourceCard, {output->width() / 2, output->height() / 2}), originalPortPosition);
+    editor->setProperty("nodeStates", QVariantMap{});
+    QTRY_VERIFY(sourceCard->property("statusText").toString().isEmpty());
+    QCOMPARE(sourceCard->height(), originalHeight);
+
+    QTRY_VERIFY(!canvas->property("initialFitPending").toBool());
+    const QPoint outputPoint = output->mapToScene({output->width() / 2, output->height() / 2}).toPoint();
+    const QPoint dataPoint = dataInput->mapToScene({dataInput->width() / 2, dataInput->height() / 2}).toPoint();
+    const QPoint executionPoint = executionInput->mapToScene({executionInput->width() / 2, executionInput->height() / 2}).toPoint();
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, outputPoint);
+    QTRY_VERIFY(editor->property("connecting").toBool());
+    QTest::mouseMove(window, dataPoint);
+    QTRY_VERIFY(!canvas->property("previewExecution").toBool());
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, dataPoint);
+    QTRY_COMPARE(document.data().connections.size(), 1);
+    QVERIFY(!session.connections().first().toMap().value(QStringLiteral("execution")).toBool());
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, outputPoint);
+    QTest::mouseMove(window, executionPoint);
+    QTRY_VERIFY(canvas->property("previewExecution").toBool());
+    QCOMPARE(wireLayer->property("previewColor").value<QColor>(), QColor(QStringLiteral("#75a76f")));
+    QTest::mouseClick(window, Qt::LeftButton, Qt::NoModifier, executionPoint);
+    QTRY_COMPARE(document.data().connections.size(), 2);
+    QVERIFY(session.connections().last().toMap().value(QStringLiteral("execution")).toBool());
+    QTRY_COMPARE(wireLayer->property("segments").value<QJSValue>().property("length").toInt(), 2);
+    const auto segments = wireLayer->property("segments").value<QJSValue>();
+    QVERIFY(!segments.property(0).property("execution").toBool());
+    QVERIFY(segments.property(1).property("execution").toBool());
+    session.removeConnection(document.data().connections.first().id.toString(QUuid::WithoutBraces));
+    QCOMPARE(document.data().connections.size(), 1);
+    QVERIFY(session.connections().first().toMap().value(QStringLiteral("execution")).toBool());
 }
 
 } // namespace

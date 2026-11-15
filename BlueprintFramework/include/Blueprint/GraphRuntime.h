@@ -107,6 +107,8 @@ public:
     ExecutionResult execute(const Endpoint &executionOutput, const QVariantMap &entryOutputs = {});
 
 signals:
+    //! 动作开始和结束时通知；按需求值不会产生此信号。
+    void nodeExecutionChanged(const QUuid &nodeId, const QUuid &callId, bool running);
     //! 成功的诊断 code 为空；完成不早于 execute 返回，stop 清理后同步通知取消。
     void executionFinished(const QUuid &executionId, const Blueprint::Diagnostic &error);
 
