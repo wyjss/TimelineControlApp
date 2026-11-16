@@ -104,7 +104,7 @@ class TimelineCommandModel final : public TypedListModel<TimelineCommand *>
     Q_PROPERTY(QVariantList commands READ commandVariants NOTIFY commandsChanged FINAL)
     Q_PROPERTY(qint64 realDurationMs READ realDurationMs NOTIFY realDurationMsChanged FINAL)
     //! 父轨 ID 到只读子轨投影列表的映射。
-    Q_PROPERTY(QVariantMap childTracksByParentId READ childTracksByParentId NOTIFY commandsChanged FINAL)
+    Q_PROPERTY(QVariantMap childTracksByParentId READ childTracksByParentId NOTIFY childTracksChanged FINAL)
     Q_PROPERTY(QString selectedCommandId READ selectedCommandId WRITE setSelectedCommandId NOTIFY selectedCommandIdChanged FINAL)
 
 public:
@@ -148,6 +148,7 @@ public:
 
 signals:
     void commandsChanged();
+    void childTracksChanged();
     //! 指令增删或执行参数、时间提交后通知调度，不包含执行状态变化。
     //! retimedCommand 仅在已有指令的触发时间实际改变时传入。
     void commandScheduleChanged(TimelineCommand *retimedCommand = nullptr);

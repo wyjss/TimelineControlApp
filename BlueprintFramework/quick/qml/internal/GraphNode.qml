@@ -230,18 +230,23 @@ Rectangle {
             }
             Text {
                 id: inputLabel
+                readonly property string overrideText: {
+                    var host = card.viewport ? card.viewport.interactionHost : null
+                    return host && host.inputPortLabel ? host.inputPortLabel(card.nodeInfo, modelData) : ""
+                }
                 x: 13
                 width: card.outputs.length > index ? card.width / 2 - 17 : card.width - 26
                 anchors.verticalCenter: parent.verticalCenter
-                text: modelData.title
+                text: overrideText || modelData.title
                 elide: Text.ElideRight
-                color: card.colors.subtleText
-                font.pixelSize: 12
+                color: overrideText ? card.colors.text : card.colors.subtleText
+                font.pixelSize: overrideText ? 14 : 12
+                font.bold: overrideText !== ""
             }
             MouseArea {
                 id: inputHit
                 ToolTip.visible: inputLabel.truncated && containsMouse && !pressed && !card.connecting
-                ToolTip.text: modelData.title
+                ToolTip.text: inputLabel.text
                 objectName: "input-" + modelData.key
                 x: -card.portHitHalfSize
                 width: card.portHitHalfSize * 2

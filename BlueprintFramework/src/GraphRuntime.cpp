@@ -222,6 +222,7 @@ void GraphRuntime::stop()
     m_dataSources.clear();
     m_executionTargets.clear();
     m_executionOutputs.clear();
+    m_joinArrivals.clear();
     m_pendingInputs.clear();
     m_deferredInputs.clear();
     m_readyNodes.clear();
@@ -310,7 +311,7 @@ EvaluationResult GraphRuntime::evaluateNode(const QUuid &nodeId,
         const SnapshotNode &node = m_snapshot.nodes.at(m_nodeIndexes.value(frame.nodeId));
         const auto executor = m_implementations.executors.value(node.typeId);
         if (m_implementations.actions.contains(node.typeId)
-            || (executor && executor->trigger == Executor::Trigger::Execution))
+            || (executor && executor->trigger != Executor::Trigger::OnDemand))
             return {{}, {"runtime.output_unavailable",
                          "Action outputs are available only after this execution completes the action.",
                          node.id}};
@@ -453,7 +454,12 @@ ExecutionResult GraphRuntime::execute(const Endpoint &executionOutput, const QVa
     m_executionOutputs = std::move(initialOutputs);
     const QUuid runtimeId = m_runtimeId;
     const QUuid executionId = m_executionId;
-    QMetaObject::invokeMethod(this, [this, runtimeId, executionId] {
+    QMetaObject::invokeMethod(this, [this, runtimeId, executionId, nodeId = node.id] {
+        if (m_runtimeId != runtimeId || m_executionId != executionId)
+            return;
+        const auto outputs = m_executionOutputs.value(nodeId);
+        if (!outputs.isEmpty())
+            emit executionOutputsPublished(nodeId, outputs, m_snapshot.revision);
         if (m_runtimeId == runtimeId && m_executionId == executionId)
             advance();
     }, Qt::QueuedConnection);
@@ -476,7 +482,7 @@ Diagnostic GraphRuntime::validateExecution(const QVector<Endpoint> &inputs,
         const SnapshotNode &action = m_snapshot.nodes.at(m_nodeIndexes.value(input.nodeId));
         const auto executor = m_implementations.executors.value(action.typeId);
         const auto implementation = m_implementations.actions.constFind(action.typeId);
-        if (executor ? executor->trigger != Executor::Trigger::Execution
+        if (executor ? executor->trigger == Executor::Trigger::OnDemand
                      : implementation == m_implementations.actions.cend() || !implementation.value())
             return {"runtime.missing_action",
                     "The node type has no action implementation.", action.id, input.portKey};
@@ -500,7 +506,7 @@ Diagnostic GraphRuntime::validateExecution(const QVector<Endpoint> &inputs,
                 // 动作输出是否已产生取决于实际执行路径，留到取值时检查。
                 const auto dependencyExecutor = m_implementations.executors.value(dependency.typeId);
                 if (m_implementations.actions.contains(dependency.typeId)
-                    || (dependencyExecutor && dependencyExecutor->trigger == Executor::Trigger::Execution))
+                    || (dependencyExecutor && dependencyExecutor->trigger != Executor::Trigger::OnDemand))
                     continue;
                 const auto evaluator = m_implementations.evaluators.constFind(dependency.typeId);
                 if (!dependencyExecutor && (evaluator == m_implementations.evaluators.cend() || !evaluator.value()))
@@ -510,6 +516,9 @@ Diagnostic GraphRuntime::validateExecution(const QVector<Endpoint> &inputs,
             }
         }
 
+        // 汇合未必到齐，等实际选中出口再预检下游。
+        if (executor && executor->trigger == Executor::Trigger::AllExecutionInputs)
+            continue;
         const PortDefinition *exit = nullptr;
         for (const auto &port : action.ports) {
             if (port.kind == PortKind::Data || port.direction != PortDirection::Output)
@@ -546,7 +555,7 @@ void GraphRuntime::advance()
         const SnapshotNode node = m_snapshot.nodes.at(m_nodeIndexes.value(input.nodeId));
         const auto executor = m_implementations.executors.value(node.typeId);
         const auto action = m_implementations.actions.value(node.typeId);
-        if (executor ? executor->trigger != Executor::Trigger::Execution : !action) {
+        if (executor ? executor->trigger == Executor::Trigger::OnDemand : !action) {
             finish({"runtime.missing_action",
                     "The node type has no action implementation.", node.id, input.portKey});
             return;
@@ -563,6 +572,19 @@ void GraphRuntime::advance()
             if (waiting->isEmpty())
                 m_deferredInputs.erase(waiting);
         } else {
+            if (executor && executor->trigger == Executor::Trigger::AllExecutionInputs) {
+                // 首路只记录到达，避免占用调用而使后续信号排队。
+                auto &arrivals = m_joinArrivals[node.id];
+                if (arrivals.contains(input.portKey))
+                    continue;
+                arrivals.insert(input.portKey);
+                const auto inputCount = std::count_if(node.ports.cbegin(), node.ports.cend(),
+                    [](const PortDefinition &port) {
+                        return port.kind == PortKind::Execution && port.direction == PortDirection::Input;
+                    });
+                if (arrivals.size() != inputCount)
+                    continue;
+            }
             const bool defer = m_activeCalls.contains(node.id) || m_deferredInputs.contains(node.id);
             QHash<QUuid, QVariantMap> values;
             for (const PortDefinition &port : node.ports) {
@@ -655,7 +677,7 @@ void GraphRuntime::complete(const QUuid &runtimeId, const QUuid &executionId, co
     if (!result.exitPort.isEmpty())
         exits.append(result.exitPort);
     QVector<Endpoint> nextInputs;
-    bool needsPreflight = hasBranches;
+    bool needsPreflight = hasBranches || m_joinArrivals.contains(nodeId);
     if (!exits.isEmpty()) {
         QSet<QString> declared;
         for (const PortDefinition &port : node.ports) {
@@ -682,7 +704,8 @@ void GraphRuntime::complete(const QUuid &runtimeId, const QUuid &executionId, co
                 nextInputs += target.value();
         }
     }
-    m_executionOutputs.insert(node.id, std::move(result.outputs));
+    const auto outputs = std::move(result.outputs);
+    m_executionOutputs.insert(node.id, outputs);
     if (needsPreflight) {
         const auto branchError = validateExecution(nextInputs, m_executionOutputs);
         if (!branchError.code.isEmpty()) {
@@ -699,7 +722,10 @@ void GraphRuntime::complete(const QUuid &runtimeId, const QUuid &executionId, co
             m_deferredInputs.insert(nodeId, {});
         m_readyNodes.enqueue(nodeId);
     }
-    advance();
+    if (!outputs.isEmpty())
+        emit executionOutputsPublished(nodeId, outputs, m_snapshot.revision);
+    if (m_runtimeId == runtimeId && m_executionId == executionId)
+        advance();
 }
 
 QHash<QUuid, RuntimeImplementations::Cancel> GraphRuntime::takeCancellations()
@@ -723,6 +749,7 @@ void GraphRuntime::finish(const Diagnostic &error)
     const auto activeCalls = m_activeCalls;
     const auto cancellations = takeCancellations();
     m_executionId = {};
+    m_joinArrivals.clear();
     m_pendingInputs.clear();
     m_deferredInputs.clear();
     m_readyNodes.clear();

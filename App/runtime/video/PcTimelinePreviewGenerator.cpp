@@ -314,7 +314,7 @@ void PcTimelinePreviewGenerator::startPreview()
 
     const QSize canvasSize(qMax(1, width), qMax(1, height));
     QVector<VideoState> videoStates = PcVideoStateCalculator::stateAt(
-        m_timelineCommandModel->commands(), m_pcDevice->id(), m_generationTimeMs).videos;
+        m_timelineCommandModel->commands(), *m_pcDevice, m_generationTimeMs);
     for (int index = videoStates.size() - 1; index >= 0; --index) {
         VideoState &state = videoStates[index];
         state.windowRect = state.windowRect.intersected(QRect(QPoint(), canvasSize));

@@ -44,6 +44,7 @@ class DemoGraph final : public QObject
     Q_PROPERTY(QVariantList speakerOptions READ speakerOptions NOTIFY speakerNodesChanged)
     Q_PROPERTY(QVariantList readTargetOptions READ readTargetOptions NOTIFY readTargetsChanged)
     Q_PROPERTY(QVariantMap previewValues READ previewValues NOTIFY previewValuesChanged)
+    Q_PROPERTY(QVariantMap deviceCommandResults READ deviceCommandResults NOTIFY deviceCommandResultsChanged)
     Q_PROPERTY(QVariantMap nodeStates READ nodeStates NOTIFY nodeStatesChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
     Q_PROPERTY(QString errorNodeId READ errorNodeId NOTIFY errorChanged)
@@ -62,6 +63,7 @@ public:
     QVariantList speakerOptions() const;
     QVariantList readTargetOptions() const;
     QVariantMap previewValues() const;
+    QVariantMap deviceCommandResults() const;
     QVariantMap nodeStates() const;
     QString error() const;
     QString errorNodeId() const;
@@ -93,6 +95,7 @@ signals:
     void paletteChanged();
     void placedObjectsChanged();
     void previewValuesChanged();
+    void deviceCommandResultsChanged();
     void nodeStatesChanged();
     void errorChanged();
     void fileNameChanged();
@@ -113,6 +116,7 @@ private:
                         QUuid entry, const QVariantMap &entryOutputs = {});
     void executionFinished(Blueprint::GraphRuntime *runtime, const Blueprint::Diagnostic &error);
     void speakerChanged(const QString &targetId, const QStringList &keys);
+    void captureResultValues(const QUuid &nodeId, const QVariantMap &outputs, quint64 revision);
     void updateValues();
     void syncSpeakers(const Blueprint::GraphChangeSet &change = {});
     bool report(const QString &error, const QUuid &nodeId = {});
@@ -129,6 +133,9 @@ private:
     QHash<QUuid, QUuid> m_activeCalls;
     bool m_suppressPropertyEvents = false;
     QVariantMap m_values;
+    QHash<QUuid, QVariant> m_executionResultValues;
+    QVariantMap m_deviceCommandResults;
+    quint64 m_resultRevision = 0;
     QString m_error;
     QUuid m_errorNodeId;
     QString m_fileName;

@@ -13,6 +13,8 @@ Item {
     property var nodeContents: ({})
     // 标题组件同样接收 node，拖动由节点外壳处理。
     property var nodeHeaders: ({})
+    // 返回空字符串时使用端口的原名称。
+    property var inputPortLabel: null
     property var nodeStates: ({})
     property Component palettePanel: defaultPalette
     property Component inspectorPanel: defaultInspector

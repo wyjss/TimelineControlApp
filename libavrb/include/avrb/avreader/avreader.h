@@ -1,4 +1,4 @@
-﻿#ifndef AVREADER_H
+#ifndef AVREADER_H
 #define AVREADER_H
 
 #include <climits>
@@ -103,12 +103,19 @@ public:
 	bool speed(double speed = 1.0);
 	bool seek(double timeSeconds);
 	bool quit(unsigned long timeoutMS = 3000);
+	//! 在期限内等待读取和解码线程退出；超时可重试。
+	bool tryQuit(unsigned long timeoutMS = 3000);
 	bool isStopped() const;
 	// 是否处于暂停状态，仅在!isStopped有效
 	bool isPaused() const;
+	//! 已打开的输入正在读帧、定位或解码时返回 true，暂停时也可能为 true。
+	//! 读线程运行期间提交的 seek 从入队起计入，直到请求处理结束。
+	bool isWorking() const;
 	bool getOutputInfo(AVReaderOutputInfo& info) const;
 
 	PixelTool::AVFramePixelDataPtr takeVideoFrame();
+	//! 取出最新帧，可在 Reader 关闭后继续持有。与 takeVideoFrame 共用帧槽。
+	std::unique_ptr<const PixelTool::PixelData> takeVideoPixelData();
 	PixelTool::AVFramePixelDataPtr takeAudioFrame();
 
 private:

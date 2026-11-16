@@ -22,6 +22,7 @@ private slots:
     void initTestCase();
     void inspectorFitsWindow_data();
     void inspectorFitsWindow();
+    void editsWaitTime();
 };
 
 void DemoUiTest::initTestCase()
@@ -175,6 +176,71 @@ void DemoUiTest::inspectorFitsWindow()
         QTRY_VERIFY(operationError->property("truncated").toBool());
         QCOMPARE(QQmlProperty(operationError, QStringLiteral("ToolTip.text"), qmlContext(operationError)).read().toString(), graph.error());
     }
+}
+
+void DemoUiTest::editsWaitTime()
+{
+    DemoGraph graph;
+    auto *session = qobject_cast<GraphEditSession *>(graph.session());
+    QVERIFY(session);
+    const auto wait = session->addNode(QStringLiteral("demo.waitUntil"), {});
+    QVERIFY(!wait.isEmpty());
+
+    QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty(QStringLiteral("demoGraph"), &graph);
+    engine.load(QUrl(QStringLiteral("qrc:/BlueprintDemo/qml/Main.qml")));
+    QVERIFY(!engine.rootObjects().isEmpty());
+    auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().first());
+    QVERIFY(window);
+    QVERIFY(QTest::qWaitForWindowExposed(window));
+    auto *editor = window->findChild<QQuickItem *>(QStringLiteral("graphEditor"));
+    QVERIFY(editor);
+    QVERIFY(editor->setProperty("selectedNodeId", wait));
+    auto *input = window->findChild<QQuickItem *>(QStringLiteral("waitDuration"));
+    QVERIFY(input);
+    const auto timePortText = [window] {
+        QList<QQuickItem *> items{window->contentItem()};
+        while (!items.isEmpty()) {
+            auto *item = items.takeLast();
+            if (item->objectName() == QStringLiteral("input-durationMs")) {
+                for (auto *rowItem : item->parentItem()->childItems()) {
+                    if (rowItem->inherits("QQuickText"))
+                        return rowItem->property("text").toString();
+                }
+            }
+            items.append(item->childItems());
+        }
+        return QString();
+    };
+    QTRY_COMPARE(timePortText(), QStringLiteral("00:01.000"));
+    QTRY_COMPARE(input->property("text").toString(), QStringLiteral("00:01.000"));
+
+    input->forceActiveFocus();
+    QTRY_VERIFY(input->hasActiveFocus());
+    QTest::keyClick(window, Qt::Key_A, Qt::ControlModifier);
+    for (const char key : QByteArrayLiteral("6:27.06"))
+        QTest::keyClick(window, key);
+    QTest::keyClick(window, Qt::Key_Return);
+    QTRY_COMPARE(timePortText(), QStringLiteral("06:27.060"));
+    QCOMPARE(input->property("text").toString(), QStringLiteral("06:27.060"));
+
+    QVERIFY(graph.setWaitDuration(wait, QStringLiteral("35791:23.647")));
+    QTRY_COMPARE(timePortText(), QStringLiteral("35791:23.647"));
+    QVERIFY(graph.setWaitDuration(wait, QStringLiteral("596:31:23.647")));
+    QVERIFY(!graph.setWaitDuration(wait, QStringLiteral("35791:23.648")));
+    QVERIFY(!graph.setWaitDuration(wait, QStringLiteral("00:60:05.001")));
+    QCOMPARE(input->property("text").toString(), QStringLiteral("35791:23.647"));
+    session->undo();
+    QTRY_COMPARE(timePortText(), QStringLiteral("06:27.060"));
+
+    const auto constant = session->addNode(QStringLiteral("demo.constant"), QPointF(200, 0));
+    QVERIFY(!constant.isEmpty());
+    QVERIFY(session->connectPorts(constant, QStringLiteral("value"), wait, QStringLiteral("durationMs")));
+    QTRY_VERIFY(!input->isEnabled());
+    QTRY_COMPARE(timePortText(), QStringLiteral("目标时间（毫秒）"));
+    session->undo();
+    QTRY_VERIFY(input->isEnabled());
+    QTRY_COMPARE(timePortText(), QStringLiteral("06:27.060"));
 }
 
 QTEST_MAIN(DemoUiTest)

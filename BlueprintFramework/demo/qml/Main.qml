@@ -310,7 +310,7 @@ ApplicationWindow {
     Component {
         id: objectIdentity
 
-        Rectangle {
+        Item {
             id: identity
             objectName: "objectIdentity"
             property var node: null
@@ -321,60 +321,59 @@ ApplicationWindow {
                     return "node:" + node.typeId + ":" + node.id
                 return node.typeId === "demo.speakerReference" ? node.parameters.objectId || "" : node.parameters.target || ""
             }
-            readonly property var target: demoGraph.readTargetOptions.find(function(item) { return item.value === identity.targetId })
+            readonly property string deviceName: node && node.typeId === "demo.deviceCommand" ? node.parameters.deviceName : ""
+            readonly property var target: targetId ? demoGraph.readTargetOptions.find(function(item) {
+                return item.value === identity.targetId
+            }) : undefined
             readonly property var parts: targetId.split(":")
-            readonly property var objectType: demoGraph.session.nodeTypes.find(function(item) { return item.typeId === identity.parts[1] })
-            readonly property string shortId: parts.length === 3 ? (parts[0] === "node" ? parts[2].slice(0, 8) : parts[2]) : targetId
-            readonly property string objectNameText: target ? target.name : objectType ? objectType.title : qsTr("选择目标对象")
+            readonly property var objectType: targetId ? demoGraph.session.nodeTypes.find(function(item) {
+                return item.typeId === identity.parts[1]
+            }) : undefined
+            readonly property string objectNameText: deviceName || (target ? target.name
+                : objectType ? objectType.title : qsTr("选择目标对象"))
             readonly property color objectAccent: {
-                if (!targetId)
+                var key = targetId || deviceName
+                if (!key)
                     return window.appTheme.colors.subtleText
                 var hash = 2166136261
-                for (var i = 0; i < targetId.length; ++i)
-                    hash = Math.imul(hash ^ targetId.charCodeAt(i), 16777619)
+                for (var i = 0; i < key.length; ++i)
+                    hash = Math.imul(hash ^ key.charCodeAt(i), 16777619)
                 return Qt.hsla(((hash >>> 0) % 360) / 360, 0.56, 0.66, 1)
             }
-            implicitHeight: 44
-            radius: 6
-            color: targetId ? Qt.tint(window.appTheme.colors.backgroundWindow,
-                                     Qt.rgba(objectAccent.r, objectAccent.g, objectAccent.b, 0.28))
-                            : window.appTheme.colors.backgroundWindow
+            implicitHeight: 28
 
             Text {
                 id: identityIcon
                 objectName: "objectIdentityIcon"
                 anchors.left: parent.left
                 anchors.leftMargin: 8
-                y: 6
+                anchors.verticalCenter: parent.verticalCenter
                 text: identity.objectType ? identity.objectType.symbol : ""
                 visible: text !== ""
                 color: identity.objectAccent
                 font.pixelSize: 17
                 font.bold: true
             }
+            Base.AppIcon {
+                anchors.left: identityIcon.left
+                anchors.verticalCenter: parent.verticalCenter
+                size: 17
+                source: "qrc:/BlueprintDemo/assets/icons/object-cube.svg"
+                visible: identityIcon.text === ""
+                color: identity.objectAccent
+            }
             Text {
-                id: identityName
                 objectName: "objectIdentityName"
                 anchors.left: parent.left
-                anchors.leftMargin: identityIcon.text ? 30 : 8
+                anchors.leftMargin: 30
                 anchors.right: parent.right
                 anchors.rightMargin: 8
-                y: 6
+                anchors.verticalCenter: parent.verticalCenter
                 text: identity.targetId && !identity.target ? qsTr("失效 · %1").arg(identity.objectNameText) : identity.objectNameText
                 color: identity.targetId && !identity.target ? window.appTheme.colors.dangerText : window.appTheme.colors.text
                 font.pixelSize: 14
                 font.bold: true
                 elide: Text.ElideRight
-            }
-            Text {
-                anchors.left: identityName.left
-                anchors.right: parent.right
-                anchors.rightMargin: 8
-                y: 27
-                text: identity.shortId
-                color: identity.target ? window.appTheme.colors.subtleText : window.appTheme.colors.dangerText
-                font.pixelSize: 11
-                elide: Text.ElideMiddle
             }
         }
     }
@@ -575,13 +574,7 @@ ApplicationWindow {
                         return ""
                     var label = operation.member ? operation.member.label
                                 : operation.targetId ? operation.node.parameters.member || "" : ""
-                    if (!label)
-                        return operation.calling ? qsTr("选择接口") : qsTr("选择属性")
-                    if (operation.calling)
-                        return qsTr("调用 · %1").arg(label)
-                    if (operation.watching)
-                        return qsTr("监听 · %1").arg(label)
-                    return operation.reading ? qsTr("读取 · %1").arg(label) : qsTr("设置 · %1").arg(label)
+                    return label || (operation.calling ? qsTr("选择接口") : qsTr("选择属性"))
                 }
                 color: operation.node ? editor.nodeColors[operation.node.typeId].accent : window.appTheme.colors.text
                 font.pixelSize: 13
@@ -595,7 +588,7 @@ ApplicationWindow {
                     if (!operation.reading || !operation.node)
                         return ""
                     var value = demoGraph.previewValues[operation.node.id]
-                    return qsTr("读取值：%1").arg(value === undefined ? "—" : value)
+                    return qsTr("值：%1").arg(value === undefined ? "—" : value)
                 }
                 color: window.appTheme.colors.subtleText
                 font.pixelSize: 12
@@ -619,6 +612,46 @@ ApplicationWindow {
                     acceptedButtons: Qt.NoButton
                     hoverEnabled: true
                 }
+            }
+        }
+    }
+
+    Component {
+        id: deviceCommandBody
+
+        ColumnLayout {
+            id: command
+            property var node: null
+            readonly property var result: node ? demoGraph.deviceCommandResults[node.id] : null
+            spacing: 4
+
+            Loader {
+                id: commandIdentity
+                Layout.fillWidth: true
+                Layout.preferredHeight: item ? item.implicitHeight : 0
+                sourceComponent: objectIdentity
+
+                Binding {
+                    target: commandIdentity.item
+                    property: "node"
+                    value: command.node
+                    when: !!commandIdentity.item
+                }
+            }
+            Text {
+                Layout.fillWidth: true
+                text: command.node ? command.node.parameters.simName || command.node.parameters.cmdName : ""
+                color: window.appTheme.colors.subtleText
+                font.pixelSize: 13
+                elide: Text.ElideRight
+            }
+            Text {
+                Layout.fillWidth: true
+                visible: !!command.result
+                text: command.result ? qsTr("已记录 · %1").arg(editor.formatWaitTime(command.result.elapsedMs)) : ""
+                color: window.appTheme.colors.successText
+                font.pixelSize: 12
+                elide: Text.ElideRight
             }
         }
     }
@@ -715,6 +748,24 @@ ApplicationWindow {
             Layout.fillHeight: true
             session: demoGraph.session
             colors: window.appTheme.colors
+            readonly property var graphConnections: demoGraph.session.connections
+            inputPortLabel: function(node, port) {
+                if (port.key !== "durationMs" || (node.typeId !== "demo.wait" && node.typeId !== "demo.waitUntil"))
+                    return ""
+                var connected = graphConnections.some(function(link) {
+                    return link.target === node.id && link.targetPort === port.key
+                })
+                return connected ? "" : formatWaitTime(node.parameters.durationMs)
+            }
+
+            function formatWaitTime(duration) {
+                var minutes = Math.floor(duration / 60000)
+                var seconds = Math.floor(duration / 1000) % 60
+                return (minutes < 10 ? "0" : "") + minutes
+                    + ":" + ("0" + seconds).slice(-2)
+                    + "." + ("00" + (duration % 1000)).slice(-3)
+            }
+
             nodeStates: {
                 var states = {}
                 var active = demoGraph.nodeStates
@@ -755,6 +806,7 @@ ApplicationWindow {
                     "demo.waitUntil": flow,
                     "demo.branch": flow,
                     "demo.fork": flow,
+                    "blueprint.parallelJoin": flow,
                     "demo.readProperty": {background: "#183831", accent: "#76e0c3"},
                     "demo.setProperty": {background: "#19363d", accent: "#8cdbe8"},
                     "demo.call": {background: "#412d1c", accent: "#f4bd74"}
@@ -785,7 +837,8 @@ ApplicationWindow {
                 "demo.propertyChanged": operationBody,
                 "demo.readProperty": operationBody,
                 "demo.setProperty": operationBody,
-                "demo.call": operationBody
+                "demo.call": operationBody,
+                "demo.deviceCommand": deviceCommandBody
             })
 
             palettePanel: Component {
@@ -1218,18 +1271,57 @@ ApplicationWindow {
                             }
                         }
 
+                        Repeater {
+                            model: inspector.selectedType === "demo.deviceCommand" ? [
+                                {key: "deviceName", label: qsTr("设备名称")},
+                                {key: "cmdName", label: qsTr("指令名称")},
+                                {key: "simName", label: qsTr("显示名称")},
+                                {key: "params", label: qsTr("指令参数（JSON）")}
+                            ] : []
+
+                            delegate: ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 7
+
+                                Text {
+                                    text: modelData.label
+                                    color: window.appTheme.colors.subtleText
+                                    font.pixelSize: 12
+                                }
+                                Base.AppTextField {
+                                    id: commandField
+                                    Layout.fillWidth: true
+                                    readonly property string committedText: editor.selectedNode
+                                        ? editor.selectedNode.parameters[modelData.key] : ""
+                                    property string editedNodeId
+                                    text: committedText
+                                    onTextEdited: editedNodeId = editor.selectedNodeId
+                                    onEditingFinished: {
+                                        if (!editedNodeId)
+                                            return
+                                        var nodeId = editedNodeId
+                                        var input = text
+                                        editedNodeId = ""
+                                        text = Qt.binding(function() { return commandField.committedText })
+                                        if (nodeId === editor.selectedNodeId)
+                                            demoGraph.session.setParameter(nodeId, modelData.key, input)
+                                    }
+                                }
+                            }
+                        }
+
                         ColumnLayout {
                             id: waitOptions
                             readonly property bool globalTime: inspector.selectedType === "demo.waitUntil"
                             visible: globalTime || inspector.selectedType === "demo.wait"
                             Layout.fillWidth: true
                             spacing: 7
-                            readonly property bool connected: visible && demoGraph.session.connections.some(function(link) {
+                            readonly property bool connected: visible && editor.graphConnections.some(function(link) {
                                 return link.target === editor.selectedNodeId && link.targetPort === "durationMs"
                             })
 
                             Text {
-                                text: waitOptions.globalTime ? qsTr("目标时间（毫秒）") : qsTr("时长（毫秒）")
+                                text: waitOptions.globalTime ? qsTr("目标时间") : qsTr("时长")
                                 color: window.appTheme.colors.subtleText
                                 font.pixelSize: 12
                             }
@@ -1239,10 +1331,10 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 enabled: !waitOptions.connected
                                 readonly property string committedText: waitOptions.visible && !waitOptions.connected && editor.selectedNode
-                                    ? String(editor.selectedNode.parameters.durationMs) : ""
+                                    ? editor.formatWaitTime(editor.selectedNode.parameters.durationMs) : ""
                                 property string editedNodeId
                                 text: committedText
-                                placeholderText: waitOptions.connected ? qsTr("来自连线") : ""
+                                placeholderText: waitOptions.connected ? qsTr("来自连线") : "mm:ss.zzz"
                                 onTextEdited: editedNodeId = editor.selectedNodeId
                                 onEditingFinished: {
                                     if (!editedNodeId)

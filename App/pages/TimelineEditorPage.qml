@@ -529,6 +529,8 @@ Item {
                         Layout.fillHeight: true
                         Layout.minimumHeight: 220
                         ruler: timelineRuler
+                        mediaCache: root.appRuntime ? root.appRuntime.mediaCache || null : null
+                        playbackRunning: !!root.timelineManager && root.timelineManager.playbackState === 1
                         devices: root.devices
                         deviceRows: root.deviceRows
                         commandRows: root.commandRows

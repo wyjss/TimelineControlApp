@@ -5,8 +5,11 @@
 #include <Blueprint/WaitNodes.h>
 
 #include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLocale>
 #include <QMetaType>
+#include <QRegularExpression>
 #include <QScopedValueRollback>
 #include <QSet>
 #include <QtMath>
@@ -33,6 +36,7 @@ const auto propertyEventType = QStringLiteral("demo.propertyChanged");
 const auto waitType = QStringLiteral("demo.wait");
 const auto waitUntilType = QStringLiteral("demo.waitUntil");
 const auto forkType = QStringLiteral("demo.fork");
+const auto deviceCommandType = QStringLiteral("demo.deviceCommand");
 const auto readPropertyType = QStringLiteral("demo.readProperty");
 const auto setType = QStringLiteral("demo.setProperty");
 const auto callType = QStringLiteral("demo.call");
@@ -62,6 +66,10 @@ const auto targetKey = QStringLiteral("target");
 const auto objectIdKey = QStringLiteral("objectId");
 const auto nameKey = QStringLiteral("name");
 const auto memberKey = QStringLiteral("member");
+const auto deviceNameKey = QStringLiteral("deviceName");
+const auto commandNameKey = QStringLiteral("cmdName");
+const auto commandLabelKey = QStringLiteral("simName");
+const auto commandParametersKey = QStringLiteral("params");
 const auto execIn = QStringLiteral("execIn");
 const auto execOut = QStringLiteral("execOut");
 const auto firstBranch = QStringLiteral("branch1");
@@ -78,6 +86,17 @@ const struct {
     {QStringLiteral("host:demo.speaker:speaker-a"), QT_TRANSLATE_NOOP("DemoGraph", "音箱 A"), 2000},
     {QStringLiteral("host:demo.speaker:speaker-b"), QT_TRANSLATE_NOOP("DemoGraph", "音箱 B"), 4000}
 };
+
+QString displayValue(const QVariant &value)
+{
+    if (value.userType() == QMetaType::Bool)
+        return value.toBool() ? DemoGraph::tr("是") : DemoGraph::tr("否");
+    if (value.userType() == QMetaType::QString) {
+        const auto text = value.toString();
+        return text.isEmpty() ? DemoGraph::tr("（空字符串）") : text;
+    }
+    return QLocale::c().toString(value.toDouble(), 'g', 12);
+}
 
 } // namespace
 
@@ -203,6 +222,13 @@ DemoGraph::DemoGraph(QObject *parent)
          {execute, {firstBranch, PortDirection::Output, {}, tr("分支 1"), PortKind::Execution},
           {secondBranch, PortDirection::Output, {}, tr("分支 2"), PortKind::Execution}}, {}, flowCategory,
          InstancePolicy::Multiple, {}, tr("触发所有已连接的分支"), "↗"},
+        {deviceCommandType, tr("设备指令"),
+         {{execIn, PortDirection::Input, {}, tr("安排"), PortKind::Execution}},
+         {{deviceNameKey, stringType, QStringLiteral(""), {}, tr("设备名称")},
+          {commandNameKey, stringType, QStringLiteral(""), {}, tr("指令名称")},
+          {commandLabelKey, stringType, QStringLiteral(""), {}, tr("显示名称")},
+          {commandParametersKey, stringType, QStringLiteral("{}"), {}, tr("参数")}},
+         operationCategory, InstancePolicy::Multiple, {}, tr("记录时间点上的设备指令"), "◇"},
         {boolResultType, tr("状态结果"), {{valueKey, PortDirection::Input, boolType, tr("输入")}}, {}, resultCategory,
          InstancePolicy::Multiple, {}, tr("显示布尔值"), "="}
     };
@@ -289,25 +315,35 @@ DemoGraph::DemoGraph(QObject *parent)
     connect(&m_registry, &NodeRegistry::typeAdded, this, [this] { emit paletteChanged(); });
     for (auto *runtime : {&m_runtime, &m_automaticRuntime}) {
         connect(runtime, &GraphRuntime::nodeExecutionChanged, this, &DemoGraph::nodeExecutionChanged);
+        connect(runtime, &GraphRuntime::executionOutputsPublished, this, &DemoGraph::captureResultValues);
         connect(runtime, &GraphRuntime::executionFinished, this, [this, runtime](const QUuid &, const Diagnostic &error) {
             executionFinished(runtime, error);
         });
     }
     connect(&m_document, &GraphDocument::changed, this, [this](const GraphChangeSet &change) {
-        report({});
         const bool configurationChanged = change.reset || !change.addedNodeIds.isEmpty()
             || !change.removedNodeIds.isEmpty()
             || std::any_of(change.changedNodes.cbegin(), change.changedNodes.cend(), [](const NodeChange &node) {
                 return !node.parameterKeys.isEmpty();
             });
+        const bool valuesChanged = configurationChanged
+            || !change.addedConnectionIds.isEmpty() || !change.removedConnectionIds.isEmpty();
+        if (valuesChanged) {
+            m_resultRevision = change.revision;
+            m_executionResultValues.clear();
+            if (!m_deviceCommandResults.isEmpty()) {
+                m_deviceCommandResults.clear();
+                emit deviceCommandResultsChanged();
+            }
+        }
+        report({});
         if (configurationChanged) {
             syncSpeakers(change);
             emit placedObjectsChanged();
             emit readTargetsChanged();
         }
-        if (configurationChanged || !change.addedConnectionIds.isEmpty() || !change.removedConnectionIds.isEmpty()) {
+        if (valuesChanged)
             updateValues();
-        }
     });
 }
 
@@ -319,6 +355,7 @@ DemoGraph::~DemoGraph()
 
 QObject *DemoGraph::session() { return &m_session; }
 QVariantMap DemoGraph::previewValues() const { return m_values; }
+QVariantMap DemoGraph::deviceCommandResults() const { return m_deviceCommandResults; }
 QVariantMap DemoGraph::nodeStates() const
 {
     QVariantMap states;
@@ -432,7 +469,7 @@ QVariantList DemoGraph::speakerOptions() const
         const auto id = node.id.toString(QUuid::WithoutBraces);
         const auto name = m_document.parameterValue(node.id, nameKey).toString().trimmed();
         options.append(QVariantMap{{QStringLiteral("value"), QStringLiteral("node:%1:%2").arg(node.typeId, id)},
-                                   {QStringLiteral("label"), name.isEmpty() ? tr("模拟音箱 · %1").arg(id.left(8)) : name}});
+                                   {QStringLiteral("label"), name.isEmpty() ? tr("模拟音箱") : name}});
     }
     return options;
 }
@@ -447,10 +484,10 @@ QVariantList DemoGraph::readTargetOptions() const
         const auto id = node.id.toString(QUuid::WithoutBraces);
         const auto name = node.typeId == speakerType
             ? m_document.parameterValue(node.id, nameKey).toString().trimmed() : QString{};
+        const auto label = name.isEmpty() ? definition->displayName : name;
         options.append(QVariantMap{{QStringLiteral("value"), QStringLiteral("node:%1:%2").arg(node.typeId, id)},
-                                   {QStringLiteral("name"), name.isEmpty() ? definition->displayName : name},
-                                   {QStringLiteral("label"), name.isEmpty()
-                                       ? tr("%1 · %2").arg(definition->displayName, id.left(8)) : name}});
+                                   {QStringLiteral("name"), label},
+                                   {QStringLiteral("label"), label}});
     }
     return options;
 }
@@ -693,11 +730,34 @@ bool DemoGraph::setWaitDuration(const QString &nodeId, const QString &text)
     const auto *node = m_document.findNode(id);
     if (!node || (node->typeId != waitType && node->typeId != waitUntilType))
         return report(tr("等待节点已失效。"), id);
-    bool ok = false;
-    const double duration = text.trimmed().toDouble(&ok);
     const auto &parameter = m_registry.find(node->typeId)->parameters.first();
+    const qint64 maximum = parameter.maximum.toLongLong();
+    bool ok = false;
+    double duration = 0;
+    if (text.contains(QLatin1Char(':'))) {
+        static const QRegularExpression timePattern(QStringLiteral(
+            R"(\A(?:([0-9]+):)?([0-9]+):([0-9]{1,4})(?:\.([0-9]{1,3}))?\z)"));
+        const auto match = timePattern.match(text);
+        if (match.hasMatch()) {
+            const auto hoursText = match.captured(1);
+            const auto minutesText = match.captured(2);
+            const qint64 hours = hoursText.toLongLong(&ok);
+            bool minutesOk = false;
+            const qint64 minutes = minutesText.toLongLong(&minutesOk);
+            // 两段式显示使用总分钟，三段式保留小时和分钟的取值规则。
+            ok = (hoursText.isEmpty() || (ok && minutesText.size() <= 2 && minutes < 60))
+                && minutesOk && hours <= maximum / 3600000 && minutes <= maximum / 60000;
+            if (ok) {
+                const auto milliseconds = match.captured(4).leftJustified(3, QLatin1Char('0')).toInt();
+                duration = hours * 3600000 + minutes * 60000
+                    + match.captured(3).toInt() * 1000 + milliseconds;
+            }
+        }
+    } else {
+        duration = text.trimmed().toDouble(&ok);
+    }
     if (!ok || !NodeRegistry::acceptsParameterValue(parameter, duration))
-        return report(tr("「%1」必须是 0 到 %2 的整数。").arg(parameter.displayName).arg(parameter.maximum.toInt()), id);
+        return report(tr("请输入时间（如 06:27.060）或 0 到 %1 的整数毫秒。").arg(maximum), id);
     report({});
     return m_session.setParameter(nodeId, waitDurationKey, duration);
 }
@@ -777,11 +837,40 @@ bool DemoGraph::startExecution(GraphRuntime &runtime, const GraphSnapshot &snaps
         runtime.stop();
         report({});
     }
-    QElapsedTimer automaticClock;
-    if (&runtime == &m_automaticRuntime)
-        automaticClock.start();
+    QElapsedTimer executionClock;
+    executionClock.start();
     auto implementations = runtimeImplementations(snapshot);
-    addWaitImplementations(implementations, runtime, automaticClock);
+    addWaitImplementations(implementations, runtime,
+                           &runtime == &m_automaticRuntime ? executionClock : QElapsedTimer{});
+    implementations.actions.insert(deviceCommandType, [this, executionClock, revision = snapshot.revision](
+            const ExecutionContext &context, RuntimeImplementations::Completion complete) {
+        const auto deviceName = context.parameters.value(deviceNameKey).toString().trimmed();
+        const auto commandName = context.parameters.value(commandNameKey).toString().trimmed();
+        if (deviceName.isEmpty() || commandName.isEmpty()) {
+            complete({{}, {}, {"demo.device_command_name_required", tr("请填写设备名称和指令名称。"),
+                               context.nodeId, deviceName.isEmpty() ? deviceNameKey : commandNameKey}});
+            return;
+        }
+
+        const auto parameters = QJsonDocument::fromJson(context.parameters.value(commandParametersKey).toString().toUtf8());
+        if (!parameters.isObject()) {
+            complete({{}, {}, {"demo.invalid_device_command_params", tr("设备指令参数必须是 JSON 对象。"),
+                               context.nodeId, commandParametersKey}});
+            return;
+        }
+
+        if (revision >= m_resultRevision) {
+            m_deviceCommandResults.insert(context.nodeId.toString(QUuid::WithoutBraces), QVariantMap{
+                {deviceNameKey, deviceName},
+                {commandNameKey, commandName},
+                {commandLabelKey, context.parameters.value(commandLabelKey)},
+                {commandParametersKey, parameters.object().toVariantMap()},
+                {QStringLiteral("elapsedMs"), executionClock.elapsed()}
+            });
+            emit deviceCommandResultsChanged();
+        }
+        complete({});
+    });
     const auto error = runtime.start(snapshot, implementations);
     if (!error.code.isEmpty())
         return report(error.message, error.nodeId.isNull() ? entry : error.nodeId);
@@ -849,6 +938,34 @@ bool DemoGraph::save(const QUrl &url)
     return true;
 }
 
+void DemoGraph::captureResultValues(const QUuid &nodeId, const QVariantMap &outputs, quint64 revision)
+{
+    // 编辑语义后，仍在运行的旧快照不能再提交结果。
+    if (revision < m_resultRevision)
+        return;
+
+    bool changed = false;
+    for (const auto &connection : m_document.data().connections) {
+        if (connection.source.nodeId != nodeId || connection.target.portKey != valueKey)
+            continue;
+        const auto output = outputs.constFind(connection.source.portKey);
+        if (output == outputs.cend())
+            continue;
+        const auto *target = m_document.findNode(connection.target.nodeId);
+        if (!target || (target->typeId != resultType && target->typeId != textResultType && target->typeId != boolResultType))
+            continue;
+        m_executionResultValues.insert(target->id, output.value());
+        const auto targetId = target->id.toString(QUuid::WithoutBraces);
+        const auto display = displayValue(output.value());
+        if (m_values.value(targetId).toString() != display) {
+            m_values.insert(targetId, display);
+            changed = true;
+        }
+    }
+    if (changed)
+        emit previewValuesChanged();
+}
+
 void DemoGraph::updateValues()
 {
     const auto snapshot = m_document.snapshot();
@@ -863,23 +980,19 @@ void DemoGraph::updateValues()
             if (!hasValuePort || node.typeId == setType)
                 continue;
             const auto result = m_previewRuntime.evaluate({node.id, valueKey});
-            if (!result.error.code.isEmpty()) {
+            auto value = result.value;
+            if (result.error.code == QStringLiteral("runtime.output_unavailable")) {
+                value = m_executionResultValues.value(node.id);
+                if (!value.isValid())
+                    continue;
+            } else if (!result.error.code.isEmpty()) {
                 if (result.error.code != QStringLiteral("runtime.unconnected_input")
-                    && result.error.code != QStringLiteral("runtime.unconfigured_port")
-                    && result.error.code != QStringLiteral("runtime.output_unavailable")) {
+                    && result.error.code != QStringLiteral("runtime.unconfigured_port")) {
                     formatted.insert(node.id.toString(QUuid::WithoutBraces), result.error.message);
                 }
                 continue;
             }
-            const auto &value = result.value;
-            QString display;
-            if (value.userType() == QMetaType::Bool)
-                display = value.toBool() ? tr("是") : tr("否");
-            else if (value.userType() == QMetaType::QString)
-                display = value.toString();
-            else
-                display = QLocale::c().toString(value.toDouble(), 'g', 12);
-            formatted.insert(node.id.toString(QUuid::WithoutBraces), display.isEmpty() ? tr("（空字符串）") : display);
+            formatted.insert(node.id.toString(QUuid::WithoutBraces), displayValue(value));
         }
     } else {
         report(error.message);
@@ -913,6 +1026,7 @@ void DemoGraph::speakerChanged(const QString &targetId, const QStringList &keys)
                     snapshot = m_document.snapshot();
                 auto *runtime = new GraphRuntime(this);
                 connect(runtime, &GraphRuntime::nodeExecutionChanged, this, &DemoGraph::nodeExecutionChanged);
+                connect(runtime, &GraphRuntime::executionOutputsPublished, this, &DemoGraph::captureResultValues);
                 connect(runtime, &GraphRuntime::executionFinished, this, [this, runtime](const QUuid &, const Diagnostic &error) {
                     executionFinished(runtime, error);
                 });

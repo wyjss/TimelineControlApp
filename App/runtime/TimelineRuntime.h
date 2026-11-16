@@ -3,12 +3,7 @@
 #include <UICore/Shell/BaseRuntime.h>
 #include <UICore/Task/TaskManager.h>
 
-#include "video/PcVideoStateCalculator.h"
-
-#include <QHash>
-#include <QPointer>
 #include <QString>
-#include <QTimer>
 #include <QVariantMap>
 
 class QDataStream;
@@ -22,9 +17,9 @@ class DeviceExecutorManager;
 class FenceManager;
 class ResourceSyncManager;
 class VideoProjectionPlanController;
-class Timeline;
 class TimelineCommand;
 class TimelineManager;
+class TimelineMediaCache;
 
 
 class TimelineRuntime final : public UICore::BaseRuntime
@@ -36,6 +31,7 @@ class TimelineRuntime final : public UICore::BaseRuntime
     Q_PROPERTY(DeviceTemplateModel *deviceTemplateModel READ deviceTemplateModel CONSTANT FINAL)
     Q_PROPERTY(FenceManager *fenceManager READ fenceManager CONSTANT FINAL)
     Q_PROPERTY(ResourceSyncManager *resourceSyncManager READ resourceSyncManager CONSTANT FINAL)
+    Q_PROPERTY(TimelineMediaCache *mediaCache READ mediaCache CONSTANT FINAL)
     Q_PROPERTY(TimelineManager *timelineManager READ timelineManager CONSTANT FINAL)
     Q_PROPERTY(QString currentPlanFilePath READ currentPlanFilePath NOTIFY currentPlanFilePathChanged FINAL)
     Q_PROPERTY(QString currentPlanName READ currentPlanName NOTIFY currentPlanFilePathChanged FINAL)
@@ -51,6 +47,7 @@ public:
     DeviceTemplateModel *deviceTemplateModel() const;
     FenceManager *fenceManager() const;
     ResourceSyncManager *resourceSyncManager() const;
+    TimelineMediaCache *mediaCache() const;
     TimelineManager *timelineManager() const;
     QString currentPlanFilePath() const;
     QString currentPlanName() const;
@@ -74,8 +71,6 @@ signals:
 
 private:
     void syncShip();
-    void seekPcVideoPreview(qint64 timeMs);
-    void flushPcVideoPreview();
     void executeTimelineCommand(TimelineCommand *timelineCommand,
                                 const QVariantMap &executionInputValues,
                                 bool isTest);
@@ -87,11 +82,8 @@ private:
     DeviceManager *m_deviceManager = nullptr;
     FenceManager *m_fenceManager = nullptr;
     ResourceSyncManager *m_resourceSyncManager = nullptr;
+    TimelineMediaCache *m_mediaCache = nullptr;
     VideoProjectionPlanController *m_videoProjectionPlanController = nullptr;
-    QTimer m_pcVideoSeekTimer;
-    QPointer<Timeline> m_pendingPcVideoTimeline;
-    qint64 m_pendingPcVideoTimeMs = 0;
-    QHash<QString, QHash<QString, PcVideoStateCalculator::State>> m_pcVideoPreviewStates;
     QString m_currentPlanFilePath;
     int m_runId = 0;
 };

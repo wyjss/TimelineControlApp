@@ -14,7 +14,11 @@
 #include <QFileInfo>
 #include <QJsonObject>
 #include <QMap>
+#include <QSet>
 #include <QUuid>
+
+#include <cmath>
+#include <limits>
 
 namespace {
 
@@ -253,6 +257,9 @@ void TimelineCommand::readFromStream(QDataStream &stream)
 TimelineCommandModel::TimelineCommandModel(QObject *parent)
     : TypedListModel<TimelineCommand *>(QByteArrayLiteral("command"), parent)
 {
+    connect(this, &QAbstractItemModel::rowsInserted, this, &TimelineCommandModel::childTracksChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this, &TimelineCommandModel::childTracksChanged);
+    connect(this, &QAbstractItemModel::modelReset, this, &TimelineCommandModel::childTracksChanged);
 }
 
 TimelineCommandModel::~TimelineCommandModel()
@@ -311,12 +318,18 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
         QString title;
         QVariantList segments;
         qint64 playingSinceMs = -1;
+        qint64 sourcePositionMs = 0;
         bool opened = false;
+        bool loop = false;
     };
     struct ParentTrackState
     {
         QMap<QString, ChildTrackState> tracks;
         QStringList trackOrder;
+        QMap<QString, QVariantList> audioTracks;
+        QStringList audioTrackOrder;
+        QSet<QString> activeAudioSources;
+        qint64 audioStartMs = -1;
     };
 
     QList<TimelineCommand *> sortedCommands = items();
@@ -326,13 +339,28 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
 
     QMap<QString, ParentTrackState> parentStates;
     const auto closeSegment = [](ChildTrackState &state, qint64 endTimeMs) {
-        if (state.playingSinceMs >= 0 && endTimeMs > state.playingSinceMs) {
+        if (state.playingSinceMs >= 0 && (endTimeMs < 0 || endTimeMs > state.playingSinceMs)) {
             state.segments.append(QVariantMap{
                 {QStringLiteral("startTimeMs"), state.playingSinceMs},
-                {QStringLiteral("endTimeMs"), endTimeMs}
+                {QStringLiteral("endTimeMs"), endTimeMs},
+                {QStringLiteral("sourceStartMs"), state.sourcePositionMs},
+                {QStringLiteral("loop"), state.loop}
             });
+            if (endTimeMs >= 0) {
+                const qint64 elapsed = endTimeMs - state.playingSinceMs;
+                state.sourcePositionMs += qMin(elapsed, std::numeric_limits<qint64>::max() - state.sourcePositionMs);
+            }
         }
         state.playingSinceMs = -1;
+    };
+
+    const auto videoPositionMs = [](const QVariant &seconds) -> qint64 {
+        const double milliseconds = seconds.toDouble() * 1000.0;
+        if (!std::isfinite(milliseconds) || milliseconds <= 0.0)
+            return 0;
+        if (milliseconds >= double(std::numeric_limits<qint64>::max()))
+            return std::numeric_limits<qint64>::max();
+        return qRound64(milliseconds);
     };
 
     for (TimelineCommand *command : sortedCommands) {
@@ -344,16 +372,70 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
             continue;
 
         const QString commandType = targetCommand->commandType();
-        const bool openVideo = commandType == QStringLiteral("openVideo");
-        const bool playVideo = commandType == QStringLiteral("playVideo");
-        const bool pauseVideo = commandType == QStringLiteral("pauseVideo");
-        const bool closeVideo = commandType == QStringLiteral("closeVideo");
-        const bool closePlayer = commandType == QStringLiteral("closePlayer");
-        if (!openVideo && !playVideo && !pauseVideo && !closeVideo && !closePlayer)
+        const bool playAudio = commandType == DeviceKey::CommandPlayAudio;
+        if (targetCommand->protocol() == DeviceProtocol::Pc
+            && (playAudio || commandType == DeviceKey::CommandPauseAudio
+                || commandType == DeviceKey::CommandStopAudio)) {
+            const QVariantMap input = command->executionInputValues();
+            const QString source = Utils::getAudioRealSource(input.value(DeviceKey::AudioFile).toString());
+            const bool startsAudio = playAudio && !source.isEmpty();
+
+            ParentTrackState &parentState = parentStates[command->targetDeviceId()];
+            const qint64 eventTimeMs = command->startTimeMs();
+            // 同一时刻配置的素材都可预览，下一处播放、暂停或关闭标记结束这组区间。
+            if (!startsAudio || eventTimeMs != parentState.audioStartMs) {
+                for (const QString &activeSource : parentState.activeAudioSources) {
+                    QVariantList &segments = parentState.audioTracks[activeSource];
+                    if (eventTimeMs > parentState.audioStartMs) {
+                        QVariantMap segment = segments.constLast().toMap();
+                        segment[QStringLiteral("endTimeMs")] = eventTimeMs;
+                        segments.last() = segment;
+                    } else {
+                        segments.removeLast();
+                    }
+                }
+                parentState.activeAudioSources.clear();
+                parentState.audioStartMs = -1;
+            }
+
+            if (!startsAudio)
+                continue;
+
+            // 合并默认参数与执行输入，避免构造播放请求。
+            const QVariantMap params = targetCommand->DeviceCommand::resolvedParams(input);
+            const double offsetMs = params.value(DeviceKey::VideoTimeSec).toDouble() * 1000.0;
+            const qint64 sourceStartMs = std::isfinite(offsetMs)
+                ? qint64(qBound(0.0, offsetMs, double(std::numeric_limits<int>::max()))) : 0;
+            if (!parentState.audioTracks.contains(source))
+                parentState.audioTrackOrder.append(source);
+            const QVariantMap segment{
+                {QStringLiteral("startTimeMs"), eventTimeMs},
+                {QStringLiteral("endTimeMs"), -1},
+                {QStringLiteral("sourceStartMs"), sourceStartMs},
+                {QStringLiteral("loop"), params.value(DeviceKey::AVLoop).toBool()}
+            };
+            QVariantList &segments = parentState.audioTracks[source];
+            if (parentState.activeAudioSources.contains(source))
+                segments.last() = segment;
+            else
+                segments.append(segment);
+            parentState.activeAudioSources.insert(source);
+            parentState.audioStartMs = eventTimeMs;
+            continue;
+        }
+
+        const bool openVideo = commandType == DeviceKey::CommandOpenVideo;
+        const bool playVideo = commandType == DeviceKey::CommandPlayVideo;
+        const bool pauseVideo = commandType == DeviceKey::CommandPauseVideo;
+        const bool seekVideo = commandType == DeviceKey::CommandSeekVideo;
+        const bool closeVideo = commandType == DeviceKey::CommandStopVideo;
+        const bool closePlayer = commandType == DeviceKey::CommandClosePlayer;
+        if (targetCommand->protocol() != DeviceProtocol::Pc
+            || (!openVideo && !playVideo && !pauseVideo && !seekVideo && !closeVideo && !closePlayer))
             continue;
 
         const QVariantMap input = command->executionInputValues();
-        QString source = Utils::getVideoRealSource(input.value(DeviceKey::VideoFile).toString());
+        const QString source = Utils::getVideoRealSource(input.value(DeviceKey::VideoFile).toString());
 
         ParentTrackState &parentState = parentStates[command->targetDeviceId()];
         const qint64 eventTimeMs = command->startTimeMs();
@@ -374,17 +456,17 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
             ChildTrackState &state = parentState.tracks[source];
             closeSegment(state, eventTimeMs);
             state.opened = true;
+            state.sourcePositionMs = videoPositionMs(input.value(DeviceKey::VideoTimeSec));
+            state.loop = targetCommand->DeviceCommand::resolvedParams(input).value(DeviceKey::AVLoop).toBool();
             if (input.value(QStringLiteral("play"), true).toBool())
                 state.playingSinceMs = eventTimeMs;
             continue;
         }
 
-        QStringList targetSources;
-        if (source.isEmpty())
-            targetSources = parentState.trackOrder;
-        else
-            targetSources.append(source);
-
+        const qint64 seekPositionMs = seekVideo
+            ? videoPositionMs(targetCommand->DeviceCommand::resolvedParams(input).value(DeviceKey::VideoSeekTimeSec))
+            : 0;
+        const QStringList targetSources = source.isEmpty() || closePlayer ? parentState.trackOrder : QStringList{source};
         for (const QString &targetSource : targetSources) {
             auto stateIt = parentState.tracks.find(targetSource);
             if (stateIt == parentState.tracks.end() || !stateIt->opened)
@@ -394,36 +476,48 @@ QVariantMap TimelineCommandModel::childTracksByParentId() const
             if (playVideo) {
                 if (state.playingSinceMs < 0)
                     state.playingSinceMs = eventTimeMs;
-            } else if (pauseVideo) {
+            } else if (seekVideo) {
+                if (state.playingSinceMs >= 0) {
+                    closeSegment(state, eventTimeMs);
+                    state.playingSinceMs = eventTimeMs;
+                }
+                state.sourcePositionMs = seekPositionMs;
+            } else {
                 closeSegment(state, eventTimeMs);
-            } else if (closeVideo || closePlayer) {
-                closeSegment(state, eventTimeMs);
-                state.opened = false;
+                if (!pauseVideo)
+                    state.opened = false;
             }
         }
     }
 
     QVariantMap result;
-    for (auto parentIt = parentStates.cbegin(); parentIt != parentStates.cend(); ++parentIt) {
+    for (auto parentIt = parentStates.begin(); parentIt != parentStates.end(); ++parentIt) {
         QVariantList childTracks;
-        const ParentTrackState &parentState = parentIt.value();
+        ParentTrackState &parentState = parentIt.value();
         for (const QString &source : parentState.trackOrder) {
-            const ChildTrackState &state = parentState.tracks[source];
-            QVariantList segments = state.segments;
-            if (state.playingSinceMs >= 0) {
-                segments.append(QVariantMap{
-                    {QStringLiteral("startTimeMs"), state.playingSinceMs},
-                    {QStringLiteral("endTimeMs"), -1}
-                });
-            }
+            ChildTrackState &state = parentState.tracks[source];
+            closeSegment(state, -1);
 
             childTracks.append(QVariantMap{
                 {QStringLiteral("id"), QStringLiteral("video:%1:%2").arg(parentIt.key(), source)},
                 {QStringLiteral("type"), QStringLiteral("video")},
                 {QStringLiteral("title"), state.title},
                 {QStringLiteral("detail"), state.source},
+                {QStringLiteral("source"), state.source},
                 {QStringLiteral("color"), QStringLiteral("#16a34a")},
-                {QStringLiteral("segments"), segments}
+                {QStringLiteral("segments"), state.segments}
+            });
+        }
+        for (const QString &source : parentState.audioTrackOrder) {
+            const QString title = QFileInfo(source).fileName();
+            childTracks.append(QVariantMap{
+                {QStringLiteral("id"), QStringLiteral("audio:%1:%2").arg(parentIt.key(), source)},
+                {QStringLiteral("type"), QStringLiteral("audio")},
+                {QStringLiteral("title"), title.isEmpty() ? source : title},
+                {QStringLiteral("detail"), source},
+                {QStringLiteral("source"), source},
+                {QStringLiteral("color"), QStringLiteral("#38bdf8")},
+                {QStringLiteral("segments"), parentState.audioTracks.value(source)}
             });
         }
         if (!childTracks.isEmpty())
@@ -697,10 +791,12 @@ void TimelineCommandModel::prepareCommand(TimelineCommand *command)
                 }
                 makeRealTimeChanged();
                 emitCommandChanged(command);
+                emit childTracksChanged();
             });
 
     connect(command, &TimelineCommand::aliasChanged, this, notifyChanged);
     connect(command, &TimelineCommand::parametersChanged, this, notifyChanged);
+    connect(command, &TimelineCommand::parametersChanged, this, &TimelineCommandModel::childTracksChanged);
     connect(command, &TimelineCommand::targetCommandDestroyed, this, [this, command]() {
         removeCommand(command);
     });

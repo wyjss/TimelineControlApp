@@ -19,6 +19,8 @@ const auto equalType = QStringLiteral("demo.equal");
 const auto andType = QStringLiteral("demo.and");
 const auto orType = QStringLiteral("demo.or");
 const auto notType = QStringLiteral("demo.not");
+const auto parallelJoinType = QStringLiteral("blueprint.parallelJoin");
+const auto nextKey = QStringLiteral("next");
 const auto valueCategory = QStringLiteral("values");
 const auto logicCategory = QStringLiteral("logic");
 const auto valueKey = QStringLiteral("value");
@@ -74,6 +76,17 @@ private:
     const QString m_typeId;
 };
 
+class ParallelJoinExecutor final : public Executor
+{
+public:
+    ParallelJoinExecutor() : Executor(Trigger::AllExecutionInputs) {}
+
+    void start(const ExecutionContext &, Completion done) override
+    {
+        done({nextKey, {}, {}});
+    }
+};
+
 } // namespace
 
 Diagnostic registerBasicNodes(NodeRegistry &registry, RuntimeImplementations &implementations)
@@ -114,6 +127,11 @@ Diagnostic registerBasicNodes(NodeRegistry &registry, RuntimeImplementations &im
         {notType, "非", {boolA, boolOutput}, {}, logicCategory,
          InstancePolicy::Multiple, {}, "对输入取反", "¬"},
         branchDefinition,
+        {parallelJoinType, "等待并行汇合",
+         {{inputA, PortDirection::Input, {}, "A", PortKind::Execution},
+          {inputB, PortDirection::Input, {}, "B", PortKind::Execution},
+          {nextKey, PortDirection::Output, {}, "继续", PortKind::Execution}},
+         {}, "flow", InstancePolicy::Multiple, {}, "两路执行输入都到达后继续一次", "⇥"},
     };
     for (const auto &definition : qAsConst(definitions)) {
         const auto &type = definition.typeId;
@@ -143,6 +161,8 @@ Diagnostic registerBasicNodes(NodeRegistry &registry, RuntimeImplementations &im
             implementations.executors.insert(type, branchExecutor);
         } else if (type == compareDefinition.typeId) {
             implementations.executors.insert(type, compareExecutor);
+        } else if (type == parallelJoinType) {
+            implementations.executors.insert(type, std::make_shared<ParallelJoinExecutor>());
         } else {
             implementations.executors.insert(type, std::make_shared<BasicOperationExecutor>(type));
         }

@@ -5,6 +5,7 @@ include(FindPackageHandleStandardArgs)
 set(_FFMPEG_HINTS
     ${FFMPEG_ROOT}
     $ENV{FFMPEG_ROOT}
+    D:/Program/third_party/ffmpeg
 )
 
 find_path(FFMPEG_INCLUDE_DIR

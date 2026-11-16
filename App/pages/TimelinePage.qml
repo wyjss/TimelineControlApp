@@ -833,8 +833,7 @@ Item {
                 Base.AppSurface {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 188
-                    visible: root.controlTrackVisible && root.timelineStopped
-                        && root.pcPreviewGenerator && root.pcPreviewGenerator.pcDevice
+                    visible: false
                     onVisibleChanged: {
                         if (!visible && pcPreviewWindow)
                             pcPreviewWindow.close()

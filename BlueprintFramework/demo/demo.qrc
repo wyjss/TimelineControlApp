@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/BlueprintDemo">
         <file>qml/Main.qml</file>
+        <file>assets/icons/object-cube.svg</file>
     </qresource>
 </RCC>

@@ -94,9 +94,10 @@ if(BLUEPRINT_BUILD_TESTS)
 
     if(BLUEPRINT_BUILD_DEMO)
         find_package(Qt5 5.14 REQUIRED COMPONENTS Widgets)
+        qt5_add_resources(blueprint_demo_test_resources demo/demo.qrc)
         add_executable(BlueprintDemoUiTest verification/demo_ui_test.cpp
-            demo/DemoGraph.cpp demo/DemoGraph.h demo/demo.qrc)
-        set_target_properties(BlueprintDemoUiTest PROPERTIES AUTOMOC ON AUTORCC ON)
+            demo/DemoGraph.cpp demo/DemoGraph.h demo/demo.qrc ${blueprint_demo_test_resources})
+        set_target_properties(BlueprintDemoUiTest PROPERTIES AUTOMOC ON)
         target_include_directories(BlueprintDemoUiTest PRIVATE demo)
         target_link_libraries(BlueprintDemoUiTest PRIVATE BlueprintQuick UICore Qt5::Widgets Qt5::Test)
         add_test(NAME BlueprintDemoUiTest COMMAND BlueprintDemoUiTest)

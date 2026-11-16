@@ -40,6 +40,7 @@ class BlueprintRuntimeTest : public QObject
 
 private slots:
     void loadsAndRunsBasicNodes();
+    void waitsForParallelJoin();
     void rejectsBasicNodeConflicts();
     void rejectsDeferredDataExecutor();
     void cancelsWaitExecutorAndRestarts();
@@ -134,6 +135,81 @@ void BlueprintRuntimeTest::loadsAndRunsBasicNodes()
     QTRY_COMPARE(finished.count(), 1);
     QCOMPARE(finished.first().at(1).value<Diagnostic>().code, QString());
     QCOMPARE(calls, 1);
+}
+
+void BlueprintRuntimeTest::waitsForParallelJoin()
+{
+    NodeRegistry registry;
+    RuntimeImplementations implementations;
+    QCOMPARE(registerBasicNodes(registry, implementations).code, QString());
+    PortDefinition alternateOutput = executionOutput;
+    alternateOutput.key = alternateKey;
+    const auto branchType = QStringLiteral("branch");
+    const auto joinType = QStringLiteral("blueprint.parallelJoin");
+    QVERIFY(registry.add({triggerType, triggerType, {executionOutput}}).code.isEmpty());
+    QVERIFY(registry.add({branchType, branchType, {executionInput, executionOutput, alternateOutput}}).code.isEmpty());
+    QVERIFY(registry.add({actionType, actionType, {executionInput}}).code.isEmpty());
+
+    const auto entry = QUuid::createUuid();
+    const auto branchA = QUuid::createUuid();
+    const auto branchB = QUuid::createUuid();
+    const auto join = QUuid::createUuid();
+    const auto sink = QUuid::createUuid();
+    const auto portA = QStringLiteral("A");
+    const auto portB = QStringLiteral("B");
+    GraphDocument document(registry);
+    QCOMPARE(document.replaceData({document.data().id,
+        {{entry, triggerType, {}, {}}, {branchA, branchType, {}, {}}, {branchB, branchType, {}, {}},
+         {join, joinType, {}, {}}, {sink, actionType, {}, {}}},
+        {{QUuid::createUuid(), {entry, nextKey}, {branchA, enterKey}},
+         {QUuid::createUuid(), {entry, nextKey}, {branchB, enterKey}},
+         {QUuid::createUuid(), {branchA, nextKey}, {join, portA}},
+         {QUuid::createUuid(), {branchA, alternateKey}, {join, portA}},
+         {QUuid::createUuid(), {branchB, nextKey}, {join, portB}},
+         {QUuid::createUuid(), {branchB, alternateKey}, {join, portB}},
+         {QUuid::createUuid(), {join, nextKey}, {sink, enterKey}}}}).code, QString());
+
+    QHash<QUuid, RuntimeImplementations::Completion> branchCompletions;
+    int continuations = 0;
+    implementations.actions.insert(branchType, [&](const ExecutionContext &context, RuntimeImplementations::Completion complete) {
+        branchCompletions.insert(context.nodeId, std::move(complete));
+    });
+    implementations.actions.insert(actionType, [&](const ExecutionContext &, RuntimeImplementations::Completion complete) {
+        ++continuations;
+        complete({});
+    });
+    const auto snapshot = document.snapshot();
+    GraphRuntime runtime;
+
+    // 两个出口连接同一输入，模拟一路重复到达。
+    const ActionResult arriveTwice{{}, {}, {}, {nextKey, alternateKey}};
+    const std::pair<QUuid, bool> executions[]{{branchA, false}, {branchB, false}, {branchB, true}, {branchA, true}};
+    for (const bool hasContinuation : {true, false}) {
+        // 后继缺少实现时，也要等两路到齐才报错。
+        if (!hasContinuation)
+            implementations.actions.remove(actionType);
+        QCOMPARE(runtime.start(snapshot, implementations).code, QString());
+        for (const auto &[firstBranch, sendsBoth] : executions) {
+            branchCompletions.clear();
+            continuations = 0;
+            QSignalSpy finished(&runtime, &GraphRuntime::executionFinished);
+            const auto execution = runtime.execute({entry, nextKey});
+            QCOMPARE(execution.error.code, QString());
+            QTRY_COMPARE(branchCompletions.size(), 2);
+            QVERIFY(branchCompletions.contains(branchA));
+            QVERIFY(branchCompletions.contains(branchB));
+            branchCompletions.value(firstBranch)(arriveTwice);
+            const auto otherBranch = firstBranch == branchA ? branchB : branchA;
+            branchCompletions.value(otherBranch)(sendsBoth ? arriveTwice : ActionResult{});
+
+            QTRY_COMPARE(finished.count(), 1);
+            QCOMPARE(finished.first().at(0).toUuid(), execution.executionId);
+            const auto expectedError = sendsBoth && !hasContinuation ? QStringLiteral("runtime.missing_action") : QString();
+            QCOMPARE(finished.first().at(1).value<Diagnostic>().code, expectedError);
+            QCOMPARE(continuations, sendsBoth && hasContinuation ? 1 : 0);
+        }
+        runtime.stop();
+    }
 }
 
 void BlueprintRuntimeTest::rejectsBasicNodeConflicts()

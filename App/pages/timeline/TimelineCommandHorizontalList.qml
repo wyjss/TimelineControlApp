@@ -106,6 +106,7 @@ Item {
 
     // 整组布局统一计算，指令块和轨道高度共用结果。
     readonly property var instantCommandLayouts: {
+      void commandFontMetrics.font
         var instantCommands = []
         for (var index = 0; index < commandRows.length; ++index) {
             var item = commandRows[index].command

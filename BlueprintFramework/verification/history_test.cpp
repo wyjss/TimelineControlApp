@@ -25,6 +25,7 @@ private slots:
     void queuesPlaybackFromMultipleExecutionInputs();
     void waitsFromArrivalAndStops();
     void waitsFromAutomaticEntry();
+    void recordsDeviceCommandsOnArrival();
     void propertyEventsRunAlongsideManualWait();
     void tracksOverlappingPropertyEventStates();
 };
@@ -323,8 +324,9 @@ void BlueprintHistoryTest::callUsesDeclaredInputsAndOutputs()
     const auto consumer = demo.addOperation(QStringLiteral("demo.setProperty"), speakerA, duration, {});
     const auto call = session->addNode(QStringLiteral("demo.call"), {});
     const int callRow = session->rowCount() - 1;
+    const auto result = session->addNode(QStringLiteral("demo.result"), {});
     const int parametersRole = session->roleNames().key("nodeParameters");
-    QVERIFY(!trigger.isEmpty() && !constant.isEmpty() && !consumer.isEmpty() && !call.isEmpty());
+    QVERIFY(!trigger.isEmpty() && !constant.isEmpty() && !consumer.isEmpty() && !call.isEmpty() && !result.isEmpty());
 
     QVERIFY(demo.bindCall(call, speakerA, {}));
     QVERIFY(demo.callInputs(call).isEmpty());
@@ -347,6 +349,7 @@ void BlueprintHistoryTest::callUsesDeclaredInputsAndOutputs()
     QVERIFY(session->connectPorts(trigger, execOut, call, execIn));
     QVERIFY(session->connectPorts(call, output, consumer, execIn));
     QVERIFY(session->connectPorts(call, output, consumer, value));
+    QVERIFY(session->connectPorts(call, output, result, value));
     const auto links = session->connections();
     QVERIFY(demo.bindCall(call, speakerB, playFor));
     QCOMPARE(session->connections(), links);
@@ -363,10 +366,12 @@ void BlueprintHistoryTest::callUsesDeclaredInputsAndOutputs()
     QVERIFY(demo.save(graphFile));
     QVERIFY(demo.open(graphFile));
     QCOMPARE(session->connections(), links);
+    QVERIFY(!demo.previewValues().contains(result));
     QVERIFY(demo.run(trigger));
     QTRY_VERIFY(demo.speakerState(speakerB).value(playing).toBool());
     QCOMPARE(demo.speakerState(speakerA).value(duration).toInt(), 2000);
     QTRY_COMPARE(demo.speakerState(speakerA).value(duration).toInt(), 350);
+    QTRY_COMPARE(demo.previewValues().value(result).toString(), QStringLiteral("350"));
     QVERIFY(!demo.speakerState(speakerB).value(playing).toBool());
     QCOMPARE(demo.speakerState(speakerB).value(duration).toInt(), 4000);
     QVERIFY(demo.error().isEmpty());
@@ -383,8 +388,11 @@ void BlueprintHistoryTest::callUsesDeclaredInputsAndOutputs()
     session->disconnectInput(call, input);
     QVERIFY(demo.run(trigger));
     QTRY_COMPARE(demo.speakerState(speakerA).value(duration).toInt(), 250);
+    QTRY_COMPARE(demo.previewValues().value(result).toString(), QStringLiteral("250"));
     QCOMPARE(demo.speakerState(speakerB).value(duration).toInt(), 4000);
     QVERIFY(demo.error().isEmpty());
+    session->disconnectInput(result, value);
+    QVERIFY(!demo.previewValues().contains(result));
 }
 
 void BlueprintHistoryTest::dispatchesPlaybackToBothSpeakers()
@@ -620,6 +628,61 @@ void BlueprintHistoryTest::waitsFromAutomaticEntry()
     QVERIFY(!demo.running());
 }
 
+void BlueprintHistoryTest::recordsDeviceCommandsOnArrival()
+{
+    DemoGraph demo;
+    auto *session = qobject_cast<GraphEditSession *>(demo.session());
+    QVERIFY(session);
+
+    const auto commandType = QStringLiteral("demo.deviceCommand");
+    const auto execIn = QStringLiteral("execIn");
+    const auto execOut = QStringLiteral("execOut");
+    const auto deviceName = QStringLiteral("deviceName");
+    const auto cmdName = QStringLiteral("cmdName");
+    const auto simName = QStringLiteral("simName");
+    const auto params = QStringLiteral("params");
+    const auto elapsedMs = QStringLiteral("elapsedMs");
+    const auto trigger = session->addNode(QStringLiteral("demo.trigger"), {});
+    const auto command = session->addNode(commandType, {});
+    const auto wait = session->addNode(QStringLiteral("demo.wait"), {});
+    const auto delayedCommand = session->addNode(commandType, {});
+    const QVariantMap configuration{
+        {deviceName, QStringLiteral("音响服务器")},
+        {cmdName, QStringLiteral("播放音频")},
+        {simName, QStringLiteral("开场音乐")},
+        {params, QStringLiteral(R"({"repeat":false})")}
+    };
+    QVERIFY(session->setParameters(command, configuration));
+    QVERIFY(session->setParameters(delayedCommand, configuration));
+    QVERIFY(demo.setWaitDuration(wait, QStringLiteral("10000")));
+    QVERIFY(session->connectPorts(trigger, execOut, command, execIn));
+    QVERIFY(session->connectPorts(trigger, execOut, wait, execIn));
+    QVERIFY(session->connectPorts(wait, execOut, delayedCommand, execIn));
+
+    QVERIFY(demo.deviceCommandResults().isEmpty());
+    QVERIFY(demo.run(trigger));
+    QTRY_VERIFY(demo.deviceCommandResults().contains(command));
+    QTRY_COMPARE(demo.nodeStates().value(wait).toString(), QStringLiteral("waiting"));
+    const auto record = demo.deviceCommandResults().value(command).toMap();
+    QCOMPARE(record.value(deviceName), configuration.value(deviceName));
+    QCOMPARE(record.value(cmdName), configuration.value(cmdName));
+    QCOMPARE(record.value(simName), configuration.value(simName));
+    QCOMPARE(record.value(params).toMap(), (QVariantMap{{QStringLiteral("repeat"), false}}));
+    bool hasElapsed = false;
+    const auto elapsed = record.value(elapsedMs).toLongLong(&hasElapsed);
+    QVERIFY(hasElapsed && elapsed >= 0);
+    demo.stop();
+    QVERIFY(!demo.running());
+    QVERIFY(!demo.deviceCommandResults().contains(delayedCommand));
+
+    session->disconnectInput(wait, execIn);
+    QVERIFY(session->setParameter(command, params, QStringLiteral("[]")));
+    QVERIFY(demo.run(trigger));
+    QTRY_VERIFY(!demo.error().isEmpty());
+    QCOMPARE(demo.errorNodeId(), command);
+    QVERIFY(!demo.running());
+}
+
 void BlueprintHistoryTest::propertyEventsRunAlongsideManualWait()
 {
     QVector<int> observedDurations;
@@ -678,7 +741,7 @@ void BlueprintHistoryTest::propertyEventsRunAlongsideManualWait()
     QVERIFY(observedDurations.contains(800));
     QVERIFY(demo.running());
     QVERIFY(demo.error().isEmpty());
-    QVERIFY(!demo.previewValues().contains(preview));
+    QTRY_COMPARE(demo.previewValues().value(preview).toString(), QStringLiteral("否"));
 
     QVERIFY(demo.setDurationInput(second, QStringLiteral("900")));
     QVERIFY(demo.invokeSpeaker(speakerA, QStringLiteral("stop")));

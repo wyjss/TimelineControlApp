@@ -1,5 +1,6 @@
 #include "TimelineRuntime.h"
 #include "ResourceSyncManager.h"
+#include "TimelineMediaCache.h"
 
 #include <QMetaType>
 
@@ -18,8 +19,8 @@
 #include "timeline/TimelineCommand.h"
 #include "timeline/TimelineManager.h"
 #include "timeline/TimelineModel.h"
+#include "timeline/TimelinePlaybackSync.h"
 #include "runtime/utils.h"
-#include "video/PcVideoStateCalculator.h"
 
 #include "LogMacros.h"
 
@@ -31,7 +32,9 @@
 #include <QJsonObject>
 #include <QPointer>
 #include <QRegularExpression>
+#include <QStandardPaths>
 #include <QTemporaryFile>
+#include <QTimer>
 #include <QUuid>
 #include <QUrl>
 
@@ -60,6 +63,9 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     m_deviceModel = (new DeviceModel(this));
     m_fenceManager = (new FenceManager(this));
     m_resourceSyncManager = (new ResourceSyncManager(m_deviceModel, this));
+    const QString cacheRoot = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    m_mediaCache = new TimelineMediaCache(
+        cacheRoot.isEmpty() ? QString() : QDir(cacheRoot).filePath(QStringLiteral("timeline-media")), this);
     m_timelineManager = (new TimelineManager(m_deviceModel, this));
     m_deviceTemplateModel = (new DeviceTemplateModel(m_timelineManager->timelineModel(), this));
     m_deviceExecutorManager = (new DeviceExecutorManager(this));
@@ -77,6 +83,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     qRegisterMetaType<CrossConditionModel *>("CrossConditionModel*");
     qRegisterMetaType<FenceManager *>("FenceManager*");
     qRegisterMetaType<ResourceSyncManager *>("ResourceSyncManager*");
+    qRegisterMetaType<TimelineMediaCache *>("TimelineMediaCache*");
     qRegisterMetaType<Timeline *>("Timeline*");
     qRegisterMetaType<TimelineCommand *>("TimelineCommand*");
     qRegisterMetaType<TimelineCommandModel *>("TimelineCommandModel*");
@@ -89,21 +96,19 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     });
     connect(m_deviceModel, &DeviceModel::deviceRemoved,
             m_videoProjectionPlanController, &VideoProjectionPlanController::removeMappingsForPc);
-    m_pcVideoSeekTimer.setInterval(200);
-    m_pcVideoSeekTimer.setSingleShot(true);
-    connect(&m_pcVideoSeekTimer, &QTimer::timeout, this, &TimelineRuntime::flushPcVideoPreview);
-    connect(m_timelineManager, &TimelineManager::currentTimelineChanged,
-            this, [this]() {
-        m_pcVideoSeekTimer.stop();
-        m_pendingPcVideoTimeline.clear();
-    });
+    auto *playbackSync = new TimelinePlaybackSync(
+        m_timelineManager, m_deviceModel, m_deviceExecutorManager, this);
     connect(m_timelineManager->timelineModel(), &TimelineModel::timelinesChanged,
-            this, [this]() {
+            this, [this, playbackSync]() {
         for (Timeline *timeline : m_timelineManager->timelineModel()->items()) {
             connect(timeline, &Timeline::syncShip,
                     this, &TimelineRuntime::syncShip, Qt::UniqueConnection);
-            connect(timeline, &Timeline::seekPreviewRequested,
-                    this, &TimelineRuntime::seekPcVideoPreview, Qt::UniqueConnection);
+            // 时间线模型变更会重复遍历，lambda 连接需要先断开旧连接。
+            disconnect(timeline, &Timeline::seekPreviewRequested, playbackSync, nullptr);
+            connect(timeline, &Timeline::seekPreviewRequested, playbackSync,
+                    [playbackSync, timeline](qint64 timeMs) {
+                playbackSync->requestPreview(timeline, timeMs);
+            });
         }
     });
     connect(m_timelineManager, &TimelineManager::commandTriggered,
@@ -117,11 +122,7 @@ TimelineRuntime::TimelineRuntime(QObject *parent)
     });
     connect(m_timelineManager, &TimelineManager::playbackStateChanged,
             this, [this](TimelineManager::PlaybackState state) {
-        if (state != TimelineManager::Paused) {
-            m_pcVideoSeekTimer.stop();
-            m_pendingPcVideoTimeline.clear();
-            m_pcVideoPreviewStates.clear();
-        }
+        m_mediaCache->setPlaybackRunning(state == TimelineManager::Running);
         if (state != TimelineManager::Stopped)
             return;
 
@@ -187,86 +188,6 @@ void TimelineRuntime::syncShip()
     }
 
     LOG_INFO("完成同步船上音频" << timeline->name());
-}
-
-void TimelineRuntime::seekPcVideoPreview(qint64 timeMs)
-{
-    Timeline *timeline = qobject_cast<Timeline *>(sender());
-    if (m_timelineManager->playbackState() != TimelineManager::Paused
-        || !timeline || timeline->state() != Timeline::Running)
-        return;
-
-    // 首次拖动时记录原状态，避免松手提交时间后才计算比较基准。
-    auto &states = m_pcVideoPreviewStates[timeline->id()];
-    const QList<TimelineCommand *> commands = timeline->commandModel()->commands();
-    for (Device *device : m_deviceModel->items()) {
-        if ((m_timelineManager->executionFilterEnabled()
-             && !m_timelineManager->matchesDeviceFilter(device->id()))
-            || !device->supportsProtocol(DeviceProtocol::Pc)
-            || states.contains(device->id()))
-            continue;
-        states.insert(device->id(), PcVideoStateCalculator::stateAt(
-            commands, device->id(), timeline->currentTimeMs()));
-    }
-
-    m_pendingPcVideoTimeline = timeline;
-    m_pendingPcVideoTimeMs = timeMs;
-    // 窗口内只覆盖目标位置，不重启定时器，持续拖动时仍定期同步。
-    if (!m_pcVideoSeekTimer.isActive())
-        m_pcVideoSeekTimer.start();
-}
-
-void TimelineRuntime::flushPcVideoPreview()
-{
-    Timeline *timeline = m_pendingPcVideoTimeline.data();
-    const qint64 timeMs = m_pendingPcVideoTimeMs;
-    m_pendingPcVideoTimeline.clear();
-    if (m_timelineManager->playbackState() != TimelineManager::Paused
-        || !timeline || timeline->state() != Timeline::Running)
-        return;
-
-    const QList<TimelineCommand *> commands = timeline->commandModel()->commands();
-    auto &states = m_pcVideoPreviewStates[timeline->id()];
-    for (auto state = states.begin(); state != states.end(); ++state) {
-        Device *device = m_deviceModel->deviceById(state.key());
-        if (!device || (m_timelineManager->executionFilterEnabled()
-                        && !m_timelineManager->matchesDeviceFilter(device->id()))
-            || !device->supportsProtocol(DeviceProtocol::Pc))
-            continue;
-
-        const auto after = PcVideoStateCalculator::stateAt(commands, device->id(), timeMs);
-        const auto controlCommands = PcVideoStateCalculator::commandsBetween(state.value(), after);
-        bool sentAllCommands = true;
-        for (const auto &controlCommand : controlCommands) {
-            // 暂停期间保留加载、关闭、布局和进度变化，但不启动播放。
-            if (controlCommand.commandType == DeviceKey::CommandPlayVideo)
-                continue;
-
-            DeviceCommand *targetCommand = nullptr;
-            for (const QVariant &value : device->commands()) {
-                DeviceCommand *command = value.value<DeviceCommand *>();
-                if (command->protocol() == DeviceProtocol::Pc
-                    && command->commandType() == controlCommand.commandType) {
-                    targetCommand = command;
-                    break;
-                }
-            }
-            if (!targetCommand) {
-                LOG_WARN("PC 视频同步缺少指令：" << device->name() << controlCommand.commandType);
-                sentAllCommands = false;
-                break;
-            }
-
-            QVariantMap input = controlCommand.executionInputValues;
-            if (controlCommand.commandType == DeviceKey::CommandOpenVideo)
-                input.insert(QStringLiteral("play"), false);
-            m_deviceExecutorManager->execute(
-                QUuid::createUuid().toString(QUuid::WithoutBraces), targetCommand, input);
-        }
-        // 保存本轮已发送的目标，下一轮不能再使用尚未提交的时间线位置。
-        if (sentAllCommands)
-            state.value() = after;
-    }
 }
 
 void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand,
@@ -379,6 +300,11 @@ FenceManager *TimelineRuntime::fenceManager() const
 ResourceSyncManager *TimelineRuntime::resourceSyncManager() const
 {
     return m_resourceSyncManager;
+}
+
+TimelineMediaCache *TimelineRuntime::mediaCache() const
+{
+    return m_mediaCache;
 }
 
 TimelineManager *TimelineRuntime::timelineManager() const

@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QObject>
 #include <QQueue>
+#include <QSet>
 
 #include <functional>
 #include <memory>
@@ -47,7 +48,12 @@ struct ActionResult
 class Executor
 {
 public:
-    enum class Trigger { OnDemand, Execution };
+    enum class Trigger {
+        OnDemand,
+        Execution,
+        //! 一次执行中所有执行输入各到达至少一次时启动，且只启动一次。
+        AllExecutionInputs
+    };
     using Completion = std::function<void(ActionResult)>;
 
     explicit Executor(Trigger trigger) : trigger(trigger) {}
@@ -109,6 +115,8 @@ public:
 signals:
     //! 动作开始和结束时通知；按需求值不会产生此信号。
     void nodeExecutionChanged(const QUuid &nodeId, const QUuid &callId, bool running);
+    //! 入口或动作拥有有效数据输出时，在继续派发前发布本次输出。
+    void executionOutputsPublished(const QUuid &nodeId, const QVariantMap &outputs, quint64 revision);
     //! 成功的诊断 code 为空；完成不早于 execute 返回，stop 清理后同步通知取消。
     void executionFinished(const QUuid &executionId, const Blueprint::Diagnostic &error);
 
@@ -150,6 +158,7 @@ private:
         QVariantMap values;
     };
 
+    QHash<QUuid, QSet<QString>> m_joinArrivals;
     QHash<QUuid, QUuid> m_activeCalls;
     QQueue<Endpoint> m_pendingInputs;
     QHash<QUuid, QQueue<DeferredInput>> m_deferredInputs;

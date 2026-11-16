@@ -11,6 +11,8 @@ Item {
         ? ApplicationWindow.window.appTheme
         : null
     property var ruler
+    property var mediaCache: null
+    property bool playbackRunning: false
     property var devices: []
     property var deviceRows: []
     property var commandRows: []
@@ -24,6 +26,8 @@ Item {
     property bool locatingEnabled: false
     property int rowHeight: 48
     property int childRowHeight: 30
+    readonly property int audioChildRowHeight: 54
+    readonly property int videoChildRowHeight: 60
     property int rowSpacing: 0
     property int labelWidth: 224
     property int moveAnimationDuration: 220
@@ -247,11 +251,21 @@ Item {
             readonly property var childTracks: root.childTracksForParent(targetDeviceId)
             readonly property bool expanded: childTracks.length > 0
                 && root.parentTrackExpanded(targetDeviceId)
+            readonly property var childTrackOffsets: {
+                var offsets = [0]
+                for (var i = 0; i < childTracks.length; ++i) {
+                    var childTrack = childTracks[i]
+                    var rowHeight = childTrack.type === "audio" ? root.audioChildRowHeight
+                        : (childTrack.type === "video" && childTrack.source ? root.videoChildRowHeight : root.childRowHeight)
+                    offsets.push(offsets[i] + rowHeight)
+                }
+                return offsets
+            }
 
             readonly property int mainRowHeight: Math.max(root.rowHeight, trackCommands.implicitHeight)
 
             width: trackList.width
-            height: trackRow.mainRowHeight + (expanded ? childTracks.length * root.childRowHeight : 0)
+            height: trackRow.mainRowHeight + (expanded ? childTrackOffsets[childTracks.length] : 0)
 
             Rectangle {
                 width: parent.width
@@ -439,11 +453,16 @@ Item {
                     id: childTrackRow
 
                     property var childTrackData: modelData || ({})
+                    readonly property bool audioTrack: childTrackData.type === "audio"
+                    readonly property bool videoTrack: childTrackData.type === "video" && !!childTrackData.source
+                    readonly property bool inViewport: visible
+                        && trackRow.y + y + height > trackList.contentY
+                        && trackRow.y + y < trackList.contentY + trackList.height
 
                     x: 0
-                    y: trackRow.mainRowHeight + index * root.childRowHeight
+                    y: trackRow.mainRowHeight + (trackRow.childTrackOffsets[index] || 0)
                     width: trackRow.width
-                    height: root.childRowHeight
+                    height: (trackRow.childTrackOffsets[index + 1] || 0) - (trackRow.childTrackOffsets[index] || 0)
                     opacity: trackRow.filteredOut ? 0.42 : 1
 
                     Behavior on opacity {
@@ -515,27 +534,83 @@ Item {
                             model: childTrackRow.childTrackData.segments || []
 
                             delegate: Rectangle {
+                                id: segment
+
                                 property var segmentData: modelData || ({})
                                 readonly property real startTimeMs: Math.max(0, Number(segmentData.startTimeMs || 0))
-                                readonly property real sourceEndTimeMs: Number(segmentData.endTimeMs)
-                                readonly property real endTimeMs: sourceEndTimeMs < 0 && root.ruler
+                                readonly property real scheduledEndMs: Number(segmentData.endTimeMs)
+                                readonly property real plannedEndMs: scheduledEndMs < 0 && root.ruler
                                     ? root.ruler.durationMs
-                                    : Math.max(startTimeMs, sourceEndTimeMs)
+                                    : Math.max(startTimeMs, scheduledEndMs)
+                                readonly property bool loop: Boolean(segmentData.loop)
+                                readonly property real sourceOffsetMs: Math.max(0, Number(segmentData.sourceStartMs || 0))
+                                readonly property real sourceDurationMs: audioWaveform.item ? audioWaveform.item.durationMs
+                                    : (videoThumbnails.item ? videoThumbnails.item.durationMs : 0)
+                                readonly property real endTimeMs: !loop && sourceDurationMs > 0
+                                    ? Math.min(plannedEndMs, startTimeMs
+                                               + Math.max(0, sourceDurationMs - sourceOffsetMs))
+                                    : plannedEndMs
                                 readonly property real startX: root.timeToX(startTimeMs) - root.labelWidth
                                 readonly property real endX: root.timeToX(endTimeMs) - root.labelWidth
+                                readonly property real clippedEndX: Math.min(childTrackContent.width, endX)
+                                readonly property color segmentColor: trackRow.filteredOut
+                                    ? root.colorValue("neutralBorder", "#45576b")
+                                    : String(segmentData.color || childTrackRow.childTrackData.color || "#16a34a")
 
                                 x: Math.max(0, startX)
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: Math.max(1, Math.min(parent.width, endX) - x)
-                                height: 14
+                                width: Math.max(1, clippedEndX - x)
+                                height: childTrackRow.audioTrack || childTrackRow.videoTrack
+                                    ? Math.max(0, parent.height - 6) : 14
                                 radius: 3
-                                color: trackRow.filteredOut
-                                    ? root.colorValue("neutralBorder", "#45576b")
-                                    : String(segmentData.color
-                                             || childTrackRow.childTrackData.color
-                                             || "#16a34a")
-                                opacity: 0.82
+                                color: childTrackRow.audioTrack || childTrackRow.videoTrack
+                                    ? Qt.rgba(segmentColor.r, segmentColor.g, segmentColor.b, 0.24)
+                                    : segmentColor
+                                opacity: childTrackRow.videoTrack ? 1 : 0.82
                                 visible: endTimeMs > startTimeMs && endX > 0 && startX < parent.width
+
+                                Loader {
+                                    id: audioWaveform
+
+                                    anchors.fill: parent
+                                    // 按计划区间创建。素材时长到达后只改变裁剪，避免卸载后又重新请求。
+                                    active: childTrackRow.audioTrack && !!root.mediaCache && !!root.ruler
+                                        && childTrackRow.inViewport && segment.plannedEndMs > segment.startTimeMs
+                                        && root.timeToX(segment.plannedEndMs) > root.labelWidth
+                                        && segment.startX < childTrackContent.width
+
+                                    sourceComponent: TimelineAudioWaveform {
+                                        mediaCache: root.mediaCache
+                                        playbackRunning: root.playbackRunning
+                                        source: String(childTrackRow.childTrackData.source || "")
+                                        sourceStartMs: segment.sourceOffsetMs
+                                            + (segment.x - segment.startX) * 1000 / root.ruler.safePixelsPerSecond
+                                        sourceEndMs: segment.sourceOffsetMs
+                                            + (segment.clippedEndX - segment.startX) * 1000 / root.ruler.safePixelsPerSecond
+                                        loop: segment.loop
+                                        waveformColor: segment.segmentColor
+                                    }
+                                }
+
+                                Loader {
+                                    id: videoThumbnails
+
+                                    anchors.fill: parent
+                                    active: childTrackRow.videoTrack && !!root.mediaCache && !!root.ruler
+                                        && childTrackRow.inViewport && segment.plannedEndMs > segment.startTimeMs
+                                        && root.timeToX(segment.plannedEndMs) > root.labelWidth
+                                        && segment.startX < childTrackContent.width
+
+                                    sourceComponent: TimelineVideoThumbnails {
+                                        mediaCache: root.mediaCache
+                                        source: String(childTrackRow.childTrackData.source || "")
+                                        sourceStartMs: segment.sourceOffsetMs
+                                        segmentDurationMs: segment.endTimeMs - segment.startTimeMs
+                                        visibleOffsetPx: segment.x - segment.startX
+                                        pixelsPerSecond: root.ruler.safePixelsPerSecond
+                                        loop: segment.loop
+                                    }
+                                }
                             }
                         }
                     }

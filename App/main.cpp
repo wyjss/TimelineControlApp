@@ -22,6 +22,7 @@
 #include "runtime/TimelineShellController.h"
 #include "runtime/video/FfmpegVideoFrameItem.h"
 #include "runtime/video/PcTimelinePreviewGenerator.h"
+#include "runtime/video/TimelineThumbnailProvider.h"
 #include "runtime/utils.h"
 #include "server/web/WebControlServer.h"
 
@@ -120,6 +121,8 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("deviceicon"), new DeviceIconProvider);
+    engine.addImageProvider(QStringLiteral("timeline-thumbnails"),
+                            new TimelineThumbnailProvider(runtime.mediaCache()));
     engine.rootContext()->setContextProperty(QStringLiteral("app"), &runtime);
     engine.rootContext()->setContextProperty(QStringLiteral("pcTimelinePreviewGenerator"),
                                              &pcTimelinePreviewGenerator);
