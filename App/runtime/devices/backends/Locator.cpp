@@ -257,13 +257,13 @@ void LocationRecver::checkStatus()
 
 	for (auto itr = m_map.begin(); itr != m_map.end(); ++itr) {
 		auto sock = itr->sock;
-#if 0
+#if 1
 		if (
 			sock->state() != QTcpSocket::ConnectedState &&
 			sock->state() != QTcpSocket::ConnectingState
 			) {
 			sock->connectToHost(QHostAddress(itr->ip), 1121);
-			//LOG_DEBUG("reconnect ti host " << itr->ip);
+			LOG_DEBUG("reconnect ti host " << itr->ip);
 		}
 
 		// 5s无数据判定离线
@@ -330,10 +330,10 @@ void* LocationRecver::mapSock2Handle(QTcpSocket* sock)
 bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat, double& heading)
 {
 	
-	LOG_DEBUG("parse:" << nmea);
 // 	if (!nmea.startsWith('$'))
 // 		return false;
 	
+	//LOG_DEBUG("parse:" << nmea);
 
 	const QStringList fields = nmea.split(',');
 
@@ -350,6 +350,7 @@ bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat
 		//iHeading = 8;
 	} else if (fields[0].endsWith("HEADINGA")) {
 		iHeading = 12;
+
 	} else {
 		LOG_ERROR("不支持的协议" << fields[0]);
 		return false;
@@ -394,6 +395,7 @@ bool LocationRecver::parseNMEA0186(const QString& nmea, double& lon, double& lat
 		double tempHeading = 0;
 		bool ok;
 		tempHeading = fields[iHeading].toDouble(&ok);
+		LOG_INFO("tempHeading" << tempHeading);
 		if (ok) {
 			heading = tempHeading;
 			// @todo 测试结果0度朝向正东，手动+90

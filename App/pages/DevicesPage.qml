@@ -1017,7 +1017,7 @@ Item {
                                 readonly property real availableWidth: parent ? parent.width : 0
                                 readonly property real minimumCardWidth: 240
                                 readonly property real maximumCardWidth: 320
-                                readonly property int maximumColumnCount: 4
+                                readonly property int maximumColumnCount: 8
                                 readonly property int itemCount: root.filteredDevices.length
                                 readonly property int fitColumnCount: Math.max(1,
                                     Math.floor((availableWidth + spacing) / (minimumCardWidth + spacing)))

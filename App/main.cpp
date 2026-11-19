@@ -12,6 +12,7 @@
 #include <qqml.h>
 #include <QUrl>
 #include <QVector>
+#include <QTcpSocket>
 //#include <QScreen>
 
 #include <iostream>
@@ -82,6 +83,8 @@ int main(int argc, char *argv[])
 
     //qputenv("QT_QUICK_BACKEND", "software");
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+	QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
+		Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     LOG_INFO("enable AA_EnableHighDpiScaling");
 #endif
@@ -89,6 +92,24 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QApplication application(argc, argv);
+    if(0)
+    {
+        QTcpSocket* sock = new QTcpSocket;
+        sock->connectToHost("172.16.10.65", 23);
+       bool b =  sock->waitForConnected(99999);
+       if (!b) {
+           LOG_FATAL("cnt failed" << sock->state());
+       }
+        QObject::connect(sock, &QTcpSocket::readyRead, [sock]() {
+            auto d = sock->readAll();
+            LOG_INFO("read data: " << d);
+                         });
+        QByteArray order;
+        Utils::toHexData("EF FE 01 01 01 01 00 00 00 00 01 01 00 00 08 11 00 00 20 0B 41 54 2B 53 79 73 74 65 6D 3F 0D 0A",
+                         &order);
+        sock->write(order);
+        return application.exec();
+    }
     UICore::initialize();
     LocatorViewer::initialize();
     application.setOrganizationName(QStringLiteral("TimelineControlApp"));
