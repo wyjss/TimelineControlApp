@@ -13,6 +13,8 @@
 #include <qqml.h>
 #include <QUrl>
 #include <QVector>
+#include <QLocalSocket>
+#include <QLocalServer>
 //#include <QScreen>
 
 #include <iostream>
@@ -29,6 +31,25 @@
 #include "LogMacros.h"
 
 namespace {
+
+	bool instanceTest()
+	{
+		QString localHostName = "ragis_server";
+		QLocalSocket* sock = new QLocalSocket(qApp);
+		sock->connectToServer(localHostName);
+		if (sock->waitForConnected(500)) {
+			return false;
+		}
+
+		sock->deleteLater();
+
+		auto svr = new QLocalServer(qApp);
+		QObject::connect(qApp, &QCoreApplication::aboutToQuit, svr, &QLocalServer::deleteLater);
+
+		// @todo linux 下有bug，qApp推出，svr关不掉
+		svr->listen(localHostName);
+		return true;
+	}
 
 class DeviceIconProvider final : public QQuickImageProvider
 {
@@ -91,12 +112,15 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QApplication application(argc, argv);
-
-    //
-    if (RA_License::Instance()->IsEmpower() == false) {
-        QMessageBox::critical(nullptr, "license已过期", "请联系厂家更新license");
-        exit(0);
+    if (!instanceTest()) {
+		QMessageBox::critical(nullptr, "实例正在运行", "请勿重复开启");
+		exit(0);
     }
+    //
+    //if (RA_License::Instance()->IsEmpower() == false) {
+    //    QMessageBox::critical(nullptr, "license已过期", "请联系厂家更新license");
+    //    exit(0);
+    //}
 
     UICore::initialize();
     LocatorViewer::initialize();
