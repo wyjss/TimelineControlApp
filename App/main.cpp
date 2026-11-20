@@ -9,6 +9,7 @@
 #include <QQuickStyle>
 #include <QSerialPort>
 #include <QSerialPortInfo>
+#include <QMessageBox>
 #include <qqml.h>
 #include <QUrl>
 #include <QVector>
@@ -55,6 +56,8 @@ public:
 };
 
 }
+#pragma comment(lib, "D:\\Program\\RA\\TimelineControlApp\\liblicense\\RA_License.lib")
+#include "D:\\Program\\RA\\TimelineControlApp\\liblicense\\ra_license.h"
 #include <Windows.h>
 int main(int argc, char *argv[])
 {
@@ -88,6 +91,13 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     QApplication application(argc, argv);
+
+    //
+    if (RA_License::Instance()->IsEmpower() == false) {
+        QMessageBox::critical(nullptr, "license已过期", "请联系厂家更新license");
+        exit(0);
+    }
+
     UICore::initialize();
     LocatorViewer::initialize();
     application.setOrganizationName(QStringLiteral("TimelineControlApp"));
