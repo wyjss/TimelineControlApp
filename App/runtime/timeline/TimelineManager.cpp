@@ -393,13 +393,15 @@ bool TimelineManager::setPlayQueue(const QStringList &timelineIds)
 bool TimelineManager::startCurrentPlayback(qint64 startTimeMs)
 {
     Timeline *timeline = currentTimeline();
-    if (!timeline)
-        return false;
+    return timeline && startSinglePlayback(*timeline, startTimeMs);
+}
 
+bool TimelineManager::startSinglePlayback(Timeline &timeline, qint64 startTimeMs)
+{
     stopPlayback();
-    m_playbackTimeline = timeline;
+    m_playbackTimeline = &timeline;
     emit playbackChanged();
-    return startTimeline(timeline->id(), startTimeMs);
+    return startTimeline(timeline.id(), startTimeMs);
 }
 
 bool TimelineManager::startPlayback(const QStringList &timelineIds, qint64 startTimeMs)
@@ -433,6 +435,38 @@ bool TimelineManager::startPlayback(const QStringList &timelineIds, qint64 start
         timeline->waitForTrigger();
     }
     return startTimeline(m_playQueue.constFirst(), startTimeMs);
+}
+
+bool TimelineManager::controlSinglePlayback(const QString &name, PlaybackAction action)
+{
+    Timeline *timeline = nullptr;
+    for (Timeline *candidate : m_timelineModel->items()) {
+        if (candidate->name() != name)
+            continue;
+        if (timeline)
+            return false;
+        timeline = candidate;
+    }
+    if (!timeline)
+        return false;
+
+    const PlaybackState state = playbackState();
+    if (action == PlaybackAction::Play)
+        return (state == Stopped || state == Completed) && startSinglePlayback(*timeline, 0);
+
+    if (m_queuePlayback || timeline != m_playbackTimeline)
+        return false;
+
+    if (action == PlaybackAction::Pause && state == Running) {
+        pausePlayback();
+    } else if (action == PlaybackAction::Resume && state == Paused) {
+        resumePlayback();
+    } else if (action == PlaybackAction::Stop && state != Stopped) {
+        stopPlayback();
+    } else {
+        return false;
+    }
+    return true;
 }
 
 void TimelineManager::pausePlayback()

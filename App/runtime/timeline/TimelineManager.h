@@ -50,6 +50,8 @@ public:
     };
     Q_ENUM(PlaybackState)
 
+    enum class PlaybackAction { Play, Pause, Resume, Stop };
+
     explicit TimelineManager(DeviceModel *deviceModel, QObject *parent = nullptr);
     // 查询
     TimelineModel *timelineModel() const;
@@ -83,6 +85,8 @@ public:
     Q_INVOKABLE bool setPlayQueue(const QStringList &timelineIds);
     Q_INVOKABLE bool startCurrentPlayback(qint64 startTimeMs = 0);
     Q_INVOKABLE bool startPlayback(const QStringList &timelineIds, qint64 startTimeMs = 0);
+    //! 按唯一节目名控制单播会话，保留界面当前选中的节目。
+    bool controlSinglePlayback(const QString &name, PlaybackAction action);
     Q_INVOKABLE void pausePlayback();
     Q_INVOKABLE void resumePlayback();
     Q_INVOKABLE bool seekTimeline(const QString &id, qint64 timeMs);
@@ -130,6 +134,7 @@ signals:
     void executionFilterEnabledChanged();
     void showFilteredOutChanged();
 private:
+    bool startSinglePlayback(Timeline &timeline, qint64 startTimeMs);
     bool startTimeline(const QString &id, qint64 startTimeMs = 0);
     void updateTimeline(Timeline *timeline, qint64 clockTimeMs);
     void handleTimelineCompleted(Timeline *timeline);

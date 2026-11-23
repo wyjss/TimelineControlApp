@@ -22,6 +22,8 @@ qt5_add_resources(TIMELINE_APP_RESOURCES App.qrc)
 add_executable(TimelineControlApp WIN32
     ${TIMELINE_APP_SOURCES}
     ${TIMELINE_APP_RESOURCES}
+    server/osc/OscControlServer.cpp
+    server/osc/OscControlServer.h
 )
 
 #qml debug

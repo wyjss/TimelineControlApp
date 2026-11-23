@@ -28,6 +28,7 @@
 #include "runtime/video/PcTimelinePreviewGenerator.h"
 #include "runtime/video/TimelineThumbnailProvider.h"
 #include "runtime/utils.h"
+#include "server/osc/OscControlServer.h"
 #include "server/web/WebControlServer.h"
 
 #include "LogMacros.h"
@@ -160,6 +161,8 @@ int main(int argc, char *argv[])
         QCoreApplication::applicationDirPath() + QStringLiteral("/web"));
     if (!webControlServer.start())
         qWarning("Failed to start web control server on http://127.0.0.1:8080");
+    OscControlServer oscControlServer(*runtime.timelineManager());
+    oscControlServer.start(QHostAddress::AnyIPv4, 9000);
     TimelineShellController shellController(&runtime);
     runtime.setShell(&shellController);
     PcTimelinePreviewGenerator pcTimelinePreviewGenerator(runtime.timelineManager(),
