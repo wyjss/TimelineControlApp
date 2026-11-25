@@ -34,7 +34,7 @@ namespace {
 
 	bool instanceTest()
 	{
-		QString localHostName = "ragis_server";
+		QString localHostName = "TimelineApp";
 		QLocalSocket* sock = new QLocalSocket(qApp);
 		sock->connectToServer(localHostName);
 		if (sock->waitForConnected(500)) {
