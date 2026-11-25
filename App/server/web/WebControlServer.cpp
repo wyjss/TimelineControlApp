@@ -6,6 +6,7 @@
 #include "../../runtime/devices/Device.h"
 #include "../../runtime/devices/DeviceCommand.h"
 #include "../../runtime/devices/DeviceModel.h"
+#include "../../runtime/devices/DeviceManager.h"
 #include "../../runtime/timeline/Timeline.h"
 #include "../../runtime/timeline/TimelineCommand.h"
 #include "../../runtime/timeline/TimelineManager.h"
@@ -37,6 +38,57 @@ QJsonObject errorResponse(const QString &code, const QString &message)
              {QStringLiteral("message"), message}
          }}
     };
+}
+
+int resolveDevices(DeviceModel *model, const QJsonValue &identifiers,
+                   QList<Device *> &devices, QJsonObject &response)
+{
+    if (!identifiers.isArray() || identifiers.toArray().isEmpty()) {
+        response = errorResponse(QStringLiteral("invalid_devices"),
+                                 QStringLiteral("devices 必须是非空数组"));
+        return 400;
+    }
+
+    const QJsonArray values = identifiers.toArray();
+    for (int index = 0; index < values.size(); ++index) {
+        const QJsonObject identifier = values.at(index).toObject();
+        const bool byId = identifier.contains(QStringLiteral("id"));
+        const QJsonValue id = identifier.value(QStringLiteral("id"));
+        const QJsonValue name = identifier.value(QStringLiteral("name"));
+        const QJsonValue type = identifier.value(QStringLiteral("type"));
+        if ((byId && (identifier.size() != 1 || !id.isString() || id.toString().trimmed().isEmpty()))
+            || (!byId && (identifier.size() != 2 || !name.isString() || name.toString().trimmed().isEmpty()
+                         || !type.isString() || type.toString().trimmed().isEmpty()))) {
+            response = errorResponse(QStringLiteral("invalid_device_identifier"),
+                                     QStringLiteral("第 %1 项设备须提供 id 或 name 与 type，且不能混用").arg(index + 1));
+            return 400;
+        }
+
+        Device *matched = nullptr;
+        for (Device *device : model->items()) {
+            if (byId ? device->id() != id.toString()
+                     : (device->name() != name.toString() || device->deviceType() != type.toString()))
+                continue;
+            if (matched) {
+                response = errorResponse(QStringLiteral("ambiguous_device"),
+                                         QStringLiteral("第 %1 项设备匹配到多个设备").arg(index + 1));
+                return 409;
+            }
+            matched = device;
+        }
+        if (!matched) {
+            response = errorResponse(QStringLiteral("device_not_found"),
+                                     QStringLiteral("第 %1 项设备不存在").arg(index + 1));
+            return 404;
+        }
+        if (devices.contains(matched)) {
+            response = errorResponse(QStringLiteral("duplicate_devices"),
+                                     QStringLiteral("第 %1 项设备与前面的设备重复").arg(index + 1));
+            return 400;
+        }
+        devices.append(matched);
+    }
+    return 200;
 }
 
 QString playbackStateName(TimelineManager::PlaybackState state)
@@ -124,6 +176,140 @@ bool WebControlServer::start(const QString &host, quint16 port)
             const QJsonObject body = statusSnapshot();
             sendJson(response, body.value(QStringLiteral("ok")).toBool() ? 200 : 503, body);
         }
+    });
+    m_server->Get("/api/v2/devices", [this](const httplib::Request &request, httplib::Response &response) {
+        if (!authorize(request, response))
+            return;
+
+        const QString name = QString::fromStdString(request.get_param_value("name")).trimmed();
+        const QString groupName = QString::fromStdString(request.get_param_value("groupName")).trimmed();
+        QJsonObject body;
+        if (!invokeRuntime([&body, name, groupName](TimelineRuntime *runtime) {
+            QJsonArray devices;
+            for (Device *device : runtime->deviceModel()->items()) {
+                if ((!name.isEmpty() && !device->name().contains(name, Qt::CaseInsensitive))
+                    || (!groupName.isEmpty() && !device->groupNames().contains(groupName)))
+                    continue;
+                devices.append(QJsonObject{
+                    {QStringLiteral("name"), device->name()},
+                    {QStringLiteral("type"), device->deviceType()}
+                });
+            }
+            body = {
+                {QStringLiteral("ok"), true},
+                {QStringLiteral("devices"), devices}
+            };
+        })) {
+            sendJson(response, 503, errorResponse(QStringLiteral("runtime_unavailable"),
+                                                  QStringLiteral("播控运行时不可用")));
+            return;
+        }
+        sendJson(response, 200, body);
+    });
+    m_server->Post("/api/v2/devices/info", [this](const httplib::Request &request, httplib::Response &response) {
+        if (!authorize(request, response))
+            return;
+
+        QJsonParseError parseError;
+        const QJsonDocument document = QJsonDocument::fromJson(
+            QByteArray::fromStdString(request.body), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+            sendJson(response, 400, errorResponse(QStringLiteral("invalid_json"),
+                                                  QStringLiteral("请求内容不是有效 JSON")));
+            return;
+        }
+        if (document.object().size() != 1 || !document.object().contains(QStringLiteral("devices"))) {
+            sendJson(response, 400, errorResponse(QStringLiteral("invalid_request"),
+                                                  QStringLiteral("请求仅支持 devices 字段")));
+            return;
+        }
+
+        int status = 200;
+        QJsonObject body;
+        const QJsonValue identifiers = document.object().value(QStringLiteral("devices"));
+        if (!invokeRuntime([&status, &body, identifiers](TimelineRuntime *runtime) {
+            QList<Device *> devices;
+            status = resolveDevices(runtime->deviceModel(), identifiers, devices, body);
+            if (status != 200)
+                return;
+
+            QJsonArray results;
+            for (Device *device : devices) {
+                QJsonArray commands;
+                for (const QVariant &value : device->commands()) {
+                    if (DeviceCommand *command = value.value<DeviceCommand *>())
+                        commands.append(command->name());
+                }
+                results.append(QJsonObject{
+                    {QStringLiteral("name"), device->name()},
+                    {QStringLiteral("type"), device->deviceType()},
+                    {QStringLiteral("commands"), commands},
+                    {QStringLiteral("groupNames"), QJsonArray::fromStringList(device->groupNames())},
+                    {QStringLiteral("id"), device->id()},
+                    {QStringLiteral("online"), device->isOnline()}
+                });
+            }
+            body = {
+                {QStringLiteral("ok"), true},
+                {QStringLiteral("devices"), results}
+            };
+        })) {
+            sendJson(response, 503, errorResponse(QStringLiteral("runtime_unavailable"),
+                                                  QStringLiteral("播控运行时不可用")));
+            return;
+        }
+        sendJson(response, status, body);
+    });
+    m_server->Post("/api/v2/commands/trigger", [this](const httplib::Request &request, httplib::Response &response) {
+        if (!authorize(request, response))
+            return;
+
+        QJsonParseError parseError;
+        const QJsonDocument document = QJsonDocument::fromJson(
+            QByteArray::fromStdString(request.body), &parseError);
+        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+            sendJson(response, 400, errorResponse(QStringLiteral("invalid_json"),
+                                                  QStringLiteral("请求内容不是有效 JSON")));
+            return;
+        }
+        const QJsonObject input = document.object();
+        if (input.size() != 2 || !input.contains(QStringLiteral("devices"))
+            || !input.value(QStringLiteral("commandName")).isString()
+            || input.value(QStringLiteral("commandName")).toString().trimmed().isEmpty()) {
+            sendJson(response, 400, errorResponse(QStringLiteral("invalid_request"),
+                                                  QStringLiteral("请求仅支持 devices 和非空 commandName 字段")));
+            return;
+        }
+
+        int status = 202;
+        QJsonObject body;
+        if (!invokeRuntime([&status, &body, input](TimelineRuntime *runtime) {
+            QList<Device *> devices;
+            status = resolveDevices(runtime->deviceModel(), input.value(QStringLiteral("devices")), devices, body);
+            if (status != 200)
+                return;
+
+            QStringList ids;
+            for (Device *device : devices)
+                ids.append(device->id());
+            const QString error = runtime->deviceManager()->triggerDeviceCommands(
+                ids, input.value(QStringLiteral("commandName")).toString());
+            if (!error.isEmpty()) {
+                status = 422;
+                body = errorResponse(QStringLiteral("command_rejected"), error);
+                return;
+            }
+            status = 202;
+            body = {
+                {QStringLiteral("ok"), true},
+                {QStringLiteral("accepted"), devices.size()}
+            };
+        })) {
+            sendJson(response, 503, errorResponse(QStringLiteral("runtime_unavailable"),
+                                                  QStringLiteral("播控运行时不可用")));
+            return;
+        }
+        sendJson(response, status, body);
     });
     m_server->Post("/api/v1/queue", [this](const httplib::Request &request, httplib::Response &response) {
         if (!authorize(request, response))

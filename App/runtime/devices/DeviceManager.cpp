@@ -317,6 +317,49 @@ void DeviceManager::setDevicePower(const QString &deviceId, bool powerOn)
     m_deviceExecutorManager->execute(executionId, command);
 }
 
+QString DeviceManager::triggerDeviceCommands(const QStringList &deviceIds, const QString &commandName)
+{
+    if (!m_deviceExecutorManager)
+        return tr("设备执行器不可用");
+    if (deviceIds.isEmpty() || commandName.trimmed().isEmpty())
+        return tr("设备列表和指令名称不能为空");
+
+    QList<DeviceCommand *> commands;
+    for (const QString &id : deviceIds) {
+        Device *device = m_deviceModel ? m_deviceModel->deviceById(id) : nullptr;
+        if (!device)
+            return tr("目标设备不存在：%1").arg(id);
+        DeviceCommand *command = device->commandByName(commandName);
+        if (!command)
+            return tr("设备 %1/%2 不支持指令：%3").arg(device->deviceType(), device->name(), commandName);
+        QString reason = command->invalidReason();
+        if (reason.isEmpty()) {
+            for (const QVariant &value : command->executionInputFields()) {
+                DeviceParamSpec *field = value.value<DeviceParamSpec *>();
+                if (field)
+                    reason = field->invalidReason();
+                if (!reason.isEmpty())
+                    break;
+            }
+        }
+        if (!reason.isEmpty())
+            return tr("设备 %1/%2 的指令配置无效：%3").arg(device->deviceType(), device->name(), reason);
+        commands.append(command);
+    }
+
+    // 校验全部完成后才提交，避免后续设备配置错误时已经下发前面的指令。
+    for (DeviceCommand *command : commands) {
+        QVariantMap values;
+        for (const QVariant &value : command->executionInputFields()) {
+            if (DeviceParamSpec *field = value.value<DeviceParamSpec *>())
+                values.insert(field->key(), field->value());
+        }
+        m_deviceExecutorManager->execute(
+            QUuid::createUuid().toString(QUuid::WithoutBraces), command, values);
+    }
+    return QString();
+}
+
 void DeviceManager::refreshDmx512AdapterOptions()
 {
     const QVariantList adapterOptions = m_deviceModel

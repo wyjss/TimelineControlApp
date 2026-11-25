@@ -231,7 +231,7 @@ DeviceParamSpec *DeviceParamSpec::createForKey(const QString &deviceKey,
                                          SelectEditor);
         spec->setPlaceholderText(QStringLiteral("COM1"));
         QVariantList options;
-        for (int i = 0; i < 10; ++i)
+        for (int i = 0; i < 20; ++i)
             options.append(QStringLiteral("COM%1").arg(i));
         spec->setOptions(options);
         return spec;

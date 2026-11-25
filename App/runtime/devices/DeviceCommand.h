@@ -140,7 +140,7 @@ public:
     {
         addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPort));
         addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::BaudRate));
-        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::SerialPayload));
+        addCreationInputField(DeviceParamSpec::createForKey(DeviceKey::Payload));
     }
 };
 

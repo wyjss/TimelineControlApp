@@ -44,6 +44,9 @@ public:
 
     Q_INVOKABLE void setDevicePower(const QString &deviceId, bool powerOn);
 
+    //! 整批校验后下发保存的指令参数；空字符串表示已受理，不代表执行成功。
+    QString triggerDeviceCommands(const QStringList &deviceIds, const QString &commandName);
+
 signals:
     void devicePowerFinished(const QString &deviceId, bool success, const QString &errorMessage);
 
