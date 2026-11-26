@@ -459,12 +459,30 @@ Device* PcDeviceTemplate::createDevice(QObject* parent, const QVariantMap& confi
 		cmd->getField(DeviceKey::ApiPath)->setValue(url);
 		return cmd;
 	};
+
+	{// 音量
+		device->appendCommand(_createSystemCommand("静音", "/system/mute"));
+		device->appendCommand(_createSystemCommand("取消静音", "/system/unmute"));
+
+		auto* volumeCommand = _createSystemCommand("设置音量", "/system/volume?value=${volume}");
+		volumeCommand->setStringTemplateKey(DeviceKey::ApiPath);
+		auto* volumeField = new DeviceParamSpec("volume", "音量", 100, DeviceParamSpec::IntType);
+		volumeField->setMinimum(0);
+		volumeField->setMaximum(100);
+		volumeField->setSuffix("%");
+		volumeCommand->addExecutionInputField(volumeField);
+		device->appendCommand(volumeCommand);
+	}
+
 	device->appendCommand(
 		_createSystemCommand(DeviceKey::SystemPause, "/video/systemPause"));
 	device->appendCommand(
 		_createSystemCommand(DeviceKey::SystemResume, "/video/systemResume"));
 	device->appendCommand(
 		_createSystemCommand(DeviceKey::SystemStop, "/video/systemStop"));
+
+	
+	
 
 	device->appendCommand(new PlaceholderCommand(device));
 

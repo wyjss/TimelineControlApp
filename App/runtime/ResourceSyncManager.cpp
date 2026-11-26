@@ -17,6 +17,7 @@ ResourceSyncManager::ResourceSyncManager(DeviceModel *deviceModel, QObject *pare
     , m_deviceModel(deviceModel)
     , m_network(new QNetworkAccessManager(this))
 {
+    m_network->setNetworkAccessible(QNetworkAccessManager::Accessible);
     connect(Utils::AVOptionsMgr::getInstance(), &Utils::AVOptionsMgr::optionsChanged,
             this, &ResourceSyncManager::refreshResources);
     refreshResources();

@@ -74,6 +74,7 @@ void SerialCommandExecutor::executeImpl(const QString &executionId,
    // url = "http://127.0.0.1:11357/version";
     if (!m_manager) {
         m_manager = new QNetworkAccessManager(this);
+		m_manager->setNetworkAccessible(QNetworkAccessManager::Accessible);
         m_manager->setProxy(QNetworkProxy::NoProxy);
     }
     QNetworkRequest request(url);

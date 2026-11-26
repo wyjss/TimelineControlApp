@@ -246,7 +246,9 @@ void TimelineRuntime::executeTimelineCommand(TimelineCommand *timelineCommand,
 
         if ((isTest || m_runId == runId) && timelineCommandGuard
             && timelineCommandGuard->state() == TimelineCommand::Running) {
-            LOG_ERROR(errorMessage);
+            if (!errorMessage.isEmpty()) {
+				LOG_ERROR(errorMessage);
+            }
             timelineCommandGuard->setErrorMessage(errorMessage);
             timelineCommandGuard->setState(success
                                                ? TimelineCommand::Succeeded
