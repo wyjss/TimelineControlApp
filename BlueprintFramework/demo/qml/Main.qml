@@ -529,6 +529,9 @@ ApplicationWindow {
             property var node: null
             objectName: "run-flow"
             text: qsTr("运行")
+            ToolTip.visible: hovered
+            ToolTip.delay: 350
+            ToolTip.text: qsTr("从此入口运行；已有手动流程会停止并重新开始")
             size: UiStyle.ButtonSize.Small
             enabled: !!node
             onClicked: demoGraph.run(node.id)

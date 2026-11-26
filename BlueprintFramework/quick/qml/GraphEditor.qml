@@ -89,7 +89,10 @@ Item {
             readonly property string nodeId: node ? node.id : ""
             readonly property string error: editor.session ? editor.session.error : ""
             property string errorKey: ""
-            onNodeIdChanged: errorKey = ""
+            onNodeIdChanged: {
+                errorKey = ""
+                inspectorScroll.contentY = 0
+            }
             onErrorChanged: errorKey = ""
             readonly property var definition: {
                 var types = editor.session ? editor.session.nodeTypes : []
@@ -100,6 +103,7 @@ Item {
                 return null
             }
             Flickable {
+                id: inspectorScroll
                 anchors.fill: parent
                 anchors.margins: 12
                 clip: true

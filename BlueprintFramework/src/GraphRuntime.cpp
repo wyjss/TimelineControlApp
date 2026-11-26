@@ -650,7 +650,11 @@ void GraphRuntime::complete(const QUuid &runtimeId, const QUuid &executionId, co
 
     const SnapshotNode node = m_snapshot.nodes.at(m_nodeIndexes.value(nodeId));
     m_activeCalls.erase(call);
-    emit nodeExecutionChanged(nodeId, callId, false);
+    {
+        // 结束通知可能处理其他完成回调，当前结果提交前不能提前结束整次执行。
+        QScopedValueRollback<QUuid> dispatching(m_dispatchingExecution, executionId);
+        emit nodeExecutionChanged(nodeId, callId, false);
+    }
     if (m_runtimeId != runtimeId || m_executionId != executionId)
         return;
     if (!result.error.code.isEmpty()) {

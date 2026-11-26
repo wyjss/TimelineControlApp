@@ -301,6 +301,8 @@ FocusScope {
 
     Canvas {
         id: grid
+        readonly property color gridColor: canvas.colors ? canvas.colors.borderPane : "transparent"
+        onGridColorChanged: requestPaint()
         anchors.fill: parent
         onPaint: {
             var ctx = getContext("2d")
@@ -312,7 +314,7 @@ FocusScope {
                 step *= 4
             var startX = (canvas.pan.x % step + step) % step
             var startY = (canvas.pan.y % step + step) % step
-            ctx.strokeStyle = canvas.colors.borderPane
+            ctx.strokeStyle = grid.gridColor
             ctx.lineWidth = 1
             ctx.beginPath()
             for (var x = startX; x < width; x += step) {

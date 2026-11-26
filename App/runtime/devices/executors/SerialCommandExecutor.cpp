@@ -33,7 +33,7 @@ void SerialCommandExecutor::executeImpl(const QString &executionId,
                                         DeviceCommand *command,
                                         const QVariantMap &params)
 {
-    QString payload = params.value(DeviceKey::SerialPayload).toString().simplified();
+    QString payload = params.value(DeviceKey::Payload).toString().simplified();
     const QStringList parts = payload.split(QLatin1Char(' '), Qt::SkipEmptyParts);
     for (const QString &part : parts) {
         bool ok = false;

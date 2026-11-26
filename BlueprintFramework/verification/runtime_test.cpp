@@ -66,6 +66,8 @@ private slots:
     void queuesMultipleExecutionArrivals_data();
     void queuesMultipleExecutionArrivals();
     void preservesOutputWhenCompletionReentersDispatch();
+    void completionSignalReentry_data();
+    void completionSignalReentry();
     void snapshotsEntryOutputs();
 };
 
@@ -1113,6 +1115,68 @@ void BlueprintRuntimeTest::preservesOutputWhenCompletionReentersDispatch()
     QTRY_COMPARE(finished.count(), 1);
     QCOMPARE(finished.first().at(1).value<Diagnostic>().code, QString());
     QCOMPARE(received, (QVector<int>{100, 200}));
+}
+
+void BlueprintRuntimeTest::completionSignalReentry_data()
+{
+    QTest::addColumn<bool>("fails");
+    QTest::newRow("success") << false;
+    QTest::newRow("failure") << true;
+}
+
+void BlueprintRuntimeTest::completionSignalReentry()
+{
+    QFETCH(bool, fails);
+    const QUuid trigger = QUuid::createUuid();
+    const QUuid first = QUuid::createUuid();
+    const QUuid second = QUuid::createUuid();
+    const QUuid consumer = QUuid::createUuid();
+    const GraphSnapshot graph{QUuid::createUuid(), 0,
+        {{trigger, triggerType, {}, {executionOutput}},
+         {first, actionType, {}, {executionInput, executionOutput, numberOutput}},
+         {second, actionType, {}, {executionInput}},
+         {consumer, actionType, {}, {executionInput, numberInput}}},
+        {{QUuid::createUuid(), {trigger, nextKey}, {first, enterKey}},
+         {QUuid::createUuid(), {trigger, nextKey}, {second, enterKey}},
+         {QUuid::createUuid(), {first, nextKey}, {consumer, enterKey}},
+         {QUuid::createUuid(), {first, valueKey}, {consumer, inputKey}}}};
+    GraphRuntime runtime;
+    QSignalSpy finished(&runtime, &GraphRuntime::executionFinished);
+    RuntimeImplementations::Completion completeFirst;
+    RuntimeImplementations::Completion completeSecond;
+    QVector<int> received;
+    RuntimeImplementations implementations;
+    implementations.actions.insert(actionType, [&](const ExecutionContext &context, RuntimeImplementations::Completion done) {
+        if (context.nodeId == first)
+            completeFirst = std::move(done);
+        else if (context.nodeId == second)
+            completeSecond = std::move(done);
+        else {
+            received.append(context.inputs.value(inputKey).toInt());
+            done({});
+        }
+    });
+    bool reentered = false;
+    connect(&runtime, &GraphRuntime::nodeExecutionChanged, this,
+            [&](const QUuid &nodeId, const QUuid &, bool running) {
+        if (nodeId != first || running || reentered)
+            return;
+        reentered = true;
+        completeSecond({});
+        QCoreApplication::sendPostedEvents(&runtime, QEvent::MetaCall);
+        QVERIFY(finished.isEmpty());
+    });
+    QCOMPARE(runtime.start(graph, implementations).code, QString());
+    const auto execution = runtime.execute({trigger, nextKey});
+    QCOMPARE(execution.error.code, QString());
+    QTRY_VERIFY(static_cast<bool>(completeFirst) && static_cast<bool>(completeSecond));
+    const Diagnostic error = fails ? Diagnostic{"test.action_failed", "Action failed."} : Diagnostic{};
+    completeFirst({nextKey, {{valueKey, 42}}, error});
+    QTRY_COMPARE(finished.count(), 1);
+    QVERIFY(reentered);
+    QCOMPARE(finished.first().at(0).toUuid(), execution.executionId);
+    QCOMPARE(finished.first().at(1).value<Diagnostic>().code, error.code);
+    QCOMPARE(received, fails ? QVector<int>{} : QVector<int>{42});
 }
 
 void BlueprintRuntimeTest::snapshotsEntryOutputs()

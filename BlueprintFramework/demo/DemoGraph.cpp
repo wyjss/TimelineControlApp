@@ -315,7 +315,10 @@ DemoGraph::DemoGraph(QObject *parent)
     connect(&m_registry, &NodeRegistry::typeAdded, this, [this] { emit paletteChanged(); });
     for (auto *runtime : {&m_runtime, &m_automaticRuntime}) {
         connect(runtime, &GraphRuntime::nodeExecutionChanged, this, &DemoGraph::nodeExecutionChanged);
-        connect(runtime, &GraphRuntime::executionOutputsPublished, this, &DemoGraph::captureResultValues);
+        connect(runtime, &GraphRuntime::executionOutputsPublished, this,
+                [this, runtime](const QUuid &, const QVariantMap &, quint64 revision) {
+            captureResultValues(*runtime, revision);
+        });
         connect(runtime, &GraphRuntime::executionFinished, this, [this, runtime](const QUuid &, const Diagnostic &error) {
             executionFinished(runtime, error);
         });
@@ -736,7 +739,7 @@ bool DemoGraph::setWaitDuration(const QString &nodeId, const QString &text)
     double duration = 0;
     if (text.contains(QLatin1Char(':'))) {
         static const QRegularExpression timePattern(QStringLiteral(
-            R"(\A(?:([0-9]+):)?([0-9]+):([0-9]{1,4})(?:\.([0-9]{1,3}))?\z)"));
+            R"(\A(?:([0-9]+):)?([0-9]+):([0-9]{1,2})(?:\.([0-9]{1,3}))?\z)"));
         const auto match = timePattern.match(text);
         if (match.hasMatch()) {
             const auto hoursText = match.captured(1);
@@ -746,7 +749,8 @@ bool DemoGraph::setWaitDuration(const QString &nodeId, const QString &text)
             const qint64 minutes = minutesText.toLongLong(&minutesOk);
             // 两段式显示使用总分钟，三段式保留小时和分钟的取值规则。
             ok = (hoursText.isEmpty() || (ok && minutesText.size() <= 2 && minutes < 60))
-                && minutesOk && hours <= maximum / 3600000 && minutes <= maximum / 60000;
+                && minutesOk && hours <= maximum / 3600000 && minutes <= maximum / 60000
+                && match.captured(3).toInt() < 60;
             if (ok) {
                 const auto milliseconds = match.captured(4).leftJustified(3, QLatin1Char('0')).toInt();
                 duration = hours * 3600000 + minutes * 60000
@@ -938,25 +942,31 @@ bool DemoGraph::save(const QUrl &url)
     return true;
 }
 
-void DemoGraph::captureResultValues(const QUuid &nodeId, const QVariantMap &outputs, quint64 revision)
+void DemoGraph::captureResultValues(GraphRuntime &runtime, quint64 revision)
 {
     // 编辑语义后，仍在运行的旧快照不能再提交结果。
     if (revision < m_resultRevision)
         return;
 
     bool changed = false;
-    for (const auto &connection : m_document.data().connections) {
-        if (connection.source.nodeId != nodeId || connection.target.portKey != valueKey)
+    for (const auto &node : m_document.data().nodes) {
+        bool hasValuePort = false;
+        for (const auto &port : m_document.nodePorts(node.id))
+            hasValuePort = hasValuePort || (port.key == valueKey && port.kind == PortKind::Data);
+        if (!hasValuePort || node.typeId == setType)
             continue;
-        const auto output = outputs.constFind(connection.source.portKey);
-        if (output == outputs.cend())
+
+        // 只使用发布方本次执行的数据，避免把不同事件的输出拼接成一次计算。
+        const auto result = runtime.evaluate({node.id, valueKey});
+        if (result.error.code == QStringLiteral("runtime.output_unavailable")
+            || result.error.code == QStringLiteral("runtime.unconnected_input")
+            || result.error.code == QStringLiteral("runtime.unconfigured_port"))
             continue;
-        const auto *target = m_document.findNode(connection.target.nodeId);
-        if (!target || (target->typeId != resultType && target->typeId != textResultType && target->typeId != boolResultType))
-            continue;
-        m_executionResultValues.insert(target->id, output.value());
-        const auto targetId = target->id.toString(QUuid::WithoutBraces);
-        const auto display = displayValue(output.value());
+        // 此缓存仅供回显；本次计算失败时覆盖旧值，保留可见诊断。
+        const QVariant value = result.error.code.isEmpty() ? result.value : QVariant(result.error.message);
+        m_executionResultValues.insert(node.id, value);
+        const auto targetId = node.id.toString(QUuid::WithoutBraces);
+        const auto display = displayValue(value);
         if (m_values.value(targetId).toString() != display) {
             m_values.insert(targetId, display);
             changed = true;
@@ -1026,7 +1036,10 @@ void DemoGraph::speakerChanged(const QString &targetId, const QStringList &keys)
                     snapshot = m_document.snapshot();
                 auto *runtime = new GraphRuntime(this);
                 connect(runtime, &GraphRuntime::nodeExecutionChanged, this, &DemoGraph::nodeExecutionChanged);
-                connect(runtime, &GraphRuntime::executionOutputsPublished, this, &DemoGraph::captureResultValues);
+                connect(runtime, &GraphRuntime::executionOutputsPublished, this,
+                        [this, runtime](const QUuid &, const QVariantMap &, quint64 revision) {
+                    captureResultValues(*runtime, revision);
+                });
                 connect(runtime, &GraphRuntime::executionFinished, this, [this, runtime](const QUuid &, const Diagnostic &error) {
                     executionFinished(runtime, error);
                 });

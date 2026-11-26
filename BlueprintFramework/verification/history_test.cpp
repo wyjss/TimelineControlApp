@@ -21,6 +21,7 @@ private slots:
     void undoAndOpenDuringPlayback();
     void comparisonControlsInterfaceCall();
     void callUsesDeclaredInputsAndOutputs();
+    void executionResultsFlowThroughCalculations();
     void dispatchesPlaybackToBothSpeakers();
     void queuesPlaybackFromMultipleExecutionInputs();
     void waitsFromArrivalAndStops();
@@ -395,6 +396,68 @@ void BlueprintHistoryTest::callUsesDeclaredInputsAndOutputs()
     QVERIFY(!demo.previewValues().contains(result));
 }
 
+void BlueprintHistoryTest::executionResultsFlowThroughCalculations()
+{
+    DemoGraph demo;
+    auto *session = qobject_cast<GraphEditSession *>(demo.session());
+    QVERIFY(session);
+    const auto speakerA = QStringLiteral("host:demo.speaker:speaker-a");
+    const auto speakerB = QStringLiteral("host:demo.speaker:speaker-b");
+    const auto input = QStringLiteral("in/demo.speaker/playFor/testDurationMs");
+    const auto output = QStringLiteral("out/demo.speaker/playFor/playedDurationMs");
+    const auto value = QStringLiteral("value");
+    const auto trigger = session->addNode(QStringLiteral("demo.trigger"), {});
+    const auto otherTrigger = session->addNode(QStringLiteral("demo.trigger"), {});
+    const auto call = demo.addOperation(QStringLiteral("demo.call"), speakerA, QStringLiteral("playFor"), {});
+    const auto otherCall = demo.addOperation(QStringLiteral("demo.call"), speakerB, QStringLiteral("playFor"), {});
+    const auto constant = session->addNode(QStringLiteral("demo.constant"), {});
+    const auto addition = session->addNode(QStringLiteral("demo.add"), {});
+    const auto direct = session->addNode(QStringLiteral("demo.result"), {});
+    const auto result = session->addNode(QStringLiteral("demo.result"), {});
+    const auto mixed = session->addNode(QStringLiteral("demo.add"), {});
+    const auto mixedResult = session->addNode(QStringLiteral("demo.result"), {});
+    QVERIFY(demo.setCallInput(call, input, QStringLiteral("200")));
+    QVERIFY(demo.setCallInput(otherCall, input, QStringLiteral("300")));
+    QVERIFY(session->setParameter(constant, value, 12.0));
+    QVERIFY(session->connectPorts(trigger, QStringLiteral("execOut"), call, QStringLiteral("execIn")));
+    QVERIFY(session->connectPorts(otherTrigger, QStringLiteral("execOut"), otherCall, QStringLiteral("execIn")));
+    QVERIFY(session->connectPorts(call, output, direct, value));
+    QVERIFY(session->connectPorts(call, output, addition, QStringLiteral("A")));
+    QVERIFY(session->connectPorts(constant, value, addition, QStringLiteral("B")));
+    QVERIFY(session->connectPorts(addition, value, result, value));
+    QVERIFY(session->connectPorts(call, output, mixed, QStringLiteral("A")));
+    QVERIFY(session->connectPorts(otherCall, output, mixed, QStringLiteral("B")));
+    QVERIFY(session->connectPorts(mixed, value, mixedResult, value));
+
+    QVERIFY(demo.run(trigger));
+    QTRY_VERIFY(!demo.running());
+    QCOMPARE(demo.previewValues().value(direct).toString(), QStringLiteral("200"));
+    QCOMPARE(demo.previewValues().value(addition).toString(), QStringLiteral("212"));
+    QCOMPARE(demo.previewValues().value(result).toString(), QStringLiteral("212"));
+    QVERIFY(!demo.previewValues().contains(mixedResult));
+
+    // 后一次执行不能取用前一次的接口结果，但已展示的独立结果仍保留。
+    QVERIFY(demo.run(otherTrigger));
+    QTRY_VERIFY(!demo.running());
+    QCOMPARE(demo.previewValues().value(result).toString(), QStringLiteral("212"));
+    QVERIFY(!demo.previewValues().contains(mixed));
+    QVERIFY(!demo.previewValues().contains(mixedResult));
+
+    QVERIFY(demo.run(trigger));
+    QTRY_VERIFY(demo.speakerState(speakerA).value(QStringLiteral("playing")).toBool());
+    QVERIFY(session->setParameter(constant, value, 13.0));
+    QVERIFY(!demo.previewValues().contains(result));
+    QTRY_VERIFY(!demo.running());
+    QVERIFY(!demo.previewValues().contains(direct));
+    QVERIFY(!demo.previewValues().contains(addition));
+    QVERIFY(!demo.previewValues().contains(result));
+    QVERIFY(demo.run(trigger));
+    QTRY_VERIFY(!demo.running());
+    QCOMPARE(demo.previewValues().value(direct).toString(), QStringLiteral("200"));
+    QCOMPARE(demo.previewValues().value(result).toString(), QStringLiteral("213"));
+    QVERIFY(demo.error().isEmpty());
+}
+
 void BlueprintHistoryTest::dispatchesPlaybackToBothSpeakers()
 {
     bool playedTogether = false;
@@ -493,6 +556,12 @@ void BlueprintHistoryTest::waitsFromArrivalAndStops()
     QVERIFY(demo.setCallInput(playback, QStringLiteral("in/demo.speaker/playFor/testDurationMs"), QStringLiteral("200")));
     QVERIFY(!demo.setWaitDuration(wait, QStringLiteral("-1")));
     QVERIFY(!demo.setWaitDuration(wait, QStringLiteral("1.5")));
+    QVERIFY(demo.setWaitDuration(wait, QStringLiteral("00:59.999")));
+    QVERIFY(demo.setWaitDuration(wait, QStringLiteral("01:59:59.999")));
+    QVERIFY(!demo.setWaitDuration(wait, QStringLiteral("00:60.000")));
+    QVERIFY(!demo.setWaitDuration(wait, QStringLiteral("00:99.000")));
+    QVERIFY(!demo.setWaitDuration(wait, QStringLiteral("01:00:60.000")));
+    QVERIFY(!demo.setWaitDuration(wait, QStringLiteral("00:9999")));
     QVERIFY(demo.setWaitDuration(wait, QStringLiteral("0")));
     QVERIFY(session->setParameter(constant, value, 180.0));
     QVERIFY(demo.setDurationInput(setter, QStringLiteral("444")));
@@ -700,6 +769,8 @@ void BlueprintHistoryTest::propertyEventsRunAlongsideManualWait()
     const auto wait = session->addNode(QStringLiteral("demo.wait"), {});
     const auto event = session->addNode(QStringLiteral("demo.propertyChanged"), {});
     const auto preview = session->addNode(QStringLiteral("demo.boolResult"), {});
+    const auto inverse = session->addNode(QStringLiteral("demo.not"), {});
+    const auto inversePreview = session->addNode(QStringLiteral("demo.boolResult"), {});
     const auto branch = session->addNode(QStringLiteral("demo.branch"), {});
     const auto first = demo.addOperation(QStringLiteral("demo.setProperty"), speakerB, duration, {});
     const auto second = demo.addOperation(QStringLiteral("demo.setProperty"), speakerB, duration, {});
@@ -712,7 +783,10 @@ void BlueprintHistoryTest::propertyEventsRunAlongsideManualWait()
     QVERIFY(session->connectPorts(trigger, execOut, wait, execIn));
     QVERIFY(session->connectPorts(event, QStringLiteral("value"), branch, QStringLiteral("condition")));
     QVERIFY(session->connectPorts(event, QStringLiteral("value"), preview, QStringLiteral("value")));
+    QVERIFY(session->connectPorts(event, QStringLiteral("value"), inverse, QStringLiteral("A")));
+    QVERIFY(session->connectPorts(inverse, QStringLiteral("value"), inversePreview, QStringLiteral("value")));
     QVERIFY(!demo.previewValues().contains(preview));
+    QVERIFY(!demo.previewValues().contains(inversePreview));
     QVERIFY(session->connectPorts(branch, QStringLiteral("true"), first, execIn));
     QVERIFY(session->connectPorts(branch, QStringLiteral("false"), second, execIn));
 
@@ -742,6 +816,8 @@ void BlueprintHistoryTest::propertyEventsRunAlongsideManualWait()
     QVERIFY(demo.running());
     QVERIFY(demo.error().isEmpty());
     QTRY_COMPARE(demo.previewValues().value(preview).toString(), QStringLiteral("否"));
+    QCOMPARE(demo.previewValues().value(inverse).toString(), QStringLiteral("是"));
+    QCOMPARE(demo.previewValues().value(inversePreview).toString(), QStringLiteral("是"));
 
     QVERIFY(demo.setDurationInput(second, QStringLiteral("900")));
     QVERIFY(demo.invokeSpeaker(speakerA, QStringLiteral("stop")));

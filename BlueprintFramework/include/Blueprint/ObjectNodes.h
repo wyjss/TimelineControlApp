@@ -15,6 +15,7 @@ struct ObjectNodeBindings
     std::function<ValueResult(const QString &target, const QString &member)> read;
     std::function<Diagnostic(const QString &target, const QString &member, const QVariant &value)> write;
     //! 立即拒绝时返回诊断；受理后通过完成回调交付结果，允许异步完成。
+    //! 成功结果须显式返回全部声明的输出，不使用输出声明的默认值补齐。
     std::function<Diagnostic(const QString &target, const QString &member, const QUuid &callId,
                              const QVariantMap &inputs, MethodCompletion complete)> invoke;
     RuntimeImplementations::Cancel cancel;

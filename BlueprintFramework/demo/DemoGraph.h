@@ -116,7 +116,7 @@ private:
                         QUuid entry, const QVariantMap &entryOutputs = {});
     void executionFinished(Blueprint::GraphRuntime *runtime, const Blueprint::Diagnostic &error);
     void speakerChanged(const QString &targetId, const QStringList &keys);
-    void captureResultValues(const QUuid &nodeId, const QVariantMap &outputs, quint64 revision);
+    void captureResultValues(Blueprint::GraphRuntime &runtime, quint64 revision);
     void updateValues();
     void syncSpeakers(const Blueprint::GraphChangeSet &change = {});
     bool report(const QString &error, const QUuid &nodeId = {});
